@@ -1,5 +1,5 @@
-import { ActivityIndicator, Text, View, type ViewStyle } from 'react-native'
-import { AnimatedPressable } from './AnimatedPressable'
+import { ActivityIndicator, Text, View, type ViewStyle } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
 
 /** Destructive action (Disconnect / Delete) — keeps its red colour but shares the button
  * shape + navy shadow of GradientButton/WhiteButton (docs/tasks/pending/button-styles.md).
@@ -13,15 +13,15 @@ export function DangerButton({
   radius = 16,
   style,
 }: {
-  label: string
-  onPress: () => void
-  disabled?: boolean
-  loading?: boolean
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
   /** corner radius (default 16 — owner 2026-10-16) */
-  radius?: number
-  style?: ViewStyle
+  radius?: number;
+  style?: ViewStyle;
 }) {
-  const isDisabled = disabled || loading
+  const isDisabled = disabled || loading;
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -51,7 +51,17 @@ export function DangerButton({
       >
         {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
         {loading ? (
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <ActivityIndicator size="small" color="#FFFFFF" />
           </View>
         ) : null}
@@ -70,5 +80,5 @@ export function DangerButton({
         </Text>
       </View>
     </AnimatedPressable>
-  )
+  );
 }

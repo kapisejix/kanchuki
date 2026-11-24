@@ -1,51 +1,76 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
-import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  Store,
-  Search,
-  ChevronRight,
   ChevronLeft,
-  Package,
-  Users,
-  Share2,
+  ChevronRight,
   Clock,
+  Package,
+  Search,
+  Share2,
   Star,
+  Store,
   Trash2,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+  Users,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 const INDIAN_STATES = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
-  'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
-  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
-  'West Bengal', 'Delhi', 'Jammu & Kashmir', 'Ladakh',
-]
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+  'Delhi',
+  'Jammu & Kashmir',
+  'Ladakh',
+];
 
 type Retailer = {
-  id: string
-  shop_name: string
-  city: string
-  state: string | null
-  phone: string
-  plan: string
-  plan_status: string
-  trial_ends_at: string | null
-  created_at: string
-  onboarding_completed: boolean
-  is_suspended: boolean
-  is_featured: boolean
-  product_count: number
-  customer_count: number
-  collection_count: number
-}
+  id: string;
+  shop_name: string;
+  city: string;
+  state: string | null;
+  phone: string;
+  plan: string;
+  plan_status: string;
+  trial_ends_at: string | null;
+  created_at: string;
+  onboarding_completed: boolean;
+  is_suspended: boolean;
+  is_featured: boolean;
+  product_count: number;
+  customer_count: number;
+  collection_count: number;
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -53,7 +78,7 @@ const containerVariants = {
     opacity: 1,
     transition: { staggerChildren: 0.05, delayChildren: 0.1 },
   },
-}
+};
 
 const rowVariants = {
   hidden: { opacity: 0, x: -10 },
@@ -62,127 +87,156 @@ const rowVariants = {
     x: 0,
     transition: { type: 'spring', stiffness: 200, damping: 25 },
   },
-}
+};
 
-type Filters = { search: string; city: string; plan: string; status: string; state: string; suspended: string; featured: string }
+type Filters = {
+  search: string;
+  city: string;
+  plan: string;
+  status: string;
+  state: string;
+  suspended: string;
+  featured: string;
+};
 
 function RetailersContent() {
-  const searchParams = useSearchParams()
-  const [retailers, setRetailers] = useState<Retailer[]>([])
-  const [filters, setFilters] = useState<Filters>({ search: '', city: '', plan: '', status: '', state: '', suspended: '', featured: '' })
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [cursorHistory, setCursorHistory] = useState<string[]>([])
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [deleting, setDeleting] = useState(false)
+  const searchParams = useSearchParams();
+  const [retailers, setRetailers] = useState<Retailer[]>([]);
+  const [filters, setFilters] = useState<Filters>({
+    search: '',
+    city: '',
+    plan: '',
+    status: '',
+    state: '',
+    suspended: '',
+    featured: '',
+  });
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const loadRetailers = useCallback(async (f: Filters, cursorVal?: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const params = new URLSearchParams()
-      if (f.search) params.set('search', f.search)
-      if (f.city) params.set('city', f.city)
-      if (f.plan) params.set('plan', f.plan)
-      if (f.status) params.set('status', f.status)
-      if (f.state) params.set('state', f.state)
-      if (f.suspended) params.set('suspended', f.suspended)
-      if (f.featured) params.set('featured', f.featured)
-      if (cursorVal) params.set('cursor', cursorVal)
-      params.set('limit', '20')
+      const params = new URLSearchParams();
+      if (f.search) params.set('search', f.search);
+      if (f.city) params.set('city', f.city);
+      if (f.plan) params.set('plan', f.plan);
+      if (f.status) params.set('status', f.status);
+      if (f.state) params.set('state', f.state);
+      if (f.suspended) params.set('suspended', f.suspended);
+      if (f.featured) params.set('featured', f.featured);
+      if (cursorVal) params.set('cursor', cursorVal);
+      params.set('limit', '20');
 
-      const res = await fetch(`${API_URL}/v1/admin/retailers?${params}`, adminGetOptions())
-      const json = await res.json()
+      const res = await fetch(`${API_URL}/v1/admin/retailers?${params}`, adminGetOptions());
+      const json = await res.json();
       // Guard: the API returns { error: {...} } with no .data on a 500.
       // Previously `json.pagination.has_more` threw TypeError here, which
       // (with no error boundary in older builds) surfaced as the generic
       // "Application error" screen. Show the API's message instead.
       if (!res.ok || !Array.isArray(json?.data)) {
-        throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+        throw new Error(json?.error?.message ?? `HTTP ${res.status}`);
       }
-      setRetailers(json.data)
-      setHasMore(json.pagination?.has_more ?? false)
-      setCursor(json.pagination?.cursor ?? null)
-      setSelected(new Set())
+      setRetailers(json.data);
+      setHasMore(json.pagination?.has_more ?? false);
+      setCursor(json.pagination?.cursor ?? null);
+      setSelected(new Set());
     } catch {
       // API down / error — keep the last successful list, show empty state
-      setRetailers((prev) => prev)
-      setHasMore(false)
+      setRetailers((prev) => prev);
+      setHasMore(false);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    loadRetailers(filters)
+    loadRetailers(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadRetailers, searchParams])
+  }, [loadRetailers, searchParams]);
 
   const applyFilters = (e: React.FormEvent) => {
-    e.preventDefault()
-    setCursorHistory([])
-    loadRetailers(filters)
-  }
+    e.preventDefault();
+    setCursorHistory([]);
+    loadRetailers(filters);
+  };
 
   const handleNext = () => {
     if (cursor) {
-      setCursorHistory((prev) => [...prev, cursor])
-      loadRetailers(filters, cursor)
+      setCursorHistory((prev) => [...prev, cursor]);
+      loadRetailers(filters, cursor);
     }
-  }
+  };
 
   const handlePrev = () => {
-    const prev = cursorHistory[cursorHistory.length - 1]
+    const prev = cursorHistory[cursorHistory.length - 1];
     if (prev) {
-      setCursorHistory((prevHistory) => prevHistory.slice(0, -1))
-      loadRetailers(filters, prev)
+      setCursorHistory((prevHistory) => prevHistory.slice(0, -1));
+      loadRetailers(filters, prev);
     }
-  }
+  };
 
   const toggleSelected = (id: string) => {
     setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const toggleSelectAll = () => {
-    setSelected((prev) => (prev.size === retailers.length ? new Set() : new Set(retailers.map((r) => r.id))))
-  }
+    setSelected((prev) =>
+      prev.size === retailers.length ? new Set() : new Set(retailers.map((r) => r.id)),
+    );
+  };
 
   const bulkDelete = async () => {
-    if (selected.size === 0) return
-    if (!confirm(`Delete ${selected.size} retailer${selected.size !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    if (selected.size === 0) return;
+    if (
+      !confirm(
+        `Delete ${selected.size} retailer${selected.size !== 1 ? 's' : ''}? This cannot be undone.`,
+      )
+    )
+      return;
 
-    setDeleting(true)
+    setDeleting(true);
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers`, {
         ...(await adminMutateOptions()),
         method: 'DELETE',
         body: JSON.stringify({ ids: Array.from(selected) }),
-      })
-      if (!res.ok) throw new Error('Delete failed')
-      loadRetailers(filters, undefined)
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      loadRetailers(filters, undefined);
     } catch {
       // ignore
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
-  }
+  };
 
   const statusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'bg-green-100 text-green-700'
-      case 'TRIAL': return 'bg-amber-100 text-amber-700'
-      case 'PAST_DUE': return 'bg-red-100 text-red-700'
-      case 'CANCELLED': return 'bg-gray-100 text-gray-500'
-      default: return 'bg-gray-100 text-gray-500'
+      case 'ACTIVE':
+        return 'bg-green-100 text-green-700';
+      case 'TRIAL':
+        return 'bg-amber-100 text-amber-700';
+      case 'PAST_DUE':
+        return 'bg-red-100 text-red-700';
+      case 'CANCELLED':
+        return 'bg-gray-100 text-gray-500';
+      default:
+        return 'bg-gray-100 text-gray-500';
     }
-  }
+  };
 
-  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
+  const selectClass =
+    'border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition';
 
   return (
     <motion.div
@@ -196,13 +250,18 @@ function RetailersContent() {
         <h1 className="text-2xl font-bold text-gray-900">Retailers</h1>
       </div>
       <p className="text-sm text-gray-500 -mt-4">
-        {retailers.length > 0 ? `${retailers.length} retailers shown` : 'Browse all retailers on the platform'}
+        {retailers.length > 0
+          ? `${retailers.length} retailers shown`
+          : 'Browse all retailers on the platform'}
       </p>
 
       {/* Filters */}
       <form onSubmit={applyFilters} className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors"
+          />
           <input
             value={filters.search}
             onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
@@ -222,7 +281,11 @@ function RetailersContent() {
           className={selectClass}
         >
           <option value="">All States</option>
-          {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+          {INDIAN_STATES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
         </select>
         <select
           value={filters.plan}
@@ -309,25 +372,34 @@ function RetailersContent() {
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">City</th>
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">State</th>
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Plan</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Status</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500"><Package size={14} className="inline" /> Products</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500"><Users size={14} className="inline" /> Customers</th>
-                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500"><Share2 size={14} className="inline" /> Collec.</th>
-                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500"><Clock size={14} className="inline" /> Joined</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                  Status
+                </th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                  <Package size={14} className="inline" /> Products
+                </th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                  <Users size={14} className="inline" /> Customers
+                </th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                  <Share2 size={14} className="inline" /> Collec.
+                </th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                  <Clock size={14} className="inline" /> Joined
+                </th>
                 <th className="px-4 py-3.5" />
               </tr>
             </thead>
-            <motion.tbody
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
+            <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
               {loading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="border-b border-gray-50">
                     {[...Array(11)].map((_, j) => (
                       <td key={j} className="px-4 py-4">
-                        <div className="h-4 bg-gray-200/60 rounded animate-pulse" style={{ width: `${40 + Math.random() * 40}%` }} />
+                        <div
+                          className="h-4 bg-gray-200/60 rounded animate-pulse"
+                          style={{ width: `${40 + Math.random() * 40}%` }}
+                        />
                       </td>
                     ))}
                   </tr>
@@ -342,14 +414,19 @@ function RetailersContent() {
                     >
                       <Store size={40} className="mx-auto mb-3 text-gray-300" />
                       <p className="text-sm font-medium">No retailers found</p>
-                      {filters.search && <p className="text-xs mt-1 text-gray-400">Try a different search term</p>}
+                      {filters.search && (
+                        <p className="text-xs mt-1 text-gray-400">Try a different search term</p>
+                      )}
                     </motion.div>
                   </td>
                 </tr>
               ) : (
                 retailers.map((r, i) => {
-                  const trialEnd = r.trial_ends_at ? new Date(r.trial_ends_at) : null
-                  const isExpiring = trialEnd && trialEnd < new Date(Date.now() + 7 * 86400000) && r.plan_status === 'TRIAL'
+                  const trialEnd = r.trial_ends_at ? new Date(r.trial_ends_at) : null;
+                  const isExpiring =
+                    trialEnd &&
+                    trialEnd < new Date(Date.now() + 7 * 86400000) &&
+                    r.plan_status === 'TRIAL';
 
                   return (
                     <motion.tr
@@ -404,16 +481,24 @@ function RetailersContent() {
                         <span className="text-gray-700 font-medium">{r.plan}</span>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(r.plan_status)}`}>
+                        <span
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusColor(r.plan_status)}`}
+                        >
                           {r.plan_status}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-center text-gray-600 font-medium">{r.product_count}</td>
+                      <td className="px-4 py-3.5 text-center text-gray-600 font-medium">
+                        {r.product_count}
+                      </td>
                       <td className="px-4 py-3.5 text-center text-gray-600">{r.customer_count}</td>
-                      <td className="px-4 py-3.5 text-center text-gray-600">{r.collection_count}</td>
+                      <td className="px-4 py-3.5 text-center text-gray-600">
+                        {r.collection_count}
+                      </td>
                       <td className="px-4 py-3.5 text-gray-400 text-xs whitespace-nowrap">
                         {new Date(r.created_at).toLocaleDateString('en-IN', {
-                          day: '2-digit', month: 'short', year: 'numeric',
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
                         })}
                       </td>
                       <td className="px-4 py-3.5">
@@ -425,7 +510,7 @@ function RetailersContent() {
                         </Link>
                       </td>
                     </motion.tr>
-                  )
+                  );
                 })
               )}
             </motion.tbody>
@@ -465,19 +550,21 @@ function RetailersContent() {
         )}
       </div>
     </motion.div>
-  )
+  );
 }
 
 export default function RetailersPage() {
   return (
-    <Suspense fallback={
-      <div className="space-y-6">
-        <div className="h-8 bg-gray-200/60 rounded w-48 animate-pulse" />
-        <div className="h-10 bg-gray-200/60 rounded-xl animate-pulse" />
-        <div className="h-96 bg-gray-200/60 rounded-2xl animate-pulse" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <div className="h-8 bg-gray-200/60 rounded w-48 animate-pulse" />
+          <div className="h-10 bg-gray-200/60 rounded-xl animate-pulse" />
+          <div className="h-96 bg-gray-200/60 rounded-2xl animate-pulse" />
+        </div>
+      }
+    >
       <RetailersContent />
     </Suspense>
-  )
+  );
 }

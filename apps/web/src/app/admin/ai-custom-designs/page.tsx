@@ -1,51 +1,51 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type Row = {
-  id: string
-  prompt: string
-  status: 'PENDING' | 'READY' | 'FAILED'
-  error: string | null
-  image_url: string | null
-  created_at: string
-  retailer: { id: string; shop_name: string; city: string }
-  product: { name: string }
-}
-type Stats = { days: number; ready: number; failed: number; pending: number; total: number }
+  id: string;
+  prompt: string;
+  status: 'PENDING' | 'READY' | 'FAILED';
+  error: string | null;
+  image_url: string | null;
+  created_at: string;
+  retailer: { id: string; shop_name: string; city: string };
+  product: { name: string };
+};
+type Stats = { days: number; ready: number; failed: number; pending: number; total: number };
 
-const STATUSES = ['', 'READY', 'FAILED', 'PENDING'] as const
+const STATUSES = ['', 'READY', 'FAILED', 'PENDING'] as const;
 
 // Read-only view of what retailers asked the paid AI design tier for (prompts are already
 // sanitised server-side). Useful for spotting prompt abuse and failure rates.
 export default function AiCustomDesignsPage() {
-  const [rows, setRows] = useState<Row[] | null>(null)
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [status, setStatus] = useState<(typeof STATUSES)[number]>('')
-  const [error, setError] = useState('')
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [status, setStatus] = useState<(typeof STATUSES)[number]>('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    let live = true
-    setError('')
-    const qs = status ? `?status=${status}` : ''
+    let live = true;
+    setError('');
+    const qs = status ? `?status=${status}` : '';
     fetch(`${API_URL}/v1/admin/ai-custom-designs${qs}`, adminGetOptions())
       .then(async (res) => {
-        if (!res.ok) throw new Error(`Failed to load (${res.status})`)
-        return res.json() as Promise<{ data: Row[]; stats: Stats }>
+        if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+        return res.json() as Promise<{ data: Row[]; stats: Stats }>;
       })
       .then((j) => {
-        if (!live) return
-        setRows(j.data)
-        setStats(j.stats)
+        if (!live) return;
+        setRows(j.data);
+        setStats(j.stats);
       })
-      .catch((e: unknown) => live && setError(e instanceof Error ? e.message : 'Failed to load'))
+      .catch((e: unknown) => live && setError(e instanceof Error ? e.message : 'Failed to load'));
     return () => {
-      live = false
-    }
-  }, [status])
+      live = false;
+    };
+  }, [status]);
 
   return (
     <div className="p-6">
@@ -56,8 +56,8 @@ export default function AiCustomDesignsPage() {
 
       {stats ? (
         <p className="mt-4 text-sm text-gray-700">
-          Last {stats.days} days: {stats.total} total · {stats.ready} ready · {stats.failed} failed ·{' '}
-          {stats.pending} pending
+          Last {stats.days} days: {stats.total} total · {stats.ready} ready · {stats.failed} failed
+          · {stats.pending} pending
         </p>
       ) : null}
 
@@ -123,5 +123,5 @@ export default function AiCustomDesignsPage() {
         </div>
       ) : null}
     </div>
-  )
+  );
 }

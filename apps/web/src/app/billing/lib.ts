@@ -45,8 +45,6 @@ export function formatDate(iso?: string | null): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-
-
 /** Addon packs grouped by resource, rendered in this display order. */
 export const ADDON_GROUP_ORDER = [
   'PRODUCT_UPLOAD',

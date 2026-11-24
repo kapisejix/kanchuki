@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { Alert } from 'react-native'
-import { router } from 'expo-router'
-import { productApi } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { SkuScanner } from '../../src/components/SkuScanner'
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Alert } from 'react-native';
+import { SkuScanner } from '../../src/components/SkuScanner';
+import { productApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
 
 /**
  * F-025 scan-to-sell: offline sale reconciliation.
@@ -20,29 +20,29 @@ import { SkuScanner } from '../../src/components/SkuScanner'
  * Camera + manual input live in SkuScanner (shared with the F-047 sell screen).
  */
 export default function ScanScreen() {
-  const [resolving, setResolving] = useState(false)
-  const [scanPaused, setScanPaused] = useState(false)
+  const [resolving, setResolving] = useState(false);
+  const [scanPaused, setScanPaused] = useState(false);
 
   const resolveAndOpen = async (sku: string) => {
-    setResolving(true)
-    setScanPaused(true)
+    setResolving(true);
+    setScanPaused(true);
     try {
-      const res = await productApi.list({ sku, limit: 1 })
-      const items = (res.data ?? []) as { id: string }[]
+      const res = await productApi.list({ sku, limit: 1 });
+      const items = (res.data ?? []) as { id: string }[];
       if (items.length === 0) {
         Alert.alert('Not Found', `No product with SKU "${sku.toUpperCase()}" in this catalog.`, [
           { text: 'Scan again', onPress: () => setScanPaused(false) },
-        ])
-        return
+        ]);
+        return;
       }
-      router.replace(`/product/${items[0]!.id}`)
+      router.replace(`/product/${items[0]!.id}`);
     } catch (err) {
-      showError(err, 'Could not look up that SKU')
-      setScanPaused(false)
+      showError(err, 'Could not look up that SKU');
+      setScanPaused(false);
     } finally {
-      setResolving(false)
+      setResolving(false);
     }
-  }
+  };
 
   return (
     <SkuScanner
@@ -51,5 +51,5 @@ export default function ScanScreen() {
       paused={scanPaused}
       busy={resolving}
     />
-  )
+  );
 }

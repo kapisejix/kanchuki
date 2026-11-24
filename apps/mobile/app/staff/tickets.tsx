@@ -98,7 +98,9 @@ export default function StaffTicketsScreen() {
                   active ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                 }`}
               >
-                <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-heliotrope-600'}`}>
+                <Text
+                  className={`text-xs font-semibold ${active ? 'text-white' : 'text-heliotrope-600'}`}
+                >
                   {f.label} ({all.filter((t) => matches(f.key, t)).length})
                 </Text>
               </AnimatedPressable>
@@ -113,7 +115,9 @@ export default function StaffTicketsScreen() {
         <ScrollView
           className="flex-1 px-4"
           contentContainerStyle={{ paddingTop: 12, paddingBottom: screenPaddingBottom }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           {tickets.length === 0 ? (
             <View className="items-center py-16">
@@ -134,7 +138,9 @@ export default function StaffTicketsScreen() {
                   <View key={t.id} className="bg-white rounded-2xl p-4 border border-lavender-200">
                     <View className="flex-row items-center gap-2 mb-1">
                       <Store size={16} color={primaryColor} />
-                      <Text className="text-sm font-semibold text-spaceCadet-900 flex-1">{t.retailer.shop_name}</Text>
+                      <Text className="text-sm font-semibold text-spaceCadet-900 flex-1">
+                        {t.retailer.shop_name}
+                      </Text>
                       <View className={`rounded-full px-2.5 py-0.5 ${s.bg}`}>
                         <Text className={`text-[11px] font-semibold ${s.text}`}>{s.label}</Text>
                       </View>
@@ -148,7 +154,9 @@ export default function StaffTicketsScreen() {
                       {t.setup_item ? ` · Setup: ${t.setup_item.replace(/_/g, ' ')}` : ''}
                       {t.requires_visit ? ' · visit needed' : ''}
                     </Text>
-                    {t.note ? <Text className="text-xs text-heliotrope-600 mt-1 leading-5">{t.note}</Text> : null}
+                    {t.note ? (
+                      <Text className="text-xs text-heliotrope-600 mt-1 leading-5">{t.note}</Text>
+                    ) : null}
                     <Text className="text-[11px] text-heliotrope-500 mt-2">
                       {new Date(t.created_at).toLocaleDateString('en-IN', {
                         day: 'numeric',
@@ -171,7 +179,9 @@ export default function StaffTicketsScreen() {
                             variant="web"
                             label="Pick up"
                             loading={busy}
-                            onPress={() => update.mutate({ id: t.id, status: 'ASSIGNED', assigned_to_id: me.id })}
+                            onPress={() =>
+                              update.mutate({ id: t.id, status: 'ASSIGNED', assigned_to_id: me.id })
+                            }
                           />
                         </View>
                       ) : null}

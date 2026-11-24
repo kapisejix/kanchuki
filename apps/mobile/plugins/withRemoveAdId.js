@@ -17,9 +17,7 @@ module.exports = function withRemoveAdId(config) {
     manifest['uses-permission'] = manifest['uses-permission'] || [];
 
     const AD_ID = 'com.google.android.gms.permission.AD_ID';
-    const existing = manifest['uses-permission'].find(
-      (p) => p.$['android:name'] === AD_ID,
-    );
+    const existing = manifest['uses-permission'].find((p) => p.$['android:name'] === AD_ID);
     if (existing) {
       existing.$['tools:node'] = 'remove';
     } else {

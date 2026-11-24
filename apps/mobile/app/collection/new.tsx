@@ -155,7 +155,11 @@ export default function NewCollectionScreen() {
                         {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                       </Text>
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                        style={{
+                          fontFamily: 'Marcellus_400Regular',
+                          letterSpacing: 0.32,
+                          fontWeight: '800',
+                        }}
                         className="text-xs text-spaceCadet-900"
                       >
                         {formatPriceRange(item.price_min, item.price_max)}

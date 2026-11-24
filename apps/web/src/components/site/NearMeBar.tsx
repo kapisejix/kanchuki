@@ -1,25 +1,26 @@
-'use client'
+'use client';
 
-import { Crosshair } from 'lucide-react'
-import type { useUserLocation } from '@/lib/nearby-stores'
+import type { useUserLocation } from '@/lib/nearby-stores';
+import { Crosshair } from 'lucide-react';
 
 interface Props {
-  loc: ReturnType<typeof useUserLocation>
+  loc: ReturnType<typeof useUserLocation>;
   /** Radius the API settled on (2 → 5 → 10 km); null when no nearby list was shown. */
-  radiusKm: number | null
+  radiusKm: number | null;
   /** Nearby lookup ran but found nothing within 10 km — the list below is everyone. */
-  empty: boolean
+  empty: boolean;
 }
 
 // "Near me" control + status line shared by /stores and the homepage teaser.
 export default function NearMeBar({ loc, radiusKm, empty }: Props) {
-  let message: string | null = null
-  if (loc.status === 'asking') message = 'Finding your location…'
-  else if (loc.status === 'denied') message = 'Location is off — showing all stores. Tap to try again.'
+  let message: string | null = null;
+  if (loc.status === 'asking') message = 'Finding your location…';
+  else if (loc.status === 'denied')
+    message = 'Location is off — showing all stores. Tap to try again.';
   else if (loc.status === 'granted') {
-    if (empty) message = 'No stores within 10 km of you yet — showing all stores.'
-    else if (radiusKm === 2) message = 'Showing stores within 2 km of you, nearest first.'
-    else if (radiusKm) message = `No stores within 2 km — showing stores within ${radiusKm} km.`
+    if (empty) message = 'No stores within 10 km of you yet — showing all stores.';
+    else if (radiusKm === 2) message = 'Showing stores within 2 km of you, nearest first.';
+    else if (radiusKm) message = `No stores within 2 km — showing stores within ${radiusKm} km.`;
   }
 
   return (
@@ -41,5 +42,5 @@ export default function NearMeBar({ loc, radiusKm, empty }: Props) {
         </p>
       )}
     </div>
-  )
+  );
 }

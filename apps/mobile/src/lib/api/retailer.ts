@@ -1,4 +1,4 @@
-import { request } from './client'
+import { request } from './client';
 
 export type SetupChecklistItem = {
   key:
@@ -8,15 +8,15 @@ export type SetupChecklistItem = {
     | 'instagram'
     | 'gst'
     | 'whatsapp_api'
-    | 'store_location'
-  status: 'done' | 'missing' | 'requested'
-  dismissed: boolean
-  can_ask: boolean
-}
+    | 'store_location';
+  status: 'done' | 'missing' | 'requested';
+  dismissed: boolean;
+  can_ask: boolean;
+};
 
 // This build knows how to render `store_location`. Older builds do not send this header, so the
 // API never returns that item to them (an unknown key would crash their dashboard).
-const CHECKLIST_OPT_IN = { 'x-checklist-store-location': '1' }
+const CHECKLIST_OPT_IN = { 'x-checklist-store-location': '1' };
 
 export const retailerApi = {
   getMe: () => request<{ data: unknown }>('/v1/retailers/me', { getCacheTtlMs: 60_000 }),
@@ -71,7 +71,8 @@ export const retailerApi = {
       '/v1/retailers/me/onboarding',
       { method: 'PATCH', body: JSON.stringify({ step, completed, ...extra }) },
     ),
-  getSections: () => request<{ data: unknown[] }>('/v1/retailers/me/sections', { getCacheTtlMs: 120_000 }),
+  getSections: () =>
+    request<{ data: unknown[] }>('/v1/retailers/me/sections', { getCacheTtlMs: 120_000 }),
   createSection: (data: { name: string; type: string; parent_id?: string }) =>
     request<{ data: { id: string; name: string; type: string } }>('/v1/retailers/me/sections', {
       method: 'POST',
@@ -91,27 +92,41 @@ export const retailerApi = {
   /** F-009: Store banner upload */
   getBannerUploadUrl: (contentType: string, sizeBytes: number) =>
     request<{
-      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
+      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number };
     }>('/v1/retailers/me/banner-upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'banner.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
+      body: JSON.stringify({
+        filename: 'banner.jpg',
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        content_length: sizeBytes,
+      }),
       timeoutMs: 30_000,
     }),
 
   /** F-009: Store logo upload */
   getLogoUploadUrl: (contentType: string, sizeBytes: number) =>
     request<{
-      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
+      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number };
     }>('/v1/retailers/me/logo-upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'logo.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
+      body: JSON.stringify({
+        filename: 'logo.jpg',
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        content_length: sizeBytes,
+      }),
       timeoutMs: 30_000,
     }),
 
   /** F-009: KYC doc upload — gst | aadhar_front | aadhar_back */
-  getKycUploadUrl: (docType: 'gst' | 'aadhar_front' | 'aadhar_back', contentType: string, sizeBytes: number) =>
+  getKycUploadUrl: (
+    docType: 'gst' | 'aadhar_front' | 'aadhar_back',
+    contentType: string,
+    sizeBytes: number,
+  ) =>
     request<{
-      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
+      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number };
     }>('/v1/retailers/me/kyc-upload-url', {
       method: 'POST',
       body: JSON.stringify({
@@ -134,18 +149,18 @@ export const retailerApi = {
   getWhatsAppApiConfig: () =>
     request<{
       data: {
-        configured: boolean
-        whatsapp_api_phone_number_id: string | null
-        whatsapp_api_template_name: string | null
-        whatsapp_api_template_lang: string | null
-      }
+        configured: boolean;
+        whatsapp_api_phone_number_id: string | null;
+        whatsapp_api_template_name: string | null;
+        whatsapp_api_template_lang: string | null;
+      };
     }>('/v1/retailers/me/whatsapp-api', { getCacheTtlMs: 30_000 }),
 
   saveWhatsAppApiConfig: (data: {
-    phone_number_id: string
-    access_token?: string
-    template_name: string
-    template_lang?: string
+    phone_number_id: string;
+    access_token?: string;
+    template_name: string;
+    template_lang?: string;
   }) =>
     request<{ data: { configured: boolean } }>('/v1/retailers/me/whatsapp-api', {
       method: 'PATCH',
@@ -161,11 +176,11 @@ export const retailerApi = {
   getUsage: () =>
     request<{
       data: {
-        resource_type: string
-        limit: number
-        used: number
-        period: string
-        source: 'plan' | 'override' | 'unlimited'
-      }[]
+        resource_type: string;
+        limit: number;
+        used: number;
+        period: string;
+        source: 'plan' | 'override' | 'unlimited';
+      }[];
     }>('/v1/retailers/me/usage', { getCacheTtlMs: 30_000 }),
-}
+};

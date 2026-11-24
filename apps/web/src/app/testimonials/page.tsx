@@ -1,19 +1,28 @@
-import type { Metadata } from 'next'
-import { Navbar, Footer, Section, SectionHeader, ColorCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
-import { LiveStats } from './LiveStats'
+import {
+  AnimatedSection,
+  ColorCard,
+  FinalCta,
+  Footer,
+  Navbar,
+  PageHero,
+  Section,
+  SectionHeader,
+} from '@/components/site/Chrome';
+import type { Metadata } from 'next';
+import { LiveStats } from './LiveStats';
 
 export const metadata: Metadata = {
   title: 'Retailer Stories & Reviews | Kanchuki',
   description:
     'Real stories from real clothing stores on Kanchuki — how shops photograph, tag and share their catalogs on WhatsApp. Verified, never invented.',
-}
+};
 
 const VERIFICATION = [
   'The retailer is a confirmed account on the platform (their store page is live).',
   'Their quote references something checkable — products uploaded, a link shared, an enquiry answered.',
-  'They\'ve agreed to be named with their shop and city.',
-  'Anything we can\'t verify doesn\'t get published. Simple rule.',
-]
+  "They've agreed to be named with their shop and city.",
+  "Anything we can't verify doesn't get published. Simple rule.",
+];
 
 export default function TestimonialsPage() {
   return (
@@ -28,7 +37,11 @@ export default function TestimonialsPage() {
       <Section id="real-proof">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
-            <SectionHeader tag="Until real stories exist" title="Real proof instead" subtitle="Live platform stats — these change daily and cannot be invented." />
+            <SectionHeader
+              tag="Until real stories exist"
+              title="Real proof instead"
+              subtitle="Live platform stats — these change daily and cannot be invented."
+            />
           </AnimatedSection>
           <LiveStats />
         </div>
@@ -37,7 +50,11 @@ export default function TestimonialsPage() {
       <Section className="bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
-            <SectionHeader tag="No fabricated testimonials" title="How stories get verified" subtitle="So you can trust them." />
+            <SectionHeader
+              tag="No fabricated testimonials"
+              title="How stories get verified"
+              subtitle="So you can trust them."
+            />
           </AnimatedSection>
           <ColorCard accent="volt" className="p-6 sm:p-8">
             <ul className="space-y-3">
@@ -62,5 +79,5 @@ export default function TestimonialsPage() {
       />
       <Footer />
     </>
-  )
+  );
 }

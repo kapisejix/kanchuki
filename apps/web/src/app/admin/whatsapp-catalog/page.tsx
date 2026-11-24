@@ -1,155 +1,169 @@
-'use client'
-import { formatPaiseShort } from '@kanchuki/shared'
+'use client';
+import { formatPaiseShort } from '@kanchuki/shared';
 
-import { useCallback, useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  MessageCircle,
-  RefreshCw,
-  Store,
-  CheckCircle2,
-  XCircle,
-  Clock,
   Activity,
+  CheckCircle2,
   ChevronRight,
-  X,
-  ScrollText,
-  Package,
-  Zap,
+  Clock,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+  MessageCircle,
+  Package,
+  RefreshCw,
+  ScrollText,
+  Store,
+  X,
+  XCircle,
+  Zap,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
 type Health = {
-  retailers_total: number
-  retailers_configured: number
-  retailers_syncing: number
-  items_synced: number
-  items_failed: number
-  items_pending: number
-  failed_logs_7d: number
-  error_rate_pct: number
-  cron_last_run_at: string | null
-  cron_failed_7d: number
-  cron_timed_out_7d: number
-}
+  retailers_total: number;
+  retailers_configured: number;
+  retailers_syncing: number;
+  items_synced: number;
+  items_failed: number;
+  items_pending: number;
+  failed_logs_7d: number;
+  error_rate_pct: number;
+  cron_last_run_at: string | null;
+  cron_failed_7d: number;
+  cron_timed_out_7d: number;
+};
 
 type RetailerRow = {
-  retailer_id: string
-  shop_name: string
-  city: string | null
-  plan: string
-  configured: boolean
-  whatsapp_catalog_id: string | null
-  sync_enabled: boolean
-  sync_categories: string[]
-  last_synced_at: string | null
-  items_synced: number
-  items_failed: number
-  items_pending: number
-}
+  retailer_id: string;
+  shop_name: string;
+  city: string | null;
+  plan: string;
+  configured: boolean;
+  whatsapp_catalog_id: string | null;
+  sync_enabled: boolean;
+  sync_categories: string[];
+  last_synced_at: string | null;
+  items_synced: number;
+  items_failed: number;
+  items_pending: number;
+};
 
-type Overview = { health: Health; retailers: RetailerRow[] }
+type Overview = { health: Health; retailers: RetailerRow[] };
 
 type SyncLog = {
-  id: string
-  operation: string
-  product_id: string | null
-  meta_item_id: string | null
-  status: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS'
-  error_message: string | null
-  payload: { total?: number; created?: number; updated?: number; failed?: unknown[] } | null
-  created_at: string
-}
+  id: string;
+  operation: string;
+  product_id: string | null;
+  meta_item_id: string | null;
+  status: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS';
+  error_message: string | null;
+  payload: { total?: number; created?: number; updated?: number; failed?: unknown[] } | null;
+  created_at: string;
+};
 
 type CatalogItemRow = {
-  product_id: string
-  product_name: string
-  sku: string | null
-  price_paise: number
-  status: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS'
-  error_message: string | null
-  whatsapp_catalog_item_id: string | null
-  product_status: string
-  hsn_code: string | null
-  last_synced_at: string | null
-}
+  product_id: string;
+  product_name: string;
+  sku: string | null;
+  price_paise: number;
+  status: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS';
+  error_message: string | null;
+  whatsapp_catalog_item_id: string | null;
+  product_status: string;
+  hsn_code: string | null;
+  last_synced_at: string | null;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-
 const fmtDate = (iso: string | null) =>
   iso
-    ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-    : '—'
+    ? new Date(iso).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—';
 
 const fmtTime = (iso: string) =>
-  new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  new Date(iso).toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.07, delayChildren: 0.08 } },
-}
+};
 const itemVariants = {
   hidden: { opacity: 0, y: 18 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 22 } },
-}
+};
 
 // ─── Main Page ────────────────────────────────────────────────────
 
 export default function WhatsAppCatalogPage() {
-  const [overview, setOverview] = useState<Overview | null>(null)
-  const [error, setError] = useState('')
-  const [detail, setDetail] = useState<RetailerRow | null>(null)
-  const [syncingId, setSyncingId] = useState<string | null>(null)
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [error, setError] = useState('');
+  const [detail, setDetail] = useState<RetailerRow | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/v1/admin/whatsapp-catalog/overview`, adminGetOptions())
-      const json = await res.json()
+      const res = await fetch(`${API_URL}/v1/admin/whatsapp-catalog/overview`, adminGetOptions());
+      const json = await res.json();
       if (!json?.data) {
-        setError('The API returned an error while loading catalog sync data.')
-        return
+        setError('The API returned an error while loading catalog sync data.');
+        return;
       }
-      setOverview(json.data)
-      setError('')
+      setOverview(json.data);
+      setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load catalog sync data')
+      setError(err instanceof Error ? err.message : 'Failed to load catalog sync data');
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   const triggerSync = async (retailer: RetailerRow) => {
-    setSyncingId(retailer.retailer_id)
-    setError('')
+    setSyncingId(retailer.retailer_id);
+    setError('');
     try {
       const res = await fetch(
         `${API_URL}/v1/admin/whatsapp-catalog/retailers/${retailer.retailer_id}/sync`,
         { ...(await adminMutateOptions()), method: 'POST' },
-      )
+      );
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? `Sync failed (HTTP ${res.status})`)
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? `Sync failed (HTTP ${res.status})`);
       }
-      await load()
+      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to trigger sync')
+      setError(err instanceof Error ? err.message : 'Failed to trigger sync');
     } finally {
-      setSyncingId(null)
+      setSyncingId(null);
     }
-  }
+  };
 
-  const health = overview?.health
+  const health = overview?.health;
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8"
+    >
       {/* Header */}
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3 mb-1">
@@ -157,7 +171,8 @@ export default function WhatsAppCatalogPage() {
           <MessageCircle size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          Product catalog sync to WhatsApp Business native catalogs — per-retailer health, history and manual sync.
+          Product catalog sync to WhatsApp Business native catalogs — per-retailer health, history
+          and manual sync.
         </p>
       </motion.div>
 
@@ -173,7 +188,10 @@ export default function WhatsAppCatalogPage() {
       {health && (
         <>
           {/* Health strip (G5) — incl. daily-cron card (C10/C11) */}
-          <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <motion.div
+            variants={containerVariants}
+            className="grid grid-cols-2 lg:grid-cols-5 gap-4"
+          >
             <HealthCard
               icon={Store}
               label="Retailers Syncing"
@@ -242,13 +260,27 @@ export default function WhatsAppCatalogPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50/50">
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500">Store</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Plan</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Catalog</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">Synced</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">Failed</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Last Sync</th>
-                      <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500">Actions</th>
+                      <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500">
+                        Store
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                        Plan
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                        Catalog
+                      </th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">
+                        Synced
+                      </th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">
+                        Failed
+                      </th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                        Last Sync
+                      </th>
+                      <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -298,7 +330,9 @@ export default function WhatsAppCatalogPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           {r.whatsapp_catalog_id ? (
-                            <span className="font-mono text-xs text-gray-500">{r.whatsapp_catalog_id}</span>
+                            <span className="font-mono text-xs text-gray-500">
+                              {r.whatsapp_catalog_id}
+                            </span>
                           ) : (
                             <span className="text-xs text-gray-300">—</span>
                           )}
@@ -308,7 +342,9 @@ export default function WhatsAppCatalogPage() {
                         </td>
                         <td className="px-4 py-3.5 text-right">
                           {r.items_failed > 0 ? (
-                            <span className="text-red-600 font-semibold tabular-nums">{r.items_failed}</span>
+                            <span className="text-red-600 font-semibold tabular-nums">
+                              {r.items_failed}
+                            </span>
                           ) : (
                             <span className="text-gray-300 tabular-nums">0</span>
                           )}
@@ -317,12 +353,19 @@ export default function WhatsAppCatalogPage() {
                           {fmtDate(r.last_synced_at)}
                         </td>
                         <td className="px-6 py-3.5">
-                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                          <div
+                            className="flex items-center justify-end gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <motion.button
                               onClick={() => void triggerSync(r)}
                               disabled={!r.configured || syncingId === r.retailer_id}
                               whileTap={r.configured ? { scale: 0.96 } : undefined}
-                              title={r.configured ? 'Force a full sync now' : 'Retailer has no WhatsApp API connection'}
+                              title={
+                                r.configured
+                                  ? 'Force a full sync now'
+                                  : 'Retailer has no WhatsApp API connection'
+                              }
                               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg border border-ink-200 text-ink-700 hover:bg-ink-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
                               {syncingId === r.retailer_id ? (
@@ -332,7 +375,10 @@ export default function WhatsAppCatalogPage() {
                               )}
                               Sync now
                             </motion.button>
-                            <ChevronRight size={16} className="text-gray-300 group-hover:text-ink-400 transition-colors" />
+                            <ChevronRight
+                              size={16}
+                              className="text-gray-300 group-hover:text-ink-400 transition-colors"
+                            />
                           </div>
                         </td>
                       </motion.tr>
@@ -348,7 +394,10 @@ export default function WhatsAppCatalogPage() {
       {!overview && !error && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white/80 rounded-2xl border border-gray-200/80 p-5 animate-pulse">
+            <div
+              key={i}
+              className="bg-white/80 rounded-2xl border border-gray-200/80 p-5 animate-pulse"
+            >
               <div className="h-3 bg-gray-200/80 rounded w-20 mb-3" />
               <div className="h-8 bg-gray-200/80 rounded w-24" />
             </div>
@@ -363,13 +412,13 @@ export default function WhatsAppCatalogPage() {
             retailer={detail}
             onClose={() => setDetail(null)}
             onSync={async () => {
-              await triggerSync(detail)
+              await triggerSync(detail);
             }}
           />
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }
 
 // ── Health card ───────────────────────────────────────────────────
@@ -381,20 +430,45 @@ function HealthCard({
   subtext,
   color,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string
-  subtext: string
-  color: 'blue' | 'green' | 'amber' | 'purple' | 'red'
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  subtext: string;
+  color: 'blue' | 'green' | 'amber' | 'purple' | 'red';
 }) {
   const colorMap = {
-    blue: { bg: 'bg-blue-50 border-blue-100', text: 'text-blue-600', icon: 'text-blue-500', top: 'bg-gray-100' },
-    green: { bg: 'bg-green-50 border-green-100', text: 'text-green-600', icon: 'text-green-500', top: 'bg-gray-100' },
-    amber: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-600', icon: 'text-amber-500', top: 'bg-gray-100' },
-    purple: { bg: 'bg-purple-50 border-purple-100', text: 'text-purple-600', icon: 'text-purple-500', top: 'bg-gray-100' },
-    red: { bg: 'bg-red-50 border-red-100', text: 'text-red-600', icon: 'text-red-500', top: 'bg-gray-100' },
-  }
-  const c = colorMap[color]
+    blue: {
+      bg: 'bg-blue-50 border-blue-100',
+      text: 'text-blue-600',
+      icon: 'text-blue-500',
+      top: 'bg-gray-100',
+    },
+    green: {
+      bg: 'bg-green-50 border-green-100',
+      text: 'text-green-600',
+      icon: 'text-green-500',
+      top: 'bg-gray-100',
+    },
+    amber: {
+      bg: 'bg-amber-50 border-amber-100',
+      text: 'text-amber-600',
+      icon: 'text-amber-500',
+      top: 'bg-gray-100',
+    },
+    purple: {
+      bg: 'bg-purple-50 border-purple-100',
+      text: 'text-purple-600',
+      icon: 'text-purple-500',
+      top: 'bg-gray-100',
+    },
+    red: {
+      bg: 'bg-red-50 border-red-100',
+      text: 'text-red-600',
+      icon: 'text-red-500',
+      top: 'bg-gray-100',
+    },
+  };
+  const c = colorMap[color];
   return (
     <motion.div
       variants={itemVariants}
@@ -402,14 +476,16 @@ function HealthCard({
     >
       <div className="flex items-start justify-between mb-2 relative">
         <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${c.bg} ${c.icon}`}>
+        <div
+          className={`w-9 h-9 rounded-xl flex items-center justify-center border ${c.bg} ${c.icon}`}
+        >
           <Icon size={17} />
         </div>
       </div>
       <div className={`text-2xl font-bold relative ${c.text}`}>{value}</div>
       <div className="text-xs text-gray-400 mt-1.5 relative">{subtext}</div>
     </motion.div>
-  )
+  );
 }
 
 // ── Drill-down modal (G3) ─────────────────────────────────────────
@@ -419,51 +495,51 @@ function RetailerDetailModal({
   onClose,
   onSync,
 }: {
-  retailer: RetailerRow
-  onClose: () => void
-  onSync: () => Promise<void>
+  retailer: RetailerRow;
+  onClose: () => void;
+  onSync: () => Promise<void>;
 }) {
-  const [tab, setTab] = useState<'logs' | 'items'>('logs')
-  const [logs, setLogs] = useState<SyncLog[] | null>(null)
-  const [items, setItems] = useState<CatalogItemRow[] | null>(null)
-  const [syncing, setSyncing] = useState(false)
+  const [tab, setTab] = useState<'logs' | 'items'>('logs');
+  const [logs, setLogs] = useState<SyncLog[] | null>(null);
+  const [items, setItems] = useState<CatalogItemRow[] | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     async function load() {
       if (tab === 'logs') {
         if (logs === null) {
           const res = await fetch(
             `${API_URL}/v1/admin/whatsapp-catalog/retailers/${retailer.retailer_id}/logs`,
             adminGetOptions(),
-          )
-          const json = await res.json()
-          if (!cancelled && json?.data) setLogs(json.data)
+          );
+          const json = await res.json();
+          if (!cancelled && json?.data) setLogs(json.data);
         }
       } else if (items === null) {
         const res = await fetch(
           `${API_URL}/v1/admin/whatsapp-catalog/retailers/${retailer.retailer_id}/items`,
           adminGetOptions(),
-        )
-        const json = await res.json()
-        if (!cancelled && json?.data) setItems(json.data)
+        );
+        const json = await res.json();
+        if (!cancelled && json?.data) setItems(json.data);
       }
     }
-    void load()
+    void load();
     return () => {
-      cancelled = true
-    }
-  }, [tab, logs, items, retailer.retailer_id])
+      cancelled = true;
+    };
+  }, [tab, logs, items, retailer.retailer_id]);
 
   const syncNow = async () => {
-    setSyncing(true)
+    setSyncing(true);
     try {
-      await onSync()
-      setLogs(null)
+      await onSync();
+      setLogs(null);
     } finally {
-      setSyncing(false)
+      setSyncing(false);
     }
-  }
+  };
 
   return (
     <motion.div
@@ -492,7 +568,9 @@ function RetailerDetailModal({
                 <h3 className="text-base font-bold text-gray-900">{retailer.shop_name}</h3>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {retailer.city ?? '—'} · {retailer.plan}
-                  {retailer.whatsapp_catalog_id ? ` · catalog ${retailer.whatsapp_catalog_id}` : ' · no catalog'}
+                  {retailer.whatsapp_catalog_id
+                    ? ` · catalog ${retailer.whatsapp_catalog_id}`
+                    : ' · no catalog'}
                 </p>
               </div>
             </div>
@@ -512,7 +590,9 @@ function RetailerDetailModal({
             <CheckCircle2 size={14} />
             {retailer.items_synced} synced
           </span>
-          <span className={`flex items-center gap-1.5 font-semibold ${retailer.items_failed > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+          <span
+            className={`flex items-center gap-1.5 font-semibold ${retailer.items_failed > 0 ? 'text-red-600' : 'text-gray-400'}`}
+          >
             <XCircle size={14} />
             {retailer.items_failed} failed
           </span>
@@ -537,15 +617,27 @@ function RetailerDetailModal({
 
         {/* Tabs */}
         <div className="px-6 pt-3 flex items-center gap-2">
-          <TabButton active={tab === 'logs'} onClick={() => setTab('logs')} icon={ScrollText} label="Sync Logs" />
-          <TabButton active={tab === 'items'} onClick={() => setTab('items')} icon={Package} label="Items" />
+          <TabButton
+            active={tab === 'logs'}
+            onClick={() => setTab('logs')}
+            icon={ScrollText}
+            label="Sync Logs"
+          />
+          <TabButton
+            active={tab === 'items'}
+            onClick={() => setTab('items')}
+            icon={Package}
+            label="Items"
+          />
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {tab === 'logs' ? (
             logs === null ? (
-              <div className="p-10 text-center text-sm text-gray-400 animate-pulse">Loading logs…</div>
+              <div className="p-10 text-center text-sm text-gray-400 animate-pulse">
+                Loading logs…
+              </div>
             ) : logs.length === 0 ? (
               <EmptyState text="No sync runs yet — trigger a sync to see history." />
             ) : (
@@ -557,7 +649,9 @@ function RetailerDetailModal({
                   >
                     <StatusDot status={log.status} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 capitalize">{log.operation.replace('_', ' ')}</p>
+                      <p className="text-sm font-semibold text-gray-800 capitalize">
+                        {log.operation.replace('_', ' ')}
+                      </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {fmtTime(log.created_at)}
                         {log.product_id ? ` · product ${log.product_id}` : ''}
@@ -566,7 +660,9 @@ function RetailerDetailModal({
                           ? ` (${log.payload.created ?? 0} created / ${log.payload.updated ?? 0} updated)`
                           : ''}
                       </p>
-                      {log.error_message && <p className="text-xs text-red-500 mt-1">{log.error_message}</p>}
+                      {log.error_message && (
+                        <p className="text-xs text-red-500 mt-1">{log.error_message}</p>
+                      )}
                     </div>
                     <span
                       className={`text-[10px] font-bold uppercase rounded-full px-2 py-1 ${
@@ -586,7 +682,9 @@ function RetailerDetailModal({
               </div>
             )
           ) : items === null ? (
-            <div className="p-10 text-center text-sm text-gray-400 animate-pulse">Loading items…</div>
+            <div className="p-10 text-center text-sm text-gray-400 animate-pulse">
+              Loading items…
+            </div>
           ) : items.length === 0 ? (
             <EmptyState text="No synced items — run a full sync first." />
           ) : (
@@ -605,17 +703,26 @@ function RetailerDetailModal({
                   {items.map((item) => (
                     <tr key={item.product_id} className="border-b border-gray-50">
                       <td className="py-2.5 pr-3">
-                        <p className="font-medium text-gray-800 truncate max-w-[220px]">{item.product_name}</p>
+                        <p className="font-medium text-gray-800 truncate max-w-[220px]">
+                          {item.product_name}
+                        </p>
                         <p className="text-xs text-gray-400">{item.sku ?? item.product_id}</p>
                       </td>
-                      <td className="py-2.5 pr-3 text-right text-gray-700 tabular-nums">{formatPaiseShort(item.price_paise)}</td>
+                      <td className="py-2.5 pr-3 text-right text-gray-700 tabular-nums">
+                        {formatPaiseShort(item.price_paise)}
+                      </td>
                       <td className="py-2.5 pr-3 font-mono text-xs text-gray-500 truncate max-w-[130px]">
                         {item.whatsapp_catalog_item_id ?? '—'}
                       </td>
-                      <td className="py-2.5 pr-3 font-mono text-xs text-gray-500">{item.hsn_code ?? '—'}</td>
+                      <td className="py-2.5 pr-3 font-mono text-xs text-gray-500">
+                        {item.hsn_code ?? '—'}
+                      </td>
                       <td className="py-2.5 text-right">
                         {item.status === 'FAILED' ? (
-                          <span className="text-[10px] font-bold text-red-600 bg-red-50 rounded-full px-2 py-1" title={item.error_message ?? ''}>
+                          <span
+                            className="text-[10px] font-bold text-red-600 bg-red-50 rounded-full px-2 py-1"
+                            title={item.error_message ?? ''}
+                          >
                             FAILED
                           </span>
                         ) : (
@@ -633,7 +740,7 @@ function RetailerDetailModal({
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 // ── Small building blocks ─────────────────────────────────────────
@@ -644,10 +751,10 @@ function TabButton({
   icon: Icon,
   label,
 }: {
-  active: boolean
-  onClick: () => void
-  icon: LucideIcon
-  label: string
+  active: boolean;
+  onClick: () => void;
+  icon: LucideIcon;
+  label: string;
 }) {
   return (
     <motion.button
@@ -667,7 +774,7 @@ function TabButton({
       <Icon size={15} className="relative z-10" />
       <span className="relative z-10">{label}</span>
     </motion.button>
-  )
+  );
 }
 
 function StatusDot({ status }: { status: SyncLog['status'] }) {
@@ -678,12 +785,12 @@ function StatusDot({ status }: { status: SyncLog['status'] }) {
         ? 'bg-red-500'
         : status === 'PARTIAL'
           ? 'bg-amber-500'
-          : 'bg-blue-500'
+          : 'bg-blue-500';
   return (
     <div className="mt-1.5 shrink-0">
       <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
     </div>
-  )
+  );
 }
 
 function EmptyState({ text }: { text: string }) {
@@ -694,5 +801,5 @@ function EmptyState({ text }: { text: string }) {
       </div>
       <p className="text-sm text-gray-500">{text}</p>
     </div>
-  )
+  );
 }

@@ -18,7 +18,9 @@ describe('previewTargets', () => {
   });
 
   it('uses the selected account, not the first one on that platform', () => {
-    expect(previewTargets(accounts, ['fb2'])).toEqual([{ platform: 'FACEBOOK', name: 'Second Page' }]);
+    expect(previewTargets(accounts, ['fb2'])).toEqual([
+      { platform: 'FACEBOOK', name: 'Second Page' },
+    ]);
   });
 
   it('no targets → no cards', () => {
@@ -44,7 +46,10 @@ describe('previewLinkLine', () => {
 
 describe('previewCover', () => {
   it('a photo shows itself', () => {
-    expect(previewCover([{ kind: 'photo', url: 'p.jpg' }])).toEqual({ url: 'p.jpg', isVideo: false });
+    expect(previewCover([{ kind: 'photo', url: 'p.jpg' }])).toEqual({
+      url: 'p.jpg',
+      isVideo: false,
+    });
   });
 
   it('a video shows its poster, flagged as video', () => {

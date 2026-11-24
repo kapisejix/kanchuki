@@ -39,8 +39,7 @@ function feed(meta: Record<string, unknown> = {}, data: unknown[] = [card()]) {
   );
 }
 
-const lastBody = () =>
-  JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string);
+const lastBody = () => JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestInit).body as string);
 const tabBar = () => screen.getByRole('navigation', { name: 'Feed tabs' });
 
 beforeEach(() => {
@@ -131,7 +130,9 @@ describe('Occasion tab', () => {
     await openOccasionTab();
     fetchMock.mockResolvedValue(feed({ occasion_matches: 0 }));
     fireEvent.click(
-      within(screen.getByRole('group', { name: 'Occasion' })).getByRole('button', { name: 'Wedding' }),
+      within(screen.getByRole('group', { name: 'Occasion' })).getByRole('button', {
+        name: 'Wedding',
+      }),
     );
     expect(await screen.findByText(/Nothing near you is marked for Wedding yet/)).toBeTruthy();
     expect(screen.getByText('Wine Silk Suit')).toBeTruthy();
@@ -143,7 +144,9 @@ describe('Occasion tab', () => {
       feed({ occasion_matches: 1 }, [card({ occasions: ['Wedding'], tags: ['Festive'] })]),
     );
     fireEvent.click(
-      within(screen.getByRole('group', { name: 'Occasion' })).getByRole('button', { name: 'Wedding' }),
+      within(screen.getByRole('group', { name: 'Occasion' })).getByRole('button', {
+        name: 'Wedding',
+      }),
     );
     const item = (await screen.findByText('Wine Silk Suit')).closest('li')!;
     expect(item.textContent).not.toMatch(/wedding|festive|party wear|daily wear/i);

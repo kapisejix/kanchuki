@@ -1,19 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import { ChevronLeft, Megaphone, Plus } from 'lucide-react-native'
-import { useState } from 'react'
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { growthApi, type CampaignStatus, type CampaignType } from '../../src/lib/api'
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ChevronLeft, Megaphone, Plus } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { type CampaignStatus, type CampaignType, growthApi } from '../../src/lib/api';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 const TYPE_LABEL: Record<CampaignType, string> = {
   FESTIVAL: 'Festival',
   REACTIVATION: 'Reactivation',
   PROMOTION: 'Promotion',
   AB_TEST: 'A/B Test',
-}
+};
 
 const TYPE_FILTERS: { key: CampaignType | 'ALL'; label: string }[] = [
   { key: 'ALL', label: 'All' },
@@ -21,29 +21,27 @@ const TYPE_FILTERS: { key: CampaignType | 'ALL'; label: string }[] = [
   { key: 'REACTIVATION', label: 'Reactivation' },
   { key: 'PROMOTION', label: 'Promotion' },
   { key: 'AB_TEST', label: 'A/B Test' },
-]
+];
 
 function statusInfo(status: CampaignStatus) {
   const map: Record<CampaignStatus, { label: string; color: string; bg: string }> = {
     DRAFT: { label: 'Draft', color: '#6B4773', bg: '#F8F7FC' },
     SCHEDULED: { label: 'Scheduled', color: '#BB3F95', bg: '#BB3F951A' },
     SENT: { label: 'Sent', color: '#16a34a', bg: '#dcfce7' },
-  }
-  return map[status]
+  };
+  return map[status];
 }
 
 export default function CampaignsScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const [filter, setFilter] = useState<CampaignType | 'ALL'>('ALL')
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const [filter, setFilter] = useState<CampaignType | 'ALL'>('ALL');
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'campaigns'],
     queryFn: () => growthApi.campaigns(),
-  })
+  });
 
-  const campaigns = (data?.data ?? []).filter(
-    (c) => filter === 'ALL' || c.type === filter,
-  )
+  const campaigns = (data?.data ?? []).filter((c) => filter === 'ALL' || c.type === filter);
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -89,7 +87,7 @@ export default function CampaignsScreen() {
         contentContainerStyle={{ gap: 8 }}
       >
         {TYPE_FILTERS.map((t) => {
-          const active = filter === t.key
+          const active = filter === t.key;
           return (
             <AnimatedPressable
               key={t.key}
@@ -97,7 +95,9 @@ export default function CampaignsScreen() {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               className={`px-4 py-1.5 rounded-full border ${
-                active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'border-lavender-200 bg-lavender-50'
+                active
+                  ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                  : 'border-lavender-200 bg-lavender-50'
               }`}
             >
               <Text
@@ -106,7 +106,7 @@ export default function CampaignsScreen() {
                 {t.label}
               </Text>
             </AnimatedPressable>
-          )
+          );
         })}
       </ScrollView>
 
@@ -117,16 +117,16 @@ export default function CampaignsScreen() {
       ) : campaigns.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
-            <View
-              className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
-            >
+            <View className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200">
               <Megaphone size={28} color="#6B4773" />
             </View>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl text-spaceCadet-900"
             >
-              {filter === 'ALL' ? 'No campaigns yet' : `No ${TYPE_LABEL[filter].toLowerCase()} campaigns`}
+              {filter === 'ALL'
+                ? 'No campaigns yet'
+                : `No ${TYPE_LABEL[filter].toLowerCase()} campaigns`}
             </Text>
             <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               {filter === 'ALL'
@@ -152,7 +152,7 @@ export default function CampaignsScreen() {
         >
           <View className="gap-3.5">
             {campaigns.map((c) => {
-              const status = statusInfo(c.status)
+              const status = statusInfo(c.status);
               return (
                 <AnimatedPressable
                   key={c.id}
@@ -161,7 +161,11 @@ export default function CampaignsScreen() {
                 >
                   <View className="flex-row items-center justify-between mb-2">
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                      style={{
+                        fontFamily: 'Marcellus_400Regular',
+                        letterSpacing: 0.32,
+                        fontWeight: '800',
+                      }}
                       className="text-base text-spaceCadet-900 flex-1 mr-2"
                       numberOfLines={1}
                     >
@@ -188,11 +192,11 @@ export default function CampaignsScreen() {
                     </Text>
                   )}
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

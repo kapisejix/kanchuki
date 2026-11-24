@@ -199,9 +199,13 @@ function AccountForm({
         <>
           {existing && (
             <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-              <Wallet size={14} className={existing.is_active ? 'text-green-600' : 'text-gray-400'} />
+              <Wallet
+                size={14}
+                className={existing.is_active ? 'text-green-600' : 'text-gray-400'}
+              />
               <span>
-                {existing.is_active ? 'Active' : 'Inactive'} · {existing.account_type === 'VPA' ? 'UPI' : 'Bank'} ·{' '}
+                {existing.is_active ? 'Active' : 'Inactive'} ·{' '}
+                {existing.account_type === 'VPA' ? 'UPI' : 'Bank'} ·{' '}
                 <span className="font-mono">{existing.masked_display || '—'}</span>
               </span>
             </div>
@@ -212,7 +216,10 @@ function AccountForm({
               <select
                 value={draft.account_type}
                 onChange={(e) =>
-                  setDraft({ ...draft, account_type: e.target.value as AccountDraft['account_type'] })
+                  setDraft({
+                    ...draft,
+                    account_type: e.target.value as AccountDraft['account_type'],
+                  })
                 }
                 className={inputCls}
               >
@@ -223,7 +230,9 @@ function AccountForm({
             {draft.account_type === 'BANK_ACCOUNT' ? (
               <>
                 <label className="block">
-                  <span className="block text-xs font-semibold text-gray-500 mb-1">Holder name</span>
+                  <span className="block text-xs font-semibold text-gray-500 mb-1">
+                    Holder name
+                  </span>
                   <input
                     value={draft.account_name}
                     onChange={(e) => setDraft({ ...draft, account_name: e.target.value })}
@@ -242,7 +251,9 @@ function AccountForm({
                   />
                 </label>
                 <label className="block">
-                  <span className="block text-xs font-semibold text-gray-500 mb-1">Account number</span>
+                  <span className="block text-xs font-semibold text-gray-500 mb-1">
+                    Account number
+                  </span>
                   <input
                     value={draft.account_number}
                     onChange={(e) => setDraft({ ...draft, account_number: e.target.value })}
@@ -315,14 +326,11 @@ function ReferrerDetail({ row, onDone }: { row: LeaderRow; onDone: () => void })
   const clawback = async (conversionId: string) => {
     setClawError('');
     try {
-      const res = await fetch(
-        `${API_URL}/v1/admin/referral/conversions/${conversionId}/clawback`,
-        {
-          ...(await adminMutateOptions()),
-          method: 'POST',
-          body: JSON.stringify({ reason: clawReason.trim() || 'Admin clawback (no reason given)' }),
-        },
-      );
+      const res = await fetch(`${API_URL}/v1/admin/referral/conversions/${conversionId}/clawback`, {
+        ...(await adminMutateOptions()),
+        method: 'POST',
+        body: JSON.stringify({ reason: clawReason.trim() || 'Admin clawback (no reason given)' }),
+      });
       if (!res.ok) throw new Error(await apiError(res, 'Clawback failed'));
       setClawDone(conversionId);
       setClawingId(null);
@@ -372,7 +380,9 @@ function ReferrerDetail({ row, onDone }: { row: LeaderRow; onDone: () => void })
             <span>{convError}</span>
           </div>
         )}
-        {!convError && conversions === null && <Loader2 size={16} className="animate-spin text-ink-500" />}
+        {!convError && conversions === null && (
+          <Loader2 size={16} className="animate-spin text-ink-500" />
+        )}
         {conversions !== null && conversions.length === 0 && (
           <p className="text-xs text-gray-400">No conversions recorded.</p>
         )}
@@ -615,10 +625,26 @@ export default function ReferralMonitorPage() {
       {overview && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Conversions', value: String(overview.conversions_total), sub: `${overview.pending} pending · ${overview.qualified} qualified · ${overview.paid} paid` },
-            { label: 'Commission accrued', value: inr(overview.commission_accrued_paise), sub: 'lifetime, all referrers' },
-            { label: 'Committed to payouts', value: inr(overview.paid_out_paise), sub: `${overview.payout_batches_in_flight} live batches` },
-            { label: 'Unsettled', value: inr(overview.unsettled_paise), sub: 'available for the next run' },
+            {
+              label: 'Conversions',
+              value: String(overview.conversions_total),
+              sub: `${overview.pending} pending · ${overview.qualified} qualified · ${overview.paid} paid`,
+            },
+            {
+              label: 'Commission accrued',
+              value: inr(overview.commission_accrued_paise),
+              sub: 'lifetime, all referrers',
+            },
+            {
+              label: 'Committed to payouts',
+              value: inr(overview.paid_out_paise),
+              sub: `${overview.payout_batches_in_flight} live batches`,
+            },
+            {
+              label: 'Unsettled',
+              value: inr(overview.unsettled_paise),
+              sub: 'available for the next run',
+            },
           ].map((card) => (
             <div key={card.label} className="bg-white rounded-2xl border border-gray-200/80 p-4">
               <p className="text-xs text-gray-500 mb-1">{card.label}</p>
@@ -634,7 +660,8 @@ export default function ReferralMonitorPage() {
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Leaderboard</h2>
           <p className="text-[11px] text-gray-400">
-            {leaderboard?.length ?? 0} referrer{(leaderboard?.length ?? 0) === 1 ? '' : 's'} with conversions
+            {leaderboard?.length ?? 0} referrer{(leaderboard?.length ?? 0) === 1 ? '' : 's'} with
+            conversions
           </p>
         </div>
         {!leaderboard || leaderboard.length === 0 ? (
@@ -663,12 +690,18 @@ export default function ReferralMonitorPage() {
                     className={`cursor-pointer hover:bg-ink-50/40 transition-colors ${detailId === r.referrer_id ? 'bg-ink-50/60' : ''}`}
                   >
                     <td className="px-5 py-3 text-gray-400">{i + 1}</td>
-                    <td className="px-3 py-3 text-gray-900 font-medium max-w-[220px] truncate">{r.shop_name}</td>
+                    <td className="px-3 py-3 text-gray-900 font-medium max-w-[220px] truncate">
+                      {r.shop_name}
+                    </td>
                     <td className="px-3 py-3 font-mono text-xs text-gray-500">{r.code ?? '—'}</td>
                     <td className="px-3 py-3 text-right text-gray-600">{r.conversions_total}</td>
-                    <td className="px-3 py-3 text-right text-gray-900">{inr(r.commission_accrued_paise)}</td>
+                    <td className="px-3 py-3 text-right text-gray-900">
+                      {inr(r.commission_accrued_paise)}
+                    </td>
                     <td className="px-3 py-3 text-right text-gray-600">{inr(r.paid_out_paise)}</td>
-                    <td className="px-3 py-3 text-right font-semibold text-ink-700">{inr(r.unsettled_paise)}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-ink-700">
+                      {inr(r.unsettled_paise)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -687,7 +720,9 @@ export default function ReferralMonitorPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-gray-900">{detailRow.shop_name}</h2>
-              <p className="text-[11px] text-gray-400 font-mono">{detailRow.code ?? 'no code minted'}</p>
+              <p className="text-[11px] text-gray-400 font-mono">
+                {detailRow.code ?? 'no code minted'}
+              </p>
             </div>
             <button
               type="button"

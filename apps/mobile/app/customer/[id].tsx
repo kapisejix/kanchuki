@@ -174,7 +174,13 @@ export default function CustomerDetailScreen() {
             <X size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800', fontSize: 16, lineHeight: 24 }}
+            style={{
+              fontFamily: 'Marcellus_400Regular',
+              letterSpacing: 0.32,
+              fontWeight: '800',
+              fontSize: 16,
+              lineHeight: 24,
+            }}
             className="text-base leading-6 text-spaceCadet-900"
           >
             Customer Profile
@@ -198,7 +204,11 @@ export default function CustomerDetailScreen() {
             <View className="flex-row items-center gap-3.5 mb-4">
               <View className="w-14 h-14 rounded-2xl bg-[#560A39] items-center justify-center border border-[#BB3F95]/30 flex-shrink-0">
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                  style={{
+                    fontFamily: 'Marcellus_400Regular',
+                    letterSpacing: 0.32,
+                    fontWeight: '800',
+                  }}
                   className="text-[#E0E1F6] text-xl"
                 >
                   {name.charAt(0).toUpperCase() || '?'}
@@ -209,7 +219,11 @@ export default function CustomerDetailScreen() {
                   value={name}
                   onChangeText={setName}
                   placeholder="Customer name"
-                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                  style={{
+                    fontFamily: 'Marcellus_400Regular',
+                    letterSpacing: 0.32,
+                    fontWeight: '800',
+                  }}
                   className="text-lg text-spaceCadet-900"
                   placeholderTextColor="#928EB2"
                 />
@@ -287,7 +301,11 @@ export default function CustomerDetailScreen() {
           <View className="flex-row gap-3">
             <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200 shadow-sm items-center">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-2xl text-spaceCadet-900"
               >
                 {customer.total_purchases ?? 0}
@@ -296,7 +314,11 @@ export default function CustomerDetailScreen() {
             </View>
             <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200 shadow-sm items-center">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-2xl text-spaceCadet-900"
               >
                 {formatPrice(customer.total_spent ?? 0)}

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | Kanchuki',
@@ -27,13 +27,15 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">Why we process your data, and who is responsible</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              Why we process your data, and who is responsible
+            </h2>
             <p>
               We process personal data only with your consent (for example, when you tick the
               consent box or create a shopper profile) or for a specific purpose the law permits,
-              such as delivering a service you asked for, sending an OTP you requested, or issuing
-              a GST invoice. You can withdraw consent at any time; withdrawing does not affect
-              what was done before.
+              such as delivering a service you asked for, sending an OTP you requested, or issuing a
+              GST invoice. You can withdraw consent at any time; withdrawing does not affect what
+              was done before.
             </p>
             <p>
               Kanchuki is responsible (the &ldquo;Data Fiduciary&rdquo; under India&apos;s Digital
@@ -48,15 +50,16 @@ export default function PrivacyPolicyPage() {
             <h2 className="font-display text-xl font-semibold text-carbon">What we collect</h2>
             <ul className="list-disc space-y-1 pl-5">
               <li>
-                <strong>Retailer account data:</strong> phone number (for OTP login, verified via our
-                SMS provider MSG91), business name, address, and GST details (for invoicing).
+                <strong>Retailer account data:</strong> phone number (for OTP login, verified via
+                our SMS provider MSG91), business name, address, and GST details (for invoicing).
               </li>
               <li>
                 <strong>Shop location (optional):</strong> during onboarding a retailer may tap
                 &ldquo;Get Location&rdquo; to capture their shop&apos;s GPS coordinates. This is a
                 one-time foreground request &mdash; there is no background tracking. The coordinates
                 are used to pre-fill the address and to show a &ldquo;Get directions&rdquo; link on
-                the retailer&apos;s public catalog page. Skip the button and no location is collected.
+                the retailer&apos;s public catalog page. Skip the button and no location is
+                collected.
               </li>
               <li>
                 <strong>Product photos:</strong> uploaded by retailers to build their catalog.
@@ -102,8 +105,8 @@ export default function PrivacyPolicyPage() {
               <li>
                 <strong>AI Stylist conversations:</strong> messages you type to the AI Stylist chat
                 are sent to Anthropic Claude to generate product recommendations. They are used only
-                to answer that conversation and are not linked to your name unless you&apos;ve shared
-                it with the store.
+                to answer that conversation and are not linked to your name unless you&apos;ve
+                shared it with the store.
               </li>
               <li>
                 <strong>Reviews:</strong> a review you submit, including your name if you provide
@@ -144,16 +147,15 @@ export default function PrivacyPolicyPage() {
               <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
                 privacy@kanchuki.app
               </a>
-              . We will respond within 30 days, subject to the retention obligations
-              described below. You can also ask which service providers your data has been shared
-              with, ask us to correct inaccurate or incomplete data, and withdraw consent at any
-              time. Kanchuki retailer accounts are for users 18 and older; if a
-              minor&apos;s details were shared without a parent or guardian&apos;s consent, contact
-              us to have them removed.
+              . We will respond within 30 days, subject to the retention obligations described
+              below. You can also ask which service providers your data has been shared with, ask us
+              to correct inaccurate or incomplete data, and withdraw consent at any time. Kanchuki
+              retailer accounts are for users 18 and older; if a minor&apos;s details were shared
+              without a parent or guardian&apos;s consent, contact us to have them removed.
             </p>
             <p>
-              <strong>Right to nominate:</strong> you can name a person to exercise your data
-              rights if you die or become unable to. Shopper profile holders can add a nominee in{' '}
+              <strong>Right to nominate:</strong> you can name a person to exercise your data rights
+              if you die or become unable to. Shopper profile holders can add a nominee in{' '}
               <Link href="/my-profile" className="text-cobalt-600 hover:underline">
                 My Profile
               </Link>
@@ -170,17 +172,23 @@ export default function PrivacyPolicyPage() {
               Third parties we share data with
             </h2>
             <ul className="list-disc space-y-1 pl-5">
-              <li>AI vision and image-generation providers, to tag product photos and generate
-                background-cleaned and studio-style catalog images.</li>
+              <li>
+                AI vision and image-generation providers, to tag product photos and generate
+                background-cleaned and studio-style catalog images.
+              </li>
               <li>Cloudflare R2, to store product and KYC images.</li>
               <li>Razorpay, to process payments.</li>
               <li>Supabase, for authentication and database hosting.</li>
               <li>MSG91, to send OTP and transactional SMS.</li>
-              <li>Meta (WhatsApp Business Cloud API), where a retailer enables WhatsApp catalog
-                sync or messaging.</li>
-              <li>Where a retailer connects their own Google Business Profile, Facebook, or Google
-                Ads account, product data may be sent to those platforms using the retailer&apos;s
-                own credentials.</li>
+              <li>
+                Meta (WhatsApp Business Cloud API), where a retailer enables WhatsApp catalog sync
+                or messaging.
+              </li>
+              <li>
+                Where a retailer connects their own Google Business Profile, Facebook, or Google Ads
+                account, product data may be sent to those platforms using the retailer&apos;s own
+                credentials.
+              </li>
             </ul>
             <p className="mt-2">
               Each provider that handles personal data for us is bound by a contract that requires
@@ -215,26 +223,25 @@ export default function PrivacyPolicyPage() {
               Product photos and AI training
             </h2>
             <p>
-              <strong>We do not use your photos to train AI models.</strong> A photo a
-              retailer uploads is used only for the features that retailer asks for —
-              auto-tagging category, colour and fabric; background clean-up and studio-style
-              catalog images; a short promotional video; and publishing to the storefront or a
-              connected social account.
+              <strong>We do not use your photos to train AI models.</strong> A photo a retailer
+              uploads is used only for the features that retailer asks for — auto-tagging category,
+              colour and fabric; background clean-up and studio-style catalog images; a short
+              promotional video; and publishing to the storefront or a connected social account.
             </p>
             <p>
-              That applies to our AI providers too: a photo is sent to a provider only to
-              perform the specific operation requested, under a contract that does not permit
-              the provider to use it to train its own models. An earlier consent-based
-              programme that collected try-on photos for model training was withdrawn and
-              removed on 31 August 2026, and no photos are collected for training now.
+              That applies to our AI providers too: a photo is sent to a provider only to perform
+              the specific operation requested, under a contract that does not permit the provider
+              to use it to train its own models. An earlier consent-based programme that collected
+              try-on photos for model training was withdrawn and removed on 31 August 2026, and no
+              photos are collected for training now.
             </p>
             <p>
-              <strong>How long a photo is kept, and how to delete it.</strong> A photo is kept
-              while it belongs to a live product, design, or account. Delete the photo or the
-              product in the app and it disappears from your catalog immediately; the stored
-              file is soft-deleted at once and permanently purged after 15 days — including
-              the copy in our write-only recovery vault (see above). Deleting a retailer
-              account removes its photos the same way. To have a photo deleted sooner, email{' '}
+              <strong>How long a photo is kept, and how to delete it.</strong> A photo is kept while
+              it belongs to a live product, design, or account. Delete the photo or the product in
+              the app and it disappears from your catalog immediately; the stored file is
+              soft-deleted at once and permanently purged after 15 days — including the copy in our
+              write-only recovery vault (see above). Deleting a retailer account removes its photos
+              the same way. To have a photo deleted sooner, email{' '}
               <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
                 privacy@kanchuki.app
               </a>
@@ -253,35 +260,32 @@ export default function PrivacyPolicyPage() {
               Virtual try-on: photos of you
             </h2>
             <p>
-              A store may offer a virtual try-on, which uses AI to show you wearing an
-              outfit. It is always your choice: nothing happens until you read a short
-              notice and agree to it.
+              A store may offer a virtual try-on, which uses AI to show you wearing an outfit. It is
+              always your choice: nothing happens until you read a short notice and agree to it.
             </p>
             <p>
-              <strong>The photo you give us is never saved.</strong> It is used to make
-              the picture and then it is gone &mdash; not kept on our servers, not in our
-              database, not handed to any other store.
+              <strong>The photo you give us is never saved.</strong> It is used to make the picture
+              and then it is gone &mdash; not kept on our servers, not in our database, not handed
+              to any other store.
             </p>
             <p>
-              <strong>The picture we make is saved</strong>, because you and the store
-              need to be able to look at it again or share it. It is stored on that
-              store&apos;s account, is not shown publicly, and opens only through a
-              private link that expires within an hour. If a store offered you a try-on
-              at the counter instead of on your own phone, the same applies &mdash; you
-              are asked at the counter too.
+              <strong>The picture we make is saved</strong>, because you and the store need to be
+              able to look at it again or share it. It is stored on that store&apos;s account, is
+              not shown publicly, and opens only through a private link that expires within an hour.
+              If a store offered you a try-on at the counter instead of on your own phone, the same
+              applies &mdash; you are asked at the counter too.
             </p>
             <p>
               <strong>Neither photo is used to train AI models.</strong>
             </p>
             <p>
-              <strong>You can take this back.</strong> Withdraw your consent at any time
-              from{' '}
+              <strong>You can take this back.</strong> Withdraw your consent at any time from{' '}
               <Link href="/my-profile" className="text-cobalt-600 hover:underline">
                 My Profile
               </Link>
-              , and every try-on picture we made for you is deleted. If a try-on picture
-              of you was made in a store rather than on your own phone, you can ask that
-              store to delete it, or email us at{' '}
+              , and every try-on picture we made for you is deleted. If a try-on picture of you was
+              made in a store rather than on your own phone, you can ask that store to delete it, or
+              email us at{' '}
               <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
                 privacy@kanchuki.app
               </a>
@@ -298,26 +302,26 @@ export default function PrivacyPolicyPage() {
               My Style: reading a photo of you
             </h2>
             <p>
-              My Style can look at one photo of you to suggest colours and fits that suit
-              you. It is always your choice: nothing happens until you read a short notice
-              and agree to it. Adults only &mdash; please do not upload a photo of a child.
+              My Style can look at one photo of you to suggest colours and fits that suit you. It is
+              always your choice: nothing happens until you read a short notice and agree to it.
+              Adults only &mdash; please do not upload a photo of a child.
             </p>
             <p>
-              <strong>Your photo is never saved.</strong> It is read once by AI and then
-              thrown away &mdash; not kept on our servers, not in our database, not in file
-              storage, and not shared with any store.
+              <strong>Your photo is never saved.</strong> It is read once by AI and then thrown away
+              &mdash; not kept on our servers, not in our database, not in file storage, and not
+              shared with any store.
             </p>
             <p>
-              <strong>What we keep</strong> is a short note about your colouring and frame,
-              so your suggestions are ready next time. It is used only to rank clothes for
-              you, and it is shown to you as a palette of colours.
+              <strong>What we keep</strong> is a short note about your colouring and frame, so your
+              suggestions are ready next time. It is used only to rank clothes for you, and it is
+              shown to you as a palette of colours.
             </p>
             <p>
-              <strong>Find similar</strong> works the same way. If you pick a photo of a
-              garment you like, it is read once and thrown away &mdash; we do not keep it. We
-              turn it into a short description of the clothing (for example &ldquo;yellow
-              kurti, printed&rdquo;) that is held for a few minutes while we look for similar
-              pieces. It is not saved to your account.
+              <strong>Find similar</strong> works the same way. If you pick a photo of a garment you
+              like, it is read once and thrown away &mdash; we do not keep it. We turn it into a
+              short description of the clothing (for example &ldquo;yellow kurti, printed&rdquo;)
+              that is held for a few minutes while we look for similar pieces. It is not saved to
+              your account.
             </p>
             <p>
               <strong>We never use your photo to train AI models.</strong>
@@ -327,8 +331,8 @@ export default function PrivacyPolicyPage() {
               <Link href="/my-style" className="text-cobalt-600 hover:underline">
                 My Style
               </Link>{' '}
-              and choose Clear my data. The note is deleted and we stop using your photo
-              consent. You can also email us at{' '}
+              and choose Clear my data. The note is deleted and we stop using your photo consent.
+              You can also email us at{' '}
               <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
                 privacy@kanchuki.app
               </a>
@@ -339,10 +343,10 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="font-display text-xl font-semibold text-carbon">Security</h2>
             <p>
-              We protect personal data with encryption in transit, access controls so that staff
-              see only what their job needs, restricted database roles, audit logging of
-              sensitive actions, and regular backups. Access is reviewed and revoked when it is no
-              longer needed.
+              We protect personal data with encryption in transit, access controls so that staff see
+              only what their job needs, restricted database roles, audit logging of sensitive
+              actions, and regular backups. Access is reviewed and revoked when it is no longer
+              needed.
             </p>
           </section>
 
@@ -359,15 +363,17 @@ export default function PrivacyPolicyPage() {
             <h2 className="font-display text-xl font-semibold text-carbon">Children</h2>
             <p>
               A child is anyone under 18. Kanchuki does not knowingly collect a child&apos;s
-              personal data, and shopper profiles and retailer accounts are for people 18 and
-              older. Where a child&apos;s data must be processed, we require verifiable consent from
-              a parent or guardian, and we do not track or profile children or show them targeted
+              personal data, and shopper profiles and retailer accounts are for people 18 and older.
+              Where a child&apos;s data must be processed, we require verifiable consent from a
+              parent or guardian, and we do not track or profile children or show them targeted
               advertising.
             </p>
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">Keeping data only as long as needed</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              Keeping data only as long as needed
+            </h2>
             <p>
               We erase personal data once the purpose it was collected for has ended, unless a law
               requires us to keep it (for example GST records).

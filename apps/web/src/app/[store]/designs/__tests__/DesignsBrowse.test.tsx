@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DesignsBrowse } from '../DesignsBrowse';
 
 // next/image renders through Next's optimizer config which jsdom doesn't
@@ -20,9 +20,9 @@ vi.mock('next/link', () => ({
     prefetch: _prefetch,
     ...rest
   }: {
-    href: string
-    children: React.ReactNode
-    prefetch?: boolean
+    href: string;
+    children: React.ReactNode;
+    prefetch?: boolean;
   }) => (
     <a href={href} {...rest}>
       {children}
@@ -84,12 +84,25 @@ afterEach(() => {
 
 describe('DesignsBrowse', () => {
   it('renders the store-scoped grid with chips from the current feed', () => {
-    render(<DesignsBrowse store="meera-sarees" profile={PROFILE} initialData={feedAll} initialCategory={null} />);
+    render(
+      <DesignsBrowse
+        store="meera-sarees"
+        profile={PROFILE}
+        initialData={feedAll}
+        initialCategory={null}
+      />,
+    );
 
-    expect(screen.getByRole('link', { name: /Boat Neck/ })).toHaveAttribute('href', '/meera-sarees/designs/d1');
+    expect(screen.getByRole('link', { name: /Boat Neck/ })).toHaveAttribute(
+      'href',
+      '/meera-sarees/designs/d1',
+    );
     // Header: shop identity + back-to-store link.
     expect(screen.getByRole('heading', { name: 'Meera Sarees Designs' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Back to store' })).toHaveAttribute('href', '/meera-sarees');
+    expect(screen.getByRole('link', { name: 'Back to store' })).toHaveAttribute(
+      'href',
+      '/meera-sarees',
+    );
     // Chips — All + both categories present in the feed.
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Suits' })).toBeInTheDocument();
@@ -98,7 +111,14 @@ describe('DesignsBrowse', () => {
   });
 
   it('refetches through the proxy when a category chip is tapped', async () => {
-    render(<DesignsBrowse store="meera-sarees" profile={PROFILE} initialData={feedAll} initialCategory={null} />);
+    render(
+      <DesignsBrowse
+        store="meera-sarees"
+        profile={PROFILE}
+        initialData={feedAll}
+        initialCategory={null}
+      />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Suits' }));
 

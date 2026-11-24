@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { AnimatePresence, motion, type MotionProps } from 'framer-motion'
-import type { ReactNode } from 'react'
-import { useKeyboardInset } from '@/lib/keyboard-inset'
+import { useKeyboardInset } from '@/lib/keyboard-inset';
+import { AnimatePresence, type MotionProps, motion } from 'framer-motion';
+import type { ReactNode } from 'react';
 
 /**
  * The motion half of a `<Sheet>`, passed straight through to the underlying
@@ -10,10 +10,10 @@ import { useKeyboardInset } from '@/lib/keyboard-inset'
  * passes nothing and gets a plain, unanimated overlay.
  */
 export interface SheetAnimation {
-  initial?: MotionProps['initial']
-  animate?: MotionProps['animate']
-  exit?: MotionProps['exit']
-  transition?: MotionProps['transition']
+  initial?: MotionProps['initial'];
+  animate?: MotionProps['animate'];
+  exit?: MotionProps['exit'];
+  transition?: MotionProps['transition'];
 }
 
 export interface SheetProps {
@@ -24,10 +24,10 @@ export interface SheetProps {
    * unmounts the sheet before its exit animation can run (an `AnimatePresence`
    * only animates direct `motion` children, and `<Sheet>` is not one).
    */
-  open: boolean
+  open: boolean;
   /** Runs on a click on the scrim. The panel stops propagation, so a click on it never lands here. */
-  onClose?: () => void
-  children: ReactNode
+  onClose?: () => void;
+  children: ReactNode;
   /**
    * Classes for the fixed overlay: scrim colour, centring, and a **z-index**.
    * The base class supplies only `fixed inset-0`, and Tailwind resolves `z-50`
@@ -35,9 +35,9 @@ export interface SheetProps {
    * whichever the caller names is the one that applies, and naming none leaves
    * the sheet behind the page.
    */
-  overlayClassName?: string
+  overlayClassName?: string;
   /** Classes for the panel: width cap, corners, and usually `overflow-y-auto`. */
-  panelClassName?: string
+  panelClassName?: string;
   /**
    * Cap the panel at `N` viewport heights **minus the keyboard**. Omit it when
    * the panel uses `max-h-full`: the overlay's `paddingBottom` already shrinks
@@ -45,18 +45,18 @@ export interface SheetProps {
    * `max-h-full` needs no arithmetic here. A `vh`-based cap does — it is
    * measured against the layout viewport, which the keyboard does not change.
    */
-  maxHeightVh?: number
+  maxHeightVh?: number;
   /** Enter/exit motion for the overlay (usually a fade). */
-  overlayAnimation?: SheetAnimation
+  overlayAnimation?: SheetAnimation;
   /** Enter/exit motion for the panel (usually a fade + scale/slide). */
-  panelAnimation?: SheetAnimation
+  panelAnimation?: SheetAnimation;
   /** Accessible name for the `role="dialog"` overlay, when it has no visible heading. */
-  ariaLabel?: string
+  ariaLabel?: string;
 }
 
 /** Module-scope so the panel's callback identity never changes under its children. */
 function stopPropagation(e: React.MouseEvent) {
-  e.stopPropagation()
+  e.stopPropagation();
 }
 
 /**
@@ -85,7 +85,7 @@ export function Sheet({
   // Subscribed only while open. Most hosts (a storefront page, an admin list)
   // stay mounted whether or not their sheet is, so an unconditional hook would
   // attach four visual-viewport listeners for the whole session.
-  const keyboardInset = useKeyboardInset(open)
+  const keyboardInset = useKeyboardInset(open);
 
   // Shrinking the overlay's content box is the whole correction: a
   // bottom-anchored panel is lifted clear of the keyboard, and a `max-h-full`
@@ -94,13 +94,13 @@ export function Sheet({
   //
   // `undefined` rather than `0` when there is no keyboard, so the closed-state
   // layout carries no inline style at all.
-  const overlayStyle = keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined
+  const overlayStyle = keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined;
 
   // A `vh` cap has to subtract the inset explicitly — see the prop's doc.
   const panelStyle =
     maxHeightVh != null && keyboardInset > 0
       ? { maxHeight: `calc(${maxHeightVh}vh - ${keyboardInset}px)` }
-      : undefined
+      : undefined;
 
   return (
     <AnimatePresence>
@@ -124,5 +124,5 @@ export function Sheet({
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 }

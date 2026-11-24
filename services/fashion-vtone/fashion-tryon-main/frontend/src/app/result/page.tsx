@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import Navbar from "@/components/Navbar";
-import { Download, ArrowLeft, Sparkles } from "lucide-react";
-import { TryOnResult } from "@/types";
+import Navbar from '@/components/Navbar';
+import { TryOnResult } from '@/types';
+import { ArrowLeft, Download, Sparkles } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function ResultPage() {
   const router = useRouter();
@@ -13,12 +13,12 @@ export default function ResultPage() {
 
   useEffect(() => {
     // Retrieve result from sessionStorage
-    const storedResult = sessionStorage.getItem("tryOnResult");
+    const storedResult = sessionStorage.getItem('tryOnResult');
     if (storedResult) {
       setResult(JSON.parse(storedResult));
     } else {
       // No result found, redirect to upload page
-      router.push("/upload");
+      router.push('/upload');
     }
   }, [router]);
 
@@ -26,7 +26,7 @@ export default function ResultPage() {
     if (!result) return;
 
     // Create a download link
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = result.resultImageUrl;
     link.download = `fashion-tryon-result-${Date.now()}.png`;
     document.body.appendChild(link);
@@ -36,8 +36,8 @@ export default function ResultPage() {
 
   const handleTryAnother = () => {
     // Clear the result and go back to upload
-    sessionStorage.removeItem("tryOnResult");
-    router.push("/upload");
+    sessionStorage.removeItem('tryOnResult');
+    router.push('/upload');
   };
 
   if (!result) {
@@ -95,12 +95,7 @@ export default function ResultPage() {
               Garment
             </h3>
             <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-              <Image
-                src={result.garmentImageUrl}
-                alt="Garment"
-                fill
-                className="object-contain"
-              />
+              <Image src={result.garmentImageUrl} alt="Garment" fill className="object-contain" />
             </div>
             <div className="mt-4 text-center">
               <span className="inline-block px-3 py-1 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">

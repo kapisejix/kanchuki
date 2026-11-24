@@ -1,21 +1,15 @@
-import { useRouter } from 'expo-router'
-import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react-native'
-import { useState } from 'react'
-import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { growthApi, type AiCampaignDraft, type SuggestedProduct } from '../../src/lib/api'
-import { ApiError } from '../../src/lib/api/client'
-import { showError } from '../../src/lib/errors'
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import { useState } from 'react';
+import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { type AiCampaignDraft, type SuggestedProduct, growthApi } from '../../src/lib/api';
+import { ApiError } from '../../src/lib/api/client';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 const EXAMPLE_PROMPTS = [
   'Send cotton new arrivals to customers who like office wear',
@@ -24,65 +18,63 @@ const EXAMPLE_PROMPTS = [
   'Show me customers who bought pink suits last month and send them matching dupattas',
   'Blast new sarees to everyone who prefers silk',
   'Send a festive greeting to all consented customers',
-]
+];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View className="bg-white rounded-2xl p-5 border border-lavender-200">
-      <Text className="text-xs font-semibold text-spaceCadet-900 mb-3.5">
-        {title}
-      </Text>
+      <Text className="text-xs font-semibold text-spaceCadet-900 mb-3.5">{title}</Text>
       {children}
     </View>
-  )
+  );
 }
 
 export default function AiCampaignScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const router = useRouter()
-  const queryClient = useQueryClient()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const [prompt, setPrompt] = useState('')
-  const [generating, setGenerating] = useState(false)
-  const [draft, setDraft] = useState<AiCampaignDraft | null>(null)
+  const [prompt, setPrompt] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [draft, setDraft] = useState<AiCampaignDraft | null>(null);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      Alert.alert('Missing info', 'Describe the campaign you want to send.')
-      return
+      Alert.alert('Missing info', 'Describe the campaign you want to send.');
+      return;
     }
-    setGenerating(true)
+    setGenerating(true);
     try {
-      const res = await growthApi.aiCampaign(prompt.trim())
-      setDraft(res.data)
+      const res = await growthApi.aiCampaign(prompt.trim());
+      setDraft(res.data);
     } catch (err) {
       // The API sends a specific, user-safe message for every predictable
       // failure (plan/quota gate, AI-provider outage, unparseable AI reply) —
       // show it instead of a blanket "Failed to generate campaign" so the
       // retailer knows whether to upgrade, retry, or reword the prompt.
-      const apiMsg = err instanceof ApiError && err.message ? err.message : null
-      showError(err, apiMsg ?? 'Failed to generate campaign')
+      const apiMsg = err instanceof ApiError && err.message ? err.message : null;
+      showError(err, apiMsg ?? 'Failed to generate campaign');
     } finally {
-      setGenerating(false)
+      setGenerating(false);
     }
-  }
+  };
 
   const handleSave = async () => {
-    if (!draft) return
+    if (!draft) return;
     if (!draft.name.trim()) {
-      Alert.alert('Missing name', 'Give the campaign a name.')
-      return
+      Alert.alert('Missing name', 'Give the campaign a name.');
+      return;
     }
     if (!draft.message_template.trim()) {
-      Alert.alert('Missing message', 'Write a message template.')
-      return
+      Alert.alert('Missing message', 'Write a message template.');
+      return;
     }
     if (draft.type === 'FESTIVAL' && !draft.festival_id) {
-      Alert.alert('Missing festival', 'Pick a festival for the campaign.')
-      return
+      Alert.alert('Missing festival', 'Pick a festival for the campaign.');
+      return;
     }
 
-    setGenerating(true)
+    setGenerating(true);
     try {
       const payload = {
         type: draft.type,
@@ -90,24 +82,26 @@ export default function AiCampaignScreen() {
         message_template: draft.message_template.trim(),
         audience: draft.audience,
         product_ids: draft.product_ids,
-        ...(draft.type === 'FESTIVAL' && draft.festival_id ? { festival_id: draft.festival_id } : {}),
-      }
-      const res = await growthApi.createCampaign(payload)
-      await queryClient.invalidateQueries({ queryKey: ['growth'] })
-      router.replace(`/growth/campaign/${res.data.id}`)
+        ...(draft.type === 'FESTIVAL' && draft.festival_id
+          ? { festival_id: draft.festival_id }
+          : {}),
+      };
+      const res = await growthApi.createCampaign(payload);
+      await queryClient.invalidateQueries({ queryKey: ['growth'] });
+      router.replace(`/growth/campaign/${res.data.id}`);
     } catch (err) {
-      showError(err, 'Failed to save campaign')
+      showError(err, 'Failed to save campaign');
     } finally {
-      setGenerating(false)
+      setGenerating(false);
     }
-  }
+  };
 
   const typeLabel: Record<string, string> = {
     FESTIVAL: 'Festival',
     REACTIVATION: 'Reactivation',
     PROMOTION: 'Promotion',
     GENERAL: 'General',
-  }
+  };
 
   return (
     <KeyboardScreen behavior="padding" className="flex-1 bg-[#F8F7FC]">
@@ -134,7 +128,10 @@ export default function AiCampaignScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <View className="gap-4">
           {/* Prompt input */}
           <Section title="Describe your campaign">
@@ -163,7 +160,8 @@ export default function AiCampaignScreen() {
               ))}
             </View>
             <View className="mt-4">
-              <GradientButton variant="web"
+              <GradientButton
+                variant="web"
                 label={generating ? 'Generating…' : 'Generate Campaign'}
                 onPress={() => void handleGenerate()}
                 loading={generating}
@@ -177,7 +175,9 @@ export default function AiCampaignScreen() {
               <Section title="Suggested campaign">
                 <View className="gap-3.5">
                   <View>
-                    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Campaign name</Text>
+                    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
+                      Campaign name
+                    </Text>
                     <TextInput
                       value={draft.name}
                       onChangeText={(text) => setDraft({ ...draft, name: text })}
@@ -190,12 +190,16 @@ export default function AiCampaignScreen() {
                     <View className="flex-1">
                       <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Type</Text>
                       <View className="bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200">
-                        <Text className="text-sm font-semibold text-spaceCadet-900">{typeLabel[draft.type] ?? draft.type}</Text>
+                        <Text className="text-sm font-semibold text-spaceCadet-900">
+                          {typeLabel[draft.type] ?? draft.type}
+                        </Text>
                       </View>
                     </View>
                     {draft.type === 'FESTIVAL' && (
                       <View className="flex-1">
-                        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Festival</Text>
+                        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
+                          Festival
+                        </Text>
                         <View className="bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200">
                           <Text className="text-sm font-semibold text-spaceCadet-900">
                             {draft.festival_id ? `Festival #${draft.festival_id}` : 'Not selected'}
@@ -206,7 +210,9 @@ export default function AiCampaignScreen() {
                   </View>
 
                   <View>
-                    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">WhatsApp message template</Text>
+                    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
+                      WhatsApp message template
+                    </Text>
                     <TextInput
                       value={draft.message_template}
                       onChangeText={(text) => setDraft({ ...draft, message_template: text })}
@@ -227,7 +233,9 @@ export default function AiCampaignScreen() {
                         : 'No customers match — adjust filters'}
                     </Text>
                     {draft.rationale ? (
-                      <Text className="text-xs text-heliotrope-500 mt-1.5 leading-relaxed font-medium">{draft.rationale}</Text>
+                      <Text className="text-xs text-heliotrope-500 mt-1.5 leading-relaxed font-medium">
+                        {draft.rationale}
+                      </Text>
                     ) : null}
                   </View>
 
@@ -242,11 +250,18 @@ export default function AiCampaignScreen() {
                             key={p.id}
                             className="flex-row items-center justify-between bg-lavender-50 rounded-2xl px-3.5 py-2.5 border border-lavender-200"
                           >
-                            <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                            <Text
+                              className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2"
+                              numberOfLines={1}
+                            >
                               {p.name ?? p.category ?? 'Product'}
                             </Text>
                             <Text
-                              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                              style={{
+                                fontFamily: 'Marcellus_400Regular',
+                                letterSpacing: 0.32,
+                                fontWeight: '800',
+                              }}
                               className="text-xs text-spaceCadet-900"
                             >
                               {p.primary_color ?? ''}
@@ -261,7 +276,8 @@ export default function AiCampaignScreen() {
               </Section>
 
               <View>
-                <GradientButton variant="web"
+                <GradientButton
+                  variant="web"
                   label="Save Campaign"
                   onPress={() => void handleSave()}
                   loading={generating}
@@ -272,5 +288,5 @@ export default function AiCampaignScreen() {
         </View>
       </ScrollView>
     </KeyboardScreen>
-  )
+  );
 }

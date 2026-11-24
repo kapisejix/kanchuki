@@ -7,16 +7,16 @@
 // can receive it. On iOS that means a home-screen app (§4); a Safari tab reads
 // as unsupported and sees nothing here — the install CTA above covers that path.
 
-import { useEffect, useState } from 'react';
-import { BellOff, BellRing, Loader2 } from 'lucide-react';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD } from '@/app/(shopper)/ui';
 import {
+  type PushState,
   disablePush,
   enablePush,
   fetchPushKey,
   getPushState,
-  type PushState,
 } from '@/lib/web-push';
+import { BellOff, BellRing, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function PushOptIn() {
   const [key, setKey] = useState<string | null>(null);
@@ -82,7 +82,9 @@ export function PushOptIn() {
           disabled={busy}
           className={`${on ? BTN_SECONDARY : BTN_PRIMARY} mt-4 w-full sm:w-auto`}
         >
-          {busy && <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
+          {busy && (
+            <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />
+          )}
           {busy ? 'Please wait…' : on ? 'Turn off notifications' : 'Notify me about new arrivals'}
         </button>
       )}

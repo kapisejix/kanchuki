@@ -1,12 +1,12 @@
-import { Text, View, ActivityIndicator, type ViewStyle } from 'react-native'
-import { AnimatedPressable } from './AnimatedPressable'
+import { ActivityIndicator, Text, View, type ViewStyle } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
 
 /** White secondary button — matches the customer-web white button (docs/tasks/pending/button-styles.md §2):
  * #FFFFFF fill, 1px #E0E1F6 border, radius 24, navy #231F48 label + icon, light shadow.
  * Pass icons already coloured navy (e.g. `<Share2 size={16} color={WHITE_BUTTON_INK} />`).
  * Label never truncates — it wraps and the button grows.
  */
-export const WHITE_BUTTON_INK = '#231F48'
+export const WHITE_BUTTON_INK = '#231F48';
 
 export function WhiteButton({
   label,
@@ -19,19 +19,19 @@ export function WhiteButton({
   radius = 16,
   style,
 }: {
-  label: string
-  onPress: () => void
-  disabled?: boolean
-  loading?: boolean
-  icon?: React.ReactNode
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  icon?: React.ReactNode;
   /** Product-sheet style is uppercase; design-page style is sentence case (default). */
-  uppercase?: boolean
-  compact?: boolean
+  uppercase?: boolean;
+  compact?: boolean;
   /** corner radius (default 16 — owner 2026-10-16) */
-  radius?: number
-  style?: ViewStyle
+  radius?: number;
+  style?: ViewStyle;
 }) {
-  const isDisabled = disabled || loading
+  const isDisabled = disabled || loading;
 
   return (
     <AnimatedPressable
@@ -66,28 +66,38 @@ export function WhiteButton({
       >
         {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
         {loading ? (
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <ActivityIndicator color={WHITE_BUTTON_INK} size="small" />
           </View>
         ) : null}
-          <>
-            {icon ? <View style={{ opacity: loading ? 0 : 1 }}>{icon}</View> : null}
-            {/* No numberOfLines: full label always shows. */}
-            <Text
-              style={{
-                opacity: loading ? 0 : 1,
-                color: WHITE_BUTTON_INK,
-                fontSize: 12, // owner 2026-10-16: -2px from web text-sm; sentence case
-                fontWeight: '700',
-                textAlign: 'center',
-                flexShrink: 1,
-                ...(uppercase ? { textTransform: 'uppercase', letterSpacing: 0.8 } : null),
-              }}
-            >
-              {label}
-            </Text>
-          </>
+        <>
+          {icon ? <View style={{ opacity: loading ? 0 : 1 }}>{icon}</View> : null}
+          {/* No numberOfLines: full label always shows. */}
+          <Text
+            style={{
+              opacity: loading ? 0 : 1,
+              color: WHITE_BUTTON_INK,
+              fontSize: 12, // owner 2026-10-16: -2px from web text-sm; sentence case
+              fontWeight: '700',
+              textAlign: 'center',
+              flexShrink: 1,
+              ...(uppercase ? { textTransform: 'uppercase', letterSpacing: 0.8 } : null),
+            }}
+          >
+            {label}
+          </Text>
+        </>
       </View>
     </AnimatedPressable>
-  )
+  );
 }

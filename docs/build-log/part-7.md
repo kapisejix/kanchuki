@@ -724,3 +724,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | Each branch before push: mobile 722 passed, tsc 0, Biome on changed files no new errors vs `origin/main`. GitHub Actions passed on #336, #333 and #334. |
 | Expo Go | Owner checked all screens on 2026-11-24 ("checked all") after reporting the preview, Social tab and AI Video issues above. |
 | Not verified | AI video generation end to end (needs an admin model and styles; costs Fal credits). Reaches phones only with a new Android build. |
+
+## 2026-11-24 — MSG91 reqId, home header, repo-wide Biome format (PRs #337, #338, this PR)
+
+| Area | Change |
+|---|---|
+| MSG91 OTP (#337) | `extractMsg91ReqId` reads the widget's request id from `message` on success, so the app no longer sends a second API OTP that makes verify fail. |
+| Home tab (#338) | Header shows `CITY · plan · plan_status`. Second Analytics tile removed from Growth; Growth section hidden for roles without growth access. |
+| Biome format | `biome check --write --linter-enabled=false` over apps, packages, services, scripts, supabase, docs: 620 files, format and import order only. `biome.jsonc` and editor config folders untouched. Two test files where import sorting merged a `;(globalThis…)` line into the import were fixed by hand. |
+| Local runs | tsc 0 in api, web, mobile, shared. Tests: api 3550, web 779, mobile 725, shared 276 passed. Biome left: 865 lint errors and 777 warnings, fixed per package in follow-up PRs. |
+| Not verified | Phone OTP login and home header not checked on a device yet. Reaches phones only with a new app build. |

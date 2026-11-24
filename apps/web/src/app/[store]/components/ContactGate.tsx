@@ -1,12 +1,5 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Loader2, Eye, ShieldCheck } from 'lucide-react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getPassport, type PassportSession } from '@/lib/passport-client';
 import {
   isMsg91WidgetConfigured,
   loadMsg91Widget,
@@ -15,6 +8,13 @@ import {
   verifyOtpViaWidget,
   widgetErrorMessage,
 } from '@/lib/msg91-widget';
+import { type PassportSession, getPassport } from '@/lib/passport-client';
+import { motion } from 'framer-motion';
+import { Eye, Loader2, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type GoogleRating, GoogleRatingBadge } from './GoogleRatingBadge';
 import { PassportSheet } from './PassportSheet';
 
@@ -410,9 +410,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
               <h1 className="text-base leading-6 tracking-[0.02em] font-extrabold text-[#231F48] font-marcellus">
                 {profile.shop_name}
               </h1>
-              {profile.city && (
-                <p className="text-xs text-[#6B4773] font-medium">{profile.city}</p>
-              )}
+              {profile.city && <p className="text-xs text-[#6B4773] font-medium">{profile.city}</p>}
               <GoogleRatingBadge google={profile.google_rating} />
             </div>
           </div>
@@ -452,7 +450,8 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
               className="mt-0.5"
             />
             <span className="text-[11px] text-[#6B4773] leading-relaxed">
-              I agree to receive personalized collection updates from {profile.shop_name} on WhatsApp, and accept Kanchuki&apos;s{' '}
+              I agree to receive personalized collection updates from {profile.shop_name} on
+              WhatsApp, and accept Kanchuki&apos;s{' '}
               <Link href="/privacy" target="_blank" className="text-[#BB3F95] font-bold underline">
                 Privacy Policy
               </Link>{' '}
@@ -470,7 +469,11 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
             disabled={otpPhone.trim().length < 10 || !otpConsent || otpSending}
             className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] mb-3"
           >
-            {otpSending ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={14} />}
+            {otpSending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <ShieldCheck size={14} />
+            )}
             {otpSending ? 'Sending...' : 'Verify with OTP'}
           </button>
 
@@ -486,9 +489,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
       ) : (
         /* ─── OTP verification step ─── */
         <div className="bg-white rounded-3xl border border-[#E0E1F6] p-7 max-w-sm w-full shadow-sm">
-          <h2 className="text-base font-extrabold text-[#231F48] font-marcellus mb-1">
-            Enter OTP
-          </h2>
+          <h2 className="text-base font-extrabold text-[#231F48] font-marcellus mb-1">Enter OTP</h2>
           <p className="text-xs text-[#6B4773] mb-5">
             Sent to {otpPhone.replace(/(\d{2})\d+(\d{3})/, '$1****$2')}
           </p>
@@ -640,8 +641,13 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
                 className="mt-0.5"
               />
               <span className="text-[11px] text-[#6B4773] leading-relaxed">
-                I agree to receive personalized collection updates from {profile.shop_name} on WhatsApp, and accept Kanchuki&apos;s{' '}
-                <Link href="/privacy" target="_blank" className="text-[#BB3F95] font-bold underline">
+                I agree to receive personalized collection updates from {profile.shop_name} on
+                WhatsApp, and accept Kanchuki&apos;s{' '}
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  className="text-[#BB3F95] font-bold underline"
+                >
                   Privacy Policy
                 </Link>{' '}
                 and{' '}

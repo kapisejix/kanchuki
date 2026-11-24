@@ -1,8 +1,8 @@
-import { Check, Facebook, Instagram, Lock } from 'lucide-react-native'
-import { Text, View } from 'react-native'
-import type { SocialAccountInfo } from '../../lib/api/social'
-import { useTheme } from '../../lib/theme'
-import { AnimatedPressable } from '../AnimatedPressable'
+import { Check, Facebook, Instagram, Lock } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import type { SocialAccountInfo } from '../../lib/api/social';
+import { useTheme } from '../../lib/theme';
+import { AnimatedPressable } from '../AnimatedPressable';
 
 /**
  * Connected-account checklist (R-2 step 6, R-12). A target can be disabled
@@ -15,21 +15,21 @@ export function TargetChecklist({
   onToggle,
   disabledReason,
 }: {
-  accounts: SocialAccountInfo[]
-  selected: string[]
-  onToggle: (accountId: string) => void
+  accounts: SocialAccountInfo[];
+  selected: string[];
+  onToggle: (accountId: string) => void;
   /** accountId → reason text when that target cannot take this post. */
-  disabledReason?: (account: SocialAccountInfo) => string | null
+  disabledReason?: (account: SocialAccountInfo) => string | null;
 }) {
-  const { colors } = useTheme()
+  const { colors } = useTheme();
 
   return (
     <View className="gap-2">
       {accounts.map((account) => {
-        const reason = disabledReason ? disabledReason(account) : null
-        const disabled = !!reason
-        const checked = !disabled && selected.includes(account.id)
-        const isIg = account.platform === 'INSTAGRAM'
+        const reason = disabledReason ? disabledReason(account) : null;
+        const disabled = !!reason;
+        const checked = !disabled && selected.includes(account.id);
+        const isIg = account.platform === 'INSTAGRAM';
         return (
           <AnimatedPressable
             key={account.id}
@@ -39,7 +39,11 @@ export function TargetChecklist({
             accessibilityState={{ selected: checked, disabled }}
             accessibilityLabel={`${account.account_name} (${account.platform})`}
             className={`flex-row items-center rounded-2xl border px-4 py-3 ${
-              checked ? 'border-ink-600 bg-ink-600/5' : disabled ? 'border-sand-100 bg-sand-50/60' : 'border-sand-100 bg-white'
+              checked
+                ? 'border-ink-600 bg-ink-600/5'
+                : disabled
+                  ? 'border-sand-100 bg-sand-50/60'
+                  : 'border-sand-100 bg-white'
             }`}
           >
             <View
@@ -75,8 +79,8 @@ export function TargetChecklist({
               {checked && <Check size={14} color="#fff" />}
             </View>
           </AnimatedPressable>
-        )
+        );
       })}
     </View>
-  )
+  );
 }

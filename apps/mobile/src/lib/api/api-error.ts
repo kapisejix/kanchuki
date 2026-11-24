@@ -11,7 +11,7 @@ export class ApiError extends Error {
      * per-target FAILED results on an all-failed social publish (T-7.2). */
     public readonly results?: unknown[] | null,
   ) {
-    super(message)
-    this.name = 'ApiError'
+    super(message);
+    this.name = 'ApiError';
   }
 }

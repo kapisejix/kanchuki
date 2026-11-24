@@ -1,19 +1,19 @@
-import { test, expect, type BrowserContext, type Page } from '@playwright/test'
-import type { Server } from 'node:http'
-import { API_STUB_ORIGIN, closeStub, createStubServer, listenStub } from './support/api-stub'
-import { stubFixtureImages } from './support/images'
+import type { Server } from 'node:http';
+import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanchuki/shared';
+import { type BrowserContext, type Page, expect, test } from '@playwright/test';
+import type {
+  PublicShowcaseDesign,
+  PublicShowcaseDesignDetail,
+} from '../src/app/[store]/designs/types';
+import { API_STUB_ORIGIN, closeStub, createStubServer, listenStub } from './support/api-stub';
+import { stubFixtureImages } from './support/images';
 import {
   VIEWPORTS,
   expectFullyInViewport,
   expectNoHorizontalOverflow,
   expectRenderedImage,
   watchClientErrors,
-} from './support/responsive'
-import type {
-  PublicShowcaseDesign,
-  PublicShowcaseDesignDetail,
-} from '../src/app/[store]/designs/types'
-import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanchuki/shared'
+} from './support/responsive';
 
 // Regression suite for the customer-facing PWA:
 //
@@ -40,11 +40,11 @@ import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanc
 // which — unlike page.route — does intercept service-worker requests.
 
 // ── Canned collection data ────────────────────────────────────────
-const PAGE_SIZE = 12
-const PRODUCT_COUNT = 24 // 2 pages — lets the offline test exercise /api/c SWR caching
+const PAGE_SIZE = 12;
+const PRODUCT_COUNT = 24; // 2 pages — lets the offline test exercise /api/c SWR caching
 
 function makeProduct(i: number): PublicProduct {
-  const n = i + 1
+  const n = i + 1;
   return {
     id: `prod-${n}`,
     name: `Festive Design ${n}`,
@@ -64,15 +64,15 @@ function makeProduct(i: number): PublicProduct {
     has_360: false,
     avg_rating: 0,
     rating_count: 0,
-  }
+  };
 }
 
-const ALL_PRODUCTS = Array.from({ length: PRODUCT_COUNT }, (_, i) => makeProduct(i))
+const ALL_PRODUCTS = Array.from({ length: PRODUCT_COUNT }, (_, i) => makeProduct(i));
 
-const STORE_SLUG = 'meera-sarees'
+const STORE_SLUG = 'meera-sarees';
 
 function collectionFor(slug: string, page: number): PublicCollection {
-  const start = (page - 1) * PAGE_SIZE
+  const start = (page - 1) * PAGE_SIZE;
   return {
     retailer: {
       id: 'retailer-meera',
@@ -98,10 +98,10 @@ function collectionFor(slug: string, page: number): PublicCollection {
       categories: [{ value: 'Anarkali Suit', count: PRODUCT_COUNT }],
       colors: [{ value: 'Maroon', count: PRODUCT_COUNT }],
     },
-  }
+  };
 }
 
-const KNOWN_SLUGS = new Set(['festive-edit', 'office-edit'])
+const KNOWN_SLUGS = new Set(['festive-edit', 'office-edit']);
 
 // Suits Designs fixtures. Typed against the storefront pages' own contract so a
 // field rename fails `tsc` here rather than leaving this spec green against a
@@ -121,28 +121,28 @@ const DESIGNS: PublicShowcaseDesign[] = [
     category: { slug: 'kurtis', name: 'Kurtis' },
     store: { shop_name: 'Meera Sarees', slug: STORE_SLUG },
   },
-]
+];
 
 const DESIGN_DETAIL: PublicShowcaseDesignDetail = {
   ...DESIGNS[0]!,
   created_at: '2026-09-01T10:00:00.000Z',
-}
+};
 
 // ── Stub API server (serves SSR fetches inside `next start`) ─────
-let apiStub: Server | null = null
+let apiStub: Server | null = null;
 
 test.beforeAll(async () => {
   apiStub = createStubServer((req, res) => {
-    const url = new URL(req.url ?? '/', API_STUB_ORIGIN)
-    const collectionMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)$/)
-    const favoriteMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)\/favorite$/)
-    const retailerMatch = url.pathname.match(/^\/v1\/public\/retailers\/([^/]+)$/)
-    res.setHeader('Content-Type', 'application/json')
+    const url = new URL(req.url ?? '/', API_STUB_ORIGIN);
+    const collectionMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)$/);
+    const favoriteMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)\/favorite$/);
+    const retailerMatch = url.pathname.match(/^\/v1\/public\/retailers\/([^/]+)$/);
+    res.setHeader('Content-Type', 'application/json');
 
     // Store profile — /{public_slug} contact gate (canonical form of the
     // legacy /store/{public_slug} QR links).
     if (req.method === 'GET' && retailerMatch && retailerMatch[1] === STORE_SLUG) {
-      res.statusCode = 200
+      res.statusCode = 200;
       res.end(
         JSON.stringify({
           data: {
@@ -157,21 +157,21 @@ test.beforeAll(async () => {
             storefront_slug: 'festive-edit',
           },
         }),
-      )
-      return
+      );
+      return;
     }
 
     if (req.method === 'POST' && favoriteMatch) {
-      res.statusCode = 200
-      res.end(JSON.stringify({ data: { ok: true } }))
-      return
+      res.statusCode = 200;
+      res.end(JSON.stringify({ data: { ok: true } }));
+      return;
     }
     // View tracking (RC-025) — the page's fire-and-forget ping, which now has a
     // web proxy route to reach this endpoint through.
     if (req.method === 'POST' && /^\/v1\/public\/collections\/[^/]+\/view$/.test(url.pathname)) {
-      res.statusCode = 204
-      res.end()
-      return
+      res.statusCode = 204;
+      res.end();
+      return;
     }
 
     // The behavioral-event beacon (`trackPassportEvent` → `/api/passport/events`),
@@ -183,48 +183,48 @@ test.beforeAll(async () => {
     // here unnoticed — the app treats the failure as non-critical by design, and
     // `.catch(() => {})` is why no test ever went red for it.
     if (req.method === 'POST' && url.pathname === '/v1/public/passport/events') {
-      res.statusCode = 204
-      res.end()
-      return
+      res.statusCode = 204;
+      res.end();
+      return;
     }
 
     // Promotions — the storefront's PromotionBanner fetches
     // `/api/{store}/promotions`, which proxies to this upstream. Unstubbed it
     // answers 404, which the console check reports as a page error.
     if (req.method === 'GET' && /^\/v1\/public\/retailers\/[^/]+\/promotions$/.test(url.pathname)) {
-      res.statusCode = 200
-      res.end(JSON.stringify({ data: [] }))
-      return
+      res.statusCode = 200;
+      res.end(JSON.stringify({ data: [] }));
+      return;
     }
 
     // Social-proof chip counts (F-037 §2 row 5) behind `/api/engagement-chips`.
     // Unstubbed it 404s, and the proxy's `revalidate: 300` caches that 404 for
     // every later spec in the same build. Empty counts = no chips rendered.
     if (req.method === 'GET' && url.pathname === '/v1/public/engagement-chips') {
-      res.statusCode = 200
+      res.statusCode = 200;
       res.end(
         JSON.stringify({
           data: { products: {}, window: { today: null, week_from: null, week_to: null } },
         }),
-      )
-      return
+      );
+      return;
     }
 
     // "Picked for you" (F-037) POSTs `/api/recommendations`. Unstubbed it 404s
     // into the console check; no products = the section stays hidden.
     if (req.method === 'POST' && url.pathname === '/v1/public/recommendations') {
-      res.statusCode = 200
-      res.end(JSON.stringify({ data: { personalized: false, products: [] } }))
-      return
+      res.statusCode = 200;
+      res.end(JSON.stringify({ data: { personalized: false, products: [] } }));
+      return;
     }
 
     if (req.method === 'GET' && collectionMatch) {
-      const slug = decodeURIComponent(collectionMatch[1])
+      const slug = decodeURIComponent(collectionMatch[1]);
       if (KNOWN_SLUGS.has(slug)) {
-        const page = Number(url.searchParams.get('page') ?? '1')
-        res.statusCode = 200
-        res.end(JSON.stringify({ data: collectionFor(slug, page) }))
-        return
+        const page = Number(url.searchParams.get('page') ?? '1');
+        res.statusCode = 200;
+        res.end(JSON.stringify({ data: collectionFor(slug, page) }));
+        return;
       }
     }
     // The product sheet's two public reads. Both are real proxy routes
@@ -232,9 +232,9 @@ test.beforeAll(async () => {
     // upstream status straight through — so with no upstream here the browser
     // saw a 404 the app handles, and the console check reported it.
     if (req.method === 'GET' && /^\/v1\/public\/reviews\/product\/[^/]+$/.test(url.pathname)) {
-      res.statusCode = 200
-      res.end(JSON.stringify({ data: [] }))
-      return
+      res.statusCode = 200;
+      res.end(JSON.stringify({ data: [] }));
+      return;
     }
     if (req.method === 'GET' && url.pathname === '/v1/public/showcase-designs') {
       // Two different shapes share this endpoint, told apart by the query:
@@ -244,29 +244,32 @@ test.beforeAll(async () => {
       // empty state, which is the layout that actually has to hold up.
       const data = url.searchParams.get('product_id')
         ? { designs: [], category: null }
-        : { designs: DESIGNS, related: [], next_cursor: null }
-      res.statusCode = 200
-      res.end(JSON.stringify({ data }))
-      return
+        : { designs: DESIGNS, related: [], next_cursor: null };
+      res.statusCode = 200;
+      res.end(JSON.stringify({ data }));
+      return;
     }
 
     // Permalink — /{store}/designs/{id} renders from the detail row.
-    if (req.method === 'GET' && url.pathname === `/v1/public/showcase-designs/${DESIGN_DETAIL.id}`) {
-      res.statusCode = 200
-      res.end(JSON.stringify({ data: DESIGN_DETAIL }))
-      return
+    if (
+      req.method === 'GET' &&
+      url.pathname === `/v1/public/showcase-designs/${DESIGN_DETAIL.id}`
+    ) {
+      res.statusCode = 200;
+      res.end(JSON.stringify({ data: DESIGN_DETAIL }));
+      return;
     }
 
-    res.statusCode = 404
-    res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'not found', status: 404 } }))
-  })
+    res.statusCode = 404;
+    res.end(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'not found', status: 404 } }));
+  });
 
-  await listenStub(apiStub)
-})
+  await listenStub(apiStub);
+});
 
 test.afterAll(async () => {
-  await closeStub(apiStub)
-})
+  await closeStub(apiStub);
+});
 
 // ── Browser-side mocks (context.route intercepts SW requests too) ─
 // A realistic 64×80 RGB PNG. The old 1×1 transparent PNG hits a Chromium
@@ -282,66 +285,66 @@ const PRODUCT_DETAIL: PublicProductDetail = {
   sizes: ['S', 'M', 'L', 'XL'],
   photos: [ALL_PRODUCTS[0].primary_photo_url],
   // F-034 T7c: one clip (AI or uploaded look the same to the shopper, D8).
-  videos: [{ id: 'clip-e2e', url: 'https://cdn-e2e.r2.dev/clip-e2e.mp4', duration_sec: 6, is_main: true }],
+  videos: [
+    { id: 'clip-e2e', url: 'https://cdn-e2e.r2.dev/clip-e2e.mp4', duration_sec: 6, is_main: true },
+  ],
   spin_frames: [],
   variants: [
     { color: 'Maroon', photo_url: null, status: 'AVAILABLE' },
     { color: 'Teal', photo_url: 'https://cdn-e2e.r2.dev/variant-teal.jpg', status: 'AVAILABLE' },
   ],
-}
+};
 
 async function mockBrowserNetwork(context: BrowserContext): Promise<void> {
   // Product detail sheet data — /api/products/[id] and /api/products/[id]/related
   // (same-origin Next routes that 404 without a backend; the sheet degrades
   // gracefully but the mocked detail lets us assert sizes + color variants).
   await context.route('**/api/products/**', async (route) => {
-    const url = route.request().url()
+    const url = route.request().url();
     if (url.endsWith('/related')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: [ALL_PRODUCTS[1], ALL_PRODUCTS[2]] }),
-      })
+      });
     } else {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ data: PRODUCT_DETAIL }),
-      })
+      });
     }
-  })
+  });
 
   // Product photos — shared with the other specs so the fixture host is never
   // left unserved, on either path (see support/images.ts). The optimizer
   // response is cached by the SW's defaultCache image entry
   // (destination === 'image', CacheFirst) and served from cache on the offline
   // reload.
-  await stubFixtureImages(context)
+  await stubFixtureImages(context);
   // Clip bytes: never decoded in this suite, only the element's attributes.
   await context.route('**/clip-e2e.mp4', (route) =>
     route.fulfill({ status: 200, contentType: 'video/mp4', body: '' }),
-  )
+  );
 }
 
 // Sentinel that only survives client-side navigation (wiped by a full reload)
-type TestWindow = Window & { __e2eSentinel?: string }
+type TestWindow = Window & { __e2eSentinel?: string };
 
 async function pinSentinel(page: Page): Promise<void> {
   await page.evaluate(() => {
-    ;(window as TestWindow).__e2eSentinel = 'alive'
-  })
+    (window as TestWindow).__e2eSentinel = 'alive';
+  });
 }
 
 async function sentinelIsAlive(page: Page): Promise<boolean> {
-  return page.evaluate(() => (window as TestWindow).__e2eSentinel === 'alive')
+  return page.evaluate(() => (window as TestWindow).__e2eSentinel === 'alive');
 }
 
 async function waitForServiceWorkerControl(page: Page): Promise<void> {
-  await page.waitForFunction(
-    () => navigator.serviceWorker?.controller != null,
-    undefined,
-    { timeout: 20_000 },
-  )
+  await page.waitForFunction(() => navigator.serviceWorker?.controller != null, undefined, {
+    timeout: 20_000,
+  });
 }
 
 // ── Tests ─────────────────────────────────────────────────────────
@@ -350,47 +353,49 @@ test('collection page renders and interactions are client-side (no full reload)'
   context,
   page,
 }) => {
-  await mockBrowserNetwork(context)
+  await mockBrowserNetwork(context);
 
-  let loadCount = 0
+  let loadCount = 0;
   page.on('load', () => {
-    loadCount += 1
-  })
+    loadCount += 1;
+  });
 
-  await page.goto(`/${STORE_SLUG}/festive-edit`)
+  await page.goto(`/${STORE_SLUG}/festive-edit`);
   // The Discovery redesign renders the collection title as a summary line
   // ("{title} · {total} curated items"), not a heading element — assert on the
   // SSR'd text, which is exactly what an offline reload serves from cache.
-  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
-  await expect(page.getByText('Meera Sarees · Jaipur')).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
-  expect(loadCount).toBe(1)
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
+  await expect(page.getByText('Meera Sarees · Jaipur')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible();
+  expect(loadCount).toBe(1);
 
-  await pinSentinel(page)
+  await pinSentinel(page);
 
   // Pagination — client-side fetch through the /api/c proxy
-  await page.getByRole('button', { name: 'Next', exact: true }).click()
-  await expect(page.getByText('Page 2 of 2')).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Festive Design 13', exact: true })).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeHidden()
-  expect(loadCount).toBe(1)
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByText('Page 2 of 2')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Festive Design 13', exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeHidden();
+  expect(loadCount).toBe(1);
 
-  await page.getByRole('button', { name: 'Prev', exact: true }).click()
-  await expect(page.getByText('Page 1 of 2')).toBeVisible()
+  await page.getByRole('button', { name: 'Prev', exact: true }).click();
+  await expect(page.getByText('Page 1 of 2')).toBeVisible();
 
   // Favorite a product — updates the sticky bar count without a reload.
   // exact: true is required: the card photo div has role="button" and its
   // accessible name is "Festive Design 1 Add to favorites" (img alt + nested
   // button label), so substring matching resolves .first() to the photo div
   // (which opens the sheet) instead of the heart button.
-  await page.getByRole('button', { name: 'Add to favorites', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Add to favorites', exact: true }).first().click();
   // The Discovery redesign removed the sticky "Selected (N)" favorites bar —
   // the heart flipping to "Remove from favorites" is the on-page feedback now.
-  await expect(page.getByRole('button', { name: 'Remove from favorites', exact: true }).first()).toBeVisible()
-  expect(loadCount).toBe(1)
+  await expect(
+    page.getByRole('button', { name: 'Remove from favorites', exact: true }).first(),
+  ).toBeVisible();
+  expect(loadCount).toBe(1);
 
   // Open the product detail sheet (lazy-loaded, client-side)
-  await page.getByRole('img', { name: 'Festive Design 1', exact: true }).click()
+  await page.getByRole('img', { name: 'Festive Design 1', exact: true }).click();
   // Sheet probe: the sheet's enquiry CTA is "Enquire Now" — the fixed bottom
   // nav has a bare "Enquire" button that is always visible, so only the
   // "Enquire Now" exact match proves the sheet is open (and its teardown on
@@ -398,54 +403,64 @@ test('collection page renders and interactions are client-side (no full reload)'
   // Discovery redesign removed size chips from the sheet — "Available Sizes"
   // now lives on the full product page (SharedProductPage), which this suite
   // doesn't route to.
-  await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeVisible()
-  await expect(page.getByText('Raw Silk')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Teal', exact: true })).toBeVisible()
-  expect(loadCount).toBe(1)
+  await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeVisible();
+  await expect(page.getByText('Raw Silk')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Teal', exact: true })).toBeVisible();
+  expect(loadCount).toBe(1);
 
   // F-034 T7c: the clip plays muted, inline, looped, poster = main photo.
-  await page.getByRole('button', { name: 'Play video 1', exact: true }).click()
-  const clip = page.locator('video[src$="clip-e2e.mp4"]')
-  await expect(clip).toBeVisible()
-  expect(await clip.evaluate((v: HTMLVideoElement) => ({
-    muted: v.muted, loop: v.loop, playsInline: v.playsInline, preload: v.preload, poster: v.poster,
-  }))).toEqual({
-    muted: true, loop: true, playsInline: true, preload: 'metadata', poster: ALL_PRODUCTS[0].primary_photo_url,
-  })
-  const desktop = page.viewportSize()!
-  await page.setViewportSize({ width: 360, height: 780 })
-  await expect(clip).toBeVisible()
-  await page.screenshot({ path: 'test-results/t7c-sheet-video-360.png' })
-  await page.setViewportSize(desktop)
+  await page.getByRole('button', { name: 'Play video 1', exact: true }).click();
+  const clip = page.locator('video[src$="clip-e2e.mp4"]');
+  await expect(clip).toBeVisible();
+  expect(
+    await clip.evaluate((v: HTMLVideoElement) => ({
+      muted: v.muted,
+      loop: v.loop,
+      playsInline: v.playsInline,
+      preload: v.preload,
+      poster: v.poster,
+    })),
+  ).toEqual({
+    muted: true,
+    loop: true,
+    playsInline: true,
+    preload: 'metadata',
+    poster: ALL_PRODUCTS[0].primary_photo_url,
+  });
+  const desktop = page.viewportSize()!;
+  await page.setViewportSize({ width: 360, height: 780 });
+  await expect(clip).toBeVisible();
+  await page.screenshot({ path: 'test-results/t7c-sheet-video-360.png' });
+  await page.setViewportSize(desktop);
 
   // Close the sheet — back to the grid, still no reload
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeHidden()
-  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
-  expect(loadCount).toBe(1)
-  expect(await sentinelIsAlive(page)).toBe(true)
-})
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeHidden();
+  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible();
+  expect(loadCount).toBe(1);
+  expect(await sentinelIsAlive(page)).toBe(true);
+});
 
 test('collection pages work offline via the service worker', async ({ context, page }) => {
-  await mockBrowserNetwork(context)
+  await mockBrowserNetwork(context);
 
   // 1. Online visit — SW installs and claims the page
-  await page.goto(`/${STORE_SLUG}/festive-edit`)
-  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
-  await waitForServiceWorkerControl(page)
+  await page.goto(`/${STORE_SLUG}/festive-edit`);
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
+  await waitForServiceWorkerControl(page);
 
   // 2. SW-controlled reload — NetworkFirst caches this document; the images
   //    (CacheFirst, *.r2.dev) are fetched through the SW and cached too.
-  await page.reload()
-  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
+  await page.reload();
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
   await page.waitForFunction(() => {
-    const img = document.querySelector('img[alt="Festive Design 1"]') as HTMLImageElement | null
-    return img !== null && img.complete && img.naturalWidth > 0
-  })
+    const img = document.querySelector('img[alt="Festive Design 1"]') as HTMLImageElement | null;
+    return img !== null && img.complete && img.naturalWidth > 0;
+  });
 
   // 3. Prime the /api/c StaleWhileRevalidate cache: paginate to page 2 online
-  await page.getByRole('button', { name: 'Next', exact: true }).click()
-  await expect(page.getByText('Page 2 of 2')).toBeVisible()
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByText('Page 2 of 2')).toBeVisible();
 
   // Assert the precondition this test silently assumed: the /offline document
   // is actually in the precache. Without it, a missed install-time precache
@@ -456,27 +471,27 @@ test('collection pages work offline via the service worker', async ({ context, p
       timeout: 10_000,
       message: '/offline was never precached — the SW install did not complete',
     })
-    .toBe(true)
+    .toBe(true);
 
   // ── Go offline ──
-  await context.setOffline(true)
+  await context.setOffline(true);
 
   // 4. Reload the cached page — NetworkFirst serves the cached document
-  await page.reload()
-  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
+  await page.reload();
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible();
 
   // 5. Photos come from the product-images cache (CacheFirst), not the network
   //    — wait for the image to actually finish loading from the SW cache.
   await page.waitForFunction(() => {
-    const img = document.querySelector('img[alt="Festive Design 1"]') as HTMLImageElement | null
-    return img !== null && img.complete && img.naturalWidth > 0
-  })
+    const img = document.querySelector('img[alt="Festive Design 1"]') as HTMLImageElement | null;
+    return img !== null && img.complete && img.naturalWidth > 0;
+  });
 
   // 6. Paginate offline — /api/c SWR cache serves the last-known page 2
-  await page.getByRole('button', { name: 'Next', exact: true }).click()
-  await expect(page.getByText('Page 2 of 2')).toBeVisible()
-  await expect(page.getByRole('img', { name: 'Festive Design 13', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByText('Page 2 of 2')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Festive Design 13', exact: true })).toBeVisible();
 
   // 7. The offline fallback document is the real offline page.
   //
@@ -485,13 +500,13 @@ test('collection pages work offline via the service worker', async ({ context, p
   // cached document — rather than navigating to it — is deliberate: see the note
   // after this test for why an offline navigation cannot be asserted
   // deterministically from Playwright.
-  await context.setOffline(true)
+  await context.setOffline(true);
   const offlineHtml = await page.evaluate(async () => {
-    const cached = await caches.match('/offline')
-    return cached ? await cached.text() : null
-  })
-  expect(offlineHtml).toContain("You're offline")
-})
+    const cached = await caches.match('/offline');
+    return cached ? await cached.text() : null;
+  });
+  expect(offlineHtml).toContain("You're offline");
+});
 
 // Deliberately NOT asserted above: that an *uncached* navigation falls back to
 // /offline. The navigation to /c/never-visited was written that way and is the
@@ -521,18 +536,18 @@ test('legacy /c/{slug} and /store/{slug} links redirect to canonical URLs', asyn
   context,
   page,
 }) => {
-  await mockBrowserNetwork(context)
+  await mockBrowserNetwork(context);
 
   // Collection link shared before the canonical scheme: /c/{slug} → /{store}/{slug}.
-  await page.goto('/c/festive-edit')
-  await expect(page).toHaveURL(`/${STORE_SLUG}/festive-edit`)
-  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
+  await page.goto('/c/festive-edit');
+  await expect(page).toHaveURL(`/${STORE_SLUG}/festive-edit`);
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
 
   // Store QR link shared before the canonical scheme: /store/{slug} → /{slug}.
-  await page.goto(`/store/${STORE_SLUG}`)
-  await expect(page).toHaveURL(`/${STORE_SLUG}`)
-  await expect(page.getByRole('heading', { name: 'Meera Sarees', exact: true })).toBeVisible()
-})
+  await page.goto(`/store/${STORE_SLUG}`);
+  await expect(page).toHaveURL(`/${STORE_SLUG}`);
+  await expect(page.getByRole('heading', { name: 'Meera Sarees', exact: true })).toBeVisible();
+});
 
 // ── Phone + tablet ────────────────────────────────────────────────
 // The collection page is where a shared WhatsApp link lands, and the product
@@ -550,48 +565,48 @@ for (const vp of VIEWPORTS) {
     context,
     page,
   }) => {
-    const client = watchClientErrors(page)
-    await mockBrowserNetwork(context)
-    await page.setViewportSize({ width: vp.width, height: vp.height })
+    const client = watchClientErrors(page);
+    await mockBrowserNetwork(context);
+    await page.setViewportSize({ width: vp.width, height: vp.height });
 
-    await page.goto('/c/festive-edit')
-    await expect(page).toHaveURL(`/${STORE_SLUG}/festive-edit`)
+    await page.goto('/c/festive-edit');
+    await expect(page).toHaveURL(`/${STORE_SLUG}/festive-edit`);
 
     // The part a desktop-only redirect test never reaches: the page it lands on
     // has to render its content at this size too.
-    await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
-    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
-    await expectNoHorizontalOverflow(page, `the redirected collection on ${vp.name}`)
-    client.expectClean(`the redirected collection on ${vp.name}`)
-  })
+    await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible();
+    await expectNoHorizontalOverflow(page, `the redirected collection on ${vp.name}`);
+    client.expectClean(`the redirected collection on ${vp.name}`);
+  });
 
   test(`the designs browser and a design permalink hold up on ${vp.name}`, async ({
     context,
     page,
   }) => {
-    const client = watchClientErrors(page)
-    await mockBrowserNetwork(context)
-    await page.setViewportSize({ width: vp.width, height: vp.height })
+    const client = watchClientErrors(page);
+    await mockBrowserNetwork(context);
+    await page.setViewportSize({ width: vp.width, height: vp.height });
 
-    await page.goto(`/${STORE_SLUG}/designs`)
-    await expect(page.getByRole('heading', { name: 'Meera Sarees Designs' })).toBeVisible()
+    await page.goto(`/${STORE_SLUG}/designs`);
+    await expect(page.getByRole('heading', { name: 'Meera Sarees Designs' })).toBeVisible();
     // A real card from the feed, not the empty state — this is a 2-col grid on
     // phones, and its 3:4 tiles are what could push the page sideways.
-    const card = page.locator(`a[href="/${STORE_SLUG}/designs/design-1"]`)
-    await expect(card).toBeVisible()
-    const tile = page.getByRole('img', { name: 'Festive Lehenga', exact: true })
-    await expect(tile).toBeVisible()
+    const card = page.locator(`a[href="/${STORE_SLUG}/designs/design-1"]`);
+    await expect(card).toBeVisible();
+    const tile = page.getByRole('img', { name: 'Festive Lehenga', exact: true });
+    await expect(tile).toBeVisible();
     // Rendered pixels, not just a visible box — see expectRenderedImage.
-    await expectRenderedImage(tile, `the design tile on ${vp.name}`)
-    await expectNoHorizontalOverflow(page, `the designs browser on ${vp.name}`)
+    await expectRenderedImage(tile, `the design tile on ${vp.name}`);
+    await expectNoHorizontalOverflow(page, `the designs browser on ${vp.name}`);
 
     // The permalink is a shareable link in its own right (`/{store}/designs/{id}`),
     // so it has to stand up reached directly rather than only by tapping through.
-    await page.goto(`/${STORE_SLUG}/designs/design-1`)
+    await page.goto(`/${STORE_SLUG}/designs/design-1`);
     // exact: the permalink footer also says "Shared via Kanchuki — design
     // inspiration for your…", so a substring match resolves to two elements.
-    await expect(page.getByText('Design inspiration', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Back to designs' })).toBeVisible()
+    await expect(page.getByText('Design inspiration', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Back to designs' })).toBeVisible();
     // This page renders the watermarked file with a plain <img> on purpose, so
     // the optimiser never re-encodes it — meaning it is the one surface that
     // requests the fixture host directly rather than through /_next/image.
@@ -599,32 +614,32 @@ for (const vp of VIEWPORTS) {
     await expectRenderedImage(
       page.getByRole('img', { name: 'Festive Lehenga', exact: true }),
       `the design permalink photo on ${vp.name}`,
-    )
-    await expectNoHorizontalOverflow(page, `the design permalink on ${vp.name}`)
-    client.expectClean(`the designs pages on ${vp.name}`)
-  })
+    );
+    await expectNoHorizontalOverflow(page, `the design permalink on ${vp.name}`);
+    client.expectClean(`the designs pages on ${vp.name}`);
+  });
 }
 
 for (const vp of VIEWPORTS) {
   test(`the collection and its product sheet hold up on ${vp.name}`, async ({ context, page }) => {
-    const client = watchClientErrors(page)
-    await mockBrowserNetwork(context)
-    await page.setViewportSize({ width: vp.width, height: vp.height })
+    const client = watchClientErrors(page);
+    await mockBrowserNetwork(context);
+    await page.setViewportSize({ width: vp.width, height: vp.height });
 
-    await page.goto(`/${STORE_SLUG}/festive-edit`)
-    await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
-    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
-    await expectNoHorizontalOverflow(page, `the collection on ${vp.name}`)
+    await page.goto(`/${STORE_SLUG}/festive-edit`);
+    await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
+    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible();
+    await expectNoHorizontalOverflow(page, `the collection on ${vp.name}`);
 
-    await page.getByRole('img', { name: 'Festive Design 1', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeVisible()
-    await expect(page.getByText('Raw Silk')).toBeVisible()
+    await page.getByRole('img', { name: 'Festive Design 1', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeVisible();
+    await expect(page.getByText('Raw Silk')).toBeVisible();
 
     // The close control has to be on screen the moment the sheet opens — a
     // shopper who cannot see the way out of a fixed overlay is stuck.
-    const closer = page.getByRole('button', { name: 'Close', exact: true })
-    await expectFullyInViewport(closer, `the sheet's close button on ${vp.name}`)
-    await expectNoHorizontalOverflow(page, `the collection with the sheet open on ${vp.name}`)
+    const closer = page.getByRole('button', { name: 'Close', exact: true });
+    await expectFullyInViewport(closer, `the sheet's close button on ${vp.name}`);
+    await expectNoHorizontalOverflow(page, `the collection with the sheet open on ${vp.name}`);
 
     // The enquiry CTA is the last block inside the sheet's scrolling body, so on
     // a phone it starts below the fold (measured: bottom edge ~892px against a
@@ -632,16 +647,15 @@ for (const vp of VIEWPORTS) {
     // an overflow-y-auto div" is a claim about CSS, and this asserts the thing
     // that actually matters: it can be brought fully into view, the way a shopper
     // does it, by scrolling the sheet rather than the page.
-    const cta = page.getByRole('button', { name: 'Enquire Now', exact: true })
-    await cta.scrollIntoViewIfNeeded()
-    await expectFullyInViewport(cta, `the sheet's enquiry CTA on ${vp.name} after scrolling`)
-    await expectNoHorizontalOverflow(page, `the sheet scrolled to the CTA on ${vp.name}`)
+    const cta = page.getByRole('button', { name: 'Enquire Now', exact: true });
+    await cta.scrollIntoViewIfNeeded();
+    await expectFullyInViewport(cta, `the sheet's enquiry CTA on ${vp.name} after scrolling`);
+    await expectNoHorizontalOverflow(page, `the sheet scrolled to the CTA on ${vp.name}`);
 
     // …and it tears down, leaving the grid usable rather than a dead overlay.
-    await closer.click()
-    await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeHidden()
-    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
-    client.expectClean(`the collection on ${vp.name}`)
-  })
+    await closer.click();
+    await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeHidden();
+    await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible();
+    client.expectClean(`the collection on ${vp.name}`);
+  });
 }
-

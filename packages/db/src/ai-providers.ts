@@ -1,5 +1,5 @@
-import { prisma } from './client.js'
-import type { AiProviderType } from '@prisma/client'
+import type { AiProviderType } from '@prisma/client';
+import { prisma } from './client.js';
 
 // AI Provider Registry (F-023) — the admin-configurable list of tagging models
 // that packages/ai/src/providers.ts reads at call time. Admin adds/edits rows
@@ -11,16 +11,16 @@ import type { AiProviderType } from '@prisma/client'
 // @kanchuki/db, which already surfaces the prisma one.
 
 export interface AiProviderConfigRow {
-  id: string
-  provider_type: AiProviderType
-  label: string
-  model_name: string
-  lite_model_name: string | null
-  base_url: string | null
-  api_key_name: string
-  priority: number
-  is_active: boolean
-  credits_per_call: number
+  id: string;
+  provider_type: AiProviderType;
+  label: string;
+  model_name: string;
+  lite_model_name: string | null;
+  base_url: string | null;
+  api_key_name: string;
+  priority: number;
+  is_active: boolean;
+  credits_per_call: number;
 }
 
 /**

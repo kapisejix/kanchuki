@@ -1,5 +1,8 @@
-'use client'
+'use client';
 
+import { Sparkles } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
 // Suits Designs strip — rendered in ProductDetailSheet below the Related
 // products block (docs/tasks/done/suits-designs.md §2.3). Shows the N (admin-
 // configured) watermarked design thumbs for the product's garment category
@@ -7,47 +10,50 @@
 // in a new tab. Hidden entirely when no designs match or no store slug exists
 // (the web designs surface is store-scoped — legacy /c/{slug} pages without a
 // public_slug have no /{store}/designs route behind them).
-import { useEffect, useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
+import { useEffect, useState } from 'react';
 
 interface ShowcaseThumb {
-  id: string
-  name: string | null
-  image_url: string
-  category: { slug: string; name: string | null }
+  id: string;
+  name: string | null;
+  image_url: string;
+  category: { slug: string; name: string | null };
 }
 
 interface Props {
-  productId: string
-  storeSlug: string | null
+  productId: string;
+  storeSlug: string | null;
 }
 
 export function ShowcaseDesigns({ productId, storeSlug }: Props) {
-  const [designs, setDesigns] = useState<ShowcaseThumb[]>([])
-  const [categoryName, setCategoryName] = useState<string | null>(null)
+  const [designs, setDesigns] = useState<ShowcaseThumb[]>([]);
+  const [categoryName, setCategoryName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!storeSlug) return
-    let cancelled = false
+    if (!storeSlug) return;
+    let cancelled = false;
     fetch(`/api/showcase-designs?product_id=${encodeURIComponent(productId)}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((json: { data?: { designs?: ShowcaseThumb[]; category?: { name: string | null } | null } } | null) => {
-        if (!cancelled && json?.data) {
-          setDesigns(json.data.designs ?? [])
-          setCategoryName(json.data.category?.name ?? null)
-        }
-      })
-      .catch(() => undefined) // Public read fails open — the strip stays hidden.
+      .then(
+        (
+          json: {
+            data?: { designs?: ShowcaseThumb[]; category?: { name: string | null } | null };
+          } | null,
+        ) => {
+          if (!cancelled && json?.data) {
+            setDesigns(json.data.designs ?? []);
+            setCategoryName(json.data.category?.name ?? null);
+          }
+        },
+      )
+      .catch(() => undefined); // Public read fails open — the strip stays hidden.
     return () => {
-      cancelled = true
-    }
-  }, [productId, storeSlug])
+      cancelled = true;
+    };
+  }, [productId, storeSlug]);
 
-  if (!storeSlug || designs.length === 0) return null
+  if (!storeSlug || designs.length === 0) return null;
 
-  const browseHref = `/${storeSlug}/designs?ref=${encodeURIComponent(productId)}`
+  const browseHref = `/${storeSlug}/designs?ref=${encodeURIComponent(productId)}`;
 
   return (
     <div className="px-4 pb-2">
@@ -98,5 +104,5 @@ export function ShowcaseDesigns({ productId, storeSlug }: Props) {
         ))}
       </div>
     </div>
-  )
+  );
 }

@@ -177,13 +177,11 @@ describe('socialProofChip — minimum counts', () => {
   it('lets a real save outrank a below-floor view count', () => {
     // The floors are applied per signal, so a weak view must not block a strong
     // save from rendering.
-    expect(socialProofChip({ viewed_today: 1, favorited_week: 1 }, window(isoDaysAgo(1)))).toEqual(
-      {
-        kind: 'favorited',
-        count: 1,
-        label: '1 saved this week',
-      },
-    );
+    expect(socialProofChip({ viewed_today: 1, favorited_week: 1 }, window(isoDaysAgo(1)))).toEqual({
+      kind: 'favorited',
+      count: 1,
+      label: '1 saved this week',
+    });
   });
 });
 

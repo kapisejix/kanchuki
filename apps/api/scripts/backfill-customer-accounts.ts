@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { createHash } from 'node:crypto';
 /**
  * Backfill: Customer → CustomerAccount (Task 6).
  *
@@ -15,7 +16,6 @@
  *   npx tsx scripts/backfill-customer-accounts.ts --batch-size=100
  */
 import { PrismaClient } from '@prisma/client';
-import { createHash } from 'node:crypto';
 
 const prisma = new PrismaClient();
 
@@ -67,7 +67,9 @@ async function backfill(): Promise<BackfillResult> {
     byHash.set(hash, group);
   }
 
-  console.log(`Found ${unlinkedCustomers.length} unlinked customers across ${byHash.size} unique phone hashes.`);
+  console.log(
+    `Found ${unlinkedCustomers.length} unlinked customers across ${byHash.size} unique phone hashes.`,
+  );
 
   let batchCount = 0;
 
@@ -85,7 +87,9 @@ async function backfill(): Promise<BackfillResult> {
       result.accountsSkipped++;
     } else {
       if (DRY_RUN) {
-        console.log(`[dry-run] Would create CustomerAccount for phone_hash=${phoneHash.slice(0, 8)}...`);
+        console.log(
+          `[dry-run] Would create CustomerAccount for phone_hash=${phoneHash.slice(0, 8)}...`,
+        );
         accountId = `dry-run-${phoneHash.slice(0, 8)}`;
       } else {
         const first = customers[0]!;
@@ -129,7 +133,9 @@ async function backfill(): Promise<BackfillResult> {
       if (existingVisit) {
         result.visitsSkipped++;
       } else if (DRY_RUN) {
-        console.log(`[dry-run] Would create CustomerStoreVisit(account=${accountId}, retailer=${c.retailer_id})`);
+        console.log(
+          `[dry-run] Would create CustomerStoreVisit(account=${accountId}, retailer=${c.retailer_id})`,
+        );
         result.visitsCreated++;
       } else {
         await prisma.customerStoreVisit.create({
@@ -156,7 +162,9 @@ async function backfill(): Promise<BackfillResult> {
 }
 
 async function main() {
-  console.log(`\n${DRY_RUN ? '🔍 DRY RUN' : '🚀 APPLY MODE'} — Backfill Customer → CustomerAccount\n`);
+  console.log(
+    `\n${DRY_RUN ? '🔍 DRY RUN' : '🚀 APPLY MODE'} — Backfill Customer → CustomerAccount\n`,
+  );
 
   try {
     const result = await backfill();

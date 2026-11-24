@@ -1,18 +1,13 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join, relative, sep } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { stripComments } from '@kanchuki/shared/testing'
-import { describe, expect, it } from 'vitest'
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ANDROID_PACKAGE, APP_SCHEME, androidIntentUrl, appLink } from '@/lib/deep-links';
 import {
   ANDROID_PACKAGE as SOURCE_ANDROID_PACKAGE,
   APP_SCHEME as SOURCE_APP_SCHEME,
-} from '@kanchuki/shared/constants/app-identity'
-import {
-  ANDROID_PACKAGE,
-  APP_SCHEME,
-  androidIntentUrl,
-  appLink,
-} from '@/lib/deep-links'
+} from '@kanchuki/shared/constants/app-identity';
+import { stripComments } from '@kanchuki/shared/testing';
+import { describe, expect, it } from 'vitest';
 
 /**
  * RC-041: the web app's `intent://` link named an Android package that does not
@@ -43,19 +38,19 @@ import {
  * green.
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url))
-const WEB_SRC = join(HERE, '..', '..')
+const HERE = dirname(fileURLToPath(import.meta.url));
+const WEB_SRC = join(HERE, '..', '..');
 
-const toPosix = (p: string) => p.split(sep).join('/')
+const toPosix = (p: string) => p.split(sep).join('/');
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry === '__tests__') continue
-    const full = join(dir, entry)
-    if (statSync(full).isDirectory()) walk(full, out)
-    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(full)
+    if (entry === 'node_modules' || entry === '__tests__') continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) walk(full, out);
+    else if (/\.tsx?$/.test(entry) && !/\.test\.tsx?$/.test(entry)) out.push(full);
   }
-  return out
+  return out;
 }
 
 /** Every non-test source under `src/`, comment-stripped. */
@@ -63,7 +58,7 @@ function sources(): Array<{ path: string; source: string }> {
   return walk(WEB_SRC).map((file) => ({
     path: toPosix(relative(WEB_SRC, file)),
     source: stripComments(readFileSync(file, 'utf8')),
-  }))
+  }));
 }
 
 describe('deep links', () => {
@@ -75,45 +70,45 @@ describe('deep links', () => {
     // The mobile side pins what the manifest resolves to —
     // `apps/mobile/__tests__/app-config.test.ts` — so this arm owns the one
     // failure mode that is web's alone.
-    expect(APP_SCHEME).toBe(SOURCE_APP_SCHEME)
-    expect(ANDROID_PACKAGE).toBe(SOURCE_ANDROID_PACKAGE)
-  })
+    expect(APP_SCHEME).toBe(SOURCE_APP_SCHEME);
+    expect(ANDROID_PACKAGE).toBe(SOURCE_ANDROID_PACKAGE);
+  });
 
   it('keeps the package a syntactically valid Android application id', () => {
-    expect(ANDROID_PACKAGE).toMatch(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/)
-  })
+    expect(ANDROID_PACKAGE).toMatch(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/);
+  });
 
   it('builds a custom-scheme link', () => {
-    expect(appLink('join', { token: 'abc_123' })).toBe('kanchuki://join?token=abc_123')
-  })
+    expect(appLink('join', { token: 'abc_123' })).toBe('kanchuki://join?token=abc_123');
+  });
 
   it('builds a targeted Android intent naming the real package', () => {
     expect(androidIntentUrl('join', { token: 'abc_123' })).toBe(
       `intent://join?token=abc_123#Intent;scheme=${APP_SCHEME};package=${ANDROID_PACKAGE};end`,
-    )
-  })
+    );
+  });
 
   it('omits absent params instead of emitting them empty', () => {
-    expect(appLink('onboarding')).toBe('kanchuki://onboarding')
-    expect(appLink('onboarding', { ref: undefined })).toBe('kanchuki://onboarding')
+    expect(appLink('onboarding')).toBe('kanchuki://onboarding');
+    expect(appLink('onboarding', { ref: undefined })).toBe('kanchuki://onboarding');
     expect(androidIntentUrl('oauth/callback', { code: 'c', state: undefined })).toBe(
       `intent://oauth/callback?code=c#Intent;scheme=${APP_SCHEME};package=${ANDROID_PACKAGE};end`,
-    )
-  })
+    );
+  });
 
   it('encodes values that would otherwise break out of the query', () => {
     // `state` and `code` arrive from a Meta redirect, so they are the params
     // that can actually contain `&`, `=`, `#` or `/`.
     expect(appLink('oauth/callback', { code: 'a&b=c', state: 'x/y#z' })).toBe(
       'kanchuki://oauth/callback?code=a%26b%3Dc&state=x%2Fy%23z',
-    )
-  })
+    );
+  });
 
   it('joins multiple params with &', () => {
     expect(appLink('oauth/callback', { code: 'c', state: 's' })).toBe(
       'kanchuki://oauth/callback?code=c&state=s',
-    )
-  })
+    );
+  });
 
   it('builds every link through the shared module', () => {
     const offenders = sources()
@@ -123,25 +118,25 @@ describe('deep links', () => {
           f.source.includes('kanchuki://') ||
           /package\s*=/.test(f.source),
       )
-      .map((f) => f.path)
-    expect(offenders).toEqual([])
-  })
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
+  });
 
   it('holds no copy of the package literal', () => {
     // Zero, not one: `lib/deep-links.ts` is a re-export, so the literal's only
     // home is `@kanchuki/shared` and the manifest it is pinned to.
     const holders = sources()
       .filter((f) => f.source.includes(ANDROID_PACKAGE))
-      .map((f) => f.path)
-    expect(holders).toEqual([])
-  })
+      .map((f) => f.path);
+    expect(holders).toEqual([]);
+  });
 
   it('never reintroduces the RC-041 package', () => {
     // The exact string that shipped. A constant lookup cannot produce it, so
     // this can only come back by being typed out again.
     const offenders = sources()
       .filter((f) => f.source.includes('in.kanchuki.app'))
-      .map((f) => f.path)
-    expect(offenders).toEqual([])
-  })
-})
+      .map((f) => f.path);
+    expect(offenders).toEqual([]);
+  });
+});

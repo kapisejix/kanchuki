@@ -5,41 +5,41 @@
 // train on your photos" sentence would leave every other check green. The page
 // is also the live source of the copy recorded for legal review in
 // docs/SECURITY.md (Photo Retention Notice section).
-import { MY_STYLE_CONSENT, TRY_ON_CONSENT } from '@kanchuki/shared'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vitest'
-import PrivacyPolicyPage from '../page'
+import { MY_STYLE_CONSENT, TRY_ON_CONSENT } from '@kanchuki/shared';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
+import PrivacyPolicyPage from '../page';
 
-const html = renderToStaticMarkup(<PrivacyPolicyPage />)
+const html = renderToStaticMarkup(<PrivacyPolicyPage />);
 
 describe('/privacy — photo retention & training notice (§7A.6)', () => {
   it('states plainly that retailer photos are not used to train AI models', () => {
-    expect(html).toContain('We do not use your photos to train AI models.')
-  })
+    expect(html).toContain('We do not use your photos to train AI models.');
+  });
 
   it('renders the dedicated section', () => {
-    expect(html).toContain('Product photos and AI training')
-  })
+    expect(html).toContain('Product photos and AI training');
+  });
 
   it('gives the retention window and a deletion route', () => {
-    expect(html).toContain('permanently purged after 15 days')
-    expect(html).toContain('mailto:privacy@kanchuki.app')
-  })
+    expect(html).toContain('permanently purged after 15 days');
+    expect(html).toContain('mailto:privacy@kanchuki.app');
+  });
 
   it('anchors the claim to the removal of the training-data programme', () => {
     // Without this the "not used for training" claim has no referent once the
     // F-102d programme is forgotten — the notice would read as a promise with
     // no history behind it.
-    expect(html).toContain('removed on 31 August 2026')
-  })
+    expect(html).toContain('removed on 31 August 2026');
+  });
 
   it('does not leave a stale training-consent promise on the page', () => {
     // The consent-gated training collection was removed (migration 082);
     // nothing may re-introduce a promise to collect photos *for* training.
-    expect(html.toLowerCase()).not.toContain('consent to training')
-    expect(html.toLowerCase()).not.toContain('training photo consents')
-  })
-})
+    expect(html.toLowerCase()).not.toContain('consent to training');
+    expect(html.toLowerCase()).not.toContain('training photo consents');
+  });
+});
 
 // F-040 T6 — the virtual try-on notice.
 //
@@ -50,35 +50,35 @@ describe('/privacy — photo retention & training notice (§7A.6)', () => {
 // private" sentence would not catch.
 describe('/privacy — virtual try-on notice (T6)', () => {
   it('renders the try-on section', () => {
-    expect(html).toContain('Virtual try-on: photos of you')
-  })
+    expect(html).toContain('Virtual try-on: photos of you');
+  });
 
   it('states both halves: the input photo is not kept, the generated one is', () => {
-    expect(html).toContain('The photo you give us is never saved.')
-    expect(html).toContain('The picture we make is saved')
-  })
+    expect(html).toContain('The photo you give us is never saved.');
+    expect(html).toContain('The picture we make is saved');
+  });
 
   it('points the consent screen’s "read more" link at a section that exists', () => {
     // Derived from the constant rather than hard-coded here, so renaming either
     // the id or the URL fails this test instead of silently sending every
     // consenting shopper to the top of the page.
-    const anchor = TRY_ON_CONSENT.full_notice_url.split('#')[1]
-    expect(anchor).toBeTruthy()
-    expect(html).toContain(`id="${anchor}"`)
-  })
+    const anchor = TRY_ON_CONSENT.full_notice_url.split('#')[1];
+    expect(anchor).toBeTruthy();
+    expect(html).toContain(`id="${anchor}"`);
+  });
 
   it('promises withdrawal, deletion, and no training', () => {
-    expect(html).toContain('every try-on picture we made for you is deleted')
-    expect(html).toContain('Neither photo is used to train AI models.')
-  })
+    expect(html).toContain('every try-on picture we made for you is deleted');
+    expect(html).toContain('Neither photo is used to train AI models.');
+  });
 
   it('gives in-store customers a deletion route they can actually use', () => {
     // A walk-in has no Kanchuki account, so "withdraw from My Profile" is not
     // available to them — the notice has to say what they can do instead, or
     // the promise is only real for people who signed up.
-    expect(html).toContain('you can ask that store to delete it')
-  })
-})
+    expect(html).toContain('you can ask that store to delete it');
+  });
+});
 
 // F-045 PR-7 — the My Style selfie notice. The consent sheet links to
 // MY_STYLE_CONSENT.full_notice_url; before this section the link landed on the top of
@@ -86,19 +86,19 @@ describe('/privacy — virtual try-on notice (T6)', () => {
 // thrown away, only a short note is kept, it can be cleared, never used for training.
 describe('/privacy — My Style photo notice (F-045)', () => {
   it('has the section the consent link points at', () => {
-    const anchor = MY_STYLE_CONSENT.full_notice_url.split('#')[1]
-    expect(anchor).toBeTruthy()
-    expect(html).toContain(`id="${anchor}"`)
-  })
+    const anchor = MY_STYLE_CONSENT.full_notice_url.split('#')[1];
+    expect(anchor).toBeTruthy();
+    expect(html).toContain(`id="${anchor}"`);
+  });
 
   it('states the photo is never saved, what is kept, and the clear route', () => {
-    expect(html).toContain('My Style: reading a photo of you')
-    expect(html).toContain('Your photo is never saved.')
-    expect(html).toContain('Clear my data')
-    expect(html).toContain('Adults only')
-  })
+    expect(html).toContain('My Style: reading a photo of you');
+    expect(html).toContain('Your photo is never saved.');
+    expect(html).toContain('Clear my data');
+    expect(html).toContain('Adults only');
+  });
 
   it('promises no training', () => {
-    expect(html).toContain('We never use your photo to train AI models.')
-  })
-})
+    expect(html).toContain('We never use your photo to train AI models.');
+  });
+});

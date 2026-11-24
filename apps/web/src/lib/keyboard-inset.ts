@@ -18,27 +18,27 @@
 // `CustomerConsentModal` deliberately has no separate footer (its inputs scroll
 // with the panel) and needs none of this.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 
 /** The subset of `window.visualViewport` we rely on. */
 export interface VisualViewportLike {
   /** Height of the visual viewport, in CSS pixels. */
-  height: number
+  height: number;
   /** Offset of its top edge from the layout viewport, in CSS pixels. */
-  offsetTop: number
+  offsetTop: number;
   /** Pinch-zoom factor; 1 means not zoomed. */
-  scale?: number
+  scale?: number;
 }
 
 type EventTargetLike = {
-  addEventListener: (type: string, listener: () => void) => void
-  removeEventListener: (type: string, listener: () => void) => void
-}
+  addEventListener: (type: string, listener: () => void) => void;
+  removeEventListener: (type: string, listener: () => void) => void;
+};
 
 /** The slice of `window` this module reads, so a test can pass a stand-in. */
 export interface KeyboardSource extends EventTargetLike {
-  innerHeight: number
-  visualViewport?: (EventTargetLike & VisualViewportLike) | null
+  innerHeight: number;
+  visualViewport?: (EventTargetLike & VisualViewportLike) | null;
 }
 
 /**
@@ -53,8 +53,8 @@ export function computeKeyboardInset(
   viewport: VisualViewportLike | null | undefined,
 ): number {
   // No `visualViewport` at all: SSR, or a browser that never supported it.
-  if (!viewport) return 0
-  if (!Number.isFinite(innerHeight) || !Number.isFinite(viewport.height)) return 0
+  if (!viewport) return 0;
+  if (!Number.isFinite(innerHeight) || !Number.isFinite(viewport.height)) return 0;
 
   // A pinch-zoom shrinks `height` for a reason that has nothing to do with the
   // keyboard, and the arithmetic below is only exact at scale 1 — the two
@@ -64,29 +64,29 @@ export function computeKeyboardInset(
   // `maximumScale: 1`, which covers iOS's automatic zoom-on-focus (the one
   // raised by tapping a small-text input); a deliberate pinch is the only way
   // to reach this branch, and pinching back restores the inset.
-  if ((viewport.scale ?? 1) > 1) return 0
+  if ((viewport.scale ?? 1) > 1) return 0;
 
   // `offsetTop` grows when iOS scrolls the visual viewport to reveal the
   // focused input; the keyboard still occupies the same slice of the layout
   // viewport, so subtracting the offset keeps the measurement stable.
-  const offsetTop = Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0
-  const hidden = innerHeight - (viewport.height + offsetTop)
+  const offsetTop = Number.isFinite(viewport.offsetTop) ? viewport.offsetTop : 0;
+  const hidden = innerHeight - (viewport.height + offsetTop);
 
   // Negative while the keyboard animates, and whenever the visual viewport is
   // momentarily reported as larger than the layout viewport. Clamp rather than
   // hand a negative padding to the layout.
-  return hidden > 0 ? Math.round(hidden) : 0
+  return hidden > 0 ? Math.round(hidden) : 0;
 }
 
 /** Read the current inset from a window-like source (0 when there is none). */
 export function readKeyboardInset(source?: KeyboardSource | null): number {
-  if (!source) return 0
-  return computeKeyboardInset(source.innerHeight, source.visualViewport ?? null)
+  if (!source) return 0;
+  return computeKeyboardInset(source.innerHeight, source.visualViewport ?? null);
 }
 
 function resolveSource(source?: KeyboardSource | null): KeyboardSource | null {
-  if (source) return source
-  return typeof window === 'undefined' ? null : (window as unknown as KeyboardSource)
+  if (source) return source;
+  return typeof window === 'undefined' ? null : (window as unknown as KeyboardSource);
 }
 
 /**
@@ -101,29 +101,29 @@ export function subscribeKeyboardInset(
   onChange: (inset: number) => void,
   source?: KeyboardSource | null,
 ): () => void {
-  const target = resolveSource(source)
-  if (!target) return () => {}
+  const target = resolveSource(source);
+  if (!target) return () => {};
 
-  const update = () => onChange(readKeyboardInset(target))
+  const update = () => onChange(readKeyboardInset(target));
 
   // `resize` on the visual viewport is the keyboard itself opening/closing (and
   // rotation); `scroll` is Safari sliding the visual viewport once the keyboard
   // is up. The window events are a cheap fallback for engines that change the
   // layout viewport instead of the visual one.
-  const vv = target.visualViewport
-  vv?.addEventListener('resize', update)
-  vv?.addEventListener('scroll', update)
-  target.addEventListener('resize', update)
-  target.addEventListener('orientationchange', update)
+  const vv = target.visualViewport;
+  vv?.addEventListener('resize', update);
+  vv?.addEventListener('scroll', update);
+  target.addEventListener('resize', update);
+  target.addEventListener('orientationchange', update);
 
-  update()
+  update();
 
   return () => {
-    vv?.removeEventListener('resize', update)
-    vv?.removeEventListener('scroll', update)
-    target.removeEventListener('resize', update)
-    target.removeEventListener('orientationchange', update)
-  }
+    vv?.removeEventListener('resize', update);
+    vv?.removeEventListener('scroll', update);
+    target.removeEventListener('resize', update);
+    target.removeEventListener('orientationchange', update);
+  };
 }
 
 /**
@@ -135,15 +135,15 @@ export function subscribeKeyboardInset(
  * closed sheet should cost a storefront nothing.
  */
 export function useKeyboardInset(enabled = true): number {
-  const [inset, setInset] = useState(0)
+  const [inset, setInset] = useState(0);
 
   useEffect(() => {
     if (!enabled) {
-      setInset(0)
-      return
+      setInset(0);
+      return;
     }
-    return subscribeKeyboardInset(setInset)
-  }, [enabled])
+    return subscribeKeyboardInset(setInset);
+  }, [enabled]);
 
-  return inset
+  return inset;
 }

@@ -1,80 +1,80 @@
+import { File } from 'expo-file-system';
+import * as LegacyFileSystem from 'expo-file-system/legacy';
 // Auto-split from api.ts (1138 lines, mirrors the api/routes split pattern) —
 // request()/token/upload plumbing shared by every domain module in this dir.
-import { router } from 'expo-router'
-import { File } from 'expo-file-system'
-import * as LegacyFileSystem from 'expo-file-system/legacy'
-import { emitAuthChange } from '../auth-events'
-import { getItem, setItem, deleteItem } from '../storage'
-import { cachedJsonRequest, clearRequestCache } from '../request-cache'
-import { compressImageForUpload } from '../compress-image'
-import { ApiError } from './api-error'
+import { router } from 'expo-router';
+import { emitAuthChange } from '../auth-events';
+import { compressImageForUpload } from '../compress-image';
+import { cachedJsonRequest, clearRequestCache } from '../request-cache';
+import { deleteItem, getItem, setItem } from '../storage';
+import { ApiError } from './api-error';
 
-export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 export function getToken(): Promise<string | null> {
-  return getItem('auth_token')
+  return getItem('auth_token');
 }
 
 export function setToken(token: string): Promise<void> {
-  return setItem('auth_token', token)
+  return setItem('auth_token', token);
 }
 
 export function clearToken(): Promise<void> {
-  return deleteItem('auth_token')
+  return deleteItem('auth_token');
 }
 
-export { clearRequestCache }
+export { clearRequestCache };
 
-export { ApiError }
+export { ApiError };
 
 // Single-flight refresh — concurrent 401s share one refresh call instead of
 // each racing to burn the same refresh_token.
-let refreshPromise: Promise<string | null> | null = null
-let isRedirectingToAuth = false
+let refreshPromise: Promise<string | null> | null = null;
+let isRedirectingToAuth = false;
 
 export function redirectToAuth() {
-  if (isRedirectingToAuth) return
-  isRedirectingToAuth = true
+  if (isRedirectingToAuth) return;
+  isRedirectingToAuth = true;
   try {
     // Flip the Stack.Protected guards: with the token cleared, auth/phone
     // becomes the only route in the root stack. router.replace below is a
     // best-effort fallback for when the AuthProvider isn't mounted yet.
-    emitAuthChange({ authed: false })
-    router.replace('/auth/phone')
+    emitAuthChange({ authed: false });
+    router.replace('/auth/phone');
   } catch {
     // router might not be ready yet
   }
   setTimeout(() => {
-    isRedirectingToAuth = false
-  }, 4000)
+    isRedirectingToAuth = false;
+  }, 4000);
 }
 
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
-      const refreshToken = await getItem('refresh_token')
-      if (!refreshToken) return null
+      const refreshToken = await getItem('refresh_token');
+      if (!refreshToken) return null;
       try {
         const res = await fetch(`${API_URL}/v1/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: refreshToken }),
-        })
-        if (!res.ok) return null
+        });
+        if (!res.ok) return null;
         const { data } = (await res.json()) as {
-          data: { access_token: string; refresh_token: string }
-        }
-        await setToken(data.access_token)
-        await setItem('refresh_token', data.refresh_token)
-        return data.access_token
+          data: { access_token: string; refresh_token: string };
+        };
+        await setToken(data.access_token);
+        await setItem('refresh_token', data.refresh_token);
+        return data.access_token;
       } catch {
-        return null
+        return null;
       }
-    })()
+    })();
   }
-  const token = await refreshPromise
-  refreshPromise = null
-  return token
+  const token = await refreshPromise;
+  refreshPromise = null;
+  return token;
 }
 
 export async function request<T>(
@@ -82,14 +82,14 @@ export async function request<T>(
   options: RequestInit & { timeoutMs?: number; getCacheTtlMs?: number } = {},
   isRetry = false,
 ): Promise<T> {
-  const token = await getToken()
+  const token = await getToken();
   const headers: Record<string, string> = {
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers as Record<string, string> | undefined),
-  }
-  if (token) headers['Authorization'] = `Bearer ${token}`
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const method = (options.method ?? 'GET').toUpperCase()
+  const method = (options.method ?? 'GET').toUpperCase();
 
   try {
     const data = await cachedJsonRequest<T>(`${API_URL}${path}`, {
@@ -99,8 +99,8 @@ export async function request<T>(
       // Cache GET responses for 15s by default — stale-while-revalidate
       // pattern via react-query handles the rest
       getCacheTtlMs: method === 'GET' ? (options.getCacheTtlMs ?? 15_000) : 0,
-    })
-    return data
+    });
+    return data;
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
       throw new ApiError(
@@ -109,33 +109,33 @@ export async function request<T>(
           ? `Request timed out (${path}). Check that the API server is running at ${API_URL} and try again.`
           : 'The server took too long to respond. Please try again.',
         408,
-      )
+      );
     }
     // Handle errors from request-cache.ts (RequestError has .code/.status)
-    const cacheErr = err as { code?: string; status?: number }
-    const code = err instanceof ApiError ? err.code : cacheErr.code
-    const status = err instanceof ApiError ? err.status : cacheErr.status
+    const cacheErr = err as { code?: string; status?: number };
+    const code = err instanceof ApiError ? err.code : cacheErr.code;
+    const status = err instanceof ApiError ? err.status : cacheErr.status;
 
     // Expired access token — refresh once and retry the original request
     if (status === 401 && code === 'UNAUTHORIZED' && !isRetry) {
       if (!path.startsWith('/v1/auth/')) {
-        const newToken = await refreshAccessToken()
-        if (newToken) return request<T>(path, options, true)
-        await clearToken()
-        await deleteItem('refresh_token')
-        clearRequestCache()
-        redirectToAuth()
+        const newToken = await refreshAccessToken();
+        if (newToken) return request<T>(path, options, true);
+        await clearToken();
+        await deleteItem('refresh_token');
+        clearRequestCache();
+        redirectToAuth();
       }
     }
 
-    if (err instanceof ApiError) throw err
+    if (err instanceof ApiError) throw err;
     if (code && status) {
       throw new ApiError(
         code,
         err instanceof Error ? err.message : 'Request failed',
         status,
         (err as { results?: unknown[] | null } | null)?.results ?? null,
-      )
+      );
     }
     // Re-wrap raw fetch errors as ApiError. Name the exact URL the device
     // tried — a bare "Network request failed" gives no clue whether the app
@@ -147,7 +147,7 @@ export async function request<T>(
         ? `Network request failed to ${API_URL}${path}. Check that the API server is running and this device can reach it.`
         : 'No internet connection. Check your network and try again.',
       status ?? 0,
-    )
+    );
   }
 }
 
@@ -163,17 +163,19 @@ export async function request<T>(
 // File implements the Blob interface so it works as the body of a PUT fetch().
 export async function readLocalImage(uri: string, _timeoutMs = 15_000): Promise<Blob> {
   try {
-    const file = new File(uri)
+    const file = new File(uri);
     if (!file.exists) {
-      throw new Error('File does not exist at the specified path')
+      throw new Error('File does not exist at the specified path');
     }
-    return file
+    return file;
   } catch (err) {
     throw new ApiError(
       'READ_FAILED',
-      err instanceof Error ? err.message : 'Could not read the selected photo. Please try a different photo.',
+      err instanceof Error
+        ? err.message
+        : 'Could not read the selected photo. Please try a different photo.',
       500,
-    )
+    );
   }
 }
 
@@ -186,15 +188,15 @@ export async function prepareImageForUpload(
   contentType: string,
   options?: { compress?: boolean },
 ): Promise<{ uri: string; size: number }> {
-  let uri = localUri
+  let uri = localUri;
   if (contentType === 'image/jpeg' && (options?.compress ?? true)) {
     try {
-      uri = await compressImageForUpload(localUri)
+      uri = await compressImageForUpload(localUri);
     } catch (err) {
-      console.warn('Image compression failed — uploading original:', err)
+      console.warn('Image compression failed — uploading original:', err);
     }
   }
-  return { uri, size: new File(uri).size }
+  return { uri, size: new File(uri).size };
 }
 
 // PUTs the local file straight through native upload machinery (NSURLSession /
@@ -222,16 +224,16 @@ export async function uploadImageToR2(
   // Opt-outs (measurement photos, KYC docs) keep full detail — same
   // exclusion the server-side batch pass uses. Best-effort: a compression
   // failure uploads the original rather than failing the retailer's upload.
-  let uploadUri = localUri
+  let uploadUri = localUri;
   if (contentType === 'image/jpeg' && (options?.compress ?? true)) {
     try {
-      uploadUri = await compressImageForUpload(localUri)
+      uploadUri = await compressImageForUpload(localUri);
     } catch (err) {
-      console.warn('Image compression failed — uploading original:', err)
+      console.warn('Image compression failed — uploading original:', err);
     }
   }
 
-  let result: LegacyFileSystem.FileSystemUploadResult | undefined | null
+  let result: LegacyFileSystem.FileSystemUploadResult | undefined | null;
   try {
     const uploadPromise = onProgress
       ? LegacyFileSystem.createUploadTask(
@@ -244,7 +246,7 @@ export async function uploadImageToR2(
           },
           (data) => {
             if (data.totalBytesExpectedToSend > 0) {
-              onProgress(data.totalBytesSent / data.totalBytesExpectedToSend)
+              onProgress(data.totalBytesSent / data.totalBytesExpectedToSend);
             }
           },
         ).uploadAsync()
@@ -252,24 +254,25 @@ export async function uploadImageToR2(
           httpMethod: 'PUT',
           uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
           headers: { 'Content-Type': contentType },
-        })
+        });
 
     result = await Promise.race([
       uploadPromise,
       new Promise<never>((_, reject) =>
         setTimeout(
-          () => reject(new ApiError('TIMEOUT', 'Image upload timed out. Check your connection.', 408)),
+          () =>
+            reject(new ApiError('TIMEOUT', 'Image upload timed out. Check your connection.', 408)),
           timeoutMs,
         ),
       ),
-    ])
+    ]);
   } catch (err) {
-    if (err instanceof ApiError) throw err
+    if (err instanceof ApiError) throw err;
     throw new ApiError(
       'UPLOAD_FAILED',
       err instanceof Error ? err.message : 'Image upload failed',
       500,
-    )
+    );
   }
 
   if (!result || result.status < 200 || result.status >= 300) {
@@ -277,12 +280,12 @@ export async function uploadImageToR2(
     // (e.g. <Code>SignatureDoesNotMatch</Code> = bad/rotated R2 credentials on
     // the server) is the only diagnostic. Surface status + body — without it
     // every failure collapses to an unactionable "Image upload failed".
-    const detail = result?.body ? ` — ${String(result.body).slice(0, 300)}` : ''
-    console.error('R2 upload failed', result?.status, result?.body)
+    const detail = result?.body ? ` — ${String(result.body).slice(0, 300)}` : '';
+    console.error('R2 upload failed', result?.status, result?.body);
     throw new ApiError(
       'UPLOAD_FAILED',
       `Image upload failed (HTTP ${result?.status ?? 0})${detail}`,
       result?.status ?? 0,
-    )
+    );
   }
 }

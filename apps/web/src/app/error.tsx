@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
+import { useEffect } from 'react';
 
 // Root error boundary (App Router). Any uncaught client-side exception in a
 // route segment lands here — WITHOUT this file, Next.js shows the bare
@@ -11,14 +11,14 @@ export default function RootError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
     // Surface the real error to the console — the default page's "(see the
     // browser console for more information)" is useless without it.
-    console.error('[web:error]', error)
-  }, [error])
+    console.error('[web:error]', error);
+  }, [error]);
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6 bg-cotton">
@@ -26,9 +26,7 @@ export default function RootError({
         <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-ink-600 flex items-center justify-center">
           <span className="text-white font-bold text-lg">K</span>
         </div>
-        <h1 className="text-lg font-semibold text-charcoal mb-2">
-          Something went wrong
-        </h1>
+        <h1 className="text-lg font-semibold text-charcoal mb-2">Something went wrong</h1>
         <p className="text-sm text-sand-500 mb-1">
           {error.message || 'An unexpected error occurred on this page.'}
         </p>
@@ -43,5 +41,5 @@ export default function RootError({
         </button>
       </div>
     </div>
-  )
+  );
 }

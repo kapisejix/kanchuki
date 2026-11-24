@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, BarChart2 } from 'lucide-react-native'
-import { Text, View } from 'react-native'
-import { retailerApi } from '../lib/api'
+import { useQuery } from '@tanstack/react-query';
+import { AlertTriangle, BarChart2 } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import { retailerApi } from '../lib/api';
 
 /** F-010 plan usage vs limits (uploads, AI tagging, studio shoots). The API only
  * returns those three. Renders nothing while loading, on error (e.g. staff roles
@@ -10,20 +10,20 @@ const LABELS: Record<string, string> = {
   PRODUCT_UPLOAD: 'Product uploads',
   AI_TAGGING_CALL: 'AI Tagging',
   STUDIO_SHOOT: 'Studio shoots',
-}
+};
 
 function useActiveUsage() {
   const { data } = useQuery({
     queryKey: ['retailer', 'usage'],
     queryFn: () => retailerApi.getUsage(),
-  })
-  return (data?.data ?? []).filter((r) => r.limit > 0 && r.resource_type in LABELS)
+  });
+  return (data?.data ?? []).filter((r) => r.limit > 0 && r.resource_type in LABELS);
 }
 
 /** Compact "N left" rows for the Home catalog overview (light text on the dark hero). */
 export function UsageRows() {
-  const active = useActiveUsage()
-  if (active.length === 0) return null
+  const active = useActiveUsage();
+  if (active.length === 0) return null;
 
   return (
     <View
@@ -36,42 +36,46 @@ export function UsageRows() {
       }}
     >
       {active.map((r) => {
-        const left = Math.max(r.limit - r.used, 0)
-        const pctLeft = Math.round((left / r.limit) * 100)
+        const left = Math.max(r.limit - r.used, 0);
+        const pctLeft = Math.round((left / r.limit) * 100);
         return (
           <View key={r.resource_type} className="flex-row justify-between items-center">
-            <Text className="text-xs text-lavender-200">
-              {LABELS[r.resource_type]}
-            </Text>
+            <Text className="text-xs text-lavender-200">{LABELS[r.resource_type]}</Text>
             <Text className={`text-xs font-semibold ${left === 0 ? 'text-red-300' : 'text-white'}`}>
               {left} left · {pctLeft}%
             </Text>
           </View>
-        )
+        );
       })}
     </View>
-  )
+  );
 }
 
 export function UsageCard() {
-  const active = useActiveUsage()
-  if (active.length === 0) return null
+  const active = useActiveUsage();
+  if (active.length === 0) return null;
 
   return (
     <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
       <View className="flex-row items-center gap-2 mb-3">
         <BarChart2 size={16} color="#6B4773" />
-        <Text className="text-sm text-spaceCadet-900 font-extrabold font-marcellus">Usage & quotas</Text>
+        <Text className="text-sm text-spaceCadet-900 font-extrabold font-marcellus">
+          Usage & quotas
+        </Text>
       </View>
       {active.map((r) => {
-        const pct = Math.min(Math.round((r.used / r.limit) * 100), 100)
-        const isOver = r.used >= r.limit
-        const barColor = isOver ? '#dc2626' : pct > 80 ? '#BB3F95' : '#231F48'
+        const pct = Math.min(Math.round((r.used / r.limit) * 100), 100);
+        const isOver = r.used >= r.limit;
+        const barColor = isOver ? '#dc2626' : pct > 80 ? '#BB3F95' : '#231F48';
         return (
           <View key={r.resource_type} className="mb-2.5">
             <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-xs text-heliotrope-600 font-medium">{LABELS[r.resource_type]}</Text>
-              <Text className={`text-xs font-semibold ${isOver ? 'text-red-600' : 'text-spaceCadet-900'}`}>
+              <Text className="text-xs text-heliotrope-600 font-medium">
+                {LABELS[r.resource_type]}
+              </Text>
+              <Text
+                className={`text-xs font-semibold ${isOver ? 'text-red-600' : 'text-spaceCadet-900'}`}
+              >
                 {r.used}/{r.limit} {r.period === 'MONTH' ? 'mo' : r.period === 'DAY' ? 'day' : ''}
               </Text>
             </View>
@@ -84,12 +88,14 @@ export function UsageCard() {
             {isOver && (
               <View className="flex-row items-center gap-1 mt-1">
                 <AlertTriangle size={10} color="#dc2626" />
-                <Text className="text-[11px] text-red-600">Limit reached. Contact support for help.</Text>
+                <Text className="text-[11px] text-red-600">
+                  Limit reached. Contact support for help.
+                </Text>
               </View>
             )}
           </View>
-        )
+        );
       })}
     </View>
-  )
+  );
 }

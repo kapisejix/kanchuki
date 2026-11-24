@@ -1,120 +1,134 @@
-import { useRef, useState } from 'react'
-import { View, Text, TextInput, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
-import * as Sharing from 'expo-sharing'
-import { router } from 'expo-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../src/lib/safe-area'
-import { KeyboardScreen } from '../src/components/KeyboardScreen'
-import { X, Share2, Check, Download } from 'lucide-react-native'
-import QRCode from 'react-native-qrcode-svg'
-import { Paths } from 'expo-file-system'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Paths } from 'expo-file-system';
 // writeAsStringAsync throws (deprecated) from the SDK 54 barrel — the legacy
 // subpath is the sanctioned migration target (same as useProductAiStudio.ts).
-import { writeAsStringAsync } from 'expo-file-system/legacy'
-import { retailerApi, collectionApi } from '../src/lib/api'
-import { showError } from '../src/lib/errors'
-import { useTheme } from '../src/lib/theme'
-import { AnimatedPressable } from '../src/components/AnimatedPressable'
-import { DangerButton } from '../src/components/DangerButton'
-import { WHITE_BUTTON_INK, WhiteButton } from '../src/components/WhiteButton'
-import { GradientButton } from '../src/components/GradientButton'
+import { writeAsStringAsync } from 'expo-file-system/legacy';
+import { router } from 'expo-router';
+import * as Sharing from 'expo-sharing';
+import { Check, Download, Share2, X } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Linking,
+  ScrollView,
+  Share,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { DangerButton } from '../src/components/DangerButton';
+import { GradientButton } from '../src/components/GradientButton';
+import { KeyboardScreen } from '../src/components/KeyboardScreen';
+import { WHITE_BUTTON_INK, WhiteButton } from '../src/components/WhiteButton';
+import { collectionApi, retailerApi } from '../src/lib/api';
+import { showError } from '../src/lib/errors';
+import { useScreenInsets } from '../src/lib/safe-area';
+import { useTheme } from '../src/lib/theme';
 
-type QrSlug = { public_slug: string; profile_url: string }
+type QrSlug = { public_slug: string; profile_url: string };
 type RetailerMe = {
-  storefront_collection_id: string | null
-  public_slug: string | null
-  shop_name: string | null
-}
-type CollectionRow = { id: string; title: string; status: string; product_count: number }
+  storefront_collection_id: string | null;
+  public_slug: string | null;
+  shop_name: string | null;
+};
+type CollectionRow = { id: string; title: string; status: string; product_count: number };
 
 export default function StoreProfileScreen() {
-  const { colors } = useTheme()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
-  const qrRef = useRef<{ toDataURL: (cb: (base64: string) => void) => void } | null>(null)
-  const [exporting, setExporting] = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const { colors } = useTheme();
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
+  const qrRef = useRef<{ toDataURL: (cb: (base64: string) => void) => void } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const { data: meData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
-  })
-  const me = (meData as { data: RetailerMe } | undefined)?.data
-  const hasQr = !!me?.public_slug
+  });
+  const me = (meData as { data: RetailerMe } | undefined)?.data;
+  const hasQr = !!me?.public_slug;
 
   // Only fetch the QR URL once a slug exists — POST /me/qr-slug is
   // get-or-create, so calling it with no QR would silently auto-create one
   // and defeat the explicit "Generate QR Code" action below.
-  const { data: qrData, isLoading: qrLoading, isError: qrError, refetch: refetchQr } = useQuery({
+  const {
+    data: qrData,
+    isLoading: qrLoading,
+    isError: qrError,
+    refetch: refetchQr,
+  } = useQuery({
     queryKey: ['retailer', 'qr-slug'],
     queryFn: () => retailerApi.getQrSlug(),
     enabled: hasQr,
-  })
+  });
   const { data: collectionsData } = useQuery({
     queryKey: ['collections'],
     queryFn: () => collectionApi.list(),
-  })
+  });
 
   const setStorefront = useMutation({
     mutationFn: (collectionId: string) => retailerApi.setStorefront(collectionId),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] }),
-  })
+  });
 
   // Explicit generate — POST get-or-creates the slug from the current shop
   // name, then both queries refetch so the QR + link appear.
   const generateQr = useMutation({
     mutationFn: () => retailerApi.getQrSlug(),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] })
-      void queryClient.invalidateQueries({ queryKey: ['retailer', 'qr-slug'] })
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'qr-slug'] });
     },
-  })
+  });
 
   // Verified delete — the UI only calls this after the retailer typed their
   // shop name in the confirm view (see confirmingDelete below).
   const deleteQr = useMutation({
     mutationFn: () => retailerApi.deleteQrSlug(),
     onSuccess: () => {
-      setConfirmingDelete(false)
-      setDeleteConfirmText('')
-      void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] })
-      void queryClient.invalidateQueries({ queryKey: ['retailer', 'qr-slug'] })
+      setConfirmingDelete(false);
+      setDeleteConfirmText('');
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'qr-slug'] });
     },
-  })
+  });
 
   const handleExportImage = async () => {
-    if (!qr || exporting) return
-    setExporting(true)
+    if (!qr || exporting) return;
+    setExporting(true);
     try {
       // Get QR code as base64 PNG data URL via the SVG ref
       const dataUrl = await new Promise<string>((resolve, reject) => {
         if (qrRef.current) {
-          qrRef.current.toDataURL((base64: string) => resolve(base64))
+          qrRef.current.toDataURL((base64: string) => resolve(base64));
         } else {
-          reject(new Error('QR ref not available'))
+          reject(new Error('QR ref not available'));
         }
-      })
+      });
 
       // Write the PNG to a real file so it can be saved / shared as an image.
-      const fileUri = `${Paths.cache.uri}store-qr-${Date.now()}.png`
+      const fileUri = `${Paths.cache.uri}store-qr-${Date.now()}.png`;
       await writeAsStringAsync(fileUri, dataUrl, {
         encoding: 'base64',
-      })
+      });
 
       // Preferred (dev / EAS builds): save straight to the photo gallery.
       // expo-media-library's native module isn't in Expo Go — lazy-require so
       // that failure falls through to the share sheet. Same pattern as
       // useProductAiStudio.ts.
       try {
-        const MediaLibrary = await import('expo-media-library')
+        const MediaLibrary = await import('expo-media-library');
         // writeOnly — save-to-gallery only; never requests READ_MEDIA_IMAGES/VIDEO
         // (blocked in app.json per Play Photo & Video Permissions policy).
-        const perm = await MediaLibrary.requestPermissionsAsync(true)
+        const perm = await MediaLibrary.requestPermissionsAsync(true);
         if (perm.granted) {
-          await MediaLibrary.saveToLibraryAsync(fileUri)
-          Alert.alert('Saved', 'QR code saved to your photo gallery.')
-          return
+          await MediaLibrary.saveToLibraryAsync(fileUri);
+          Alert.alert('Saved', 'QR code saved to your photo gallery.');
+          return;
         }
       } catch {
         // Expo Go (no native module) — fall through to the share sheet.
@@ -123,216 +137,240 @@ export default function StoreProfileScreen() {
       // Fallback: share the actual PNG file (Save to Files, gallery apps,
       // WhatsApp…). Share.share drops `url` on Android, so use expo-sharing.
       if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert('Not available', 'Sharing is not available on this device.')
-        return
+        Alert.alert('Not available', 'Sharing is not available on this device.');
+        return;
       }
       await Sharing.shareAsync(fileUri, {
         mimeType: 'image/png',
         dialogTitle: 'Save or share QR code',
-      })
+      });
     } catch (err) {
-      showError(err, 'Could not export QR code', 'Export failed')
+      showError(err, 'Could not export QR code', 'Export failed');
     } finally {
-      setExporting(false)
+      setExporting(false);
     }
-  }
+  };
 
-  const qr = (qrData as { data: QrSlug } | undefined)?.data
-  const collections = ((collectionsData as { data: CollectionRow[] } | undefined)?.data ?? []).filter(
-    (c) => c.status === 'ACTIVE',
-  )
+  const qr = (qrData as { data: QrSlug } | undefined)?.data;
+  const collections = (
+    (collectionsData as { data: CollectionRow[] } | undefined)?.data ?? []
+  ).filter((c) => c.status === 'ACTIVE');
 
   // Onboarding routes here via router.replace (the final-step QR nudge), so
   // there may be NO prior route in the stack — back() would eject to the
   // auth screen. Fall back to the dashboard instead.
   const closeScreen = () => {
     if (router.canGoBack()) {
-      router.back()
+      router.back();
     } else {
-      router.replace('/')
+      router.replace('/');
     }
-  }
+  };
   // Verification gate for QR deletion: the typed text must match the shop
   // name AND be non-empty — so a null shop_name can never enable Delete on
   // an empty input ('' === '' would otherwise match).
   const deleteMatched =
     deleteConfirmText.trim().length > 0 &&
-    deleteConfirmText.trim().toLowerCase() === (me?.shop_name ?? '').trim().toLowerCase()
+    deleteConfirmText.trim().toLowerCase() === (me?.shop_name ?? '').trim().toLowerCase();
 
   return (
     <KeyboardScreen>
-    <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingTop: headerPaddingTop, paddingBottom: screenPaddingBottom }}>
-      <View className="flex-row items-center justify-between px-5 mb-4">
-        <AnimatedPressable
-          onPress={closeScreen}
-          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
-          accessibilityLabel="Close"
-          accessibilityRole="button"
-        >
-          <X size={20} color="#231F48" />
-        </AnimatedPressable>
-        <Text className="text-lg text-spaceCadet-900 font-extrabold font-marcellus">Store QR Code</Text>
-        <View className="w-10" />
-      </View>
+      <ScrollView
+        className="flex-1 bg-[#F8F7FC]"
+        contentContainerStyle={{ paddingTop: headerPaddingTop, paddingBottom: screenPaddingBottom }}
+      >
+        <View className="flex-row items-center justify-between px-5 mb-4">
+          <AnimatedPressable
+            onPress={closeScreen}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+          >
+            <X size={20} color="#231F48" />
+          </AnimatedPressable>
+          <Text className="text-lg text-spaceCadet-900 font-extrabold font-marcellus">
+            Store QR Code
+          </Text>
+          <View className="w-10" />
+        </View>
 
-      <View className="items-center px-6 mb-6">
-        <View className="bg-white rounded-2xl p-6 border border-lavender-200 items-center w-full max-w-sm">
-          {hasQr ? (
-            qrError ? (
-              <View className="w-56 h-56 items-center justify-center px-4">
-                <Text className="text-sm text-heliotrope-500 text-center mb-3">{"Couldn't load QR code"}</Text>
-                <AnimatedPressable
-                  onPress={() => void refetchQr()}
-                  className="bg-spaceCadet-900 rounded-full px-5 py-2.5"
-                >
-                  <Text className="text-white font-semibold text-xs uppercase tracking-wider">Retry</Text>
-                </AnimatedPressable>
-              </View>
-            ) : qrLoading || !qr ? (
-              <View className="w-56 h-56 items-center justify-center">
-                <ActivityIndicator color="#6B4773" />
-              </View>
+        <View className="items-center px-6 mb-6">
+          <View className="bg-white rounded-2xl p-6 border border-lavender-200 items-center w-full max-w-sm">
+            {hasQr ? (
+              qrError ? (
+                <View className="w-56 h-56 items-center justify-center px-4">
+                  <Text className="text-sm text-heliotrope-500 text-center mb-3">
+                    {"Couldn't load QR code"}
+                  </Text>
+                  <AnimatedPressable
+                    onPress={() => void refetchQr()}
+                    className="bg-spaceCadet-900 rounded-full px-5 py-2.5"
+                  >
+                    <Text className="text-white font-semibold text-xs uppercase tracking-wider">
+                      Retry
+                    </Text>
+                  </AnimatedPressable>
+                </View>
+              ) : qrLoading || !qr ? (
+                <View className="w-56 h-56 items-center justify-center">
+                  <ActivityIndicator color="#6B4773" />
+                </View>
+              ) : (
+                <View className="p-2 bg-white rounded-2xl border border-lavender-200">
+                  <QRCode
+                    value={qr.profile_url}
+                    size={200}
+                    getRef={(ref) => {
+                      qrRef.current = ref;
+                    }}
+                  />
+                </View>
+              )
             ) : (
-              <View className="p-2 bg-white rounded-2xl border border-lavender-200">
-                <QRCode value={qr.profile_url} size={200} getRef={(ref) => { qrRef.current = ref }} />
+              <View className="w-56 items-center justify-center px-2 py-4">
+                <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus text-center mb-1">
+                  No QR code yet
+                </Text>
+                <Text className="text-xs text-heliotrope-500 text-center mb-5 px-2">
+                  Generate one to let customers scan straight into your catalog.
+                </Text>
+                <View className="w-full">
+                  <GradientButton
+                    variant="web"
+                    label="Generate QR Code"
+                    onPress={() => generateQr.mutate()}
+                    loading={generateQr.isPending}
+                  />
+                </View>
               </View>
-            )
-          ) : (
-            <View className="w-56 items-center justify-center px-2 py-4">
-              <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus text-center mb-1">
-                No QR code yet
+            )}
+          </View>
+          <Text className="text-xs text-heliotrope-500 text-center mt-3 px-8">
+            {hasQr
+              ? 'Customers scan this to view your store profile and catalog'
+              : 'Your QR opens your store profile where customers browse your catalog'}
+          </Text>
+          {hasQr && qr && !confirmingDelete && (
+            <View className="w-full max-w-sm mt-4 gap-3">
+              <AnimatedPressable onPress={() => void Linking.openURL(qr.profile_url)}>
+                <Text className="text-xs text-fuchsia-600 font-semibold underline text-center">
+                  {qr.profile_url}
+                </Text>
+              </AnimatedPressable>
+
+              <GradientButton
+                variant="web"
+                label="Share Store Link"
+                onPress={() => void Share.share({ message: qr.profile_url })}
+                icon={<Share2 size={16} color="white" />}
+              />
+
+              <View className="flex-row gap-3 mt-1">
+                <View className="flex-1">
+                  <WhiteButton
+                    label="Save Image"
+                    icon={<Download size={14} color={WHITE_BUTTON_INK} />}
+                    loading={exporting}
+                    onPress={() => void handleExportImage()}
+                  />
+                </View>
+                <View className="flex-1">
+                  <DangerButton label="Delete QR" onPress={() => setConfirmingDelete(true)} />
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Delete verification — the retailer must type their shop name; the
+            Delete button stays disabled until it matches (case-insensitive).
+            The DELETE endpoint is never reachable without this confirmation. */}
+          {hasQr && confirmingDelete && (
+            <View className="w-full bg-white rounded-2xl border border-rust-300 p-4 mt-4">
+              <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">
+                Delete QR code?
               </Text>
-              <Text className="text-xs text-heliotrope-500 text-center mb-5 px-2">
-                Generate one to let customers scan straight into your catalog.
+              <Text className="text-xs text-heliotrope-500 mb-3 leading-4">
+                Your store link and any printed QR will stop working. This can&apos;t be undone —
+                type <Text className="font-semibold text-spaceCadet-900">{me?.shop_name}</Text> to
+                confirm.
               </Text>
-              <View className="w-full">
-                <GradientButton variant="web"
-                  label="Generate QR Code"
-                  onPress={() => generateQr.mutate()}
-                  loading={generateQr.isPending}
-                />
+              <TextInput
+                value={deleteConfirmText}
+                onChangeText={setDeleteConfirmText}
+                placeholder={me?.shop_name ?? 'Your shop name'}
+                placeholderTextColor={colors.sand[400]}
+                className="bg-lavender-50 border border-lavender-200 rounded-xl px-3 py-2.5 text-sm text-spaceCadet-900 mb-3"
+              />
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <WhiteButton
+                    label="Cancel"
+                    onPress={() => {
+                      setConfirmingDelete(false);
+                      setDeleteConfirmText('');
+                    }}
+                  />
+                </View>
+                <View className="flex-1">
+                  <DangerButton
+                    label="Delete QR"
+                    loading={deleteQr.isPending}
+                    disabled={!deleteMatched}
+                    onPress={() => deleteQr.mutate()}
+                  />
+                </View>
               </View>
             </View>
           )}
         </View>
-        <Text className="text-xs text-heliotrope-500 text-center mt-3 px-8">
-          {hasQr
-            ? 'Customers scan this to view your store profile and catalog'
-            : 'Your QR opens your store profile where customers browse your catalog'}
-        </Text>
-        {hasQr && qr && !confirmingDelete && (
-          <View className="w-full max-w-sm mt-4 gap-3">
-            <AnimatedPressable onPress={() => void Linking.openURL(qr.profile_url)}>
-              <Text className="text-xs text-fuchsia-600 font-semibold underline text-center">
-                {qr.profile_url}
+
+        <View className="px-4">
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
+            Catalog shown after scan
+          </Text>
+          <Text className="text-xs text-heliotrope-500 mb-3">
+            Pick which collection opens once a visitor fills the contact form
+          </Text>
+
+          {collections.length === 0 ? (
+            <View className="bg-white rounded-2xl p-4 border border-lavender-200">
+              <Text className="text-sm text-heliotrope-500">
+                No active collections yet — create one from the Collections tab first.
               </Text>
-            </AnimatedPressable>
-
-            <GradientButton variant="web"
-              label="Share Store Link"
-              onPress={() => void Share.share({ message: qr.profile_url })}
-              icon={<Share2 size={16} color="white" />}
-            />
-
-            <View className="flex-row gap-3 mt-1">
-              <View className="flex-1">
-                <WhiteButton
-                  label="Save Image"
-                  icon={<Download size={14} color={WHITE_BUTTON_INK} />}
-                  loading={exporting}
-                  onPress={() => void handleExportImage()}
-                />
-              </View>
-              <View className="flex-1">
-                <DangerButton label="Delete QR" onPress={() => setConfirmingDelete(true)} />
-              </View>
             </View>
-          </View>
-        )}
-
-        {/* Delete verification — the retailer must type their shop name; the
-            Delete button stays disabled until it matches (case-insensitive).
-            The DELETE endpoint is never reachable without this confirmation. */}
-        {hasQr && confirmingDelete && (
-          <View className="w-full bg-white rounded-2xl border border-rust-300 p-4 mt-4">
-            <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">Delete QR code?</Text>
-            <Text className="text-xs text-heliotrope-500 mb-3 leading-4">
-              Your store link and any printed QR will stop working. This can&apos;t be undone — type{' '}
-              <Text className="font-semibold text-spaceCadet-900">{me?.shop_name}</Text> to confirm.
-            </Text>
-            <TextInput
-              value={deleteConfirmText}
-              onChangeText={setDeleteConfirmText}
-              placeholder={me?.shop_name ?? 'Your shop name'}
-              placeholderTextColor={colors.sand[400]}
-              className="bg-lavender-50 border border-lavender-200 rounded-xl px-3 py-2.5 text-sm text-spaceCadet-900 mb-3"
-            />
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <WhiteButton
-                  label="Cancel"
-                  onPress={() => {
-                    setConfirmingDelete(false)
-                    setDeleteConfirmText('')
-                  }}
-                />
-              </View>
-              <View className="flex-1">
-                <DangerButton
-                  label="Delete QR"
-                  loading={deleteQr.isPending}
-                  disabled={!deleteMatched}
-                  onPress={() => deleteQr.mutate()}
-                />
-              </View>
-            </View>
-          </View>
-        )}
-      </View>
-
-      <View className="px-4">
-        <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
-          Catalog shown after scan
-        </Text>
-        <Text className="text-xs text-heliotrope-500 mb-3">
-          Pick which collection opens once a visitor fills the contact form
-        </Text>
-
-        {collections.length === 0 ? (
-          <View className="bg-white rounded-2xl p-4 border border-lavender-200">
-            <Text className="text-sm text-heliotrope-500">
-              No active collections yet — create one from the Collections tab first.
-            </Text>
-          </View>
-        ) : (
-          <View className="gap-2">
-            {collections.map((c) => {
-              const isSelected = me?.storefront_collection_id === c.id
-              return (
-                <AnimatedPressable
-                  key={c.id}
-                  onPress={() => setStorefront.mutate(c.id)}
-                  disabled={setStorefront.isPending}
-                  className={`flex-row items-center justify-between rounded-2xl p-4 border overflow-hidden ${
-                    isSelected ? 'bg-lavender-100 border-spaceCadet-900' : 'bg-white border-lavender-200'
-                  }`}
-                >
-                  <View>
-                    <Text className="text-sm font-semibold text-spaceCadet-900">{c.title}</Text>
-                    <Text className="text-xs mt-0.5 text-heliotrope-500">{c.product_count} products</Text>
-                  </View>
-                  {isSelected && (
-                    <View className="w-6 h-6 rounded-full bg-spaceCadet-900 items-center justify-center">
-                      <Check size={14} color="white" />
+          ) : (
+            <View className="gap-2">
+              {collections.map((c) => {
+                const isSelected = me?.storefront_collection_id === c.id;
+                return (
+                  <AnimatedPressable
+                    key={c.id}
+                    onPress={() => setStorefront.mutate(c.id)}
+                    disabled={setStorefront.isPending}
+                    className={`flex-row items-center justify-between rounded-2xl p-4 border overflow-hidden ${
+                      isSelected
+                        ? 'bg-lavender-100 border-spaceCadet-900'
+                        : 'bg-white border-lavender-200'
+                    }`}
+                  >
+                    <View>
+                      <Text className="text-sm font-semibold text-spaceCadet-900">{c.title}</Text>
+                      <Text className="text-xs mt-0.5 text-heliotrope-500">
+                        {c.product_count} products
+                      </Text>
                     </View>
-                  )}
-                </AnimatedPressable>
-              )
-            })}
-          </View>
-        )}
-      </View>
-    </ScrollView>
+                    {isSelected && (
+                      <View className="w-6 h-6 rounded-full bg-spaceCadet-900 items-center justify-center">
+                        <Check size={14} color="white" />
+                      </View>
+                    )}
+                  </AnimatedPressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </KeyboardScreen>
-  )
+  );
 }

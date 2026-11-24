@@ -1,4 +1,4 @@
-import React from 'react'
+import React from 'react';
 
 /**
  * Mock for next/link.
@@ -10,14 +10,14 @@ export default function MockLink({
   className,
   onClick,
 }: {
-  href: string
-  children: React.ReactNode
-  className?: string
-  onClick?: () => void
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
 }) {
   return (
     <a href={href} className={className} onClick={onClick}>
       {children}
     </a>
-  )
+  );
 }

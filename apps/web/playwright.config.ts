@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test';
 
 // Admin UI regression tests. The suite mocks every /v1/* API call in-page
 // (see e2e/admin-navigation.spec.ts), so it exercises layout/navigation
@@ -21,9 +21,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   // CI uploads playwright-report/ as an artifact on failure — the html
   // reporter is what produces that directory. Locally keep it quiet (list only).
-  reporter: process.env.CI
-    ? [['list'], ['html', { open: 'never' }]]
-    : [['list']],
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     ...devices['Desktop Chrome'],
     channel: 'chrome',
@@ -45,8 +43,7 @@ export default defineConfig({
     // package (same failure mode the customer suite avoids by building via
     // turbo). Then start only the web dev server: the spec intercepts every
     // /v1/* call in-page, so no API backend is needed.
-    command:
-      'pnpm exec turbo build --filter=@kanchuki/shared && pnpm --filter @kanchuki/web dev',
+    command: 'pnpm exec turbo build --filter=@kanchuki/shared && pnpm --filter @kanchuki/web dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
@@ -59,4 +56,4 @@ export default defineConfig({
       NEXT_PUBLIC_API_URL: 'http://localhost:3001',
     },
   },
-})
+});

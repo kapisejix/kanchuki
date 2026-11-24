@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import {
   AlertCircle,
   CheckCircle2,
@@ -9,10 +9,10 @@ import {
   RotateCcw,
   Save,
   Upload,
-} from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type WatermarkGravity =
   | 'northwest'
@@ -23,17 +23,17 @@ type WatermarkGravity =
   | 'east'
   | 'southwest'
   | 'south'
-  | 'southeast'
+  | 'southeast';
 
 type WatermarkConfig = {
-  logo_r2_key: string | null
-  opacity: number // 0.05–1
-  scale: number // 0.02–1 (logo width as a fraction of the design width)
-  gravity: WatermarkGravity
-  strip_count: number // 1–24 thumbs before "View more"
+  logo_r2_key: string | null;
+  opacity: number; // 0.05–1
+  scale: number; // 0.02–1 (logo width as a fraction of the design width)
+  gravity: WatermarkGravity;
+  strip_count: number; // 1–24 thumbs before "View more"
   /** Server-derived R2 public URL for the configured logo (null = built-in). */
-  logo_url: string | null
-}
+  logo_url: string | null;
+};
 
 const GRAVITY_OPTIONS: { value: WatermarkGravity; label: string }[] = [
   { value: 'northwest', label: 'Top-left' },
@@ -45,7 +45,7 @@ const GRAVITY_OPTIONS: { value: WatermarkGravity; label: string }[] = [
   { value: 'southwest', label: 'Bottom-left' },
   { value: 'south', label: 'Bottom-centre' },
   { value: 'southeast', label: 'Bottom-right' },
-]
+];
 
 // Defaults mirror the API's code fallback (lib/showcase-watermark.ts) so the
 // sliders/selects render sane positions before the GET resolves.
@@ -56,50 +56,53 @@ const DEFAULT_CONFIG: WatermarkConfig = {
   gravity: 'southeast',
   strip_count: 6,
   logo_url: null,
-}
+};
 
-const fmt = (pct: number) => `${Math.round(pct * 100)}%`
+const fmt = (pct: number) => `${Math.round(pct * 100)}%`;
 
 export default function ShowcaseWatermarkSettings() {
-  const [saved, setSaved] = useState<WatermarkConfig>(DEFAULT_CONFIG)
-  const [draft, setDraft] = useState<WatermarkConfig>(DEFAULT_CONFIG)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [saved, setSaved] = useState<WatermarkConfig>(DEFAULT_CONFIG);
+  const [draft, setDraft] = useState<WatermarkConfig>(DEFAULT_CONFIG);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setStatus(null)
+    setLoading(true);
+    setStatus(null);
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/showcase-watermark`, adminGetOptions())
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      const cfg = { ...DEFAULT_CONFIG, ...(json.data ?? {}) } as WatermarkConfig
-      setSaved(cfg)
-      setDraft(cfg)
+      const res = await fetch(`${API_URL}/v1/admin/settings/showcase-watermark`, adminGetOptions());
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const cfg = { ...DEFAULT_CONFIG, ...(json.data ?? {}) } as WatermarkConfig;
+      setSaved(cfg);
+      setDraft(cfg);
     } catch (err) {
-      setStatus({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to load watermark config' })
+      setStatus({
+        kind: 'err',
+        text: err instanceof Error ? err.message : 'Failed to load watermark config',
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    load()
-  }, [load])
+    load();
+  }, [load]);
 
   const isDirty =
     draft.logo_r2_key !== saved.logo_r2_key ||
     draft.opacity !== saved.opacity ||
     draft.scale !== saved.scale ||
     draft.gravity !== saved.gravity ||
-    draft.strip_count !== saved.strip_count
+    draft.strip_count !== saved.strip_count;
 
   const handleSave = async () => {
-    setSaving(true)
-    setStatus(null)
+    setSaving(true);
+    setStatus(null);
     try {
       const res = await fetch(`${API_URL}/v1/admin/settings/showcase-watermark`, {
         ...(await adminMutateOptions()),
@@ -111,59 +114,66 @@ export default function ShowcaseWatermarkSettings() {
           gravity: draft.gravity,
           strip_count: draft.strip_count,
         }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      const cfg = { ...DEFAULT_CONFIG, ...(json.data ?? {}) } as WatermarkConfig
-      setSaved(cfg)
-      setDraft(cfg)
-      setStatus({ kind: 'ok', text: 'Watermark config saved — new design uploads use it' })
-      setTimeout(() => setStatus(null), 5000)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const cfg = { ...DEFAULT_CONFIG, ...(json.data ?? {}) } as WatermarkConfig;
+      setSaved(cfg);
+      setDraft(cfg);
+      setStatus({ kind: 'ok', text: 'Watermark config saved — new design uploads use it' });
+      setTimeout(() => setStatus(null), 5000);
     } catch (err) {
-      setStatus({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to save' })
+      setStatus({ kind: 'err', text: err instanceof Error ? err.message : 'Failed to save' });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setBusy('Uploading logo…')
-    setStatus(null)
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy('Uploading logo…');
+    setStatus(null);
     try {
-      const presign = await fetch(`${API_URL}/v1/admin/settings/showcase-watermark/logo-upload-url`, {
-        ...(await adminMutateOptions()),
-        method: 'POST',
-        body: JSON.stringify({ content_type: file.type || 'image/png', filename: file.name, content_length: file.size }),
-      })
-      if (!presign.ok) throw new Error('Failed to get an upload URL')
-      const { data } = await presign.json()
+      const presign = await fetch(
+        `${API_URL}/v1/admin/settings/showcase-watermark/logo-upload-url`,
+        {
+          ...(await adminMutateOptions()),
+          method: 'POST',
+          body: JSON.stringify({
+            content_type: file.type || 'image/png',
+            filename: file.name,
+            content_length: file.size,
+          }),
+        },
+      );
+      if (!presign.ok) throw new Error('Failed to get an upload URL');
+      const { data } = await presign.json();
 
       const put = await fetch(data.upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': file.type || 'image/png' },
         body: file,
-      })
-      if (!put.ok) throw new Error('Upload to storage failed')
+      });
+      if (!put.ok) throw new Error('Upload to storage failed');
 
       // Draft-only until Save — admins can swap logos without persisting.
-      setDraft((prev) => ({ ...prev, logo_r2_key: data.r2_key, logo_url: data.public_url }))
-      setStatus({ kind: 'ok', text: 'Logo uploaded — press Save to apply it' })
-      setTimeout(() => setStatus(null), 5000)
+      setDraft((prev) => ({ ...prev, logo_r2_key: data.r2_key, logo_url: data.public_url }));
+      setStatus({ kind: 'ok', text: 'Logo uploaded — press Save to apply it' });
+      setTimeout(() => setStatus(null), 5000);
     } catch (err) {
-      setStatus({ kind: 'err', text: err instanceof Error ? err.message : 'Logo upload failed' })
+      setStatus({ kind: 'err', text: err instanceof Error ? err.message : 'Logo upload failed' });
     } finally {
-      setBusy(null)
+      setBusy(null);
     }
-  }
+  };
 
   const clearLogo = () => {
-    setDraft((prev) => ({ ...prev, logo_r2_key: null, logo_url: null }))
-    setStatus({ kind: 'ok', text: 'Built-in Kanchuki logo selected — press Save to apply it' })
-    setTimeout(() => setStatus(null), 5000)
-  }
+    setDraft((prev) => ({ ...prev, logo_r2_key: null, logo_url: null }));
+    setStatus({ kind: 'ok', text: 'Built-in Kanchuki logo selected — press Save to apply it' });
+    setTimeout(() => setStatus(null), 5000);
+  };
 
   return (
     <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 shadow-lg p-6">
@@ -177,9 +187,9 @@ export default function ShowcaseWatermarkSettings() {
         )}
       </div>
       <p className="text-xs text-gray-500 mb-5">
-        Stamped on every design (retailer uploads fall back to this when the store has no own
-        logo). Applies to designs uploaded <span className="font-medium">after</span> saving —
-        existing designs keep the watermark they were created with.
+        Stamped on every design (retailer uploads fall back to this when the store has no own logo).
+        Applies to designs uploaded <span className="font-medium">after</span> saving — existing
+        designs keep the watermark they were created with.
       </p>
 
       {status && (
@@ -322,12 +332,12 @@ export default function ShowcaseWatermarkSettings() {
                 step={1}
                 value={draft.strip_count}
                 onChange={(e) => {
-                  const n = Number(e.target.value)
+                  const n = Number(e.target.value);
                   if (Number.isInteger(n)) {
                     setDraft((prev) => ({
                       ...prev,
                       strip_count: Math.min(24, Math.max(1, n)),
-                    }))
+                    }));
                   }
                 }}
                 aria-label="Designs shown before View more"
@@ -349,5 +359,5 @@ export default function ShowcaseWatermarkSettings() {
         </div>
       )}
     </div>
-  )
+  );
 }

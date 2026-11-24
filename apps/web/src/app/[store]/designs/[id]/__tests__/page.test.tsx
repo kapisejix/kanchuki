@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DesignPermalinkPage from '../page';
 
 // next/image renders through Next's optimizer config which jsdom doesn't
@@ -22,9 +22,9 @@ vi.mock('next/link', () => ({
     prefetch: _prefetch,
     ...rest
   }: {
-    href: string
-    children: React.ReactNode
-    prefetch?: boolean
+    href: string;
+    children: React.ReactNode;
+    prefetch?: boolean;
   }) => (
     <a href={href} {...rest}>
       {children}
@@ -122,9 +122,11 @@ afterEach(() => {
 });
 
 const renderPermalink = async () =>
-  DesignPermalinkPage({ params: Promise.resolve({ store: 'meera-sarees', id: 'design-1' }) }).then((el) => {
-    render(el);
-  });
+  DesignPermalinkPage({ params: Promise.resolve({ store: 'meera-sarees', id: 'design-1' }) }).then(
+    (el) => {
+      render(el);
+    },
+  );
 
 describe('DesignPermalinkPage ({store}/designs/[id])', () => {
   it('renders a retailer-owned design under its own store URL', async () => {
@@ -146,10 +148,13 @@ describe('DesignPermalinkPage ({store}/designs/[id])', () => {
     await renderPermalink();
     // No name — falls back to the category label for the image alt/heading.
     expect(screen.getByAltText('Suits design')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Visit store/ })).toHaveAttribute('href', '/meera-sarees');
+    expect(screen.getByRole('link', { name: /Visit store/ })).toHaveAttribute(
+      'href',
+      '/meera-sarees',
+    );
   });
 
-  it("404s a retailer-owned design on a foreign store URL (cross-store leak guard)", async () => {
+  it('404s a retailer-owned design on a foreign store URL (cross-store leak guard)', async () => {
     // design-1 belongs to meera-sarees but is requested under another store.
     fetchRoutes['https://api.test.invalid/v1/public/retailers/radha-stores'] = {
       status: 200,
@@ -170,7 +175,9 @@ describe('DesignPermalinkPage ({store}/designs/[id])', () => {
     fetchRoutes[designUrl] = { status: 200, body: ownDesign };
 
     await expect(
-      DesignPermalinkPage({ params: Promise.resolve({ store: 'radha-stores', id: 'design-1' }) }).then(() => undefined),
+      DesignPermalinkPage({
+        params: Promise.resolve({ store: 'radha-stores', id: 'design-1' }),
+      }).then(() => undefined),
     ).rejects.toThrow('NEXT_NOT_FOUND');
     expect(notFoundMock).toHaveBeenCalled();
   });

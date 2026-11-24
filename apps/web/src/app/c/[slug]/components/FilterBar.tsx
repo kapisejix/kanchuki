@@ -1,12 +1,12 @@
-'use client'
+'use client';
 
-import { PUBLIC_PRICE_BUCKETS } from '@kanchuki/shared'
+import { PUBLIC_PRICE_BUCKETS } from '@kanchuki/shared';
 
 // Facet option shape returned by the public API: a value plus how many
 // products carry it (drives the "All (10)", "Kurta (1)" chip labels).
 export interface FilterOption {
-  value: string
-  count: number
+  value: string;
+  count: number;
 }
 
 function chipClass(active: boolean): string {
@@ -14,17 +14,17 @@ function chipClass(active: boolean): string {
     active
       ? 'bg-[#231F48] text-white border-[#231F48] shadow-sm'
       : 'bg-white text-[#231F48] border-[#E0E1F6] hover:border-[#BB3F95] hover:text-[#BB3F95]'
-  }`
+  }`;
 }
 
 // Always-visible category chip row rendered above the product grid — the
 // category filter is the primary browse axis, so it's never hidden behind
 // the filter toggle. The "All" chip carries the collection total.
 interface CategoryChipsProps {
-  categories: FilterOption[]
-  filterCategory: string | null
-  totalCount: number
-  onCategoryChange: (category: string | null) => void
+  categories: FilterOption[];
+  filterCategory: string | null;
+  totalCount: number;
+  onCategoryChange: (category: string | null) => void;
 }
 
 export function CategoryChips({
@@ -33,28 +33,31 @@ export function CategoryChips({
   totalCount,
   onCategoryChange,
 }: CategoryChipsProps) {
-  if (categories.length === 0) return null
+  if (categories.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide" role="group" aria-label="Filter by category">
+    <div
+      className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide"
+      role="group"
+      aria-label="Filter by category"
+    >
       <span className="text-xs text-gray-500 flex-shrink-0">Category:</span>
-      <button
-        onClick={() => onCategoryChange(null)}
-        className={chipClass(filterCategory === null)}
-      >
+      <button onClick={() => onCategoryChange(null)} className={chipClass(filterCategory === null)}>
         All ({totalCount})
       </button>
       {categories.map((category) => (
         <button
           key={category.value}
-          onClick={() => onCategoryChange(filterCategory === category.value ? null : category.value)}
+          onClick={() =>
+            onCategoryChange(filterCategory === category.value ? null : category.value)
+          }
           className={chipClass(filterCategory === category.value)}
         >
           {category.value} ({category.count})
         </button>
       ))}
     </div>
-  )
+  );
 }
 
 // Size row — deliberately NOT behind the filter toggle. A shopper whose size
@@ -63,15 +66,15 @@ export function CategoryChips({
 // API returns sizes in the canonical S–8XL ladder (buildSizeFacet), so the row
 // reads like a size chart instead of a frequency table.
 interface SizeChipsProps {
-  sizes: FilterOption[]
-  filterSize: string | null
-  onSizeChange: (size: string | null) => void
+  sizes: FilterOption[];
+  filterSize: string | null;
+  onSizeChange: (size: string | null) => void;
 }
 
 export function SizeChips({ sizes, filterSize, onSizeChange }: SizeChipsProps) {
   // One size is not a choice — every product has it, so the row would be
   // decoration. Same reason the colour row hides at length <= 1.
-  if (sizes.length <= 1) return null
+  if (sizes.length <= 1) return null;
 
   return (
     <div
@@ -94,17 +97,17 @@ export function SizeChips({ sizes, filterSize, onSizeChange }: SizeChipsProps) {
         </button>
       ))}
     </div>
-  )
+  );
 }
 
 // Secondary filters (price / color) — revealed behind the filter toggle. The
 // category row lives in CategoryChips above the grid instead.
 interface FilterBarProps {
-  colors: FilterOption[]
-  filterPrice: string | null
-  filterColor: string | null
-  onPriceChange: (price: string | null) => void
-  onColorChange: (color: string | null) => void
+  colors: FilterOption[];
+  filterPrice: string | null;
+  filterColor: string | null;
+  onPriceChange: (price: string | null) => void;
+  onColorChange: (color: string | null) => void;
 }
 
 export function FilterBar({
@@ -119,10 +122,7 @@ export function FilterBar({
       {/* Price filter */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <span className="text-xs text-gray-500 flex-shrink-0">Price:</span>
-        <button
-          onClick={() => onPriceChange(null)}
-          className={chipClass(filterPrice === null)}
-        >
+        <button onClick={() => onPriceChange(null)} className={chipClass(filterPrice === null)}>
           All
         </button>
         {PUBLIC_PRICE_BUCKETS.map((bucket) => (
@@ -140,10 +140,7 @@ export function FilterBar({
       {colors.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <span className="text-xs text-gray-500 flex-shrink-0">Color:</span>
-          <button
-            onClick={() => onColorChange(null)}
-            className={chipClass(filterColor === null)}
-          >
+          <button onClick={() => onColorChange(null)} className={chipClass(filterColor === null)}>
             All
           </button>
           {colors.map((color) => (
@@ -162,5 +159,5 @@ export function FilterBar({
         </div>
       )}
     </div>
-  )
+  );
 }

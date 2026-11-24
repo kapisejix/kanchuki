@@ -1,5 +1,5 @@
-import { revalidatePath } from 'next/cache'
-import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache';
+import { NextResponse } from 'next/server';
 
 /**
  * On-demand ISR revalidation endpoint.
@@ -21,35 +21,35 @@ import { NextResponse } from 'next/server'
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
-      secret?: string
-      path?: string
-      collection_slug?: string // legacy field — accepted for backward compat
-    }
+      secret?: string;
+      path?: string;
+      collection_slug?: string; // legacy field — accepted for backward compat
+    };
 
     // Verify secret
-    const expected = process.env['REVALIDATION_SECRET']
+    const expected = process.env['REVALIDATION_SECRET'];
     if (!expected || body.secret !== expected) {
       return NextResponse.json(
         { error: { code: 'UNAUTHORIZED', message: 'Invalid secret', status: 401 } },
         { status: 401 },
-      )
+      );
     }
 
     // Legacy callers send collection_slug; canonical callers send a full path
-    const path = body.path ?? (body.collection_slug ? `/c/${body.collection_slug}` : null)
+    const path = body.path ?? (body.collection_slug ? `/c/${body.collection_slug}` : null);
     if (!path) {
       return NextResponse.json(
         { error: { code: 'VALIDATION_ERROR', message: 'path is required', status: 400 } },
         { status: 400 },
-      )
+      );
     }
 
     // Revalidate the specific collection page
-    revalidatePath(path)
+    revalidatePath(path);
 
     return NextResponse.json({
       data: { revalidated: true, path },
-    })
+    });
   } catch (err) {
     return NextResponse.json(
       {
@@ -60,6 +60,6 @@ export async function POST(request: Request) {
         },
       },
       { status: 500 },
-    )
+    );
   }
 }

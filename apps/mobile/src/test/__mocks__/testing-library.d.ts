@@ -12,23 +12,23 @@
  * '@testing-library/react-native' (setup.ts vi.mocks it to this same file).
  */
 
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react';
 
 export interface RenderOptions {
-  wrapper?: (props: { children: ReactNode }) => ReactNode
+  wrapper?: (props: { children: ReactNode }) => ReactNode;
 }
 
 export interface RenderResult {
   /** Snapshot-style JSON of the rendered tree. */
-  toJSON: () => unknown
+  toJSON: () => unknown;
   /** react-test-renderer tree (host + composite nodes with props/children). */
-  toTree: () => unknown
-  rerender: (ui: ReactElement) => void
-  unmount: () => void
-  readonly container: unknown
-  debug: () => void
-  queryByTestId: (testId: string) => unknown
-  getByTestId: (testId: string) => unknown
+  toTree: () => unknown;
+  rerender: (ui: ReactElement) => void;
+  unmount: () => void;
+  readonly container: unknown;
+  debug: () => void;
+  queryByTestId: (testId: string) => unknown;
+  getByTestId: (testId: string) => unknown;
 }
 
-export declare function render(ui: ReactElement, options?: RenderOptions): RenderResult
+export declare function render(ui: ReactElement, options?: RenderOptions): RenderResult;

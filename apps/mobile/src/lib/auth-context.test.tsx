@@ -1,14 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import React from 'react'
-import renderer, { act } from 'react-test-renderer'
-import { Text } from 'react-native'
-import { router } from 'expo-router'
-import {
-  AuthProvider,
-  useAuth,
-  type AuthContextValue,
-} from './auth-context'
-import { emitAuthChange } from './auth-events'
+import { router } from 'expo-router';
+import React from 'react';
+import { Text } from 'react-native';
+import renderer, { act } from 'react-test-renderer';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { type AuthContextValue, AuthProvider, useAuth } from './auth-context';
+import { emitAuthChange } from './auth-events';
 
 // ── Module mocks ──────────────────────────────────────────────────
 // The provider's dep tree pulls in the full API client (expo-file-system +
@@ -17,132 +13,130 @@ import { emitAuthChange } from './auth-events'
 // map so hydration, signOut and the 401-flip event are all fully controlled.
 // './auth-events' stays REAL — the provider must react to its emissions.
 
-const store = vi.hoisted(() => new Map<string, string>())
+const store = vi.hoisted(() => new Map<string, string>());
 
 vi.mock('expo-router', () => ({
   router: { navigate: vi.fn(), replace: vi.fn(), back: vi.fn() },
-}))
+}));
 
 vi.mock('./api', () => ({
   getToken: vi.fn(async () => store.get('auth_token') ?? null),
   clearRequestCache: vi.fn(async () => {}),
-}))
+}));
 
 // F-046: signOut unregisters the push token first; that path has its own test.
-vi.mock('./push-notifications', () => ({ unregisterPush: vi.fn(async () => {}) }))
+vi.mock('./push-notifications', () => ({ unregisterPush: vi.fn(async () => {}) }));
 
 vi.mock('./storage', () => ({
   getItem: vi.fn(async (key: string) => store.get(key) ?? null),
   setItem: vi.fn(async (key: string, value: string) => {
-    store.set(key, value)
+    store.set(key, value);
   }),
   deleteItem: vi.fn(async (key: string) => {
-    store.delete(key)
+    store.delete(key);
   }),
-}))
+}));
 
 // RC-107: the authed:false cleanup wipes the on-disk query cache; its own test lives in
 // offline-persister.test.ts, here only the call is asserted.
-const clearPersistedCache = vi.hoisted(() => vi.fn(async () => {}))
-vi.mock('./offline-persister', () => ({ clearPersistedCache }))
+const clearPersistedCache = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock('./offline-persister', () => ({ clearPersistedCache }));
 
 beforeEach(() => {
-  store.clear()
-  vi.clearAllMocks()
-})
+  store.clear();
+  vi.clearAllMocks();
+});
 
 /** Mount AuthProvider around a probe that captures the context value. */
 async function mount() {
-  let captured: AuthContextValue | null = null
+  let captured: AuthContextValue | null = null;
   function Probe() {
-    captured = useAuth()
-    return React.createElement(Text, null, captured.status)
+    captured = useAuth();
+    return React.createElement(Text, null, captured.status);
   }
   await act(async () => {
-    renderer.create(
-      React.createElement(AuthProvider, null, React.createElement(Probe)),
-    )
-  })
+    renderer.create(React.createElement(AuthProvider, null, React.createElement(Probe)));
+  });
   const flush = async () => {
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0))
-    })
-  }
-  return { get: () => captured, flush }
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  };
+  return { get: () => captured, flush };
 }
 
 describe('AuthProvider', () => {
   it('hydrates to unauthenticated when no token is stored', async () => {
-    const { get, flush } = await mount()
-    await flush()
+    const { get, flush } = await mount();
+    await flush();
 
-    expect(get()!.status).toBe('unauthenticated')
-    expect(get()!.isAuthenticated).toBe(false)
-    expect(get()!.isShopStaff).toBe(false)
-    expect(get()!.isTeamMember).toBe(false)
-  })
+    expect(get()!.status).toBe('unauthenticated');
+    expect(get()!.isAuthenticated).toBe(false);
+    expect(get()!.isShopStaff).toBe(false);
+    expect(get()!.isTeamMember).toBe(false);
+  });
 
   it('hydrates to authenticated (retailer) when only a token is stored', async () => {
-    store.set('auth_token', 'tok-1')
-    const { get, flush } = await mount()
-    await flush()
+    store.set('auth_token', 'tok-1');
+    const { get, flush } = await mount();
+    await flush();
 
-    expect(get()!.status).toBe('authenticated')
-    expect(get()!.isAuthenticated).toBe(true)
-    expect(get()!.isShopStaff).toBe(false)
-    expect(get()!.isTeamMember).toBe(false)
-  })
+    expect(get()!.status).toBe('authenticated');
+    expect(get()!.isAuthenticated).toBe(true);
+    expect(get()!.isShopStaff).toBe(false);
+    expect(get()!.isTeamMember).toBe(false);
+  });
 
   it('hydrates to shop staff when staff_role + staff_retailer_id are stored (legacy session)', async () => {
-    store.set('auth_token', 'tok-1')
-    store.set('staff_role', 'MANAGER')
-    store.set('staff_retailer_id', 'retailer_1')
-    const { get, flush } = await mount()
-    await flush()
+    store.set('auth_token', 'tok-1');
+    store.set('staff_role', 'MANAGER');
+    store.set('staff_retailer_id', 'retailer_1');
+    const { get, flush } = await mount();
+    await flush();
 
-    expect(get()!.status).toBe('authenticated')
-    expect(get()!.isShopStaff).toBe(true)
-    expect(get()!.isTeamMember).toBe(false)
-    expect(get()!.staffRole).toBe('MANAGER')
-  })
+    expect(get()!.status).toBe('authenticated');
+    expect(get()!.isShopStaff).toBe(true);
+    expect(get()!.isTeamMember).toBe(false);
+    expect(get()!.staffRole).toBe('MANAGER');
+  });
 
   it('hydrates to team member when staff_role has no staff_retailer_id (internal agent)', async () => {
-    store.set('auth_token', 'tok-1')
-    store.set('staff_role', 'FIELD')
-    const { get, flush } = await mount()
-    await flush()
+    store.set('auth_token', 'tok-1');
+    store.set('staff_role', 'FIELD');
+    const { get, flush } = await mount();
+    await flush();
 
-    expect(get()!.status).toBe('authenticated')
-    expect(get()!.isShopStaff).toBe(false)
-    expect(get()!.isTeamMember).toBe(true)
-  })
+    expect(get()!.status).toBe('authenticated');
+    expect(get()!.isShopStaff).toBe(false);
+    expect(get()!.isTeamMember).toBe(true);
+  });
 
   it('hydrates to shop staff when staff_kind=shop is stored (new sessions)', async () => {
-    store.set('auth_token', 'tok-1')
-    store.set('staff_role', 'SALES')
-    store.set('staff_kind', 'shop')
-    const { get, flush } = await mount()
-    await flush()
+    store.set('auth_token', 'tok-1');
+    store.set('staff_role', 'SALES');
+    store.set('staff_kind', 'shop');
+    const { get, flush } = await mount();
+    await flush();
 
-    expect(get()!.status).toBe('authenticated')
-    expect(get()!.isShopStaff).toBe(true)
-    expect(get()!.isTeamMember).toBe(false)
-  })
+    expect(get()!.status).toBe('authenticated');
+    expect(get()!.isShopStaff).toBe(true);
+    expect(get()!.isTeamMember).toBe(false);
+  });
 
   it('signOut clears every auth key and flips back to unauthenticated', async () => {
-    store.set('auth_token', 'tok-1')
-    store.set('staff_role', 'MANAGER')
-    store.set('refresh_token', 'rt-1')
-    const { get, flush } = await mount()
-    await flush()
-    expect(get()!.status).toBe('authenticated')
+    store.set('auth_token', 'tok-1');
+    store.set('staff_role', 'MANAGER');
+    store.set('refresh_token', 'rt-1');
+    const { get, flush } = await mount();
+    await flush();
+    expect(get()!.status).toBe('authenticated');
 
     await act(async () => {
-      await get()!.signOut()
-    })
+      await get()!.signOut();
+    });
 
-    expect(get()!.status).toBe('unauthenticated')
-    expect(get()!.isAuthenticated).toBe(false)
+    expect(get()!.status).toBe('unauthenticated');
+    expect(get()!.isAuthenticated).toBe(false);
     for (const key of [
       'auth_token',
       'refresh_token',
@@ -153,68 +147,74 @@ describe('AuthProvider', () => {
       'staff_kind',
       'admin_key',
     ]) {
-      expect(store.has(key)).toBe(false)
+      expect(store.has(key)).toBe(false);
     }
-  })
+  });
 
   it('flips to unauthenticated on an external authed:false event (401 path)', async () => {
-    store.set('auth_token', 'tok-1')
-    const { get, flush } = await mount()
-    await flush()
-    expect(get()!.status).toBe('authenticated')
+    store.set('auth_token', 'tok-1');
+    const { get, flush } = await mount();
+    await flush();
+    expect(get()!.status).toBe('authenticated');
 
     act(() => {
-      emitAuthChange({ authed: false })
-    })
-    await flush()
+      emitAuthChange({ authed: false });
+    });
+    await flush();
 
-    expect(get()!.status).toBe('unauthenticated')
-    expect(get()!.isAuthenticated).toBe(false)
-  })
+    expect(get()!.status).toBe('unauthenticated');
+    expect(get()!.isAuthenticated).toBe(false);
+  });
 
   it('authed:false from a forced logout wipes every auth key and the persisted cache (RC-107)', async () => {
-    for (const key of ['auth_token', 'retailer_id', 'staff_role', 'staff_retailer_id', 'admin_key']) {
-      store.set(key, 'x')
+    for (const key of [
+      'auth_token',
+      'retailer_id',
+      'staff_role',
+      'staff_retailer_id',
+      'admin_key',
+    ]) {
+      store.set(key, 'x');
     }
-    const { get, flush } = await mount()
-    await flush()
+    const { get, flush } = await mount();
+    await flush();
 
     // client.ts's 401 path only emits the event; it never goes through signOut().
     act(() => {
-      emitAuthChange({ authed: false })
-    })
-    await flush()
+      emitAuthChange({ authed: false });
+    });
+    await flush();
 
-    expect(get()!.status).toBe('unauthenticated')
-    expect(store.size).toBe(0)
-    expect(clearPersistedCache).toHaveBeenCalledTimes(1)
-  })
+    expect(get()!.status).toBe('unauthenticated');
+    expect(store.size).toBe(0);
+    expect(clearPersistedCache).toHaveBeenCalledTimes(1);
+  });
 
   it('navigates to the pending destination only after an authed:true flip', async () => {
-    store.set('auth_token', 'tok-1')
-    const { get, flush } = await mount()
-    await flush()
+    store.set('auth_token', 'tok-1');
+    const { get, flush } = await mount();
+    await flush();
 
     act(() => {
-      emitAuthChange({ authed: true, navigateTo: '/onboarding' })
-    })
-    await flush()
+      emitAuthChange({ authed: true, navigateTo: '/onboarding' });
+    });
+    await flush();
 
-    expect(get()!.status).toBe('authenticated')
-    expect(vi.mocked(router.navigate)).toHaveBeenCalledTimes(1)
-    expect(vi.mocked(router.navigate)).toHaveBeenCalledWith('/onboarding')
-  })
+    expect(get()!.status).toBe('authenticated');
+    expect(vi.mocked(router.navigate)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(router.navigate)).toHaveBeenCalledWith('/onboarding');
+  });
 
   it('does not navigate for an authed:true flip without a pending destination', async () => {
-    store.set('auth_token', 'tok-1')
-    const { flush } = await mount()
-    await flush()
+    store.set('auth_token', 'tok-1');
+    const { flush } = await mount();
+    await flush();
 
     act(() => {
-      emitAuthChange({ authed: true })
-    })
-    await flush()
+      emitAuthChange({ authed: true });
+    });
+    await flush();
 
-    expect(vi.mocked(router.navigate)).not.toHaveBeenCalled()
-  })
-})
+    expect(vi.mocked(router.navigate)).not.toHaveBeenCalled();
+  });
+});

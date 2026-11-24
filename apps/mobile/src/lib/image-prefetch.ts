@@ -13,7 +13,7 @@
  *   prefetchProductImages(products)
  */
 
-import { Image } from 'expo-image'
+import { Image } from 'expo-image';
 
 /**
  * Prefetch the primary photo of the first `limit` products.
@@ -31,11 +31,11 @@ export async function prefetchProductImages(
   const urls = products
     .slice(0, limit)
     .map((p) => p.primary_photo_url)
-    .filter((u): u is string => typeof u === 'string' && u.startsWith('http'))
+    .filter((u): u is string => typeof u === 'string' && u.startsWith('http'));
 
-  if (urls.length === 0) return
+  if (urls.length === 0) return;
 
-  await Image.prefetch(urls, { cachePolicy: 'disk' })
+  await Image.prefetch(urls, { cachePolicy: 'disk' });
 }
 
 /**
@@ -44,5 +44,5 @@ export async function prefetchProductImages(
  * catalog photos offline.
  */
 export async function clearImageCache(): Promise<void> {
-  await Image.clearDiskCache()
+  await Image.clearDiskCache();
 }

@@ -1,71 +1,66 @@
-import React from 'react'
+import { STUDIO_CREDITS_PER_IMAGE } from '@kanchuki/shared';
+import type { ProductDetail } from '@kanchuki/shared';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import {
-  View,
-  Text,
-  ActivityIndicator,
-  TouchableOpacity,
-} from 'react-native'
-import { Image } from 'expo-image'
-import { router } from 'expo-router'
-import Gallery from 'react-native-awesome-gallery'
-import {
-  Download,
-  Trash2,
-  Palette,
   Camera,
-  Sparkles,
   Clapperboard,
+  Download,
+  Palette,
   Shirt,
-} from 'lucide-react-native'
-import { STUDIO_CREDITS_PER_IMAGE } from '@kanchuki/shared'
-import { AnimatedPressable } from '../AnimatedPressable'
-import type { ProductDetail } from '@kanchuki/shared'
+  Sparkles,
+  Trash2,
+} from 'lucide-react-native';
+import React from 'react';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import Gallery from 'react-native-awesome-gallery';
+import { AnimatedPressable } from '../AnimatedPressable';
 
 interface DisplayPhoto {
-  id: string
-  url: string
-  is_primary: boolean
-  is_variant_preview?: boolean
-  is_original_preview?: boolean
-  variant_color?: string
-  is_video?: boolean
-  video_duration?: number | null
+  id: string;
+  url: string;
+  is_primary: boolean;
+  is_variant_preview?: boolean;
+  is_original_preview?: boolean;
+  variant_color?: string;
+  is_video?: boolean;
+  video_duration?: number | null;
 }
 
 interface ProductMediaCarouselProps {
-  product: ProductDetail
-  displayPhotos: DisplayPhoto[]
-  selectedPhotoIndex: number
-  setSelectedPhotoIndex: (idx: number) => void
-  carouselWidth: number
-  setCarouselWidth: (w: number) => void
-  galleryRef: React.RefObject<any>
-  setFullscreenOpen: (open: boolean) => void
-  displayUrl: (photo: DisplayPhoto) => string
-  imageErrors: Set<string>
-  setImageErrors: React.Dispatch<React.SetStateAction<Set<string>>>
-  primaryColor: string
-  colors: any
-  currentPhoto: DisplayPhoto | undefined
-  currentPhotoIsVariant: boolean
-  currentPhotoIsOriginal: boolean
-  downloadingMedia: boolean
-  handleDownloadCurrentMedia: () => void
-  deletingMedia: boolean
-  handleDeleteCurrentMedia: () => void
-  goToPhoto: (idx: number) => void
-  setStudioModalOpen: (open: boolean) => void
-  studioStarting: boolean
-  studioStatus: 'processing' | 'ready' | 'failed' | null
-  originalPhoto: any
-  studioQuota: { unlimited?: boolean; remaining?: number } | undefined
-  ProductVideoSlide: React.ComponentType<{ url: string; width: number; height: number }>
+  product: ProductDetail;
+  displayPhotos: DisplayPhoto[];
+  selectedPhotoIndex: number;
+  setSelectedPhotoIndex: (idx: number) => void;
+  carouselWidth: number;
+  setCarouselWidth: (w: number) => void;
+  galleryRef: React.RefObject<any>;
+  setFullscreenOpen: (open: boolean) => void;
+  displayUrl: (photo: DisplayPhoto) => string;
+  imageErrors: Set<string>;
+  setImageErrors: React.Dispatch<React.SetStateAction<Set<string>>>;
+  primaryColor: string;
+  colors: any;
+  currentPhoto: DisplayPhoto | undefined;
+  currentPhotoIsVariant: boolean;
+  currentPhotoIsOriginal: boolean;
+  downloadingMedia: boolean;
+  handleDownloadCurrentMedia: () => void;
+  deletingMedia: boolean;
+  handleDeleteCurrentMedia: () => void;
+  goToPhoto: (idx: number) => void;
+  setStudioModalOpen: (open: boolean) => void;
+  studioStarting: boolean;
+  studioStatus: 'processing' | 'ready' | 'failed' | null;
+  originalPhoto: any;
+  studioQuota: { unlimited?: boolean; remaining?: number } | undefined;
+  ProductVideoSlide: React.ComponentType<{ url: string; width: number; height: number }>;
   /** F-034 AI promo video button, before AI Studio. Unavailable plans get an explanation on tap. */
   promoVideo?: {
-    running: boolean
-    quota: { remaining: number; unlimited: boolean } | undefined
-    onPress: () => void
-  }
+    running: boolean;
+    quota: { remaining: number; unlimited: boolean } | undefined;
+    onPress: () => void;
+  };
 }
 
 export function ProductMediaCarousel({
@@ -99,14 +94,17 @@ export function ProductMediaCarousel({
   promoVideo,
 }: ProductMediaCarouselProps) {
   return (
-    <View className="bg-white rounded-3xl mx-4 my-2 border border-lavender-200 shadow-sm overflow-hidden" style={{ elevation: 3 }}>
+    <View
+      className="bg-white rounded-3xl mx-4 my-2 border border-lavender-200 shadow-sm overflow-hidden"
+      style={{ elevation: 3 }}
+    >
       {/* Swipeable photo carousel */}
       <View
         className="relative overflow-hidden bg-lavender-100"
         style={{ height: 380, borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
         onLayout={(e) => {
-          const w = e.nativeEvent.layout.width
-          if (w > 0 && w !== carouselWidth) setCarouselWidth(w)
+          const w = e.nativeEvent.layout.width;
+          if (w > 0 && w !== carouselWidth) setCarouselWidth(w);
         }}
       >
         {displayPhotos.length > 0 ? (
@@ -166,7 +164,7 @@ export function ProductMediaCarousel({
             }}
           >
             {displayPhotos.slice(0, 4).map((photo, idx) => {
-              const isSelected = idx === selectedPhotoIndex
+              const isSelected = idx === selectedPhotoIndex;
               return (
                 <TouchableOpacity
                   key={photo.id}
@@ -188,7 +186,7 @@ export function ProductMediaCarousel({
                     contentFit="cover"
                   />
                 </TouchableOpacity>
-              )
+              );
             })}
           </View>
         )}
@@ -269,9 +267,7 @@ export function ProductMediaCarousel({
                 key={idx}
                 onPress={() => goToPhoto(idx)}
                 className={`h-1.5 rounded-full ${
-                  idx === selectedPhotoIndex
-                    ? 'bg-fuchsia-500 w-4'
-                    : 'bg-white/70 w-1.5'
+                  idx === selectedPhotoIndex ? 'bg-fuchsia-500 w-4' : 'bg-white/70 w-1.5'
                 }`}
               />
             ))}
@@ -317,7 +313,9 @@ export function ProductMediaCarousel({
               ) : (
                 <Clapperboard size={16} color="#BB3F95" />
               )}
-              <Text className="text-spaceCadet-900 text-[10px] font-bold text-center">AI Video</Text>
+              <Text className="text-spaceCadet-900 text-[10px] font-bold text-center">
+                AI Video
+              </Text>
             </View>
             {promoVideo.quota && !promoVideo.quota.unlimited && (
               <View
@@ -325,7 +323,9 @@ export function ProductMediaCarousel({
                   promoVideo.quota.remaining > 0 ? 'bg-fuchsia-600' : 'bg-red-600'
                 }`}
               >
-                <Text className="text-[9px] font-bold text-white">{promoVideo.quota.remaining}</Text>
+                <Text className="text-[9px] font-bold text-white">
+                  {promoVideo.quota.remaining}
+                </Text>
               </View>
             )}
           </AnimatedPressable>
@@ -348,7 +348,8 @@ export function ProductMediaCarousel({
               className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-sm"
               style={{
                 backgroundColor:
-                  (studioQuota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE < STUDIO_CREDITS_PER_IMAGE
+                  (studioQuota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE <
+                  STUDIO_CREDITS_PER_IMAGE
                     ? '#DC2626'
                     : '#C026D3',
               }}
@@ -361,5 +362,5 @@ export function ProductMediaCarousel({
         </AnimatedPressable>
       </View>
     </View>
-  )
+  );
 }

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Upload, X } from "lucide-react";
-import { useRef, useState } from "react";
-import Image from "next/image";
+import { Upload, X } from 'lucide-react';
+import Image from 'next/image';
+import { useRef, useState } from 'react';
 
 interface ImageUploadProps {
   label: string;
@@ -14,7 +14,7 @@ interface ImageUploadProps {
 export default function ImageUpload({
   label,
   onImageSelect,
-  accept = "image/png,image/jpeg,image/jpg,image/webp",
+  accept = 'image/png,image/jpeg,image/jpg,image/webp',
   previewUrl,
 }: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -29,9 +29,9 @@ export default function ImageUpload({
     }
 
     // Validate file type
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+    const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      alert("Please upload a valid image file (PNG, JPG, or WEBP)");
+      alert('Please upload a valid image file (PNG, JPG, or WEBP)');
       return;
     }
 
@@ -72,7 +72,7 @@ export default function ImageUpload({
   const handleClear = () => {
     handleFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = '';
     }
   };
 
@@ -84,10 +84,10 @@ export default function ImageUpload({
       <div
         className={`relative border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer ${
           isDragging
-            ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20"
+            ? 'border-purple-500 bg-purple-50 dark:bg-purple-950/20'
             : preview
-            ? "border-zinc-300 dark:border-zinc-700"
-            : "border-zinc-300 dark:border-zinc-700 hover:border-purple-400 dark:hover:border-purple-600"
+              ? 'border-zinc-300 dark:border-zinc-700'
+              : 'border-zinc-300 dark:border-zinc-700 hover:border-purple-400 dark:hover:border-purple-600'
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -105,12 +105,7 @@ export default function ImageUpload({
         {preview ? (
           <div className="relative">
             <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden">
-              <Image
-                src={preview}
-                alt="Preview"
-                fill
-                className="object-contain"
-              />
+              <Image src={preview} alt="Preview" fill className="object-contain" />
             </div>
             <button
               onClick={handleClear}
@@ -126,9 +121,7 @@ export default function ImageUpload({
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Drag and drop your image here, or click to browse
             </p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-500">
-              PNG, JPG, or WEBP (max 10MB)
-            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-500">PNG, JPG, or WEBP (max 10MB)</p>
           </div>
         )}
       </div>

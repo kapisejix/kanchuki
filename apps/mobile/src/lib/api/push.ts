@@ -1,4 +1,4 @@
-import { request } from './client'
+import { request } from './client';
 
 // F-046: register / unregister this device's Expo push token. Server: routes/push-devices.ts.
 // POST for both (the API deliberately has no DELETE here: bodyless/empty-JSON DELETE 400s).
@@ -14,4 +14,4 @@ export const pushDeviceApi = {
       method: 'POST',
       body: JSON.stringify({ expo_token: expoToken }),
     }),
-}
+};

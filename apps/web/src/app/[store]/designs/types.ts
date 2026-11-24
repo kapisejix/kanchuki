@@ -4,27 +4,27 @@
 // §5 public routes) — no retailer r2 keys or inactive rows ever reach here.
 
 export interface PublicShowcaseDesign {
-  id: string
-  name: string | null
-  image_url: string
-  category: { slug: string; name: string | null }
+  id: string;
+  name: string | null;
+  image_url: string;
+  category: { slug: string; name: string | null };
   // Global rows (retailer_id null) have no owning store.
-  store: { shop_name: string | null; slug: string | null } | null
+  store: { shop_name: string | null; slug: string | null } | null;
 }
 
 export interface PublicShowcaseDesignDetail {
-  id: string
-  name: string | null
-  image_url: string
-  category: { slug: string; name: string | null }
-  store: { shop_name: string | null; slug: string | null } | null
-  created_at: string
+  id: string;
+  name: string | null;
+  image_url: string;
+  category: { slug: string; name: string | null };
+  store: { shop_name: string | null; slug: string | null } | null;
+  created_at: string;
 }
 
 export interface BrowseResponse {
-  designs: PublicShowcaseDesign[]
+  designs: PublicShowcaseDesign[];
   // Expanded category slugs only when a ?category= filter is active — the
   // browser derives its chip list from this plus the returned rows' categories.
-  related: string[]
-  next_cursor: string | null
+  related: string[];
+  next_cursor: string | null;
 }

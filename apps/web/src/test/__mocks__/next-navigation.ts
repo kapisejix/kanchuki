@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi } from 'vitest';
 
 /**
  * Mock for next/navigation hooks.
@@ -13,12 +13,12 @@ import { vi } from 'vitest'
  * the returned handle — see src/test/README.md for the full pattern.
  */
 
-let currentPath = '/admin'
+let currentPath = '/admin';
 
 // Stable instance: components whose effects depend on `searchParams` identity
 // (e.g. `useEffect(..., [searchParams])`) would infinitely refetch if this
 // returned a fresh URLSearchParams per render.
-const searchParams = new URLSearchParams()
+const searchParams = new URLSearchParams();
 
 // Stable router so tests can assert on calls via the createControllablePathname
 // handle (e.g. Sidebar's sign-out push assertion).
@@ -29,22 +29,22 @@ const router = {
   forward: vi.fn(),
   refresh: vi.fn(),
   prefetch: vi.fn(),
-}
+};
 
 export function usePathname(): string {
-  return currentPath
+  return currentPath;
 }
 
 export function useSearchParams(): URLSearchParams {
-  return searchParams
+  return searchParams;
 }
 
 export function useRouter() {
-  return router
+  return router;
 }
 
 export function useParams(): Record<string, string> {
-  return {}
+  return {};
 }
 
 export function redirect() {}
@@ -65,23 +65,23 @@ export function notFound() {}
  * always starts at the default for every other test file.
  */
 export function createControllablePathname(initialPath = '/admin') {
-  currentPath = initialPath
+  currentPath = initialPath;
   return {
     setPathname: (path: string) => {
-      currentPath = path
+      currentPath = path;
     },
     reset: () => {
-      currentPath = initialPath
+      currentPath = initialPath;
       // A test may mutate the shared searchParams (e.g. searchParams.set(...))
       // — clear all keys so nothing leaks into the next test in the file.
-      for (const key of Array.from(searchParams.keys())) searchParams.delete(key)
-      router.push.mockClear()
-      router.replace.mockClear()
-      router.back.mockClear()
-      router.forward.mockClear()
-      router.refresh.mockClear()
-      router.prefetch.mockClear()
+      for (const key of Array.from(searchParams.keys())) searchParams.delete(key);
+      router.push.mockClear();
+      router.replace.mockClear();
+      router.back.mockClear();
+      router.forward.mockClear();
+      router.refresh.mockClear();
+      router.prefetch.mockClear();
     },
     router,
-  }
+  };
 }

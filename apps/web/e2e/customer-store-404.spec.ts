@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test'
-import { API_STUB_ORIGIN, closeStub, createStubServer, json, listenStub } from './support/api-stub'
+import { expect, test } from '@playwright/test';
+import { API_STUB_ORIGIN, closeStub, createStubServer, json, listenStub } from './support/api-stub';
 
 // Unknown store slugs must return a real HTTP 404, not a 200 "not found" shell
 // (soft-404). Regression for docs/tasks/pending/storefront-soft-404.md §4.2:
@@ -7,43 +7,45 @@ import { API_STUB_ORIGIN, closeStub, createStubServer, json, listenStub } from '
 // the existence check lives in `[store]/layout.tsx`, above that boundary.
 // Server-rendered fetches → only the stub API can control them.
 
-let apiStub: ReturnType<typeof createStubServer> | null = null
+let apiStub: ReturnType<typeof createStubServer> | null = null;
 
 test.beforeAll(async () => {
   apiStub = createStubServer((req, res) => {
-    const path = new URL(req.url ?? '/', API_STUB_ORIGIN).pathname
+    const path = new URL(req.url ?? '/', API_STUB_ORIGIN).pathname;
     if (path === '/v1/public/retailers/real-store') {
-      json(res, 200, { data: { shop_name: 'Real Store', city: null, state: null, categories: [] } })
-      return
+      json(res, 200, {
+        data: { shop_name: 'Real Store', city: null, state: null, categories: [] },
+      });
+      return;
     }
-    json(res, 404, { error: { code: 'NOT_FOUND', message: `No stub for ${path}` } })
-  })
-  await listenStub(apiStub)
-})
+    json(res, 404, { error: { code: 'NOT_FOUND', message: `No stub for ${path}` } });
+  });
+  await listenStub(apiStub);
+});
 
 test.afterAll(async () => {
-  await closeStub(apiStub)
-})
+  await closeStub(apiStub);
+});
 
 test('unknown store root returns 404', async ({ request }) => {
-  const res = await request.get('/ghost-store')
-  expect(res.status()).toBe(404)
-})
+  const res = await request.get('/ghost-store');
+  expect(res.status()).toBe(404);
+});
 
 test('unknown store + unknown collection returns 404', async ({ request }) => {
-  const res = await request.get('/ghost-store/nope', { maxRedirects: 0 })
+  const res = await request.get('/ghost-store/nope', { maxRedirects: 0 });
   // Either a direct 404 or a redirect that lands on a 404 — never a 200 shell.
-  expect([307, 308, 404]).toContain(res.status())
-  const final = await request.get('/ghost-store/categories')
-  expect(final.status()).toBe(404)
-})
+  expect([307, 308, 404]).toContain(res.status());
+  const final = await request.get('/ghost-store/categories');
+  expect(final.status()).toBe(404);
+});
 
 test('existing store is not 404', async ({ request }) => {
-  const res = await request.get('/real-store')
-  expect(res.status()).not.toBe(404)
-})
+  const res = await request.get('/real-store');
+  expect(res.status()).not.toBe(404);
+});
 
 test('unknown legacy /c/{slug} returns 404', async ({ request }) => {
-  const res = await request.get('/c/ghost-collection')
-  expect(res.status()).toBe(404)
-})
+  const res = await request.get('/c/ghost-collection');
+  expect(res.status()).toBe(404);
+});

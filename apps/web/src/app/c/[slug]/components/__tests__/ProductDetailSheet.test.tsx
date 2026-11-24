@@ -1,8 +1,8 @@
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ProductDetailSheet } from '../ProductDetailSheet';
 import { recordCurrentVisitProduct } from '../../lib/currentVisit';
+import { ProductDetailSheet } from '../ProductDetailSheet';
 
 // The sheet is a product-detail modal used by CollectionView — this test locks
 // the Related Products strip behaviour: the heading is "Related Products"
@@ -189,7 +189,9 @@ describe('ProductDetailSheet media slides', () => {
     expect(video).toHaveAttribute('src', 'https://cdn.test/clip-1.mp4');
     expect(video).toHaveAttribute('controls');
     fireEvent.click(video);
-    expect(screen.queryByRole('button', { name: 'Close fullscreen image' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Close fullscreen image' }),
+    ).not.toBeInTheDocument();
   });
 
   // CI flake: goTo()'s 300 ms isTransitioning timer outlived the component and fired after

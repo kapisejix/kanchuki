@@ -29,13 +29,10 @@ serve(async (req) => {
     mobile: user.phone.replace('+', ''), // MSG91 wants no leading +
     otp: sms.otp,
   });
-  const res = await fetch(
-    `https://control.msg91.com/api/v5/otp?${params.toString()}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    },
-  );
+  const res = await fetch(`https://control.msg91.com/api/v5/otp?${params.toString()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
 
   if (res.ok) {
     try {

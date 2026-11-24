@@ -1,122 +1,128 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { PLAN_LIMITS } from '@kanchuki/shared';
+import { motion } from 'framer-motion';
 import {
-  IndianRupee,
+  Activity,
   CreditCard,
+  IndianRupee,
+  type LucideIcon,
+  Sparkles,
   TrendingUp,
   Users,
-  Activity,
-  Sparkles,
-  type LucideIcon,
-} from 'lucide-react'
-import { PLAN_LIMITS } from '@kanchuki/shared'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type Stats = {
-  total_retailers: number
-  active_subscriptions: number
-  trial_retailers: number
-  total_products: number
-  total_collections: number
-  views_this_month: number
-  enquiries_this_month: number
-}
+  total_retailers: number;
+  active_subscriptions: number;
+  trial_retailers: number;
+  total_products: number;
+  total_collections: number;
+  views_this_month: number;
+  enquiries_this_month: number;
+};
 
 type Usage = {
-  total_retailers: number
-  trial_retailers: number
-  active_subscriptions: number
-  mrr_inr: number
-}
+  total_retailers: number;
+  trial_retailers: number;
+  active_subscriptions: number;
+  mrr_inr: number;
+};
 
-type PlanPricing = { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly_paise: number }
+type PlanPricing = { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly_paise: number };
 
 const PLAN_LABEL: Record<'STARTER' | 'GROWTH' | 'PRO', string> = {
   STARTER: 'Starter',
   GROWTH: 'Growth',
   PRO: 'Pro',
-}
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } },
-}
+};
 
 export default function BillingPage() {
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [usage, setUsage] = useState<Usage | null>(null)
-  const [planPricing, setPlanPricing] = useState<PlanPricing[]>([])
-  const [setupStatus, setSetupStatus] = useState('')
-  const [setupLoading, setSetupLoading] = useState(false)
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [usage, setUsage] = useState<Usage | null>(null);
+  const [planPricing, setPlanPricing] = useState<PlanPricing[]>([]);
+  const [setupStatus, setSetupStatus] = useState('');
+  const [setupLoading, setSetupLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const opts = adminGetOptions()
+      const opts = adminGetOptions();
       const [s, u, pp] = await Promise.all([
         fetch(`${API_URL}/v1/admin/stats`, opts).then((r) => r.json()),
         fetch(`${API_URL}/v1/admin/usage`, opts).then((r) => r.json()),
         fetch(`${API_URL}/v1/admin/plan-pricing`, opts).then((r) => r.json()),
-      ])
-      setStats(s.data)
-      setUsage(u.data)
-      setPlanPricing(pp.data ?? [])
+      ]);
+      setStats(s.data);
+      setUsage(u.data);
+      setPlanPricing(pp.data ?? []);
     }
-    load()
-  }, [])
+    load();
+  }, []);
 
-  const paise = (n: number) => `₹${(n / 100).toLocaleString('en-IN')}`
+  const paise = (n: number) => `₹${(n / 100).toLocaleString('en-IN')}`;
   const pricingRows = (['STARTER', 'GROWTH', 'PRO'] as const).map((plan) => {
-    const pricing = planPricing.find((p) => p.plan === plan)
+    const pricing = planPricing.find((p) => p.plan === plan);
     // Catalog size comes from PLAN_LIMITS — the same table the billing webhook
     // writes into retailers.max_products. plan_limits.PRODUCT_UPLOAD is a
     // per-period upload quota, not catalog size, so it must not be shown here.
-    const maxProducts = PLAN_LIMITS[plan].max_products
+    const maxProducts = PLAN_LIMITS[plan].max_products;
     return {
       plan: PLAN_LABEL[plan],
       // plan_pricing is the only source — no row means not configured, never a guessed price.
       monthly: pricing ? `${paise(pricing.monthly_paise)}/mo` : 'Not set',
       products: Number.isFinite(maxProducts) ? maxProducts.toLocaleString('en-IN') : '∞',
-    }
-  })
+    };
+  });
 
   const setupRazorpayPlans = async () => {
-    setSetupLoading(true)
-    setSetupStatus('Creating Razorpay plans...')
+    setSetupLoading(true);
+    setSetupStatus('Creating Razorpay plans...');
     try {
       const res = await fetch(`${API_URL}/v1/admin/billing/setup-plans`, {
         ...(await adminMutateOptions()),
         method: 'POST',
-      })
-      if (!res.ok) throw new Error('Setup failed')
-      const json = await res.json()
-      setSetupStatus(`✅ Created ${json.data.created}/3 Razorpay plans successfully`)
+      });
+      if (!res.ok) throw new Error('Setup failed');
+      const json = await res.json();
+      setSetupStatus(`✅ Created ${json.data.created}/3 Razorpay plans successfully`);
     } catch (err) {
-      setSetupStatus(`❌ ${err instanceof Error ? err.message : 'Setup failed'}`)
+      setSetupStatus(`❌ ${err instanceof Error ? err.message : 'Setup failed'}`);
     } finally {
-      setSetupLoading(false)
+      setSetupLoading(false);
     }
-  }
+  };
 
-  const conversionRate = stats && stats.total_retailers > 0
-    ? ((stats.active_subscriptions / stats.total_retailers) * 100).toFixed(1)
-    : '0'
+  const conversionRate =
+    stats && stats.total_retailers > 0
+      ? ((stats.active_subscriptions / stats.total_retailers) * 100).toFixed(1)
+      : '0';
 
-  const trialConversion = usage && usage.trial_retailers > 0
-    ? ((usage.active_subscriptions / (usage.active_subscriptions + usage.trial_retailers)) * 100).toFixed(1)
-    : '—'
+  const trialConversion =
+    usage && usage.trial_retailers > 0
+      ? (
+          (usage.active_subscriptions / (usage.active_subscriptions + usage.trial_retailers)) *
+          100
+        ).toFixed(1)
+      : '—';
 
-  const avgRevenue = stats && stats.active_subscriptions > 0
-    ? (usage?.mrr_inr ?? 0) / stats.active_subscriptions
-    : 0
+  const avgRevenue =
+    stats && stats.active_subscriptions > 0
+      ? (usage?.mrr_inr ?? 0) / stats.active_subscriptions
+      : 0;
 
   return (
     <motion.div
@@ -160,17 +166,23 @@ export default function BillingPage() {
         <RevenueCard
           icon={Activity}
           label="ARPU"
-          value={stats?.active_subscriptions ? `₹${(avgRevenue / 100).toLocaleString('en-IN')}` : '—'}
+          value={
+            stats?.active_subscriptions ? `₹${(avgRevenue / 100).toLocaleString('en-IN')}` : '—'
+          }
           subtext="Avg revenue per user/mo"
           color="purple"
         />
       </motion.div>
 
       {/* Razorpay setup */}
-      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+      <motion.div
+        variants={itemVariants}
+        className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow"
+      >
         <h2 className="text-sm font-semibold text-gray-900 mb-1">Razorpay Plans</h2>
         <p className="text-xs text-gray-500 mb-4">
-          Create the 3 Razorpay monthly billing plans after configuring RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.
+          Create the 3 Razorpay monthly billing plans after configuring RAZORPAY_KEY_ID and
+          RAZORPAY_KEY_SECRET.
         </p>
 
         <div className="flex items-center gap-3">
@@ -202,26 +214,32 @@ export default function BillingPage() {
               setupStatus.startsWith('✅')
                 ? 'bg-green-50/80 border-green-200 text-green-700'
                 : setupStatus.startsWith('❌')
-                ? 'bg-red-50/80 border-red-200 text-red-600'
-                : 'bg-gray-50/80 border-gray-200 text-gray-600'
+                  ? 'bg-red-50/80 border-red-200 text-red-600'
+                  : 'bg-gray-50/80 border-gray-200 text-gray-600'
             }`}
           >
             {setupStatus}
           </motion.div>
         )}
-
       </motion.div>
 
       {/* Pricing reference */}
-      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+      <motion.div
+        variants={itemVariants}
+        className="bg-white rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow"
+      >
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Pricing Reference</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Plan</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Monthly (base ex-GST)</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Products</th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">
+                  Monthly (base ex-GST)
+                </th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">
+                  Products
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -243,7 +261,7 @@ export default function BillingPage() {
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 // ── Sub-components ────────────────────────────────────────────
@@ -255,11 +273,11 @@ function RevenueCard({
   subtext,
   color,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string
-  subtext: string
-  color: 'green' | 'blue' | 'amber' | 'purple'
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  subtext: string;
+  color: 'green' | 'blue' | 'amber' | 'purple';
 }) {
   return (
     <motion.div
@@ -267,11 +285,14 @@ function RevenueCard({
       className="relative bg-white rounded-2xl border border-gray-200/80 p-5 transition overflow-hidden"
     >
       <div className="flex items-center gap-2 mb-2">
-        <Icon size={16} className={`${color === 'green' ? 'text-green-500' : color === 'blue' ? 'text-blue-500' : color === 'amber' ? 'text-amber-500' : 'text-purple-500'}`} />
+        <Icon
+          size={16}
+          className={`${color === 'green' ? 'text-green-500' : color === 'blue' ? 'text-blue-500' : color === 'amber' ? 'text-amber-500' : 'text-purple-500'}`}
+        />
         <span className="text-[10px] font-semibold text-gray-500 uppercase">{label}</span>
       </div>
       <div className="text-2xl font-bold text-gray-900">{value}</div>
       <div className="text-xs text-gray-400 mt-1">{subtext}</div>
     </motion.div>
-  )
+  );
 }

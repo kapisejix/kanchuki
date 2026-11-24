@@ -1,5 +1,5 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
-import { prisma } from './client.js'
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
+import { prisma } from './client.js';
 
 // F-012: encrypted, admin-managed replacement for .env third-party
 // credentials. ENCRYPTION_MASTER_KEY itself must stay in env — it is what
@@ -10,82 +10,82 @@ import { prisma } from './client.js'
 // factor is what matters: it makes brute-forcing a weak passphrase expensive,
 // unlike the previous plain SHA-256 derivation. Must stay constant forever —
 // changing it would make every previously-encrypted secret undecryptable.
-const MASTER_KEY_SALT = 'kanchuki-encryption-master-key-v1'
+const MASTER_KEY_SALT = 'kanchuki-encryption-master-key-v1';
 
 function masterKey(): Buffer {
-  const raw = process.env['ENCRYPTION_MASTER_KEY']
-  if (!raw) throw new Error('ENCRYPTION_MASTER_KEY not configured')
-  return scryptSync(raw, MASTER_KEY_SALT, 32)
+  const raw = process.env['ENCRYPTION_MASTER_KEY'];
+  if (!raw) throw new Error('ENCRYPTION_MASTER_KEY not configured');
+  return scryptSync(raw, MASTER_KEY_SALT, 32);
 }
 
 /** AES-256-GCM. Output: base64(iv).base64(authTag).base64(ciphertext) */
 export function encryptSecret(plaintext: string): string {
-  const iv = randomBytes(12)
-  const cipher = createCipheriv('aes-256-gcm', masterKey(), iv)
-  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
-  const tag = cipher.getAuthTag()
-  return `${iv.toString('base64')}.${tag.toString('base64')}.${ciphertext.toString('base64')}`
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', masterKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `${iv.toString('base64')}.${tag.toString('base64')}.${ciphertext.toString('base64')}`;
 }
 
 export function decryptSecret(encrypted: string): string {
-  const [ivB64, tagB64, dataB64] = encrypted.split('.')
-  if (!ivB64 || !tagB64 || !dataB64) throw new Error('Malformed encrypted secret')
-  const decipher = createDecipheriv('aes-256-gcm', masterKey(), Buffer.from(ivB64, 'base64'))
-  decipher.setAuthTag(Buffer.from(tagB64, 'base64'))
+  const [ivB64, tagB64, dataB64] = encrypted.split('.');
+  if (!ivB64 || !tagB64 || !dataB64) throw new Error('Malformed encrypted secret');
+  const decipher = createDecipheriv('aes-256-gcm', masterKey(), Buffer.from(ivB64, 'base64'));
+  decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
   return Buffer.concat([
     decipher.update(Buffer.from(dataB64, 'base64')),
     decipher.final(),
-  ]).toString('utf8')
+  ]).toString('utf8');
 }
 
 /** Display-safe preview. Never reveals enough to reconstruct the secret. */
 export function maskSecret(plaintext: string): string {
-  if (plaintext.length <= 4) return '••••'
-  return `${'•'.repeat(Math.min(plaintext.length - 4, 20))}${plaintext.slice(-4)}`
+  if (plaintext.length <= 4) return '••••';
+  return `${'•'.repeat(Math.min(plaintext.length - 4, 20))}${plaintext.slice(-4)}`;
 }
 
 // ponytail: 30s in-memory cache avoids a DB round trip on every R2/Razorpay
 // call. Admin CRUD routes call invalidateSecret() so edits apply immediately
 // instead of waiting out the TTL. Per-process cache — fine for this app's
 // single-API-instance deploy; add pub/sub invalidation if that changes.
-const cache = new Map<string, { value: string | undefined; expiresAt: number }>()
-const CACHE_MS = 30_000
+const cache = new Map<string, { value: string | undefined; expiresAt: number }>();
+const CACHE_MS = 30_000;
 // TTL jitter (0–50% of CACHE_MS) — when several API replicas each cache the
 // same secret at boot, this spreads their refetches instead of all hitting
 // the DB at one shared expiry boundary.
-const CACHE_TTL_JITTER_FRACTION = 0.5
+const CACHE_TTL_JITTER_FRACTION = 0.5;
 
 export function invalidateSecret(keyName: string): void {
-  cache.delete(keyName)
+  cache.delete(keyName);
 }
 
 /** DB-stored, admin-managed value if active, else the .env var of the same name. */
 export async function getSecret(keyName: string): Promise<string | undefined> {
-  const hit = cache.get(keyName)
-  if (hit && hit.expiresAt > Date.now()) return hit.value
+  const hit = cache.get(keyName);
+  if (hit && hit.expiresAt > Date.now()) return hit.value;
 
   const row = await prisma.integrationSetting.findFirst({
     where: { key_name: keyName, is_active: true },
-  })
-  let value: string | undefined
+  });
+  let value: string | undefined;
   if (row) {
     try {
-      value = decryptSecret(row.encrypted_value)
+      value = decryptSecret(row.encrypted_value);
     } catch (err) {
       // A corrupted/mismatched-key secret is functionally "no key configured"
       // for this name — degrade to the env fallback instead of throwing.
       // Uncaught here, this used to abort the entire AI failover chain before
       // it tried any other configured provider (providers.ts configuredAdapters).
-      console.error(`[secrets] Failed to decrypt "${keyName}", falling back to env:`, err)
-      value = process.env[keyName]
+      console.error(`[secrets] Failed to decrypt "${keyName}", falling back to env:`, err);
+      value = process.env[keyName];
     }
   } else {
-    value = process.env[keyName]
+    value = process.env[keyName];
   }
   cache.set(keyName, {
     value,
     expiresAt:
       Date.now() + CACHE_MS + Math.floor(Math.random() * CACHE_MS * CACHE_TTL_JITTER_FRACTION),
-  })
-  return value
+  });
+  return value;
 }

@@ -11,7 +11,6 @@ import {
   BookOpen,
   Bot,
   Bug,
-  Flag,
   CalendarDays,
   CheckSquare,
   ChevronLeft,
@@ -22,6 +21,7 @@ import {
   Cpu,
   CreditCard,
   DatabaseBackup,
+  Flag,
   Gauge,
   Gift,
   GitBranch,
@@ -431,7 +431,11 @@ export function Sidebar({
                     {!collapsed && (
                       <>
                         <span className="flex-1 whitespace-nowrap text-left">{item.label}</span>
-                        <ChevronRight size={16} strokeWidth={1.5} className="shrink-0 text-gray-500" />
+                        <ChevronRight
+                          size={16}
+                          strokeWidth={1.5}
+                          className="shrink-0 text-gray-500"
+                        />
                       </>
                     )}
                   </button>
@@ -453,7 +457,10 @@ export function Sidebar({
                           position: 'fixed',
                           top: Math.max(
                             8,
-                            Math.min(openGroup.top, window.innerHeight - 8 - (item.children.length * 36 + 16)),
+                            Math.min(
+                              openGroup.top,
+                              window.innerHeight - 8 - (item.children.length * 36 + 16),
+                            ),
                           ),
                           left: openGroup.left,
                           width: FLYOUT_WIDTH,

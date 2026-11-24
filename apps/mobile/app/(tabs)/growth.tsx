@@ -1,6 +1,5 @@
-import GrowthHubScreen from '../growth/index'
+import GrowthHubScreen from '../growth/index';
 
 export default function GrowthTabScreen() {
-  return <GrowthHubScreen isTab />
+  return <GrowthHubScreen isTab />;
 }
-

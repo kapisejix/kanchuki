@@ -1,19 +1,12 @@
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { KeyboardScreen } from '../../src/components/KeyboardScreen';
-import {
-  Image,
-  Linking,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
 import { AlertCircle } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import { Image, Linking, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientButton } from '../../src/components/GradientButton';
-import { authApi, ApiError } from '../../src/lib/api';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { ApiError, authApi } from '../../src/lib/api';
 import { API_URL } from '../../src/lib/api/client';
 import { logError } from '../../src/lib/errors';
 import {
@@ -186,7 +179,8 @@ export default function PhoneScreen() {
 
           {/* Get Instant OTP Button — compact width & center aligned */}
           <View className="items-center w-full mt-1">
-            <GradientButton variant="web"
+            <GradientButton
+              variant="web"
               label="Get Instant OTP"
               onPress={() => void handleSend()}
               disabled={!isValid}

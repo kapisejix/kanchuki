@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
-import { stripComments } from '@kanchuki/shared/testing'
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { stripComments } from '@kanchuki/shared/testing';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Screens for integrations that have no backend behind them must not be
@@ -15,7 +15,7 @@ const HIDDEN: Record<string, string> = {
   // RC-057: the token-paste /growth/integrations/gmb screen is deleted. Its replacement,
   // /growth/integrations/google-business, ships dark and renders "Coming soon" with no action
   // until the server reports a real state (see google-listing.test.ts).
-}
+};
 
 /**
  * Toggles for settings that no API stores. The Instagram screen showed an
@@ -23,37 +23,37 @@ const HIDDEN: Record<string, string> = {
  */
 const PHANTOM_SETTINGS: Record<string, string> = {
   'Auto-publish AI Video Reels': 'RC-058 — no auto-publish setting or job exists in the API',
-}
+};
 
-const ROOT = join(__dirname, '..')
+const ROOT = join(__dirname, '..');
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
-    const full = join(dir, name)
-    if (statSync(full).isDirectory()) return files(full)
-    return /\.tsx?$/.test(name) ? [full] : []
-  })
+    const full = join(dir, name);
+    if (statSync(full).isDirectory()) return files(full);
+    return /\.tsx?$/.test(name) ? [full] : [];
+  });
 }
 
 describe('unbuilt integrations are not linked from any screen', () => {
   const sources = [...files(join(ROOT, 'app')), ...files(join(ROOT, 'src'))].map((f) => ({
     rel: relative(ROOT, f).split('\\').join('/'),
     code: stripComments(readFileSync(f, 'utf8')),
-  }))
+  }));
 
   for (const [route, reason] of Object.entries(HIDDEN)) {
     it(`nothing navigates to ${route} (${reason})`, () => {
       const hits = sources
         .filter(({ code }) => code.includes(`'${route}'`) || code.includes(`"${route}"`))
-        .map(({ rel }) => rel)
-      expect(hits).toEqual([])
-    })
+        .map(({ rel }) => rel);
+      expect(hits).toEqual([]);
+    });
   }
 
   for (const [label, reason] of Object.entries(PHANTOM_SETTINGS)) {
     it(`no screen shows a "${label}" toggle (${reason})`, () => {
-      const hits = sources.filter(({ code }) => code.includes(label)).map(({ rel }) => rel)
-      expect(hits).toEqual([])
-    })
+      const hits = sources.filter(({ code }) => code.includes(label)).map(({ rel }) => rel);
+      expect(hits).toEqual([]);
+    });
   }
-})
+});

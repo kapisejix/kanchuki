@@ -29,13 +29,13 @@
  */
 
 import { spawn } from 'node:child_process';
-import { createWriteStream, createReadStream, existsSync, mkdirSync } from 'node:fs';
-import { unlink, stat } from 'node:fs/promises';
-import { join, basename } from 'node:path';
-import { createGunzip } from 'node:zlib';
-import { pipeline as streamPipeline } from 'node:stream/promises';
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs';
+import { stat, unlink } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import type { Readable } from 'node:stream';
+import { pipeline as streamPipeline } from 'node:stream/promises';
+import { createGunzip } from 'node:zlib';
+import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -70,10 +70,11 @@ interface RestoreOptions {
 function parseConnectionUrl(url: string): DbConnectionInfo {
   const pattern = /^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/;
   const match = url.match(pattern);
-  if (!match) throw new Error(
-    `Cannot parse database URL. Expected: postgresql://user:password@host:5432/dbname\n` +
-    `Got: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')}`
-  );
+  if (!match)
+    throw new Error(
+      `Cannot parse database URL. Expected: postgresql://user:password@host:5432/dbname\n` +
+        `Got: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')}`,
+    );
   return {
     user: decodeURIComponent(match[1]!),
     password: decodeURIComponent(match[2]!),
@@ -103,11 +104,18 @@ function formatBytes(bytes: number): string {
 }
 
 function formatDate(d: Date): string {
-  return d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
+  return d
+    .toISOString()
+    .replace('T', ' ')
+    .replace(/\.\d+Z$/, '');
 }
 
 /** Parse a backup filename into timestamp, label, and database name. */
-function parseBackupKey(key: string): { timestamp: string | null; label: string; database: string } {
+function parseBackupKey(key: string): {
+  timestamp: string | null;
+  label: string;
+  database: string;
+} {
   const filename = basename(key);
   const withoutExt = filename.replace(/\.sql\.gz$/, '');
   const tsMatch = withoutExt.match(/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/);
@@ -145,11 +153,13 @@ async function listBackups(r2: S3Client, bucket: string): Promise<BackupInfo[]> 
   let continuationToken: string | undefined;
 
   do {
-    const response = await r2.send(new ListObjectsV2Command({
-      Bucket: bucket,
-      Prefix: 'backups/',
-      ContinuationToken: continuationToken,
-    }));
+    const response = await r2.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: 'backups/',
+        ContinuationToken: continuationToken,
+      }),
+    );
     for (const obj of response.Contents ?? []) {
       if (!obj.Key || !obj.Key.endsWith('.sql.gz')) continue;
       const parsed = parseBackupKey(obj.Key);
@@ -170,13 +180,20 @@ async function listBackups(r2: S3Client, bucket: string): Promise<BackupInfo[]> 
 }
 
 /** Download a backup from R2 to a local file. */
-async function downloadBackup(r2: S3Client, bucket: string, key: string, localPath: string): Promise<void> {
+async function downloadBackup(
+  r2: S3Client,
+  bucket: string,
+  key: string,
+  localPath: string,
+): Promise<void> {
   console.log(`  • Downloading: ${key}`);
 
-  const response = await r2.send(new GetObjectCommand({
-    Bucket: bucket,
-    Key: key,
-  }));
+  const response = await r2.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    }),
+  );
 
   if (!response.Body) throw new Error('No body in R2 response');
 
@@ -203,21 +220,29 @@ async function restoreToDatabase(dumpPath: string, url: string, dryRun: boolean)
 
   if (dryRun) {
     console.log(`  • [DRY RUN] Would restore to: ${db.database} @ ${db.host}:${db.port}`);
-    console.log(`  • [DRY RUN] Command: docker run --rm -e PGPASSWORD=*** ${DOCKER_IMAGE} psql -h ${db.host} -p ${db.port} -U ${db.user} -d ${db.database} --quiet`);
+    console.log(
+      `  • [DRY RUN] Command: docker run --rm -e PGPASSWORD=*** ${DOCKER_IMAGE} psql -h ${db.host} -p ${db.port} -U ${db.user} -d ${db.database} --quiet`,
+    );
     return true;
   }
 
   console.log(`  • Restoring to: ${db.database} @ ${db.host}:${db.port}`);
 
   const args = [
-    'run', '--rm',
-    '-e', `PGPASSWORD=${db.password}`,
+    'run',
+    '--rm',
+    '-e',
+    `PGPASSWORD=${db.password}`,
     DOCKER_IMAGE,
     'psql',
-    '-h', db.host,
-    '-p', String(db.port),
-    '-U', db.user,
-    '-d', db.database,
+    '-h',
+    db.host,
+    '-p',
+    String(db.port),
+    '-U',
+    db.user,
+    '-d',
+    db.database,
     '--quiet',
   ];
 
@@ -237,21 +262,24 @@ async function restoreToDatabase(dumpPath: string, url: string, dryRun: boolean)
     const gunzip = createGunzip();
 
     streamPipeline(readStream, gunzip, dockerProcess.stdin)
-      .then(() => new Promise<void>((resolveEnd) => {
-        dockerProcess.on('exit', (code) => {
-          const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-          if (code === 0) {
-            console.log(`  • Restore completed in ${duration}s`);
-            resolve(true);
-          } else {
-            console.error(`  • Restore failed (exit ${code}) in ${duration}s`);
-            const tail = stderr.slice(-500);
-            console.error(`  • Stderr (tail): ${tail}`);
-            resolve(false);
-          }
-          resolveEnd();
-        });
-      }))
+      .then(
+        () =>
+          new Promise<void>((resolveEnd) => {
+            dockerProcess.on('exit', (code) => {
+              const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+              if (code === 0) {
+                console.log(`  • Restore completed in ${duration}s`);
+                resolve(true);
+              } else {
+                console.error(`  • Restore failed (exit ${code}) in ${duration}s`);
+                const tail = stderr.slice(-500);
+                console.error(`  • Stderr (tail): ${tail}`);
+                resolve(false);
+              }
+              resolveEnd();
+            });
+          }),
+      )
       .catch((err) => {
         console.error(`  • Pipeline error: ${err.message}`);
         dockerProcess.kill();
@@ -265,16 +293,23 @@ async function verifyRestore(url: string): Promise<boolean> {
   const db = parseConnectionUrl(url);
   return new Promise((resolve) => {
     const args = [
-      'run', '--rm',
-      '-e', `PGPASSWORD=${db.password}`,
+      'run',
+      '--rm',
+      '-e',
+      `PGPASSWORD=${db.password}`,
       DOCKER_IMAGE,
       'psql',
-      '-h', db.host,
-      '-p', String(db.port),
-      '-U', db.user,
-      '-d', db.database,
+      '-h',
+      db.host,
+      '-p',
+      String(db.port),
+      '-U',
+      db.user,
+      '-d',
+      db.database,
       '-t',
-      '-c', "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'",
+      '-c',
+      "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'",
     ];
 
     const proc = spawn('docker', args, {
@@ -283,7 +318,9 @@ async function verifyRestore(url: string): Promise<boolean> {
     });
 
     let out = '';
-    proc.stdout?.on('data', (d: Buffer) => { out += d.toString(); });
+    proc.stdout?.on('data', (d: Buffer) => {
+      out += d.toString();
+    });
 
     proc.on('exit', (code) => {
       if (code === 0) {
@@ -310,11 +347,13 @@ function displayBackups(backups: BackupInfo[]): void {
   console.log('  #  │ Date                │ Size        │ Database         │ Label');
   console.log('  ───┼─────────────────────┼─────────────┼──────────────────┼─────');
   backups.forEach((b, i) => {
-    const date = b.lastModified ? formatDate(b.lastModified) : b.timestamp ?? 'unknown';
+    const date = b.lastModified ? formatDate(b.lastModified) : (b.timestamp ?? 'unknown');
     const size = formatBytes(b.size);
     const db = b.database.padEnd(16).slice(0, 16);
     const label = b.label || '(none)';
-    console.log(`  ${(i + 1).toString().padStart(2)} │ ${date.padEnd(19)} │ ${size.padStart(11)} │ ${db} │ ${label}`);
+    console.log(
+      `  ${(i + 1).toString().padStart(2)} │ ${date.padEnd(19)} │ ${size.padStart(11)} │ ${db} │ ${label}`,
+    );
   });
   console.log('');
 }
@@ -439,9 +478,11 @@ async function main() {
   const verified = await verifyRestore(targetUrl!);
 
   console.log('\n╔══════════════════════════════════════════════╗');
-  console.log(success && verified
-    ? '║  Restore Complete ✅                          ║'
-    : '║  Restore Complete ⚠️ (verify failed)           ║');
+  console.log(
+    success && verified
+      ? '║  Restore Complete ✅                          ║'
+      : '║  Restore Complete ⚠️ (verify failed)           ║',
+  );
   console.log('╚══════════════════════════════════════════════╝\n');
   console.log(`  Target: ${targetDb.database} @ ${targetDb.host}:${targetDb.port}`);
   console.log(`  Verified: ${verified ? '✅' : '❌'}\n`);

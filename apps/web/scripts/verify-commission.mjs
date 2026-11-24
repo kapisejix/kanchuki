@@ -14,7 +14,10 @@ function envValue(filePath, key) {
     const raw = readFileSync(filePath, 'utf8');
     const line = raw.split(/\r?\n/).find((l) => l.startsWith(`${key}=`));
     if (!line) return null;
-    return line.slice(key.length + 1).trim().replace(/^["']|["']$/g, '');
+    return line
+      .slice(key.length + 1)
+      .trim()
+      .replace(/^["']|["']$/g, '');
   } catch {
     return null;
   }
@@ -52,12 +55,13 @@ await page.evaluate((key) => sessionStorage.setItem('admin_key', key), adminKey)
 await page.goto(target, { waitUntil: 'networkidle', timeout: 60000 });
 
 // 2. Wait for either the commission header or the error card.
-await page.waitForFunction(
-  () =>
-    document.body.innerText.includes('Commission') ||
-    document.body.innerText.includes('error'),
-  { timeout: 20000 },
-).catch(() => undefined);
+await page
+  .waitForFunction(
+    () =>
+      document.body.innerText.includes('Commission') || document.body.innerText.includes('error'),
+    { timeout: 20000 },
+  )
+  .catch(() => undefined);
 await page.waitForTimeout(1500);
 
 // 3. Snapshot what rendered.

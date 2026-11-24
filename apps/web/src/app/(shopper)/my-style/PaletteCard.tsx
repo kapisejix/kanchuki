@@ -1,63 +1,71 @@
-'use client'
+'use client';
 
 // F-045 PR-7: "your palette" after a selfie read. Shows colour FAMILIES only - never a
 // skin-colour or body label (spec 4.3). "Clear my data" is shown as done only when the
 // API confirms it (RC-060); a failure says so and can be retried.
-import { Camera, Palette, Trash2 } from 'lucide-react'
-import Link from 'next/link'
-import { useRef, useState } from 'react'
-import { BTN_SECONDARY, CARD, IconTile } from '../ui'
-import { clearProfile } from './analyze'
-import { LOGIN_HREF, type StyleProfile } from './lib'
+import { Camera, Palette, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { useRef, useState } from 'react';
+import { BTN_SECONDARY, CARD, IconTile } from '../ui';
+import { clearProfile } from './analyze';
+import { LOGIN_HREF, type StyleProfile } from './lib';
 
-const YEAR_MS = 365 * 86_400_000
+const YEAR_MS = 365 * 86_400_000;
 
 // Neutral by design (spec D2): says when it was saved and that an update is only needed about
 // once a year. It never discourages deleting, which stays one tap below.
 function ageNote(savedAt: string | null | undefined): string | null {
-  const d = savedAt ? new Date(savedAt) : null
-  if (!d || Number.isNaN(d.getTime())) return null
-  const on = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })
+  const d = savedAt ? new Date(savedAt) : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  const on = d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata',
+  });
   return Date.now() - d.getTime() > YEAR_MS
     ? `Saved on ${on}. It is over a year old, so you may want to update it. You can delete it any time.`
-    : `Saved on ${on}. You only need to update it about once a year, or whenever you like. You can delete it any time.`
+    : `Saved on ${on}. You only need to update it about once a year, or whenever you like. You can delete it any time.`;
 }
 
-type Status = 'idle' | 'clearing' | 'error' | 'signin'
+type Status = 'idle' | 'clearing' | 'error' | 'signin';
 
 export function PaletteCard({
   profile,
   onRetake,
   onCleared,
 }: {
-  profile: StyleProfile
-  onRetake: () => void
-  onCleared: () => void
+  profile: StyleProfile;
+  onRetake: () => void;
+  onCleared: () => void;
 }) {
-  const [status, setStatus] = useState<Status>('idle')
-  const busyRef = useRef(false) // sync guard: two taps can land before state commits (RC-015)
+  const [status, setStatus] = useState<Status>('idle');
+  const busyRef = useRef(false); // sync guard: two taps can land before state commits (RC-015)
 
   async function clear() {
-    if (busyRef.current) return
-    busyRef.current = true
-    setStatus('clearing')
-    const r = await clearProfile()
-    busyRef.current = false
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setStatus('clearing');
+    const r = await clearProfile();
+    busyRef.current = false;
     if (r === 'ok') {
-      setStatus('idle')
-      onCleared()
-    } else setStatus(r === 'unauthorized' ? 'signin' : 'error')
+      setStatus('idle');
+      onCleared();
+    } else setStatus(r === 'unauthorized' ? 'signin' : 'error');
   }
 
   const chips = (items: string[], tone: string) => (
     <ul className="flex flex-wrap gap-1.5 mt-1.5">
       {items.map((f) => (
-        <li key={f} className={`px-3 py-1 rounded-full text-xs font-semibold capitalize border ${tone}`}>
+        <li
+          key={f}
+          className={`px-3 py-1 rounded-full text-xs font-semibold capitalize border ${tone}`}
+        >
           {f}
         </li>
       ))}
     </ul>
-  )
+  );
 
   return (
     <section className={`${CARD} p-5`}>
@@ -69,12 +77,18 @@ export function PaletteCard({
         <div className="mt-4 space-y-3">
           <div>
             <p className="text-xs font-semibold text-heliotrope-500">Colours that suit you</p>
-            {chips(profile.palette.good, 'bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-500/20')}
+            {chips(
+              profile.palette.good,
+              'bg-fuchsia-500/10 text-fuchsia-600 border-fuchsia-500/20',
+            )}
           </div>
           {profile.palette.avoid.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-heliotrope-500">Go easy on</p>
-              {chips(profile.palette.avoid, 'bg-lavender-50 text-heliotrope-600 border-lavender-200')}
+              {chips(
+                profile.palette.avoid,
+                'bg-lavender-50 text-heliotrope-600 border-lavender-200',
+              )}
             </div>
           )}
         </div>
@@ -121,5 +135,5 @@ export function PaletteCard({
         </p>
       )}
     </section>
-  )
+  );
 }

@@ -1,62 +1,75 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
-  View, Text, ScrollView, RefreshControl,
-  ActivityIndicator, Alert,
-} from 'react-native'
-import { router } from 'expo-router'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { useQuery } from '@tanstack/react-query'
-import {
-  Store, Users, Ticket, MapPin, UserPlus, LogOut,
-  Package, Phone, ChevronRight,
   AlertCircle,
-} from 'lucide-react-native'
-import { teamApi, type TeamMemberInfo, type TerritoryRetailer, type SupportTicketStats } from '../../src/lib/team-api'
-import { getItem } from '../../src/lib/storage'
-import { useAuth } from '../../src/lib/auth-context'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+  ChevronRight,
+  LogOut,
+  MapPin,
+  Package,
+  Phone,
+  Store,
+  Ticket,
+  UserPlus,
+  Users,
+} from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { useAuth } from '../../src/lib/auth-context';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { getItem } from '../../src/lib/storage';
+import {
+  type SupportTicketStats,
+  type TeamMemberInfo,
+  type TerritoryRetailer,
+  teamApi,
+} from '../../src/lib/team-api';
+import { useTheme } from '../../src/lib/theme';
 
 // ─── Staff Dashboard ─────────────────────────────────────────────
 
 export default function StaffDashboard() {
-  const { signOut } = useAuth()
-  const { primaryColor, colors } = useTheme()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const [staffInfo, setStaffInfo] = useState<{ name: string; role: string } | null>(null)
-  const [loadingInfo, setLoadingInfo] = useState(true)
+  const { signOut } = useAuth();
+  const { primaryColor, colors } = useTheme();
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const [staffInfo, setStaffInfo] = useState<{ name: string; role: string } | null>(null);
+  const [loadingInfo, setLoadingInfo] = useState(true);
 
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['staff', 'me'],
     queryFn: () => teamApi.getMe(),
-  })
+  });
 
-  const { data: retailersData, isLoading: retailersLoading, refetch: refetchRetailers } = useQuery({
+  const {
+    data: retailersData,
+    isLoading: retailersLoading,
+    refetch: refetchRetailers,
+  } = useQuery({
     queryKey: ['staff', 'retailers'],
     queryFn: () => teamApi.getRetailers(),
-  })
+  });
 
   const { data: ticketStatsData, isLoading: ticketStatsLoading } = useQuery({
     queryKey: ['staff', 'ticket-stats'],
     queryFn: () => teamApi.getTicketStats(),
-  })
+  });
 
   useEffect(() => {
     getItem('staff_name').then((name) => {
       getItem('staff_role').then((role) => {
-        setStaffInfo({ name: name ?? 'Staff', role: role ?? 'Team Member' })
-        setLoadingInfo(false)
-      })
-    })
-  }, [])
+        setStaffInfo({ name: name ?? 'Staff', role: role ?? 'Team Member' });
+        setLoadingInfo(false);
+      });
+    });
+  }, []);
 
-  const me = (meData as { data: TeamMemberInfo } | undefined)?.data
-  const retailers = (retailersData as { data: TerritoryRetailer[] } | undefined)?.data ?? []
-  const ticketStats = (ticketStatsData as { data: SupportTicketStats } | undefined)?.data
+  const me = (meData as { data: TeamMemberInfo } | undefined)?.data;
+  const retailers = (retailersData as { data: TerritoryRetailer[] } | undefined)?.data ?? [];
+  const ticketStats = (ticketStatsData as { data: SupportTicketStats } | undefined)?.data;
 
-  const displayName = me?.name ?? staffInfo?.name ?? 'Staff'
-  const displayRole = me?.role ?? staffInfo?.role ?? 'Team Member'
-  const territoriesLabel = me?.territories?.map((t) => t.name).join(', ') ?? '—'
+  const displayName = me?.name ?? staffInfo?.name ?? 'Staff';
+  const displayRole = me?.role ?? staffInfo?.role ?? 'Team Member';
+  const territoriesLabel = me?.territories?.map((t) => t.name).join(', ') ?? '—';
 
   const handleLogout = useCallback(async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -67,24 +80,19 @@ export default function StaffDashboard() {
         onPress: async () => {
           // Clears every auth key and flips the guards — auth/phone becomes the
           // only route, so no stale authenticated screen can linger beneath it.
-          await signOut()
+          await signOut();
         },
       },
-    ])
-  }, [signOut])
+    ]);
+  }, [signOut]);
 
-  const isLoading = meLoading || retailersLoading || ticketStatsLoading || loadingInfo
-  const totalTickets = ticketStats
-    ? ticketStats.open + ticketStats.assigned
-    : 0
+  const isLoading = meLoading || retailersLoading || ticketStatsLoading || loadingInfo;
+  const totalTickets = ticketStats ? ticketStats.open + ticketStats.assigned : 0;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
-      <View
-        className="bg-ink-700 px-4 pb-6 rounded-b-3xl"
-        style={{ paddingTop: headerPaddingTop }}
-      >
+      <View className="bg-ink-700 px-4 pb-6 rounded-b-3xl" style={{ paddingTop: headerPaddingTop }}>
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center gap-3">
             <View className="w-11 h-11 rounded-2xl bg-white/15 items-center justify-center">
@@ -130,7 +138,7 @@ export default function StaffDashboard() {
           <RefreshControl
             refreshing={isLoading}
             onRefresh={() => {
-              void refetchRetailers()
+              void refetchRetailers();
             }}
           />
         }
@@ -164,9 +172,7 @@ export default function StaffDashboard() {
 
             {/* Quick actions */}
             <View className="px-4 pt-5">
-              <Text className="text-xs font-semibold text-heliotrope-500 mb-3">
-                Quick Actions
-              </Text>
+              <Text className="text-xs font-semibold text-heliotrope-500 mb-3">Quick Actions</Text>
               <View className="flex-row gap-3">
                 <AnimatedPressable
                   onPress={() => router.push('/staff/retailer-onboard')}
@@ -184,8 +190,12 @@ export default function StaffDashboard() {
                   className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200"
                 >
                   <Users size={24} color={primaryColor} />
-                  <Text className="text-spaceCadet-900 font-semibold text-sm mt-2">View Retailers</Text>
-                  <Text className="text-heliotrope-500 text-xs mt-0.5">{retailers.length} in territory</Text>
+                  <Text className="text-spaceCadet-900 font-semibold text-sm mt-2">
+                    View Retailers
+                  </Text>
+                  <Text className="text-heliotrope-500 text-xs mt-0.5">
+                    {retailers.length} in territory
+                  </Text>
                 </AnimatedPressable>
               </View>
 
@@ -197,7 +207,9 @@ export default function StaffDashboard() {
                   <Package size={20} color={primaryColor} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-spaceCadet-900 font-semibold text-sm">Catalog Upload Jobs</Text>
+                  <Text className="text-spaceCadet-900 font-semibold text-sm">
+                    Catalog Upload Jobs
+                  </Text>
                   <Text className="text-heliotrope-500 text-xs mt-0.5">
                     Confirmed on-site visits assigned to you
                   </Text>
@@ -228,7 +240,8 @@ export default function StaffDashboard() {
                 <AlertCircle size={18} color={colors.turmeric[600]} className="mt-0.5" />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-turmeric-800">
-                    {ticketStats.requires_visit} visit-required ticket{ticketStats.requires_visit !== 1 ? 's' : ''}
+                    {ticketStats.requires_visit} visit-required ticket
+                    {ticketStats.requires_visit !== 1 ? 's' : ''}
                   </Text>
                   <Text className="text-xs text-turmeric-700 mt-0.5">
                     These retailers need an in-person visit. Check the tickets list for details.
@@ -254,7 +267,8 @@ export default function StaffDashboard() {
                 <View className="bg-white rounded-2xl p-8 border border-lavender-200 items-center">
                   <Store size={40} color={colors.sand[300]} />
                   <Text className="text-heliotrope-500 text-sm mt-4 text-center">
-                    No retailers in your territory yet.{'\n'}Tap &quot;New Retailer&quot; to get started.
+                    No retailers in your territory yet.{'\n'}Tap &quot;New Retailer&quot; to get
+                    started.
                   </Text>
                 </View>
               ) : (
@@ -270,7 +284,9 @@ export default function StaffDashboard() {
                         </Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-semibold text-spaceCadet-900">{r.shop_name}</Text>
+                        <Text className="text-sm font-semibold text-spaceCadet-900">
+                          {r.shop_name}
+                        </Text>
                         <View className="flex-row items-center gap-3 mt-1">
                           <View className="flex-row items-center gap-1">
                             <MapPin size={11} color={colors.sand[400]} />
@@ -286,7 +302,8 @@ export default function StaffDashboard() {
                         <StatusBadge status={r.plan_status} />
                         <Text className="text-[11px] text-heliotrope-500">
                           {new Date(r.created_at).toLocaleDateString('en-IN', {
-                            day: '2-digit', month: 'short',
+                            day: '2-digit',
+                            month: 'short',
                           })}
                         </Text>
                       </View>
@@ -324,30 +341,33 @@ export default function StaffDashboard() {
         )}
       </ScrollView>
     </View>
-  )
+  );
 }
 
 // ─── Sub-components ─────────────────────────────────────────────
 
 function StatCard({
-  icon, label, value, pulse,
+  icon,
+  label,
+  value,
+  pulse,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  pulse?: boolean
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  pulse?: boolean;
 }) {
   return (
     <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200">
-      <View className="w-6 h-6 justify-center mb-2">
-        {icon}
-      </View>
-      <Text className={`text-xl font-semibold ${pulse ? 'text-turmeric-600' : 'text-spaceCadet-900'}`}>
+      <View className="w-6 h-6 justify-center mb-2">{icon}</View>
+      <Text
+        className={`text-xl font-semibold ${pulse ? 'text-turmeric-600' : 'text-spaceCadet-900'}`}
+      >
         {value.toLocaleString('en-IN')}
       </Text>
       <Text className="text-xs text-heliotrope-500 mt-0.5">{label}</Text>
     </View>
-  )
+  );
 }
 
 function TicketStat({ label, value, color }: { label: string; value: number; color: string }) {
@@ -356,8 +376,8 @@ function TicketStat({ label, value, color }: { label: string; value: number; col
     blue: { bg: 'bg-ink-100', text: 'text-ink-700' },
     green: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
     gray: { bg: 'bg-sand-100', text: 'text-heliotrope-500' },
-  }
-  const c = colorMap[color] ?? colorMap.gray
+  };
+  const c = colorMap[color] ?? colorMap.gray;
 
   return (
     <View className="items-center">
@@ -366,7 +386,7 @@ function TicketStat({ label, value, color }: { label: string; value: number; col
       </View>
       <Text className="text-[11px] text-heliotrope-500">{label}</Text>
     </View>
-  )
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -375,12 +395,12 @@ function StatusBadge({ status }: { status: string }) {
     ACTIVE: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
     PAST_DUE: { bg: 'bg-rust-100', text: 'text-rust-700' },
     CANCELLED: { bg: 'bg-sand-100', text: 'text-heliotrope-500' },
-  }
-  const c = colorMap[status] ?? { bg: 'bg-sand-100', text: 'text-heliotrope-500' }
+  };
+  const c = colorMap[status] ?? { bg: 'bg-sand-100', text: 'text-heliotrope-500' };
 
   return (
     <View className={`${c.bg} px-2 py-0.5 rounded-full`}>
       <Text className={`text-[11px] font-semibold ${c.text}`}>{status}</Text>
     </View>
-  )
+  );
 }

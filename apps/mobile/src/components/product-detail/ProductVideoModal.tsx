@@ -1,3 +1,6 @@
+import { Image } from 'expo-image';
+import { VideoView } from 'expo-video';
+import { AlertTriangle, CheckCircle2, Clapperboard, Info, X } from 'lucide-react-native';
 /**
  * F-034 T7b — "AI Promo Video" sheet. Same shell and states as
  * ProductStudioModal (picker / making / failed / ready), presentational only:
@@ -6,55 +9,52 @@
  * Design (owner-approved 2026-11-18, T7a): no fake progress — elapsed time
  * only; blocked reasons replace the button label; no model names or slugs.
  */
-import React, { useState } from 'react'
-import { ActivityIndicator, Modal, ScrollView, Text, View } from 'react-native'
-import { Image } from 'expo-image'
-import { VideoView } from 'expo-video'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { AlertTriangle, CheckCircle2, Clapperboard, Info, X } from 'lucide-react-native'
-import type { PromoVideoAspect, PromoVideoStyle } from '../../lib/api/products'
+import React, { useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { PromoStatus } from '../../hooks/useProductPromoVideo';
+import type { PromoVideoAspect, PromoVideoStyle } from '../../lib/api/products';
+import { META_SOCIAL_ENABLED } from '../../lib/meta-social';
 import {
   PROMO_ASPECTS,
   formatElapsed,
   promoBlockReason,
   resolveAspect,
-} from '../../lib/promo-video'
-import { useSafeVideoPlayer } from '../../lib/safe-video-player'
-import { AnimatedPressable } from '../AnimatedPressable'
-import { GradientButton } from '../GradientButton'
-import { ReportAiContent } from '../ReportAiContent'
-import { META_SOCIAL_ENABLED } from '../../lib/meta-social';
-import type { PromoStatus } from '../../hooks/useProductPromoVideo'
+} from '../../lib/promo-video';
+import { useSafeVideoPlayer } from '../../lib/safe-video-player';
+import { AnimatedPressable } from '../AnimatedPressable';
+import { GradientButton } from '../GradientButton';
+import { ReportAiContent } from '../ReportAiContent';
 
 interface ProductVideoModalProps {
-  visible: boolean
-  onClose: () => void
-  onStart: (styleSlug: string, aspect: PromoVideoAspect) => void
-  onRetry: () => void
-  onPostToSocial: () => void
-  styles: PromoVideoStyle[]
-  stylesLoading: boolean
-  quota: { remaining: number; unlimited: boolean } | undefined
-  sourcePhotoUrl: string | undefined
-  videoCount: number
-  online: boolean
-  kids: boolean
-  starting: boolean
-  status: PromoStatus
-  error: string | null
-  limitReached: boolean
-  result: { videoId: string; url: string } | null
-  elapsedMs: number
-  primaryColor: string
-  colors: any
+  visible: boolean;
+  onClose: () => void;
+  onStart: (styleSlug: string, aspect: PromoVideoAspect) => void;
+  onRetry: () => void;
+  onPostToSocial: () => void;
+  styles: PromoVideoStyle[];
+  stylesLoading: boolean;
+  quota: { remaining: number; unlimited: boolean } | undefined;
+  sourcePhotoUrl: string | undefined;
+  videoCount: number;
+  online: boolean;
+  kids: boolean;
+  starting: boolean;
+  status: PromoStatus;
+  error: string | null;
+  limitReached: boolean;
+  result: { videoId: string; url: string } | null;
+  elapsedMs: number;
+  primaryColor: string;
+  colors: any;
 }
 
 function PromoClip({ url }: { url: string }) {
   const player = useSafeVideoPlayer(url, (p) => {
-    p.loop = true
-    p.muted = true
-    p.play()
-  })
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
   return (
     <View
       className="w-full bg-sand-950 rounded-2xl overflow-hidden mt-3"
@@ -74,24 +74,24 @@ function PromoClip({ url }: { url: string }) {
         </View>
       )}
     </View>
-  )
+  );
 }
 
 export function ProductVideoModal(props: ProductVideoModalProps) {
-  const { visible, onClose, status, primaryColor, colors } = props
-  const insets = useSafeAreaInsets()
-  const [pickedSlug, setPickedSlug] = useState<string | null>(null)
-  const [pickedAspect, setPickedAspect] = useState<PromoVideoAspect | null>(null)
+  const { visible, onClose, status, primaryColor, colors } = props;
+  const insets = useSafeAreaInsets();
+  const [pickedSlug, setPickedSlug] = useState<string | null>(null);
+  const [pickedAspect, setPickedAspect] = useState<PromoVideoAspect | null>(null);
 
   // Derived selection (RC-017): never an effect that re-picks on every new array.
-  const style = props.styles.find((s) => s.slug === pickedSlug) ?? props.styles[0]
-  const aspect = resolveAspect(pickedAspect, style)
+  const style = props.styles.find((s) => s.slug === pickedSlug) ?? props.styles[0];
+  const aspect = resolveAspect(pickedAspect, style);
   const block = promoBlockReason({
     online: props.online,
     videoCount: props.videoCount,
     quota: props.quota,
     styleCount: props.styles.length,
-  })
+  });
 
   const secondary = (label: string, onPress: () => void) => (
     <AnimatedPressable
@@ -102,11 +102,11 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
     >
       <Text className="text-sm font-bold text-sand-700">{label}</Text>
     </AnimatedPressable>
-  )
+  );
 
   const renderBody = () => {
     if (status === 'processing' || status === 'stalled') {
-      const stalled = status === 'stalled'
+      const stalled = status === 'stalled';
       return (
         <View className="py-10 items-center" accessibilityLiveRegion="polite">
           {!stalled && <ActivityIndicator size="large" color={primaryColor} />}
@@ -125,7 +125,7 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
           </Text>
           {stalled && <View className="w-full mt-5">{secondary('Close', onClose)}</View>}
         </View>
-      )
+      );
     }
 
     if (status === 'failed') {
@@ -149,7 +149,7 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
             {secondary('Close', onClose)}
           </View>
         </View>
-      )
+      );
     }
 
     if (status === 'ready' && props.result) {
@@ -164,18 +164,18 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
             AI-made promo clip. Your photo stays the main photo.
           </Text>
           <View className="w-full mt-4 gap-2">
-{META_SOCIAL_ENABLED && (
-            <GradientButton
-              label="Post to social"
-              onPress={props.onPostToSocial}
-              colors={[primaryColor, colors.ink[800]]}
-            />
-)}
+            {META_SOCIAL_ENABLED && (
+              <GradientButton
+                label="Post to social"
+                onPress={props.onPostToSocial}
+                colors={[primaryColor, colors.ink[800]]}
+              />
+            )}
             {secondary('Keep in gallery', onClose)}
             <ReportAiContent feature="AI Promo Video" contentRef={props.result.videoId} />
           </View>
         </View>
-      )
+      );
     }
 
     // ── Picker ──
@@ -183,7 +183,7 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
       ? 'Unlimited'
       : props.quota
         ? `${props.quota.remaining} ${props.quota.remaining === 1 ? 'video' : 'videos'} left`
-        : null
+        : null;
     return (
       <>
         <View className="mt-3 flex-row items-center gap-3">
@@ -211,7 +211,7 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
         <Text className="text-xs font-bold text-sand-500 mt-4 mb-2">Shape</Text>
         <View className="flex-row flex-wrap gap-2">
           {PROMO_ASPECTS.map((a) => {
-            const on = a.value === aspect
+            const on = a.value === aspect;
             return (
               <AnimatedPressable
                 key={a.value}
@@ -227,7 +227,7 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
                   {a.label} <Text className="text-xs text-sand-500">{a.value}</Text>
                 </Text>
               </AnimatedPressable>
-            )
+            );
           })}
         </View>
 
@@ -237,7 +237,7 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
           ) : (
             <View className="gap-2.5 pb-2">
               {props.styles.map((s) => {
-                const on = s.slug === style?.slug
+                const on = s.slug === style?.slug;
                 return (
                   <AnimatedPressable
                     key={s.slug}
@@ -270,7 +270,7 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
                     </View>
                     <Text className="text-xs text-sand-500">{s.duration_sec ?? 5} s</Text>
                   </AnimatedPressable>
-                )
+                );
               })}
             </View>
           )}
@@ -287,15 +287,17 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
 
         <View className="mt-4">
           <GradientButton
-            label={block ? block.reason : props.starting ? 'Starting…' : 'Make video · about 1–3 min'}
+            label={
+              block ? block.reason : props.starting ? 'Starting…' : 'Make video · about 1–3 min'
+            }
             onPress={() => style && props.onStart(style.slug, aspect)}
             disabled={!!block || props.starting || props.stylesLoading || !style}
             colors={[primaryColor, colors.ink[800]]}
           />
         </View>
       </>
-    )
-  }
+    );
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -322,5 +324,5 @@ export function ProductVideoModal(props: ProductVideoModalProps) {
         </View>
       </View>
     </Modal>
-  )
+  );
 }

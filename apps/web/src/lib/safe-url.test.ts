@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { safeHttpUrl } from './safe-url'
+import { describe, expect, it } from 'vitest';
+import { safeHttpUrl } from './safe-url';
 
 describe('safeHttpUrl', () => {
   it('passes http(s) URLs through unchanged', () => {
-    expect(safeHttpUrl('https://shop.example.com/a?b=1')).toBe('https://shop.example.com/a?b=1')
-    expect(safeHttpUrl('http://shop.example.com')).toBe('http://shop.example.com')
-  })
+    expect(safeHttpUrl('https://shop.example.com/a?b=1')).toBe('https://shop.example.com/a?b=1');
+    expect(safeHttpUrl('http://shop.example.com')).toBe('http://shop.example.com');
+  });
 
   it.each([
     'javascript:alert(document.cookie)',
@@ -20,6 +20,6 @@ describe('safeHttpUrl', () => {
     null,
     undefined,
   ])('drops %s', (u) => {
-    expect(safeHttpUrl(u as string | null | undefined)).toBeUndefined()
-  })
-})
+    expect(safeHttpUrl(u as string | null | undefined)).toBeUndefined();
+  });
+});

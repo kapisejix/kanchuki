@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { UserRound } from 'lucide-react'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { getPassportSession, type PassportAccount } from '@/lib/passport-client'
+import { type PassportAccount, getPassportSession } from '@/lib/passport-client';
+import { UserRound } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 // Customer entry point for the store directory — the one surface on the
 // marketing site that is genuinely shopper-facing.
@@ -24,37 +24,37 @@ import { getPassportSession, type PassportAccount } from '@/lib/passport-client'
 // 40px, matching the site's other pill controls (`Chrome.tsx`'s "Start Free
 // Trial" is `px-5 py-2.5 text-sm`) rather than the 36px this started at, which
 // read as undersized next to the 48px search field directly below it.
-const PILL_HEIGHT = 'h-10'
+const PILL_HEIGHT = 'h-10';
 
 export default function ShopperEntry() {
-  const [account, setAccount] = useState<PassportAccount | null>(null)
-  const [checked, setChecked] = useState(false)
+  const [account, setAccount] = useState<PassportAccount | null>(null);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     const run = async () => {
       try {
-        const session = await getPassportSession()
-        if (!cancelled) setAccount(session)
+        const session = await getPassportSession();
+        if (!cancelled) setAccount(session);
       } catch {
-        if (!cancelled) setAccount(null)
+        if (!cancelled) setAccount(null);
       } finally {
-        if (!cancelled) setChecked(true)
+        if (!cancelled) setChecked(true);
       }
-    }
+    };
 
-    void run()
+    void run();
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   // Reserve the row's height so the search box below doesn't jump when the
   // session check lands.
-  if (!checked) return <div className={`${PILL_HEIGHT} w-[104px]`} aria-hidden="true" />
+  if (!checked) return <div className={`${PILL_HEIGHT} w-[104px]`} aria-hidden="true" />;
 
-  const name = account?.name?.trim() || null
+  const name = account?.name?.trim() || null;
 
   return (
     <Link
@@ -79,5 +79,5 @@ export default function ShopperEntry() {
         <span>Log in</span>
       )}
     </Link>
-  )
+  );
 }

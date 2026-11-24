@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
-import { View, Text, Animated, Platform } from 'react-native'
-import { onlineManager } from '@tanstack/react-query'
-import { WifiOff } from 'lucide-react-native'
-import { useReduceMotion } from '../hooks/useReduceMotion'
+import { onlineManager } from '@tanstack/react-query';
+import { WifiOff } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Text, View } from 'react-native';
+import { useReduceMotion } from '../hooks/useReduceMotion';
 
 /**
  * Shows a subtle "offline" banner at the top of the screen when the device
@@ -12,18 +12,18 @@ import { useReduceMotion } from '../hooks/useReduceMotion'
  * connectivity via fetch() failures (no extra native dependency needed).
  */
 export function NetworkBanner() {
-  const reduceMotion = useReduceMotion()
-  const [isOnline, setIsOnline] = useState(true)
-  const slideAnim = useRef(new Animated.Value(0)).current
+  const reduceMotion = useReduceMotion();
+  const [isOnline, setIsOnline] = useState(true);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // onlineManager fires on every online/offline transition detected
     // by react-query (wraps fetch's online detection)
     const unsubscribe = onlineManager.subscribe((online) => {
-      setIsOnline(online)
-    })
-    return () => unsubscribe()
-  }, [])
+      setIsOnline(online);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     // Reduce Motion: jump to the end state (still shows/hides the banner) instead of sliding
@@ -31,10 +31,10 @@ export function NetworkBanner() {
       toValue: isOnline ? 0 : 1,
       duration: reduceMotion ? 0 : 300,
       useNativeDriver: true,
-    }).start()
-  }, [isOnline, slideAnim, reduceMotion])
+    }).start();
+  }, [isOnline, slideAnim, reduceMotion]);
 
-  if (isOnline) return null
+  if (isOnline) return null;
 
   return (
     <Animated.View
@@ -60,5 +60,5 @@ export function NetworkBanner() {
         </Text>
       </View>
     </Animated.View>
-  )
+  );
 }

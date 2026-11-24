@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import Image from 'next/image'
-import { X, Share2, Scissors, ChevronDown } from 'lucide-react'
-import { buildWhatsAppEnquiryLink } from '@kanchuki/shared'
+import { buildWhatsAppEnquiryLink } from '@kanchuki/shared';
+import { ChevronDown, Scissors, Share2, X } from 'lucide-react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Design {
-  id: string
-  category: string
-  option: string
-  name: string
-  image_url: string
-  description: string | null
+  id: string;
+  category: string;
+  option: string;
+  name: string;
+  image_url: string;
+  description: string | null;
 }
 
 interface Props {
-  retailerPhone: string
-  retailerName: string
+  retailerPhone: string;
+  retailerName: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -25,7 +25,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   SLEEVE: 'Sleeve / Shoulder',
   SALWAR: 'Salwar / Bottom',
   SILHOUETTE: 'Kurti / Silhouette',
-}
+};
 
 const CATEGORY_ICONS: Record<string, string> = {
   NECKLINE: '✂️',
@@ -33,45 +33,50 @@ const CATEGORY_ICONS: Record<string, string> = {
   Sleeve: '💪',
   SALWAR: '👖',
   SILHOUETTE: '👗',
-}
+};
 
 export function DesignGallery({ retailerPhone, retailerName }: Props) {
-  const [designs, setDesigns] = useState<Design[]>([])
-  const [loading, setLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [selectedDesign, setSelectedDesign] = useState<Design | null>(null)
+  const [designs, setDesigns] = useState<Design[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [selectedDesign, setSelectedDesign] = useState<Design | null>(null);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     fetch('/api/designs')
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { data: Design[] } | null) => {
         if (!cancelled && json?.data) {
-          setDesigns(json.data)
+          setDesigns(json.data);
           // Auto-select first category
           if (json.data.length > 0) {
-            const cats = Array.from(new Set(json.data.map((d) => d.category)))
-            if (cats.length > 0) setActiveCategory(cats[0]!)
+            const cats = Array.from(new Set(json.data.map((d) => d.category)));
+            if (cats.length > 0) setActiveCategory(cats[0]!);
           }
         }
       })
       .catch(() => undefined)
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [])
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const categories = Array.from(new Set(designs.map((d) => d.category)))
+  const categories = Array.from(new Set(designs.map((d) => d.category)));
   const filteredDesigns = activeCategory
     ? designs.filter((d) => d.category === activeCategory)
-    : designs
+    : designs;
 
-  const handleShare = useCallback((design: Design) => {
-    const message = `Hi! I'd like this design for my unstitched suit:\n\n${design.name} (${design.category.replace(/_/g, ' ').toLowerCase()})\n\nPlease share this with my tailor.`
-    const url = buildWhatsAppEnquiryLink(retailerPhone, message)
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }, [retailerPhone])
+  const handleShare = useCallback(
+    (design: Design) => {
+      const message = `Hi! I'd like this design for my unstitched suit:\n\n${design.name} (${design.category.replace(/_/g, ' ').toLowerCase()})\n\nPlease share this with my tailor.`;
+      const url = buildWhatsAppEnquiryLink(retailerPhone, message);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    [retailerPhone],
+  );
 
   if (loading) {
     return (
@@ -80,10 +85,10 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
           <div className="w-6 h-6 border-2 border-gray-200 border-t-cyan-600 rounded-full animate-spin" />
         </div>
       </div>
-    )
+    );
   }
 
-  if (designs.length === 0) return null
+  if (designs.length === 0) return null;
 
   return (
     <>
@@ -192,5 +197,5 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
         </div>
       )}
     </>
-  )
+  );
 }

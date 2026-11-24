@@ -1,30 +1,30 @@
-import React from 'react'
-import { View, Text, TextInput } from 'react-native'
-import { Minus, Plus } from 'lucide-react-native'
-import { FREE_SIZE, MAX_STOCK_QUANTITY } from '@kanchuki/shared'
-import { AnimatedPressable } from '../AnimatedPressable'
+import { FREE_SIZE, MAX_STOCK_QUANTITY } from '@kanchuki/shared';
+import { Minus, Plus } from 'lucide-react-native';
+import React from 'react';
+import { Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../AnimatedPressable';
 
 /** Sizes that get a stepper: the selected sizes, or one FREE row when unsized. */
 export const stockSizes = (selectedSizes: string[]) =>
-  selectedSizes.length ? selectedSizes : [FREE_SIZE]
+  selectedSizes.length ? selectedSizes : [FREE_SIZE];
 
 /** Quantity per displayed size; a size the retailer has not touched yet counts as 1. */
 export const toStockPayload = (selectedSizes: string[], qty: Record<string, number>) =>
-  stockSizes(selectedSizes).map((size) => ({ size, quantity: qty[size] ?? 1 }))
+  stockSizes(selectedSizes).map((size) => ({ size, quantity: qty[size] ?? 1 }));
 
 interface Props {
-  selectedSizes: string[]
-  qty: Record<string, number>
-  onChange: (size: string, quantity: number) => void
+  selectedSizes: string[];
+  qty: Record<string, number>;
+  onChange: (size: string, quantity: number) => void;
 }
 
 export function StockEditor({ selectedSizes, qty, onChange }: Props) {
-  const clamp = (n: number) => Math.min(MAX_STOCK_QUANTITY, Math.max(0, Math.floor(n) || 0))
+  const clamp = (n: number) => Math.min(MAX_STOCK_QUANTITY, Math.max(0, Math.floor(n) || 0));
   return (
     <View className="gap-2">
       {stockSizes(selectedSizes).map((size) => {
-        const value = qty[size] ?? 1
-        const label = size === FREE_SIZE ? '' : `${size} `
+        const value = qty[size] ?? 1;
+        const label = size === FREE_SIZE ? '' : `${size} `;
         return (
           <View key={size} className="flex-row items-center justify-between">
             <Text className="text-sm font-semibold text-spaceCadet-900">
@@ -46,7 +46,11 @@ export function StockEditor({ selectedSizes, qty, onChange }: Props) {
                 maxLength={5}
                 accessibilityLabel={`${label}quantity`}
                 // Android TextInput keeps ~10px default vertical padding, which clipped the digits in a 36px box.
-                style={{ paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' }}
+                style={{
+                  paddingVertical: 0,
+                  includeFontPadding: false,
+                  textAlignVertical: 'center',
+                }}
                 className="w-16 h-10 text-center text-sm font-bold text-spaceCadet-900 border border-lavender-200 rounded-lg"
               />
               <AnimatedPressable
@@ -59,8 +63,8 @@ export function StockEditor({ selectedSizes, qty, onChange }: Props) {
               </AnimatedPressable>
             </View>
           </View>
-        )
+        );
       })}
     </View>
-  )
+  );
 }

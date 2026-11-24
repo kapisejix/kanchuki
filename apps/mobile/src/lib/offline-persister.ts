@@ -13,8 +13,8 @@
  * - Write errors are non-fatal (logged, not thrown)
  */
 
-import { Paths, File, Directory } from 'expo-file-system'
-import { clearQueue } from './mutation-queue'
+import { Directory, File, Paths } from 'expo-file-system';
+import { clearQueue } from './mutation-queue';
 
 // ─── Paths ────────────────────────────────────────────────────
 // URIs are computed lazily (not at module load) so importing this module
@@ -25,46 +25,46 @@ import { clearQueue } from './mutation-queue'
 // keeps this module mockable in vitest, same as mutation-queue.ts.
 
 function cacheDirUri(): string {
-  return `${Paths.document.uri}kanchuki-cache/`
+  return `${Paths.document.uri}kanchuki-cache/`;
 }
 
 function cacheFileUri(): string {
-  return `${cacheDirUri()}rq-cache.json`
+  return `${cacheDirUri()}rq-cache.json`;
 }
 
 // ─── Types ─────────────────────────────────────────────────────
 
 interface PersistedQuery {
-  queryHash: string
-  queryKey: unknown[]
-  state: Record<string, unknown>
+  queryHash: string;
+  queryKey: unknown[];
+  state: Record<string, unknown>;
 }
 
 interface PersistedCache {
-  version: number
-  timestamp: number
-  queries: PersistedQuery[]
+  version: number;
+  timestamp: number;
+  queries: PersistedQuery[];
 }
 
-const CURRENT_VERSION = 1
+const CURRENT_VERSION = 1;
 
 // ─── File helpers ──────────────────────────────────────────────
 
 /** Ensure the cache directory exists. Creates it (with intermediates) if missing. */
 function ensureCacheDir(): void {
-  const dir = new Directory(cacheDirUri())
+  const dir = new Directory(cacheDirUri());
   if (!dir.exists) {
     dir.create({
       intermediates: true,
       idempotent: true,
-    })
+    });
   }
 }
 
 /** Get a File handle for the cache file (does NOT create the file). */
 function cacheFile(): File {
-  ensureCacheDir()
-  return new File(cacheFileUri())
+  ensureCacheDir();
+  return new File(cacheFileUri());
 }
 
 // ─── Persist ───────────────────────────────────────────────────
@@ -77,13 +77,13 @@ function cacheFile(): File {
  */
 export function persistQueryCache(queryClient: any): void {
   try {
-    const allQueries = queryClient.getQueryCache().getAll()
-    const persistable: PersistedQuery[] = []
+    const allQueries = queryClient.getQueryCache().getAll();
+    const persistable: PersistedQuery[] = [];
 
     for (const query of allQueries) {
-      const state = query.state
+      const state = query.state;
       // Skip queries that have no data or whose gcTime window has elapsed
-      if (!state.data || query.isStaleByTime(query.gcTime)) continue
+      if (!state.data || query.isStaleByTime(query.gcTime)) continue;
 
       persistable.push({
         queryHash: query.queryHash,
@@ -101,32 +101,32 @@ export function persistQueryCache(queryClient: any): void {
           status: state.status,
           fetchStatus: state.fetchStatus,
         },
-      })
+      });
     }
 
-    if (persistable.length === 0) return
+    if (persistable.length === 0) return;
 
     const payload: PersistedCache = {
       version: CURRENT_VERSION,
       timestamp: Date.now(),
       queries: persistable,
-    }
+    };
 
-    const file = cacheFile()
+    const file = cacheFile();
     if (!file.exists) {
       file.create({
         intermediates: true,
         overwrite: true,
-      })
+      });
     }
     // iOS native File.write(_:) takes exactly one argument — passing an
     // options object throws InvalidArgsNumberException at the native layer.
-    file.write(JSON.stringify(payload))
+    file.write(JSON.stringify(payload));
   } catch (err) {
     console.warn(
       '[offline-persister] Failed to persist cache:',
       err instanceof Error ? err.message : String(err),
-    )
+    );
   }
 }
 
@@ -140,42 +140,42 @@ export function persistQueryCache(queryClient: any): void {
  */
 export async function restoreQueryCache(queryClient: any): Promise<boolean> {
   try {
-    const file = cacheFile()
-    if (!file.exists) return false
+    const file = cacheFile();
+    if (!file.exists) return false;
 
-    const content = await file.text()
-    const payload = JSON.parse(content) as PersistedCache
+    const content = await file.text();
+    const payload = JSON.parse(content) as PersistedCache;
 
     // Version check — clear and bail if format changed
     if (payload.version !== CURRENT_VERSION) {
-      deleteCacheFile()
-      return false
+      deleteCacheFile();
+      return false;
     }
 
     // Skip cache older than 24 hours (stale data isn't useful)
     if (Date.now() - payload.timestamp > 24 * 60 * 60 * 1000) {
-      deleteCacheFile()
-      return false
+      deleteCacheFile();
+      return false;
     }
 
-    if (!payload.queries?.length) return false
+    if (!payload.queries?.length) return false;
 
     // Restore each query into React Query's cache
     for (const q of payload.queries) {
       queryClient.setQueryData(q.queryKey, q.state.data, {
         updatedAt: (q.state.dataUpdatedAt as number) ?? Date.now(),
-      })
+      });
     }
 
-    return true
+    return true;
   } catch (err) {
     // Corrupt cache file — clear it and start fresh
     console.warn(
       '[offline-persister] Failed to restore cache, clearing:',
       err instanceof Error ? err.message : String(err),
-    )
-    deleteCacheFile()
-    return false
+    );
+    deleteCacheFile();
+    return false;
   }
 }
 
@@ -186,8 +186,8 @@ export async function restoreQueryCache(queryClient: any): Promise<boolean> {
  */
 export async function clearPersistedCache(): Promise<void> {
   // RC-107: the offline mutation queue lives in the same folder and must not outlive the account.
-  await clearQueue()
-  deleteCacheFile()
+  await clearQueue();
+  deleteCacheFile();
 }
 
 /**
@@ -196,9 +196,9 @@ export async function clearPersistedCache(): Promise<void> {
  */
 function deleteCacheFile(): void {
   try {
-    const file = cacheFile()
+    const file = cacheFile();
     if (file.exists) {
-      file.delete()
+      file.delete();
     }
   } catch {
     // Best-effort

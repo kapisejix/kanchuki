@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { API_URL as apiUrl } from '@/lib/apiUrl'
+import { API_URL as apiUrl } from '@/lib/apiUrl';
+import { type NextRequest, NextResponse } from 'next/server';
 
 // Proxy the customer's try-on POST (multipart selfie) to the public API.
 //
@@ -16,12 +16,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ productId: string }> },
 ) {
-  const { productId } = await params
+  const { productId } = await params;
 
   // The consent version rides in the query string (the API reads it there, not
   // as a multipart field — see products-tryon.ts for why field ordering makes a
   // form field unsafe). Forward the incoming query verbatim.
-  const search = request.nextUrl.search
+  const search = request.nextUrl.search;
 
   try {
     const res = await fetch(
@@ -38,16 +38,19 @@ export async function POST(
         // @ts-expect-error - `duplex` is valid in undici but absent from the DOM types
         duplex: 'half',
       },
-    )
+    );
 
-    const body = await res.text()
+    const body = await res.text();
     return new NextResponse(body, {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
-    })
+    });
   } catch {
-    return NextResponse.json({ error: { code: 'UNAVAILABLE', message: 'Service unavailable' } }, {
-      status: 503,
-    })
+    return NextResponse.json(
+      { error: { code: 'UNAVAILABLE', message: 'Service unavailable' } },
+      {
+        status: 503,
+      },
+    );
   }
 }

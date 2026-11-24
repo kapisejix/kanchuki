@@ -1,5 +1,6 @@
 'use client';
 
+import { appLink } from '@/lib/deep-links';
 // F-031: Connect a retailer's Facebook Page for social publishing.
 //
 // Flow: the mobile app opens this page → retailer logs in with the same phone
@@ -11,7 +12,6 @@
 // Session handling mirrors the billing page (phone-OTP → Supabase session in
 // sessionStorage → Bearer token on API calls).
 import { useEffect, useState } from 'react';
-import { appLink } from '@/lib/deep-links';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const TOKEN_KEY = 'kanchuki_social_token';
@@ -49,7 +49,10 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
     const refreshed = await refreshAccessToken();
     if (refreshed) res = await doFetch(accessToken);
   }
-  const json = (await res.json().catch(() => null)) as { data?: unknown; error?: { message?: string } };
+  const json = (await res.json().catch(() => null)) as {
+    data?: unknown;
+    error?: { message?: string };
+  };
   if (!res.ok || json === null) {
     throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
   }

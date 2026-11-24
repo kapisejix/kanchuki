@@ -103,7 +103,11 @@ export default function AddProductsToCategoryScreen() {
                 footer={
                   <View className="p-3">
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                      style={{
+                        fontFamily: 'Marcellus_400Regular',
+                        letterSpacing: 0.32,
+                        fontWeight: '800',
+                      }}
                       className="text-xs text-spaceCadet-900"
                       numberOfLines={1}
                     >

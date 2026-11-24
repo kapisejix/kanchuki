@@ -1,14 +1,21 @@
+import { API_URL as apiUrl } from '@/lib/apiUrl';
 // F-045 My Style: proxy /api/my-style/* to the backend API (/v1/public/my-style/*).
 // Same shape as the passport proxy (app/api/passport/[...path]/route.ts), kept
 // separate because the upstream area differs. Forwards the visitor's cookies so
 // the passport session is visible to the API.
 import { type NextRequest, NextResponse } from 'next/server';
-import { API_URL as apiUrl } from '@/lib/apiUrl';
 
 // Every my-style subpath the browser may reach, per verb. A path missing here
 // answers 404 and a verb with no handler answers 405, so keep both in step with
 // the screens that call them (RC-026).
-const POST_PATHS = ['feed', 'enquire', 'analyze', 'profile/clear', 'measurements', 'measurements/withdraw'];
+const POST_PATHS = [
+  'feed',
+  'enquire',
+  'analyze',
+  'profile/clear',
+  'measurements',
+  'measurements/withdraw',
+];
 // Poll: analyze/<jobId>. Job ids are `mystyle_<cuid2>`; the strict pattern keeps
 // `..`, slashes and spaces out of the upstream URL.
 // complete-look?anchor=<id>: the anchor rides in the query, validated by the API.

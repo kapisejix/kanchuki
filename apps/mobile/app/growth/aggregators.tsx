@@ -1,20 +1,20 @@
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
-  ChevronLeft,
-  Link2,
-  RefreshCw,
-  ExternalLink,
-  Plus,
-  Trash2,
   AlertTriangle,
+  ChevronLeft,
+  ExternalLink,
+  Link2,
+  type LucideIcon,
   Package,
   Palette,
+  Plus,
+  RefreshCw,
   ShoppingBag,
+  Trash2,
   Wallet,
-  type LucideIcon,
-} from 'lucide-react-native'
+} from 'lucide-react-native';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -23,14 +23,14 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { WhiteButton } from '../../src/components/WhiteButton'
-import { growthApi, type ChannelSync, type ChannelType } from '../../src/lib/api/growth'
-import { apiMessage, showError } from '../../src/lib/errors'
+} from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { WhiteButton } from '../../src/components/WhiteButton';
+import { type ChannelSync, type ChannelType, growthApi } from '../../src/lib/api/growth';
+import { apiMessage, showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -42,7 +42,7 @@ const CHANNEL_LABELS: Record<ChannelType, string> = {
   FLIPKART: 'Flipkart',
   AMAZON: 'Amazon',
   OTHER: 'Other',
-}
+};
 
 const CHANNEL_ICON: Record<ChannelType, LucideIcon> = {
   MEESHO: ShoppingBag,
@@ -52,16 +52,41 @@ const CHANNEL_ICON: Record<ChannelType, LucideIcon> = {
   FLIPKART: ShoppingBag,
   AMAZON: Package,
   OTHER: Link2,
-}
+};
 
 const STATUS_LABELS: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  CONNECTED: { label: 'Connected', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  SYNCING: { label: 'Syncing…', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-700', border: 'border-fuchsia-500/20' },
+  CONNECTED: {
+    label: 'Connected',
+    bg: 'bg-emerald-50',
+    text: 'text-emerald-700',
+    border: 'border-emerald-200',
+  },
+  SYNCING: {
+    label: 'Syncing…',
+    bg: 'bg-fuchsia-500/10',
+    text: 'text-fuchsia-700',
+    border: 'border-fuchsia-500/20',
+  },
   ERROR: { label: 'Error', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
-  DISCONNECTED: { label: 'Disconnected', bg: 'bg-lavender-100', text: 'text-spaceCadet-900', border: 'border-lavender-200' },
-  CONNECTING: { label: 'Connecting…', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  SUSPENDED: { label: 'Suspended', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-}
+  DISCONNECTED: {
+    label: 'Disconnected',
+    bg: 'bg-lavender-100',
+    text: 'text-spaceCadet-900',
+    border: 'border-lavender-200',
+  },
+  CONNECTING: {
+    label: 'Connecting…',
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+  },
+  SUSPENDED: {
+    label: 'Suspended',
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+  },
+};
 
 const fmtDate = (iso: string | null) =>
   iso
@@ -71,36 +96,36 @@ const fmtDate = (iso: string | null) =>
         hour: '2-digit',
         minute: '2-digit',
       })
-    : '—'
+    : '—';
 
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function AggregatorsScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
-  const [connecting, setConnecting] = useState(false)
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
+  const [connecting, setConnecting] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'aggregators'],
     queryFn: () => growthApi.aggregators(),
-  })
-  const syncs = data?.data ?? []
+  });
+  const syncs = data?.data ?? [];
 
   const triggerSync = useMutation({
     mutationFn: (id: string) => growthApi.triggerSync(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['growth', 'aggregators'] })
+      void queryClient.invalidateQueries({ queryKey: ['growth', 'aggregators'] });
     },
     onError: (err) => showError(err, 'Sync failed'),
-  })
+  });
 
   const disconnect = useMutation({
     mutationFn: (id: string) => growthApi.disconnectChannel(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['growth', 'aggregators'] })
+      void queryClient.invalidateQueries({ queryKey: ['growth', 'aggregators'] });
     },
     onError: (err) => showError(err, 'Failed to disconnect'),
-  })
+  });
 
   const confirmDisconnect = (s: ChannelSync) => {
     Alert.alert(
@@ -114,8 +139,8 @@ export default function AggregatorsScreen() {
           onPress: () => disconnect.mutate(s.id),
         },
       ],
-    )
-  }
+    );
+  };
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -160,9 +185,7 @@ export default function AggregatorsScreen() {
       ) : syncs.length === 0 && !connecting ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
-            <View
-              className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
-            >
+            <View className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200">
               <Link2 size={28} color="#6B4773" />
             </View>
             <Text
@@ -172,11 +195,15 @@ export default function AggregatorsScreen() {
               No channels connected
             </Text>
             <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[280px] font-medium">
-              Connect your Meesho, Instamojo, or other marketplace accounts to sync
-              your product catalog and orders in one place.
+              Connect your Meesho, Instamojo, or other marketplace accounts to sync your product
+              catalog and orders in one place.
             </Text>
             <View className="w-48 mt-5">
-              <GradientButton variant="web" label="Connect Channel" onPress={() => setConnecting(true)} />
+              <GradientButton
+                variant="web"
+                label="Connect Channel"
+                onPress={() => setConnecting(true)}
+              />
             </View>
           </View>
         </ScrollView>
@@ -184,26 +211,30 @@ export default function AggregatorsScreen() {
         <ScrollView
           className="flex-1 px-4 pt-4"
           contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           <View className="gap-3">
             {syncs.map((s) => {
-              const st = STATUS_LABELS[s.status] ?? STATUS_LABELS.DISCONNECTED
+              const st = STATUS_LABELS[s.status] ?? STATUS_LABELS.DISCONNECTED;
               return (
                 <View key={s.id} className="bg-white rounded-2xl p-4 border border-lavender-200">
                   <View className="flex-row items-center justify-between mb-2.5">
                     <View className="flex-row items-center gap-3 flex-1 mr-2">
-                      <View
-                        className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
-                      >
+                      <View className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200">
                         {(() => {
-                          const Icon = CHANNEL_ICON[s.channel]
-                          return <Icon size={20} color="#231F48" />
+                          const Icon = CHANNEL_ICON[s.channel];
+                          return <Icon size={20} color="#231F48" />;
                         })()}
                       </View>
                       <View className="flex-1">
                         <Text
-                          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                          style={{
+                            fontFamily: 'Marcellus_400Regular',
+                            letterSpacing: 0.32,
+                            fontWeight: '800',
+                          }}
                           className="text-base text-spaceCadet-900"
                           numberOfLines={1}
                         >
@@ -216,9 +247,7 @@ export default function AggregatorsScreen() {
                     </View>
                     <View className="flex-row items-center gap-1">
                       <View className={`rounded-full px-2.5 py-0.5 border ${st.bg} ${st.border}`}>
-                        <Text className={`text-[11px] font-semibold ${st.text}`}>
-                          {st.label}
-                        </Text>
+                        <Text className={`text-[11px] font-semibold ${st.text}`}>{st.label}</Text>
                       </View>
                     </View>
                   </View>
@@ -226,7 +255,10 @@ export default function AggregatorsScreen() {
                   {s.last_sync_error ? (
                     <View className="flex-row items-center gap-2 bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-2.5">
                       <AlertTriangle size={14} color="#dc2626" />
-                      <Text className="text-xs text-rose-700 flex-1 font-semibold" numberOfLines={1}>
+                      <Text
+                        className="text-xs text-rose-700 flex-1 font-semibold"
+                        numberOfLines={1}
+                      >
                         {s.last_sync_error}
                       </Text>
                     </View>
@@ -265,12 +297,16 @@ export default function AggregatorsScreen() {
                     </View>
                   </View>
                 </View>
-              )
+              );
             })}
           </View>
 
           <View className="mt-5">
-            <GradientButton variant="web" label="+ Connect Channel" onPress={() => setConnecting(true)} />
+            <GradientButton
+              variant="web"
+              label="+ Connect Channel"
+              onPress={() => setConnecting(true)}
+            />
           </View>
         </ScrollView>
       )}
@@ -280,13 +316,13 @@ export default function AggregatorsScreen() {
         <ConnectChannelModal
           onClose={() => setConnecting(false)}
           onSaved={() => {
-            setConnecting(false)
-            void queryClient.invalidateQueries({ queryKey: ['growth', 'aggregators'] })
+            setConnecting(false);
+            void queryClient.invalidateQueries({ queryKey: ['growth', 'aggregators'] });
           }}
         />
       )}
     </View>
-  )
+  );
 }
 
 // ─── Connect Channel Modal ─────────────────────────────────────────
@@ -299,31 +335,31 @@ const CHANNELS: { value: ChannelType; label: string }[] = [
   { value: 'FLIPKART', label: 'Flipkart' },
   { value: 'AMAZON', label: 'Amazon' },
   { value: 'OTHER', label: 'Other' },
-]
+];
 
 function ConnectChannelModal({
   onClose,
   onSaved,
 }: {
-  onClose: () => void
-  onSaved: () => void
+  onClose: () => void;
+  onSaved: () => void;
 }) {
-  const { insets } = useScreenInsets()
+  const { insets } = useScreenInsets();
 
-  const [channel, setChannel] = useState<ChannelType>('MEESHO')
-  const [apiKey, setApiKey] = useState('')
-  const [apiSecret, setApiSecret] = useState('')
-  const [shopId, setShopId] = useState('')
-  const [shopUrl, setShopUrl] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [channel, setChannel] = useState<ChannelType>('MEESHO');
+  const [apiKey, setApiKey] = useState('');
+  const [apiSecret, setApiSecret] = useState('');
+  const [shopId, setShopId] = useState('');
+  const [shopUrl, setShopUrl] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const canSubmit = apiKey.trim() && !saving
+  const canSubmit = apiKey.trim() && !saving;
 
   const submit = async () => {
-    if (!canSubmit) return
-    setSaving(true)
-    setError('')
+    if (!canSubmit) return;
+    setSaving(true);
+    setError('');
     try {
       await growthApi.connectChannel({
         channel,
@@ -331,13 +367,13 @@ function ConnectChannelModal({
         api_secret: apiSecret.trim() || undefined,
         channel_shop_id: shopId.trim() || undefined,
         channel_shop_url: shopUrl.trim() || undefined,
-      })
-      onSaved()
+      });
+      onSaved();
     } catch (err) {
-      setError(apiMessage(err, 'Failed to connect'))
-      setSaving(false)
+      setError(apiMessage(err, 'Failed to connect'));
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <KeyboardScreen
@@ -353,21 +389,25 @@ function ConnectChannelModal({
         </Text>
 
         {/* Channel picker */}
-        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Marketplace channel</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
+          Marketplace channel
+        </Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
           {CHANNELS.map((c) => {
-            const active = channel === c.value
+            const active = channel === c.value;
             return (
               <AnimatedPressable
                 key={c.value}
                 onPress={() => setChannel(c.value)}
                 className={`flex-row items-center gap-1.5 py-2 px-3.5 rounded-full border ${
-                  active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
+                  active
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                    : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 {(() => {
-                  const Icon = CHANNEL_ICON[c.value]
-                  return <Icon size={14} color={active ? '#FFFFFF' : '#231F48'} />
+                  const Icon = CHANNEL_ICON[c.value];
+                  return <Icon size={14} color={active ? '#FFFFFF' : '#231F48'} />;
                 })()}
                 <Text
                   className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
@@ -375,7 +415,7 @@ function ConnectChannelModal({
                   {c.label}
                 </Text>
               </AnimatedPressable>
-            )
+            );
           })}
         </View>
 
@@ -391,7 +431,9 @@ function ConnectChannelModal({
         />
 
         {/* API Secret */}
-        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">API secret (optional)</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
+          API secret (optional)
+        </Text>
         <TextInput
           value={apiSecret}
           onChangeText={setApiSecret}
@@ -412,7 +454,9 @@ function ConnectChannelModal({
         />
 
         {/* Shop URL */}
-        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Shop storefront URL (optional)</Text>
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
+          Shop storefront URL (optional)
+        </Text>
         <TextInput
           value={shopUrl}
           onChangeText={setShopUrl}
@@ -444,6 +488,5 @@ function ConnectChannelModal({
         </View>
       </View>
     </KeyboardScreen>
-  )
+  );
 }
-

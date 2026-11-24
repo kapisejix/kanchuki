@@ -1,8 +1,8 @@
-import type { ComponentProps } from 'react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act } from 'react-test-renderer'
-import { render } from '../../src/test/__mocks__/testing-library'
-import { ProductStudioModal } from '../../src/components/product-detail/ProductStudioModal'
+import type { ComponentProps } from 'react';
+import { act } from 'react-test-renderer';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ProductStudioModal } from '../../src/components/product-detail/ProductStudioModal';
+import { render } from '../../src/test/__mocks__/testing-library';
 
 // ── Mocks ──────────────────────────────────────────────────────────
 // @kanchuki/shared's global mock (src/test/setup.ts) predates AI Studio and
@@ -11,18 +11,18 @@ import { ProductStudioModal } from '../../src/components/product-detail/ProductS
 vi.mock('@kanchuki/shared', () => ({
   STUDIO_CREDITS_PER_IMAGE: 4,
   demographicForCategory: () => 'womens',
-}))
+}));
 
 // The api barrel pulls in expo-file-system (unmockable native module), so the
 // whole barrel is replaced — same approach as __tests__/smoke/rc-screens.test.tsx.
 vi.mock('../../src/lib/api', () => ({
   productApi: { getStudioStyles: vi.fn() },
-}))
+}));
 
 // Controllable style feed. Each render re-reads `studio.styles`, which is
 // exactly the real-world condition RC-017 was about: React Query hands the
 // component a brand-new array on every render/refetch.
-const studio = vi.hoisted(() => ({ styles: [] as unknown[], meta: undefined as unknown }))
+const studio = vi.hoisted(() => ({ styles: [] as unknown[], meta: undefined as unknown }));
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({
@@ -33,51 +33,51 @@ vi.mock('@tanstack/react-query', () => ({
   }),
   useMutation: () => ({ mutate: vi.fn(), isPending: false }),
   useQueryClient: () => ({ invalidateQueries: vi.fn(), clear: vi.fn() }),
-}))
+}));
 
 // ── Tree helpers (same pattern as rc-screens.test.tsx) ─────────────
 
 type TreeNode = {
-  type: unknown
-  props: Record<string, never>
-  children?: (TreeNode | string)[]
-  rendered?: TreeNode
-}
+  type: unknown;
+  props: Record<string, never>;
+  children?: (TreeNode | string)[];
+  rendered?: TreeNode;
+};
 
 function collectNodes(
   node: TreeNode | TreeNode[] | string | null | undefined,
   pred: (n: TreeNode) => boolean,
   out: TreeNode[] = [],
 ): TreeNode[] {
-  if (!node) return out
+  if (!node) return out;
   if (Array.isArray(node)) {
-    for (const child of node) collectNodes(child, pred, out)
-    return out
+    for (const child of node) collectNodes(child, pred, out);
+    return out;
   }
-  if (typeof node !== 'object') return out
-  if (pred(node)) out.push(node)
-  collectNodes(node.children as TreeNode[] | undefined, pred, out)
-  if (node.rendered) collectNodes(node.rendered, pred, out)
-  return out
+  if (typeof node !== 'object') return out;
+  if (pred(node)) out.push(node);
+  collectNodes(node.children as TreeNode[] | undefined, pred, out);
+  if (node.rendered) collectNodes(node.rendered, pred, out);
+  return out;
 }
 
 function collectText(
   node: TreeNode | TreeNode[] | string | null | undefined,
   out: string[] = [],
 ): string[] {
-  if (!node) return out
+  if (!node) return out;
   if (Array.isArray(node)) {
-    for (const child of node) collectText(child, out)
-    return out
+    for (const child of node) collectText(child, out);
+    return out;
   }
   if (typeof node === 'string') {
-    out.push(node)
-    return out
+    out.push(node);
+    return out;
   }
-  if (typeof node !== 'object') return out
-  collectText(node.children as TreeNode[] | undefined, out)
-  if (node.rendered) collectText(node.rendered, out)
-  return out
+  if (typeof node !== 'object') return out;
+  collectText(node.children as TreeNode[] | undefined, out);
+  if (node.rendered) collectText(node.rendered, out);
+  return out;
 }
 
 function findPressableByText(tree: ReturnType<typeof render>, text: string): TreeNode | undefined {
@@ -87,25 +87,25 @@ function findPressableByText(tree: ReturnType<typeof render>, text: string): Tre
       typeof n.props?.onPress === 'function' &&
       n.props.accessibilityLabel === undefined &&
       collectText(n as TreeNode).includes(text),
-  )[0]
+  )[0];
 }
 
 function findByLabel(tree: ReturnType<typeof render>, label: string): TreeNode | undefined {
   return collectNodes(
     tree.toTree() as TreeNode,
     (n) => typeof n.props?.onPress === 'function' && n.props.accessibilityLabel === label,
-  )[0]
+  )[0];
 }
 
 /** The className of the style row / tab whose subtree contains `text`. */
 function classNameOf(tree: ReturnType<typeof render>, text: string): string {
-  const node = findPressableByText(tree, text)
-  expect(node, `no pressable found for "${text}"`).toBeTruthy()
-  return String(node!.props.className ?? '')
+  const node = findPressableByText(tree, text);
+  expect(node, `no pressable found for "${text}"`).toBeTruthy();
+  return String(node!.props.className ?? '');
 }
 
-const SELECTED_ROW = 'border-fuchsia-600'
-const UNSELECTED_ROW = 'border-sand-100'
+const SELECTED_ROW = 'border-fuchsia-600';
+const UNSELECTED_ROW = 'border-sand-100';
 
 // ── Fixtures ───────────────────────────────────────────────────────
 
@@ -126,7 +126,7 @@ const productStyles = [
     audience: [],
     thumbnail_url: null,
   },
-]
+];
 
 const modelStyles = [
   {
@@ -137,9 +137,9 @@ const modelStyles = [
     audience: [],
     thumbnail_url: null,
   },
-]
+];
 
-type StudioProps = ComponentProps<typeof ProductStudioModal>
+type StudioProps = ComponentProps<typeof ProductStudioModal>;
 
 const baseProps = {
   visible: true,
@@ -160,54 +160,54 @@ const baseProps = {
   onPostToSocial: vi.fn(),
   productCategory: 'Saree',
   productName: 'Banarasi Silk Saree',
-} satisfies StudioProps
+} satisfies StudioProps;
 
 function makeModal(overrides: Partial<StudioProps> = {}) {
-  return <ProductStudioModal {...baseProps} {...overrides} />
+  return <ProductStudioModal {...baseProps} {...overrides} />;
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
-  studio.styles = [...productStyles, ...modelStyles]
-  studio.meta = undefined
-})
+  vi.clearAllMocks();
+  studio.styles = [...productStyles, ...modelStyles];
+  studio.meta = undefined;
+});
 
 // ── Bug 1: the tapped tab must look selected ───────────────────────
 
 describe('AI Studio tab highlight', () => {
   it('marks the active tab and moves the mark when the other tab is tapped', () => {
-    const tree = render(makeModal())
+    const tree = render(makeModal());
 
     // Product Only is active on open.
-    expect(classNameOf(tree, 'Product Only')).toContain('bg-white')
-    expect(classNameOf(tree, 'Models')).not.toContain('bg-white')
+    expect(classNameOf(tree, 'Product Only')).toContain('bg-white');
+    expect(classNameOf(tree, 'Models')).not.toContain('bg-white');
 
     act(() => {
-      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
-    })
+      (findPressableByText(tree, 'Models')!.props.onPress as () => void)();
+    });
 
     // Regression: the tap must repaint the highlight onto Models.
-    expect(classNameOf(tree, 'Models')).toContain('bg-white')
-    expect(classNameOf(tree, 'Product Only')).not.toContain('bg-white')
+    expect(classNameOf(tree, 'Models')).toContain('bg-white');
+    expect(classNameOf(tree, 'Product Only')).not.toContain('bg-white');
     // shadow-sm, not the Tailwind-v4-only `shadow-xs` that never rendered.
-    expect(classNameOf(tree, 'Models')).toContain('shadow-sm')
-  })
-})
+    expect(classNameOf(tree, 'Models')).toContain('shadow-sm');
+  });
+});
 
 // ── RC-017: the pick must survive a re-render ──────────────────────
 
 describe('AI Studio style selection (RC-017)', () => {
   it('keeps the tapped style selected when the style list refetches', () => {
-    const tree = render(makeModal())
+    const tree = render(makeModal());
 
     // Fallback: first row of the active tab is selected before any tap.
-    expect(classNameOf(tree, 'Studio White')).toContain(SELECTED_ROW)
+    expect(classNameOf(tree, 'Studio White')).toContain(SELECTED_ROW);
 
     act(() => {
-      ;(findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)()
-    })
-    expect(classNameOf(tree, 'Cafe Street')).toContain(SELECTED_ROW)
-    expect(classNameOf(tree, 'Studio White')).toContain(UNSELECTED_ROW)
+      (findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)();
+    });
+    expect(classNameOf(tree, 'Cafe Street')).toContain(SELECTED_ROW);
+    expect(classNameOf(tree, 'Studio White')).toContain(UNSELECTED_ROW);
 
     // A refetch hands over a brand-new array, here with a style the plan just
     // unlocked. The old effect keyed off `styles.length`, so the new length
@@ -224,64 +224,64 @@ describe('AI Studio style selection (RC-017)', () => {
         thumbnail_url: null,
       },
       ...modelStyles,
-    ]
-    tree.rerender(makeModal())
+    ];
+    tree.rerender(makeModal());
 
-    expect(classNameOf(tree, 'Cafe Street')).toContain(SELECTED_ROW)
-    expect(classNameOf(tree, 'Studio White')).toContain(UNSELECTED_ROW)
-  })
+    expect(classNameOf(tree, 'Cafe Street')).toContain(SELECTED_ROW);
+    expect(classNameOf(tree, 'Studio White')).toContain(UNSELECTED_ROW);
+  });
 
   it('generates with the tapped style, not the first row', () => {
-    const tree = render(makeModal())
+    const tree = render(makeModal());
 
     act(() => {
-      ;(findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)()
-    })
+      (findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)();
+    });
     act(() => {
-      ;(findByLabel(tree, 'Generate Studio Shot (10-30s)')!.props.onPress as () => void)()
-    })
+      (findByLabel(tree, 'Generate Studio Shot (10-30s)')!.props.onPress as () => void)();
+    });
 
-    expect(baseProps.onStartShoot).toHaveBeenCalledWith('cafe-street')
-  })
+    expect(baseProps.onStartShoot).toHaveBeenCalledWith('cafe-street');
+  });
 
   it('starts a fresh pick on the first style of the newly selected tab', () => {
-    const tree = render(makeModal())
+    const tree = render(makeModal());
 
     act(() => {
-      ;(findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)()
-    })
+      (findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)();
+    });
     act(() => {
-      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
-    })
+      (findPressableByText(tree, 'Models')!.props.onPress as () => void)();
+    });
 
-    expect(classNameOf(tree, 'Royal Rajput')).toContain(SELECTED_ROW)
+    expect(classNameOf(tree, 'Royal Rajput')).toContain(SELECTED_ROW);
 
     act(() => {
-      ;(findByLabel(tree, 'Generate Studio Shot (10-30s)')!.props.onPress as () => void)()
-    })
-    expect(baseProps.onStartShoot).toHaveBeenCalledWith('royal-rajput')
-  })
+      (findByLabel(tree, 'Generate Studio Shot (10-30s)')!.props.onPress as () => void)();
+    });
+    expect(baseProps.onStartShoot).toHaveBeenCalledWith('royal-rajput');
+  });
 
   it('falls back cleanly when the picked style disappears from the list', () => {
-    const tree = render(makeModal())
+    const tree = render(makeModal());
 
     act(() => {
-      ;(findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)()
-    })
+      (findPressableByText(tree, 'Cafe Street')!.props.onPress as () => void)();
+    });
 
     // Plan/demographic change drops the picked style from the feed.
-    studio.styles = [productStyles[0]]
-    tree.rerender(makeModal())
+    studio.styles = [productStyles[0]];
+    tree.rerender(makeModal());
 
-    expect(classNameOf(tree, 'Studio White')).toContain(SELECTED_ROW)
+    expect(classNameOf(tree, 'Studio White')).toContain(SELECTED_ROW);
 
     act(() => {
-      ;(findByLabel(tree, 'Generate Studio Shot (10-30s)')!.props.onPress as () => void)()
-    })
+      (findByLabel(tree, 'Generate Studio Shot (10-30s)')!.props.onPress as () => void)();
+    });
     // No stale slug left behind.
-    expect(baseProps.onStartShoot).toHaveBeenCalledWith('studio-white')
-  })
-})
+    expect(baseProps.onStartShoot).toHaveBeenCalledWith('studio-white');
+  });
+});
 
 // -- Option-matrix gating + Indoor/Outdoor grouping (F-032 rollout 3.6/3.7) --
 
@@ -290,41 +290,55 @@ describe('AI Studio product gating', () => {
     studio.meta = {
       model_available: false,
       model_unavailable_reason: 'Model shoots are not available for unstitched fabric.',
-    }
-    studio.styles = [...productStyles]
-    const tree = render(makeModal())
+    };
+    studio.styles = [...productStyles];
+    const tree = render(makeModal());
 
     expect(collectText(tree.toTree() as TreeNode)).toContain(
       'Model shoots are not available for unstitched fabric.',
-    )
+    );
     // Tapping Models must not switch tabs: Product Only stays highlighted.
     act(() => {
-      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
-    })
-    expect(classNameOf(tree, 'Product Only')).toContain('bg-white')
-    expect(classNameOf(tree, 'Models')).not.toContain('bg-white')
-  })
+      (findPressableByText(tree, 'Models')!.props.onPress as () => void)();
+    });
+    expect(classNameOf(tree, 'Product Only')).toContain('bg-white');
+    expect(classNameOf(tree, 'Models')).not.toContain('bg-white');
+  });
 
   it('keeps Models enabled when meta is absent (older API)', () => {
-    const tree = render(makeModal())
+    const tree = render(makeModal());
     act(() => {
-      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
-    })
-    expect(classNameOf(tree, 'Models')).toContain('bg-white')
-  })
+      (findPressableByText(tree, 'Models')!.props.onPress as () => void)();
+    });
+    expect(classNameOf(tree, 'Models')).toContain('bg-white');
+  });
 
   it('groups model styles under Indoor and Outdoor headers', () => {
     studio.styles = [
       ...productStyles,
-      { slug: 'mi-02', label: 'Courtyard', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
-      { slug: 'mo-05', label: 'Beach', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
-    ]
-    const tree = render(makeModal())
+      {
+        slug: 'mi-02',
+        label: 'Courtyard',
+        description: 'd',
+        tab: 'MODEL',
+        audience: [],
+        thumbnail_url: null,
+      },
+      {
+        slug: 'mo-05',
+        label: 'Beach',
+        description: 'd',
+        tab: 'MODEL',
+        audience: [],
+        thumbnail_url: null,
+      },
+    ];
+    const tree = render(makeModal());
     act(() => {
-      ;(findPressableByText(tree, 'Models')!.props.onPress as () => void)()
-    })
-    const text = collectText(tree.toTree() as TreeNode)
-    expect(text).toContain('Indoor')
-    expect(text).toContain('Outdoor')
-  })
-})
+      (findPressableByText(tree, 'Models')!.props.onPress as () => void)();
+    });
+    const text = collectText(tree.toTree() as TreeNode);
+    expect(text).toContain('Indoor');
+    expect(text).toContain('Outdoor');
+  });
+});

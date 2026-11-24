@@ -1,48 +1,48 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Package, Save, Loader2, Plus, Trash2, Gift, CalendarClock } from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { CalendarClock, Gift, Loader2, Package, Plus, Save, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type Tier = {
-  id: string
-  min_items: number
-  max_items: number | null
-  price_inr: number
-}
+  id: string;
+  min_items: number;
+  max_items: number | null;
+  price_inr: number;
+};
 
 export default function CatalogUploadTiersPage() {
-  const [tiers, setTiers] = useState<Tier[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [status, setStatus] = useState('')
-  const [newTier, setNewTier] = useState({ min_items: '', max_items: '', price_inr: '' })
+  const [tiers, setTiers] = useState<Tier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [status, setStatus] = useState('');
+  const [newTier, setNewTier] = useState({ min_items: '', max_items: '', price_inr: '' });
   // Limited-time free offer (F-019 Task 2): auto-quoted ₹0 by the backend
   // for catalog requests within the free limit while the window is live.
-  const [promo, setPromo] = useState({ free_item_limit: '', expires_at: '' })
-  const [promoActive, setPromoActive] = useState(false)
-  const [promoLoading, setPromoLoading] = useState(true)
-  const [promoSaving, setPromoSaving] = useState(false)
-  const [promoStatus, setPromoStatus] = useState('')
+  const [promo, setPromo] = useState({ free_item_limit: '', expires_at: '' });
+  const [promoActive, setPromoActive] = useState(false);
+  const [promoLoading, setPromoLoading] = useState(true);
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [promoStatus, setPromoStatus] = useState('');
 
   const loadPromo = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/settings/catalog-upload-promo`, adminGetOptions())
-    const json = await res.json()
-    const p = json.data
+    const res = await fetch(`${API_URL}/v1/admin/settings/catalog-upload-promo`, adminGetOptions());
+    const json = await res.json();
+    const p = json.data;
     setPromo({
       free_item_limit: p.free_item_limit != null ? String(p.free_item_limit) : '',
       expires_at: p.expires_at ? p.expires_at.slice(0, 16) : '', // datetime-local format
-    })
-    setPromoActive(!!p.active)
-    setPromoLoading(false)
-  }
+    });
+    setPromoActive(!!p.active);
+    setPromoLoading(false);
+  };
 
   const savePromo = async () => {
-    setPromoSaving(true)
-    setPromoStatus('')
+    setPromoSaving(true);
+    setPromoStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/settings/catalog-upload-promo`, {
         ...(await adminMutateOptions()),
@@ -51,37 +51,37 @@ export default function CatalogUploadTiersPage() {
           free_item_limit: promo.free_item_limit ? Number(promo.free_item_limit) : null,
           expires_at: promo.expires_at ? new Date(promo.expires_at).toISOString() : null,
         }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      const json = await res.json()
-      setPromoActive(!!json.data.active)
-      setPromoStatus(`✅ ${json.data.active ? 'Promo is LIVE' : 'Promo saved (not active)'}`)
+      });
+      if (!res.ok) throw new Error('Save failed');
+      const json = await res.json();
+      setPromoActive(!!json.data.active);
+      setPromoStatus(`✅ ${json.data.active ? 'Promo is LIVE' : 'Promo saved (not active)'}`);
     } catch (err) {
-      setPromoStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setPromoStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setPromoSaving(false)
+      setPromoSaving(false);
     }
-  }
+  };
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, adminGetOptions())
-    const json = await res.json()
-    setTiers(json.data ?? [])
-    setLoading(false)
-  }
+    const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, adminGetOptions());
+    const json = await res.json();
+    setTiers(json.data ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    load()
-    loadPromo()
-  }, [])
+    load();
+    loadPromo();
+  }, []);
 
   const updateTier = (id: string, patch: Partial<Tier>) => {
-    setTiers((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
-  }
+    setTiers((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  };
 
   const save = async (tier: Tier) => {
-    setSaving(tier.id)
-    setStatus('')
+    setSaving(tier.id);
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers/${tier.id}`, {
         ...(await adminMutateOptions()),
@@ -91,31 +91,31 @@ export default function CatalogUploadTiersPage() {
           max_items: tier.max_items,
           price_inr: tier.price_inr,
         }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      setStatus(`✅ Tier saved`)
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setStatus(`✅ Tier saved`);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this price tier?')) return
+    if (!confirm('Delete this price tier?')) return;
     await fetch(`${API_URL}/v1/admin/catalog-upload-tiers/${id}`, {
       ...(await adminMutateOptions()),
       method: 'DELETE',
-    })
-    setTiers((prev) => prev.filter((t) => t.id !== id))
-  }
+    });
+    setTiers((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const create = async () => {
     if (!newTier.min_items || !newTier.price_inr) {
-      setStatus('❌ Min items and price are required')
-      return
+      setStatus('❌ Min items and price are required');
+      return;
     }
-    setSaving('new')
+    setSaving('new');
     try {
       const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, {
         ...(await adminMutateOptions()),
@@ -125,38 +125,42 @@ export default function CatalogUploadTiersPage() {
           max_items: newTier.max_items ? Number(newTier.max_items) : null,
           price_inr: Number(newTier.price_inr),
         }),
-      })
-      if (!res.ok) throw new Error('Create failed')
-      const json = await res.json()
-      setTiers((prev) => [...prev, json.data].sort((a, b) => a.min_items - b.min_items))
-      setNewTier({ min_items: '', max_items: '', price_inr: '' })
-      setStatus('✅ Tier created')
+      });
+      if (!res.ok) throw new Error('Create failed');
+      const json = await res.json();
+      setTiers((prev) => [...prev, json.data].sort((a, b) => a.min_items - b.min_items));
+      setNewTier({ min_items: '', max_items: '', price_inr: '' });
+      setStatus('✅ Tier created');
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Create failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Create failed'}`);
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-4xl"
+    >
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Catalog Upload Price Tiers</h1>
           <Package size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          F-019 — item-count-to-price tiers for the paid on-site catalog upload service. Edited here, no
-          deploy needed. Admin still quotes each request manually from Support Tickets — these tiers are
-          the reference table for that quote.
+          F-019 — item-count-to-price tiers for the paid on-site catalog upload service. Edited
+          here, no deploy needed. Admin still quotes each request manually from Support Tickets —
+          these tiers are the reference table for that quote.
         </p>
       </div>
 
@@ -190,8 +194,9 @@ export default function CatalogUploadTiersPage() {
             <div>
               <h2 className="text-sm font-bold text-gray-900">Limited-Time Free Offer</h2>
               <p className="text-xs text-gray-500">
-                Auto-quoted ₹0 by the system for catalog requests within the free limit — no manual quoting
-                needed while the window is live. Expired/over-limit requests fall back to manual pricing.
+                Auto-quoted ₹0 by the system for catalog requests within the free limit — no manual
+                quoting needed while the window is live. Expired/over-limit requests fall back to
+                manual pricing.
               </p>
             </div>
           </div>
@@ -208,7 +213,9 @@ export default function CatalogUploadTiersPage() {
 
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Free item limit</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              Free item limit
+            </label>
             <input
               type="number"
               value={promo.free_item_limit}
@@ -282,7 +289,9 @@ export default function CatalogUploadTiersPage() {
                     value={tier.max_items ?? ''}
                     placeholder="open-ended"
                     onChange={(e) =>
-                      updateTier(tier.id, { max_items: e.target.value ? Number(e.target.value) : null })
+                      updateTier(tier.id, {
+                        max_items: e.target.value ? Number(e.target.value) : null,
+                      })
                     }
                     className="w-28 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
@@ -303,7 +312,11 @@ export default function CatalogUploadTiersPage() {
                       className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                       aria-label="Save tier"
                     >
-                      {saving === tier.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      {saving === tier.id ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Save size={14} />
+                      )}
                     </button>
                     <button
                       onClick={() => remove(tier.id)}
@@ -352,7 +365,11 @@ export default function CatalogUploadTiersPage() {
                   className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                   aria-label="Add tier"
                 >
-                  {saving === 'new' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  {saving === 'new' ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Plus size={14} />
+                  )}
                 </button>
               </td>
             </tr>
@@ -360,5 +377,5 @@ export default function CatalogUploadTiersPage() {
         </table>
       </div>
     </motion.div>
-  )
+  );
 }

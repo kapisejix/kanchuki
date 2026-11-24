@@ -252,7 +252,10 @@ export const FRAME = {
   side: ['Side view', 'side view, full body, body turned 90 degrees to the camera'],
   profile: ['Profile', 'profile shot, head and shoulders in side profile'],
   wide: ['Wide shot', 'wide shot, full body small in frame with the scene visible around'],
-  editorial: ['Editorial', 'editorial fashion framing, full body, dynamic angle, magazine composition'],
+  editorial: [
+    'Editorial',
+    'editorial fashion framing, full body, dynamic angle, magazine composition',
+  ],
   product: ['Product', 'centred, entire product visible'],
 } as const;
 export type FrameId = keyof typeof FRAME;
@@ -1038,11 +1041,29 @@ export const BENCH_SCENES = [
 ] as const satisfies readonly { group: string; label: string; id: SceneId }[];
 
 /** Owner-approved bench lighting (2026-09-20). */
-export const BENCH_LIGHTS = ['natural', 'soft', 'window', 'sunset', 'studio', 'highkey', 'lowkey'] as const satisfies readonly LightId[];
+export const BENCH_LIGHTS = [
+  'natural',
+  'soft',
+  'window',
+  'sunset',
+  'studio',
+  'highkey',
+  'lowkey',
+] as const satisfies readonly LightId[];
 export type BenchLight = (typeof BENCH_LIGHTS)[number];
 
 /** Owner-approved bench photography / framing (2026-09-20). */
-export const BENCH_SHOTS = ['full', 'three_q', 'mid', 'close', 'front', 'side', 'profile', 'wide', 'editorial'] as const satisfies readonly FrameId[];
+export const BENCH_SHOTS = [
+  'full',
+  'three_q',
+  'mid',
+  'close',
+  'front',
+  'side',
+  'profile',
+  'wide',
+  'editorial',
+] as const satisfies readonly FrameId[];
 export type BenchShot = (typeof BENCH_SHOTS)[number];
 // A half-body garment cannot be framed below the hip (no invented legs).
 const LEGS_SHOTS = new Set<BenchShot>(['full', 'three_q', 'front', 'side', 'wide', 'editorial']);
@@ -1074,7 +1095,11 @@ export function benchPoseChoices(cls: Cls, hasDupatta: boolean): BenchPose[] {
 }
 
 /** "Auto pose": one random pick from benchPoseChoices. `rand` is injectable for tests. */
-export function pickPose(cls: Cls, hasDupatta: boolean, rand: () => number = Math.random): BenchPose {
+export function pickPose(
+  cls: Cls,
+  hasDupatta: boolean,
+  rand: () => number = Math.random,
+): BenchPose {
   const choices = benchPoseChoices(cls, hasDupatta);
   return choices[Math.floor(rand() * choices.length)] ?? 'standing';
 }

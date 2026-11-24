@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
+import { type IncomingMessage, type Server, type ServerResponse, createServer } from 'node:http';
 
 // ── The customer e2e suite's stub API ─────────────────────────────
 //
@@ -30,14 +30,14 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 // `src/__tests__/e2e-api-stub.test.ts` fails the build if a spec goes around
 // this helper, and pins the headers by making real requests against it.
 
-export const API_STUB_PORT = 3001
+export const API_STUB_PORT = 3001;
 // 127.0.0.1, not localhost: `next start`'s SSR fetch must not resolve to ::1
 // and miss the IPv4 listener. playwright.customer.config.ts pins both
 // NEXT_PUBLIC_API_URL (build-time, browser) and API_URL (runtime, server) to
 // this exact origin for the same reason.
-export const API_STUB_ORIGIN = `http://127.0.0.1:${API_STUB_PORT}`
+export const API_STUB_ORIGIN = `http://127.0.0.1:${API_STUB_PORT}`;
 
-export type StubHandler = (req: IncomingMessage, res: ServerResponse) => void
+export type StubHandler = (req: IncomingMessage, res: ServerResponse) => void;
 
 /**
  * A stub server whose responses always carry the CORS headers a cross-origin
@@ -46,55 +46,55 @@ export type StubHandler = (req: IncomingMessage, res: ServerResponse) => void
  */
 export function createStubServer(handler: StubHandler): Server {
   return createServer((req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    res.setHeader('Access-Control-Max-Age', '600')
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Max-Age', '600');
 
     // Preflight — answer it here so no route has to think about it. A GET with
     // no custom headers does not trigger this, but a future POST might.
     if (req.method === 'OPTIONS') {
-      res.statusCode = 204
-      res.end()
-      return
+      res.statusCode = 204;
+      res.end();
+      return;
     }
 
-    handler(req, res)
-  })
+    handler(req, res);
+  });
 }
 
 /** JSON response helper — CORS already applied by `createStubServer`. */
 export function json(res: ServerResponse, status: number, body: unknown): void {
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json')
-  res.end(JSON.stringify(body))
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(body));
 }
 
 export async function listenStub(server: Server | null): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    if (!server) return reject(new Error('listenStub called with no server'))
+    if (!server) return reject(new Error('listenStub called with no server'));
     server.once('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
         reject(
           new Error(
             `Port ${API_STUB_PORT} is in use — the customer e2e suite needs it free to stub the public API. Stop any dev server on :${API_STUB_PORT} and re-run.`,
           ),
-        )
+        );
       } else {
-        reject(err)
+        reject(err);
       }
-    })
-    server.listen(API_STUB_PORT, '127.0.0.1', resolve)
-  })
+    });
+    server.listen(API_STUB_PORT, '127.0.0.1', resolve);
+  });
 }
 
 export async function closeStub(server: Server | null): Promise<void> {
-  if (!server) return
+  if (!server) return;
   await new Promise<void>((resolve) => {
     try {
-      server.close(() => resolve())
+      server.close(() => resolve());
     } catch {
-      resolve() // never listened (beforeAll failed) — nothing to close
+      resolve(); // never listened (beforeAll failed) — nothing to close
     }
-  })
+  });
 }

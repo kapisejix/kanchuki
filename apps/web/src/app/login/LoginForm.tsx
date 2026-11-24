@@ -1,10 +1,5 @@
-'use client'
+'use client';
 
-import { Loader2, ShieldCheck } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
 import {
   isMsg91WidgetConfigured,
   loadMsg91Widget,
@@ -12,9 +7,14 @@ import {
   sendOtpViaWidget,
   verifyOtpViaWidget,
   widgetErrorMessage,
-} from '@/lib/msg91-widget'
-import { clearPassportCache, getPassportSession } from '@/lib/passport-client'
-import { DEFAULT_RETURN_TO, sanitizeReturnTo } from '@/lib/return-to'
+} from '@/lib/msg91-widget';
+import { clearPassportCache, getPassportSession } from '@/lib/passport-client';
+import { DEFAULT_RETURN_TO, sanitizeReturnTo } from '@/lib/return-to';
+import { Loader2, ShieldCheck } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 
 // Customer login. The passport OTP flow lives here as its own surface so an
 // installed-icon launch (start_url → /my-stores) has somewhere to complete
@@ -26,137 +26,137 @@ import { DEFAULT_RETURN_TO, sanitizeReturnTo } from '@/lib/return-to'
 
 interface Props {
   /** Destination after a successful login. Already sanitised by the page. */
-  returnTo: string
+  returnTo: string;
 }
 
 export function LoginForm({ returnTo }: Props) {
-  const router = useRouter()
+  const router = useRouter();
 
   // Validated here as well as in page.tsx: this value becomes a navigation, so
   // the check lives at the boundary that performs it.
-  const destination = sanitizeReturnTo(returnTo)
+  const destination = sanitizeReturnTo(returnTo);
 
-  const [checking, setChecking] = useState(true)
-  const [step, setStep] = useState<'phone' | 'otp'>('phone')
-  const [phone, setPhone] = useState('')
-  const [code, setCode] = useState('')
-  const [consent, setConsent] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [resendTimer, setResendTimer] = useState(0)
-  const [resending, setResending] = useState(false)
+  const [checking, setChecking] = useState(true);
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [resending, setResending] = useState(false);
 
   // MSG91 widget session: reqId pairs verify/retry with the original send, and
   // channel records which path issued the OTP so verify/resend follow it.
-  const [widgetReady, setWidgetReady] = useState(false)
-  const [reqId, setReqId] = useState('')
-  const [channel, setChannel] = useState<'widget' | 'api' | null>(null)
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [reqId, setReqId] = useState('');
+  const [channel, setChannel] = useState<'widget' | 'api' | null>(null);
 
   // Sync ref alongside the state — a keyboard-submit and a button tap can both
   // read stale `sending === false` before the state update commits (the
   // double-SMS class of bug fixed in RC-015).
-  const sendingRef = useRef(false)
+  const sendingRef = useRef(false);
 
   // A visitor who already holds a passport has nothing to do here, so send them
   // on to where they were going instead of showing them a login form.
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     getPassportSession()
       .then((account) => {
-        if (cancelled) return
+        if (cancelled) return;
         if (account) {
-          router.replace(destination)
-          return
+          router.replace(destination);
+          return;
         }
-        setChecking(false)
+        setChecking(false);
       })
       .catch(() => {
-        if (!cancelled) setChecking(false)
-      })
+        if (!cancelled) setChecking(false);
+      });
     return () => {
-      cancelled = true
-    }
-  }, [router, destination])
+      cancelled = true;
+    };
+  }, [router, destination]);
 
   useEffect(() => {
-    if (resendTimer <= 0) return
-    const timer = setInterval(() => setResendTimer((t) => t - 1), 1000)
-    return () => clearInterval(timer)
-  }, [resendTimer])
+    if (resendTimer <= 0) return;
+    const timer = setInterval(() => setResendTimer((t) => t - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendTimer]);
 
   // Lazily load the widget — the form works without it, so a blocked
   // third-party CDN cannot take login down.
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     if (isMsg91WidgetConfigured()) {
       void loadMsg91Widget().then((ready) => {
-        if (!cancelled) setWidgetReady(ready)
-      })
+        if (!cancelled) setWidgetReady(ready);
+      });
     }
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   const sendViaApi = async () => {
     const res = await fetch('/api/passport/otp/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phone.trim() }),
-    })
+    });
     if (!res.ok) {
-      const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-      throw new Error(json?.error?.message ?? 'Failed to send OTP')
+      const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      throw new Error(json?.error?.message ?? 'Failed to send OTP');
     }
-  }
+  };
 
   const handleSend = async () => {
-    if (phone.trim().length < 10 || !consent || sendingRef.current) return
-    sendingRef.current = true
-    setSending(true)
-    setError(null)
+    if (phone.trim().length < 10 || !consent || sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
+    setError(null);
     try {
       if (widgetReady) {
         // The widget sends the SMS itself (identifier needs the country code).
-        const result = await sendOtpViaWidget(`91${phone.trim()}`)
+        const result = await sendOtpViaWidget(`91${phone.trim()}`);
         if (result.ok) {
-          setChannel('widget')
-          setReqId(result.reqId ?? '')
+          setChannel('widget');
+          setReqId(result.reqId ?? '');
         } else {
-          await sendViaApi()
-          setChannel('api')
-          setReqId('')
+          await sendViaApi();
+          setChannel('api');
+          setReqId('');
         }
       } else {
-        await sendViaApi()
-        setChannel('api')
-        setReqId('')
+        await sendViaApi();
+        setChannel('api');
+        setReqId('');
       }
-      setResendTimer(30)
-      setStep('otp')
+      setResendTimer(30);
+      setStep('otp');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send OTP')
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
     } finally {
-      sendingRef.current = false
-      setSending(false)
+      sendingRef.current = false;
+      setSending(false);
     }
-  }
+  };
 
   const handleVerify = async () => {
-    if (code.trim().length !== 6 || verifying) return
-    setVerifying(true)
-    setError(null)
+    if (code.trim().length !== 6 || verifying) return;
+    setVerifying(true);
+    setError(null);
     try {
-      let widgetToken: string | undefined
+      let widgetToken: string | undefined;
       if (channel === 'widget') {
         // The widget verifies client-side and returns a JWT; the API
         // re-confirms it with MSG91 server-side.
-        const result = await verifyOtpViaWidget(code.trim(), reqId || undefined)
+        const result = await verifyOtpViaWidget(code.trim(), reqId || undefined);
         if (!result.ok || !result.token) {
-          throw new Error(widgetErrorMessage(result.error, 'Verification failed. Try again.'))
+          throw new Error(widgetErrorMessage(result.error, 'Verification failed. Try again.'));
         }
-        widgetToken = result.token
+        widgetToken = result.token;
       }
       const res = await fetch('/api/passport/otp/verify', {
         method: 'POST',
@@ -166,10 +166,12 @@ export function LoginForm({ returnTo }: Props) {
             ? { phone: phone.trim(), widget_token: widgetToken }
             : { phone: phone.trim(), otp: code.trim() },
         ),
-      })
+      });
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-        throw new Error(json?.error?.message ?? 'Invalid OTP')
+        const json = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
+        throw new Error(json?.error?.message ?? 'Invalid OTP');
       }
 
       // Invalidate the memoised session before handing over. getPassport only
@@ -178,48 +180,48 @@ export function LoginForm({ returnTo }: Props) {
       // is here so the guard cannot read a stale account from a previous
       // session during the transition, and so a future change that starts
       // caching negatives cannot reintroduce a bounce-loop.
-      clearPassportCache()
-      router.replace(destination)
+      clearPassportCache();
+      router.replace(destination);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid OTP')
-      setVerifying(false)
+      setError(err instanceof Error ? err.message : 'Invalid OTP');
+      setVerifying(false);
     }
-  }
+  };
 
   const handleResend = async () => {
-    if (resendTimer > 0 || resending) return
-    setResending(true)
-    setError(null)
+    if (resendTimer > 0 || resending) return;
+    setResending(true);
+    setError(null);
     try {
       if (channel === 'widget' && reqId) {
-        const result = await retryOtpViaWidget(reqId)
-        if (!result.ok) await sendViaApi()
+        const result = await retryOtpViaWidget(reqId);
+        if (!result.ok) await sendViaApi();
       } else {
-        await sendViaApi()
+        await sendViaApi();
       }
-      setResendTimer(30)
+      setResendTimer(30);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend OTP')
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP');
     } finally {
-      setResending(false)
+      setResending(false);
     }
-  }
+  };
 
   const backToPhone = () => {
-    setStep('phone')
-    setError(null)
-    setChannel(null)
-    setReqId('')
-    setResendTimer(0)
-    setCode('')
-  }
+    setStep('phone');
+    setError(null);
+    setChannel(null);
+    setReqId('');
+    setResendTimer(0);
+    setCode('');
+  };
 
   if (checking) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-amber-600" />
       </div>
-    )
+    );
   }
 
   return (
@@ -278,8 +280,8 @@ export function LoginForm({ returnTo }: Props) {
                   className="mt-0.5"
                 />
                 <span className="text-xs text-stone-500 leading-relaxed">
-                  I agree to receive collection updates on WhatsApp from stores I follow, and
-                  accept Kanchuki&apos;s{' '}
+                  I agree to receive collection updates on WhatsApp from stores I follow, and accept
+                  Kanchuki&apos;s{' '}
                   <Link href="/privacy" target="_blank" className="text-amber-700 underline">
                     Privacy Policy
                   </Link>{' '}
@@ -297,7 +299,11 @@ export function LoginForm({ returnTo }: Props) {
                 disabled={phone.trim().length < 10 || !consent || sending}
                 className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-medium text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
-                {sending ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={15} />}
+                {sending ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <ShieldCheck size={15} />
+                )}
                 {sending ? 'Sending…' : 'Send OTP'}
               </button>
             </>
@@ -325,7 +331,11 @@ export function LoginForm({ returnTo }: Props) {
                 disabled={code.trim().length !== 6 || verifying}
                 className="w-full bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-medium text-sm py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors mb-3"
               >
-                {verifying ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={15} />}
+                {verifying ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <ShieldCheck size={15} />
+                )}
                 {verifying ? 'Verifying…' : 'Verify and continue'}
               </button>
 
@@ -360,5 +370,5 @@ export function LoginForm({ returnTo }: Props) {
         </p>
       </div>
     </div>
-  )
+  );
 }

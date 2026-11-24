@@ -41,7 +41,9 @@ function shouldDelete(key: string): boolean {
 
 async function main(): Promise<void> {
   const apply = process.argv.includes('--apply');
-  console.log(apply ? '🗑️  R2 cleanup — APPLY mode (deleting)' : '👀 R2 cleanup — dry run (no changes)');
+  console.log(
+    apply ? '🗑️  R2 cleanup — APPLY mode (deleting)' : '👀 R2 cleanup — dry run (no changes)',
+  );
 
   const objects = await listObjects();
   const toDelete = objects.filter((o) => shouldDelete(o.key));
@@ -49,7 +51,9 @@ async function main(): Promise<void> {
   const deleteBytes = toDelete.reduce((sum, o) => sum + o.size, 0);
 
   console.log(`   Total objects: ${objects.length}`);
-  console.log(`   To delete:     ${toDelete.length} (${(deleteBytes / 1024 / 1024).toFixed(2)} MB)`);
+  console.log(
+    `   To delete:     ${toDelete.length} (${(deleteBytes / 1024 / 1024).toFixed(2)} MB)`,
+  );
   console.log(`   Kept:          ${kept} (backgrounds, backups, logos, banners, categories)`);
   console.log();
 

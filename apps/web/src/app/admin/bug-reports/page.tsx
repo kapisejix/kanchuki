@@ -1,68 +1,68 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Bug,
-  Search,
-  CheckCircle2,
   AlertCircle,
+  AppWindow,
+  Ban,
+  Bug,
+  CheckCircle2,
+  ChevronRight,
   Clock,
   Eye,
-  Ban,
-  Store,
-  Phone,
-  MapPin,
-  Smartphone,
-  Monitor,
-  AppWindow,
-  MessageSquare,
   Image as ImageIcon,
-  ChevronRight,
   Loader2,
-  X,
-  Save,
-  RefreshCw,
-  Shield,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+  MapPin,
+  MessageSquare,
+  Monitor,
+  Phone,
+  RefreshCw,
+  Save,
+  Search,
+  Shield,
+  Smartphone,
+  Store,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type BugReportSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-type BugReportStatus = 'NEW' | 'REVIEWED' | 'IN_PROGRESS' | 'RESOLVED' | 'DISMISSED'
+type BugReportSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+type BugReportStatus = 'NEW' | 'REVIEWED' | 'IN_PROGRESS' | 'RESOLVED' | 'DISMISSED';
 
 type BugReport = {
-  id: string
-  retailer_id: string
-  description: string
-  severity: BugReportSeverity
-  status: BugReportStatus
-  app_version: string | null
-  os_version: string | null
-  device_model: string | null
-  screen_name: string | null
-  last_screen: string | null
-  error_message: string | null
-  screenshot_url: string | null
-  notes: string | null
-  admin_note: string | null
-  resolved_by_id: string | null
-  created_at: string
-  updated_at: string
-  resolved_at: string | null
-  retailer: { id: string; shop_name: string; city: string; phone: string }
-}
+  id: string;
+  retailer_id: string;
+  description: string;
+  severity: BugReportSeverity;
+  status: BugReportStatus;
+  app_version: string | null;
+  os_version: string | null;
+  device_model: string | null;
+  screen_name: string | null;
+  last_screen: string | null;
+  error_message: string | null;
+  screenshot_url: string | null;
+  notes: string | null;
+  admin_note: string | null;
+  resolved_by_id: string | null;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+  retailer: { id: string; shop_name: string; city: string; phone: string };
+};
 
 type BugReportStats = {
-  new: number
-  reviewed: number
-  in_progress: number
-  resolved: number
-  dismissed: number
-  total: number
-}
+  new: number;
+  reviewed: number;
+  in_progress: number;
+  resolved: number;
+  dismissed: number;
+  total: number;
+};
 
 const STATUS_LABELS: Record<BugReportStatus, string> = {
   NEW: 'New',
@@ -70,7 +70,7 @@ const STATUS_LABELS: Record<BugReportStatus, string> = {
   IN_PROGRESS: 'In Progress',
   RESOLVED: 'Resolved',
   DISMISSED: 'Dismissed',
-}
+};
 
 const STATUS_COLORS: Record<BugReportStatus, string> = {
   NEW: 'bg-red-100 text-red-700 border-red-200',
@@ -78,31 +78,31 @@ const STATUS_COLORS: Record<BugReportStatus, string> = {
   IN_PROGRESS: 'bg-amber-100 text-amber-700 border-amber-200',
   RESOLVED: 'bg-green-100 text-green-700 border-green-200',
   DISMISSED: 'bg-gray-100 text-gray-500 border-gray-200',
-}
+};
 
 const SEVERITY_LABELS: Record<BugReportSeverity, string> = {
   LOW: 'Minor',
   MEDIUM: 'Moderate',
   HIGH: 'Major',
   CRITICAL: 'Critical',
-}
+};
 
 const SEVERITY_COLORS: Record<BugReportSeverity, string> = {
   LOW: 'bg-green-100 text-green-700 border-green-200',
   MEDIUM: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   HIGH: 'bg-orange-100 text-orange-700 border-orange-200',
   CRITICAL: 'bg-red-100 text-red-700 border-red-200',
-}
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
-}
+};
 
 const rowVariants = {
   hidden: { opacity: 0, x: -10 },
   visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 200, damping: 25 } },
-}
+};
 
 // ─── Detail Panel ─────────────────────────────────────────────────
 
@@ -111,45 +111,51 @@ function BugReportDetailPanel({
   onClose,
   onUpdated,
 }: {
-  report: BugReport
-  onClose: () => void
-  onUpdated: () => void
+  report: BugReport;
+  onClose: () => void;
+  onUpdated: () => void;
 }) {
-  const [status, setStatus] = useState(report.status)
-  const [severity, setSeverity] = useState(report.severity)
-  const [adminNote, setAdminNote] = useState(report.admin_note ?? '')
-  const [saving, setSaving] = useState(false)
-  const [showScreenshot, setShowScreenshot] = useState(false)
+  const [status, setStatus] = useState(report.status);
+  const [severity, setSeverity] = useState(report.severity);
+  const [adminNote, setAdminNote] = useState(report.admin_note ?? '');
+  const [saving, setSaving] = useState(false);
+  const [showScreenshot, setShowScreenshot] = useState(false);
 
   const handleSave = async () => {
-    setSaving(true)
+    setSaving(true);
     try {
-      const body: Record<string, unknown> = {}
-      if (status !== report.status) body.status = status
-      if (severity !== report.severity) body.severity = severity
-      if (adminNote !== (report.admin_note ?? '')) body.admin_note = adminNote
+      const body: Record<string, unknown> = {};
+      if (status !== report.status) body.status = status;
+      if (severity !== report.severity) body.severity = severity;
+      if (adminNote !== (report.admin_note ?? '')) body.admin_note = adminNote;
 
       if (Object.keys(body).length === 0) {
-        onClose()
-        return
+        onClose();
+        return;
       }
 
       await fetch(`${API_URL}/v1/admin/bug-reports/${report.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify(body),
-      })
-      onUpdated()
-      onClose()
+      });
+      onUpdated();
+      onClose();
     } catch {
       // ignore
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
-  const statusOptions: BugReportStatus[] = ['NEW', 'REVIEWED', 'IN_PROGRESS', 'RESOLVED', 'DISMISSED']
-  const severityOptions: BugReportSeverity[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+  const statusOptions: BugReportStatus[] = [
+    'NEW',
+    'REVIEWED',
+    'IN_PROGRESS',
+    'RESOLVED',
+    'DISMISSED',
+  ];
+  const severityOptions: BugReportSeverity[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 
   return (
     <motion.div
@@ -165,7 +171,10 @@ function BugReportDetailPanel({
           <Bug size={16} className="text-red-500" />
           <span className="text-sm font-bold text-gray-900">Bug Report</span>
         </div>
-        <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer">
+        <button
+          onClick={onClose}
+          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer"
+        >
           <X size={16} />
         </button>
       </div>
@@ -245,16 +254,16 @@ function BugReportDetailPanel({
             <ContextRow icon={Eye} label="Screen" value={report.screen_name} />
           </div>
           {report.last_screen && (
-            <div className="text-xs text-gray-400">
-              Previous screen: {report.last_screen}
-            </div>
+            <div className="text-xs text-gray-400">Previous screen: {report.last_screen}</div>
           )}
         </div>
 
         {/* Error message */}
         {report.error_message && (
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Auto-captured Error</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              Auto-captured Error
+            </label>
             <div className="bg-red-50 border border-red-200 rounded-xl p-3.5">
               <p className="text-xs text-red-700 font-mono leading-relaxed break-all">
                 {report.error_message}
@@ -284,7 +293,9 @@ function BugReportDetailPanel({
         {/* Retailer notes */}
         {report.notes && (
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Retailer Notes</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              Retailer Notes
+            </label>
             <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3.5 italic">
               &ldquo;{report.notes}&rdquo;
             </p>
@@ -359,7 +370,7 @@ function BugReportDetailPanel({
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }
 
 function ContextRow({
@@ -367,9 +378,9 @@ function ContextRow({
   label,
   value,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string | null
+  icon: LucideIcon;
+  label: string;
+  value: string | null;
 }) {
   return (
     <div className="flex items-start gap-2">
@@ -379,56 +390,57 @@ function ContextRow({
         <p className="text-xs text-gray-700 font-medium">{value || '—'}</p>
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Main Page ───────────────────────────────────────────────────
 
 export default function BugReportsPage() {
-  const [reports, setReports] = useState<BugReport[]>([])
-  const [stats, setStats] = useState<BugReportStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [selectedReport, setSelectedReport] = useState<BugReport | null>(null)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [severityFilter, setSeverityFilter] = useState('')
-  const [search, setSearch] = useState('')
+  const [reports, setReports] = useState<BugReport[]>([]);
+  const [stats, setStats] = useState<BugReportStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedReport, setSelectedReport] = useState<BugReport | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [severityFilter, setSeverityFilter] = useState('');
+  const [search, setSearch] = useState('');
 
   const loadData = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const [r, s] = await Promise.all([
         fetch(`${API_URL}/v1/admin/bug-reports`, adminGetOptions()).then((r) => r.json()),
         fetch(`${API_URL}/v1/admin/bug-reports/stats`, adminGetOptions()).then((r) => r.json()),
-      ])
-      setReports(r.data ?? [])
-      setStats(s.data ?? null)
+      ]);
+      setReports(r.data ?? []);
+      setStats(s.data ?? null);
     } catch {
       // ignore
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    loadData();
+  }, [loadData]);
 
   const filtered = reports.filter((r) => {
     if (search) {
-      const q = search.toLowerCase()
+      const q = search.toLowerCase();
       if (
         !r.retailer.shop_name.toLowerCase().includes(q) &&
         !r.retailer.city.toLowerCase().includes(q) &&
         !r.description.toLowerCase().includes(q)
       )
-        return false
+        return false;
     }
-    if (statusFilter && r.status !== statusFilter) return false
-    if (severityFilter && r.severity !== severityFilter) return false
-    return true
-  })
+    if (statusFilter && r.status !== statusFilter) return false;
+    if (severityFilter && r.severity !== severityFilter) return false;
+    return true;
+  });
 
-  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
+  const selectClass =
+    'border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition';
 
   return (
     <motion.div
@@ -443,7 +455,9 @@ export default function BugReportsPage() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Bug Reports</h1>
           </div>
-          <p className="text-sm text-gray-500">Retailer-submitted issues and feature requests from the mobile app</p>
+          <p className="text-sm text-gray-500">
+            Retailer-submitted issues and feature requests from the mobile app
+          </p>
         </div>
         <motion.button
           onClick={loadData}
@@ -475,7 +489,10 @@ export default function BugReportsPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors"
+          />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -516,26 +533,37 @@ export default function BugReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Retailer</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Description</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Severity</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Status</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Screenshot</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Created</th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                    Retailer
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                    Description
+                  </th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                    Severity
+                  </th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                    Screenshot
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                    Created
+                  </th>
                   <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500" />
                 </tr>
               </thead>
-              <motion.tbody
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
+              <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
                 {loading ? (
                   [...Array(5)].map((_, i) => (
                     <tr key={i} className="border-b border-gray-50">
                       {[...Array(6)].map((_, j) => (
                         <td key={j} className="px-4 py-4">
-                          <div className="h-4 bg-gray-200/60 rounded animate-pulse" style={{ width: `${40 + Math.random() * 40}%` }} />
+                          <div
+                            className="h-4 bg-gray-200/60 rounded animate-pulse"
+                            style={{ width: `${40 + Math.random() * 40}%` }}
+                          />
                         </td>
                       ))}
                     </tr>
@@ -550,7 +578,9 @@ export default function BugReportsPage() {
                       >
                         <Bug size={40} className="mx-auto mb-3 text-gray-300" />
                         <p className="text-sm font-medium">No bug reports found</p>
-                        <p className="text-xs mt-1 text-gray-400">All clear — no retailer issues reported</p>
+                        <p className="text-xs mt-1 text-gray-400">
+                          All clear — no retailer issues reported
+                        </p>
                       </motion.div>
                     </td>
                   </tr>
@@ -566,12 +596,16 @@ export default function BugReportsPage() {
                     >
                       <td className="px-4 py-3.5">
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{r.retailer.shop_name}</p>
+                          <p className="font-medium text-gray-900 truncate">
+                            {r.retailer.shop_name}
+                          </p>
                           <p className="text-xs text-gray-400">{r.retailer.city}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <p className="text-sm text-gray-600 truncate max-w-[280px]">{r.description}</p>
+                        <p className="text-sm text-gray-600 truncate max-w-[280px]">
+                          {r.description}
+                        </p>
                         {r.error_message && (
                           <p className="text-[10px] text-red-500 font-mono truncate max-w-[280px] mt-0.5">
                             {r.error_message}
@@ -579,12 +613,16 @@ export default function BugReportsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${SEVERITY_COLORS[r.severity]}`}>
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full border ${SEVERITY_COLORS[r.severity]}`}
+                        >
                           {SEVERITY_LABELS[r.severity]}
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${STATUS_COLORS[r.status]}`}>
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full border ${STATUS_COLORS[r.status]}`}
+                        >
                           {STATUS_LABELS[r.status]}
                         </span>
                       </td>
@@ -600,7 +638,10 @@ export default function BugReportsPage() {
                       </td>
                       <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
                         {new Date(r.created_at).toLocaleDateString('en-IN', {
-                          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </td>
                       <td className="px-4 py-3.5 text-right">
@@ -626,7 +667,7 @@ export default function BugReportsPage() {
         </AnimatePresence>
       </div>
     </motion.div>
-  )
+  );
 }
 
 // ── Stats Card ─────────────────────────────────────────────────
@@ -636,9 +677,9 @@ function StatsCard({
   label,
   value,
 }: {
-  icon: LucideIcon
-  label: string
-  value: number
+  icon: LucideIcon;
+  label: string;
+  value: number;
 }) {
   return (
     <motion.div
@@ -651,5 +692,5 @@ function StatsCard({
       </div>
       <div className="text-xl font-bold text-gray-900">{value}</div>
     </motion.div>
-  )
+  );
 }

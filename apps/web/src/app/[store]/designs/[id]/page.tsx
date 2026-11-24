@@ -1,11 +1,11 @@
 import { API_URL as apiUrl } from '@/lib/apiUrl';
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { ArrowLeft, Store } from 'lucide-react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { DesignShareActions } from './DesignShareActions';
+import { notFound } from 'next/navigation';
 import { fetchStoreProfile } from '../lib';
 import type { PublicShowcaseDesignDetail } from '../types';
+import { DesignShareActions } from './DesignShareActions';
 
 interface Props {
   params: Promise<{ store: string; id: string }>;
@@ -101,7 +101,9 @@ export default async function DesignPermalinkPage({ params }: Props) {
               // eslint-disable-next-line @next/next/no-img-element -- storefront avatar
               <img src={profile.logo_url} alt={shopName} className="object-cover w-full h-full" />
             ) : (
-              <span className="font-bold text-[#231F48] text-sm">{shopName.slice(0, 2).toUpperCase()}</span>
+              <span className="font-bold text-[#231F48] text-sm">
+                {shopName.slice(0, 2).toUpperCase()}
+              </span>
             )}
           </div>
         </div>
@@ -121,7 +123,11 @@ export default async function DesignPermalinkPage({ params }: Props) {
         </p>
 
         {/* ── Share actions (Web Share / WhatsApp / copy) ── */}
-        <DesignShareActions name={titleText} permalink={`${SITE_URL}/${store}/designs/${id}`} imageUrl={design.image_url} />
+        <DesignShareActions
+          name={titleText}
+          permalink={`${SITE_URL}/${store}/designs/${id}`}
+          imageUrl={design.image_url}
+        />
 
         {/* ── Visit store CTA ── */}
         <Link

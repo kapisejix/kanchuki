@@ -1,51 +1,51 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { Sheet } from '@/components/Sheet'
+import { Sheet } from '@/components/Sheet';
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { classifyVisionModel } from '@/lib/vision-model';
+import { motion } from 'framer-motion';
 import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   Bot,
+  Edit3,
+  Eye,
+  HelpCircle,
+  KeyRound,
+  Loader2,
   Plus,
+  Power,
   Save,
   Trash2,
-  Loader2,
-  ArrowUp,
-  ArrowDown,
-  Power,
-  KeyRound,
-  Edit3,
   X,
-  Eye,
-  AlertTriangle,
-  HelpCircle,
-} from 'lucide-react'
-import { classifyVisionModel } from '@/lib/vision-model'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type ProviderType = 'ANTHROPIC' | 'OPENAI_COMPAT' | 'GEMINI'
+type ProviderType = 'ANTHROPIC' | 'OPENAI_COMPAT' | 'GEMINI';
 
 type AiProviderRow = {
-  id: string
-  provider_type: ProviderType
-  label: string
-  model_name: string
-  lite_model_name: string | null
-  base_url: string | null
-  api_key_name: string
-  priority: number
-  is_active: boolean
-  credits_per_call: number
-  key_configured: boolean
-  created_at: string
-}
+  id: string;
+  provider_type: ProviderType;
+  label: string;
+  model_name: string;
+  lite_model_name: string | null;
+  base_url: string | null;
+  api_key_name: string;
+  priority: number;
+  is_active: boolean;
+  credits_per_call: number;
+  key_configured: boolean;
+  created_at: string;
+};
 
 const TYPE_LABELS: Record<ProviderType, string> = {
   ANTHROPIC: 'Claude (Anthropic)',
   OPENAI_COMPAT: 'OpenAI-compatible (OpenRouter/DeepSeek/Mistral/Groq…)',
   GEMINI: 'Google Gemini',
-}
+};
 
 const EMPTY_FORM = {
   provider_type: 'OPENAI_COMPAT' as ProviderType,
@@ -55,12 +55,12 @@ const EMPTY_FORM = {
   base_url: '',
   api_key_name: 'OPENROUTER_API_KEY',
   credits_per_call: '1',
-}
+};
 
 // Badge showing whether a model can read product images (AI tagging sends
 // images, so a text-only model would fail over every call).
 function VisionBadge({ modelName }: { modelName: string }) {
-  const capability = classifyVisionModel(modelName)
+  const capability = classifyVisionModel(modelName);
   if (capability === 'vision') {
     return (
       <span
@@ -69,7 +69,7 @@ function VisionBadge({ modelName }: { modelName: string }) {
       >
         <Eye size={10} /> Vision
       </span>
-    )
+    );
   }
   if (capability === 'text-only') {
     return (
@@ -79,7 +79,7 @@ function VisionBadge({ modelName }: { modelName: string }) {
       >
         <AlertTriangle size={10} /> Text-only
       </span>
-    )
+    );
   }
   return (
     <span
@@ -88,73 +88,75 @@ function VisionBadge({ modelName }: { modelName: string }) {
     >
       <HelpCircle size={10} /> Unverified
     </span>
-  )
+  );
 }
 
 export default function AiProvidersPage() {
-  const [rows, setRows] = useState<AiProviderRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [status, setStatus] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<AiProviderRow | null>(null)
-  const [form, setForm] = useState(EMPTY_FORM)
+  const [rows, setRows] = useState<AiProviderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<AiProviderRow | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const load = useCallback(async () => {
-    const res = await fetch(`${API_URL}/v1/admin/ai-providers`, adminGetOptions())
-    const json = await res.json()
-    setRows((json.data ?? []).sort((a: AiProviderRow, b: AiProviderRow) => a.priority - b.priority))
-    setLoading(false)
-  }, [])
+    const res = await fetch(`${API_URL}/v1/admin/ai-providers`, adminGetOptions());
+    const json = await res.json();
+    setRows(
+      (json.data ?? []).sort((a: AiProviderRow, b: AiProviderRow) => a.priority - b.priority),
+    );
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    load()
-  }, [load])
+    load();
+  }, [load]);
 
   const reorder = async (id: string, direction: -1 | 1) => {
-    const idx = rows.findIndex((r) => r.id === id)
-    const swapIdx = idx + direction
-    if (idx < 0 || swapIdx < 0 || swapIdx >= rows.length) return
-    const next = [...rows]
-    ;[next[idx], next[swapIdx]] = [next[swapIdx]!, next[idx]!]
-    setRows(next)
-    setBusy(true)
+    const idx = rows.findIndex((r) => r.id === id);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= rows.length) return;
+    const next = [...rows];
+    [next[idx], next[swapIdx]] = [next[swapIdx]!, next[idx]!];
+    setRows(next);
+    setBusy(true);
     try {
       const res = await fetch(`${API_URL}/v1/admin/ai-providers/reorder`, {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({ ordered_ids: next.map((r) => r.id) }),
-      })
-      if (!res.ok) throw new Error('Reorder failed')
-      setStatus('✅ Provider order saved')
-      await load()
+      });
+      if (!res.ok) throw new Error('Reorder failed');
+      setStatus('✅ Provider order saved');
+      await load();
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Reorder failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Reorder failed'}`);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const toggleActive = async (row: AiProviderRow) => {
-    setBusy(true)
+    setBusy(true);
     try {
       const res = await fetch(`${API_URL}/v1/admin/ai-providers/${row.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify({ is_active: !row.is_active }),
-      })
-      if (!res.ok) throw new Error('Update failed')
-      await load()
+      });
+      if (!res.ok) throw new Error('Update failed');
+      await load();
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Update failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Update failed'}`);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const remove = async (row: AiProviderRow) => {
-    if (!confirm(`Delete ${row.label}? Calls will skip this provider.`)) return
-    setBusy(true)
+    if (!confirm(`Delete ${row.label}? Calls will skip this provider.`)) return;
+    setBusy(true);
     try {
       const res = await fetch(`${API_URL}/v1/admin/ai-providers/${row.id}`, {
         ...(await adminMutateOptions()),
@@ -162,25 +164,25 @@ export default function AiProvidersPage() {
         // adminMutateOptions() sets Content-Type: application/json — Fastify
         // 500s on an empty body ("body must be object"). Send an empty object.
         body: '{}',
-      })
-      if (!res.ok) throw new Error('Delete failed')
-      setStatus(`✅ ${row.label} deleted`)
-      await load()
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      setStatus(`✅ ${row.label} deleted`);
+      await load();
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Delete failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Delete failed'}`);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const openCreate = () => {
-    setEditing(null)
-    setForm(EMPTY_FORM)
-    setShowForm(true)
-  }
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setShowForm(true);
+  };
 
   const openEdit = (row: AiProviderRow) => {
-    setEditing(row)
+    setEditing(row);
     setForm({
       provider_type: row.provider_type,
       label: row.label,
@@ -189,17 +191,17 @@ export default function AiProvidersPage() {
       base_url: row.base_url ?? '',
       api_key_name: row.api_key_name,
       credits_per_call: String(row.credits_per_call),
-    })
-    setShowForm(true)
-  }
+    });
+    setShowForm(true);
+  };
 
   const saveForm = async () => {
     if (!form.label.trim() || !form.model_name.trim() || !form.api_key_name.trim()) {
-      setStatus('❌ Label, model name and key name are required')
-      return
+      setStatus('❌ Label, model name and key name are required');
+      return;
     }
-    setBusy(true)
-    setStatus('')
+    setBusy(true);
+    setStatus('');
     const payload = {
       provider_type: form.provider_type,
       label: form.label.trim(),
@@ -208,9 +210,9 @@ export default function AiProvidersPage() {
       base_url: form.base_url.trim() || null,
       api_key_name: form.api_key_name.trim(),
       credits_per_call: Number(form.credits_per_call) || 1,
-    }
+    };
     try {
-      const opts = await adminMutateOptions()
+      const opts = await adminMutateOptions();
       const res = editing
         ? await fetch(`${API_URL}/v1/admin/ai-providers/${editing.id}`, {
             ...opts,
@@ -221,32 +223,36 @@ export default function AiProvidersPage() {
             ...opts,
             method: 'POST',
             body: JSON.stringify(payload),
-          })
-      if (!res.ok) throw new Error((await res.json())?.error?.message ?? 'Save failed')
-      setStatus(`✅ ${editing ? 'Updated' : 'Added'} ${payload.label}`)
-      setShowForm(false)
-      await load()
+          });
+      if (!res.ok) throw new Error((await res.json())?.error?.message ?? 'Save failed');
+      setStatus(`✅ ${editing ? 'Updated' : 'Added'} ${payload.label}`);
+      setShowForm(false);
+      await load();
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const textOnlyActive = rows.filter(
     (r) => r.is_active && classifyVisionModel(r.model_name) === 'text-only',
-  )
+  );
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-4xl"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
@@ -255,7 +261,8 @@ export default function AiProvidersPage() {
           </div>
           <p className="text-sm text-gray-500">
             Models the AI tagging engine tries, in priority order (1 = first). When a provider is
-            out of credits / rate-limited / down, the next one is tried automatically. Each model&apos;s
+            out of credits / rate-limited / down, the next one is tried automatically. Each
+            model&apos;s
             <span className="font-mono"> credits_per_call</span> weights how fast it drains a
             retailer&apos;s AI quota — expensive models cost more credits.
           </p>
@@ -285,11 +292,13 @@ export default function AiProvidersPage() {
         <div className="flex items-start gap-2 text-sm rounded-xl px-4 py-3 border bg-red-50/80 border-red-200 text-red-700">
           <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
           <p>
-            <strong>Text-only model{textOnlyActive.length > 1 ? 's' : ''} in the active chain:</strong>{' '}
+            <strong>
+              Text-only model{textOnlyActive.length > 1 ? 's' : ''} in the active chain:
+            </strong>{' '}
             {textOnlyActive.map((r) => r.label).join(', ')}. AI tagging sends product images, so
             every call to {textOnlyActive.length > 1 ? 'these models' : 'this model'} fails over to
-            the next provider — or fails entirely if it&apos;s the only one. Swap in a vision-capable
-            model.
+            the next provider — or fails entirely if it&apos;s the only one. Swap in a
+            vision-capable model.
           </p>
         </div>
       )}
@@ -357,7 +366,8 @@ export default function AiProvidersPage() {
                   {row.base_url ? ` · ${row.base_url}` : ''}
                 </p>
                 <p className="text-[10px] text-gray-400 font-mono">
-                  key: {row.api_key_name} · {row.credits_per_call} credit{row.credits_per_call === 1 ? '' : 's'}/call
+                  key: {row.api_key_name} · {row.credits_per_call} credit
+                  {row.credits_per_call === 1 ? '' : 's'}/call
                 </p>
               </div>
 
@@ -370,7 +380,9 @@ export default function AiProvidersPage() {
                     : 'text-gray-400 hover:bg-gray-100'
                 } disabled:opacity-50`}
                 aria-label={row.is_active ? 'Deactivate' : 'Activate'}
-                title={row.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'}
+                title={
+                  row.is_active ? 'Active — click to deactivate' : 'Inactive — click to activate'
+                }
               >
                 <Power size={16} />
               </button>
@@ -404,162 +416,164 @@ export default function AiProvidersPage() {
           onClose={() => setShowForm(false)}
           overlayClassName="z-50 flex items-center justify-center p-4 bg-black/40"
           panelClassName="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-full overflow-y-auto"
-          panelAnimation={{ initial: { opacity: 0, scale: 0.96 }, animate: { opacity: 1, scale: 1 } }}
+          panelAnimation={{
+            initial: { opacity: 0, scale: 0.96 },
+            animate: { opacity: 1, scale: 1 },
+          }}
           ariaLabel={editing ? 'Edit AI provider' : 'Add AI provider'}
         >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">
-                {editing ? 'Edit AI provider' : 'Add AI provider'}
-              </h2>
-              <button
-                onClick={() => setShowForm(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
-                aria-label="Close"
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">
+              {editing ? 'Edit AI provider' : 'Add AI provider'}
+            </h2>
+            <button
+              onClick={() => setShowForm(false)}
+              className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Provider type</label>
+              <select
+                value={form.provider_type}
+                onChange={(e) =>
+                  setForm({ ...form, provider_type: e.target.value as ProviderType })
+                }
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
               >
-                <X size={18} />
-              </button>
+                {(Object.keys(TYPE_LABELS) as ProviderType[]).map((t) => (
+                  <option key={t} value={t}>
+                    {TYPE_LABELS[t]}
+                  </option>
+                ))}
+              </select>
+              {form.provider_type === 'OPENAI_COMPAT' && (
+                <p className="text-[11px] text-gray-400 mt-1">
+                  OpenAI-protocol providers (OpenRouter, DeepSeek, Mistral, Groq, Together…) work
+                  through the same adapter — set <span className="font-mono">base_url</span> to
+                  their endpoint, model name to any model they host.
+                </p>
+              )}
             </div>
 
-            <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-gray-600 block mb-1">Label</label>
+              <input
+                value={form.label}
+                onChange={(e) => setForm({ ...form, label: e.target.value })}
+                placeholder="e.g. Claude Sonnet"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">Provider type</label>
-                <select
-                  value={form.provider_type}
-                  onChange={(e) => setForm({ ...form, provider_type: e.target.value as ProviderType })}
+                <label className="text-xs font-medium text-gray-600 block mb-1">Model name</label>
+                <input
+                  value={form.model_name}
+                  onChange={(e) => setForm({ ...form, model_name: e.target.value })}
+                  placeholder="e.g. claude-sonnet-4-5"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
-                >
-                  {(Object.keys(TYPE_LABELS) as ProviderType[]).map((t) => (
-                    <option key={t} value={t}>
-                      {TYPE_LABELS[t]}
-                    </option>
-                  ))}
-                </select>
-                {form.provider_type === 'OPENAI_COMPAT' && (
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    OpenAI-protocol providers (OpenRouter, DeepSeek, Mistral, Groq, Together…) work
-                    through the same adapter — set <span className="font-mono">base_url</span> to
-                    their endpoint, model name to any model they host.
+                />
+                {form.model_name.trim() && classifyVisionModel(form.model_name) === 'text-only' && (
+                  <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                    <AlertTriangle size={12} className="flex-shrink-0" /> Looks text-only — AI
+                    tagging sends images, so every call will fail over to the next provider.
                   </p>
                 )}
               </div>
-
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">Label</label>
+                <label className="text-xs font-medium text-gray-600 block mb-1">
+                  Lite model <span className="text-gray-400">(color detect)</span>
+                </label>
                 <input
-                  value={form.label}
-                  onChange={(e) => setForm({ ...form, label: e.target.value })}
-                  placeholder="e.g. Claude Sonnet"
+                  value={form.lite_model_name}
+                  onChange={(e) => setForm({ ...form, lite_model_name: e.target.value })}
+                  placeholder="e.g. claude-haiku"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
+                />
+                {form.lite_model_name.trim() &&
+                  classifyVisionModel(form.lite_model_name) === 'text-only' && (
+                    <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                      <AlertTriangle size={12} className="flex-shrink-0" /> Color detection also
+                      sends images — a text-only model fails over every call.
+                    </p>
+                  )}
+              </div>
+            </div>
+
+            {form.provider_type === 'OPENAI_COMPAT' && (
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">
+                  Base URL <span className="text-gray-400">(default: api.openai.com)</span>
+                </label>
+                <input
+                  value={form.base_url}
+                  onChange={(e) => setForm({ ...form, base_url: e.target.value })}
+                  placeholder="https://openrouter.ai/api/v1"
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                 />
               </div>
+            )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 block mb-1">Model name</label>
-                  <input
-                    value={form.model_name}
-                    onChange={(e) => setForm({ ...form, model_name: e.target.value })}
-                    placeholder="e.g. claude-sonnet-4-5"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
-                  />
-                  {form.model_name.trim() &&
-                    classifyVisionModel(form.model_name) === 'text-only' && (
-                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-                        <AlertTriangle size={12} className="flex-shrink-0" /> Looks text-only — AI
-                        tagging sends images, so every call will fail over to the next provider.
-                      </p>
-                    )}
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 block mb-1">
-                    Lite model <span className="text-gray-400">(color detect)</span>
-                  </label>
-                  <input
-                    value={form.lite_model_name}
-                    onChange={(e) => setForm({ ...form, lite_model_name: e.target.value })}
-                    placeholder="e.g. claude-haiku"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
-                  />
-                  {form.lite_model_name.trim() &&
-                    classifyVisionModel(form.lite_model_name) === 'text-only' && (
-                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
-                        <AlertTriangle size={12} className="flex-shrink-0" /> Color detection also
-                        sends images — a text-only model fails over every call.
-                      </p>
-                    )}
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">API key name</label>
+                <input
+                  value={form.api_key_name}
+                  onChange={(e) => setForm({ ...form, api_key_name: e.target.value })}
+                  placeholder="OPENROUTER_API_KEY"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-ink-500/50"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Stored via Admin → Integrations, or as a .env var of the same name.
+                </p>
               </div>
-
-              {form.provider_type === 'OPENAI_COMPAT' && (
-                <div>
-                  <label className="text-xs font-medium text-gray-600 block mb-1">
-                    Base URL <span className="text-gray-400">(default: api.openai.com)</span>
-                  </label>
-                  <input
-                    value={form.base_url}
-                    onChange={(e) => setForm({ ...form, base_url: e.target.value })}
-                    placeholder="https://openrouter.ai/api/v1"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 block mb-1">
-                    API key name
-                  </label>
-                  <input
-                    value={form.api_key_name}
-                    onChange={(e) => setForm({ ...form, api_key_name: e.target.value })}
-                    placeholder="OPENROUTER_API_KEY"
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-ink-500/50"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    Stored via Admin → Integrations, or as a .env var of the same name.
-                  </p>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 block mb-1">
-                    Credits per call
-                  </label>
-                  <input
-                    value={form.credits_per_call}
-                    onChange={(e) => setForm({ ...form, credits_per_call: e.target.value })}
-                    type="number"
-                    min={1}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
-                  />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    1 = cheapest model. Expensive models cost more AI quota per call.
-                  </p>
-                </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">
+                  Credits per call
+                </label>
+                <input
+                  value={form.credits_per_call}
+                  onChange={(e) => setForm({ ...form, credits_per_call: e.target.value })}
+                  type="number"
+                  min={1}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-ink-500/50"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  1 = cheapest model. Expensive models cost more AI quota per call.
+                </p>
               </div>
             </div>
+          </div>
 
-            <div className="flex items-center justify-between mt-6">
-              <p className="text-[11px] text-gray-400 flex items-center gap-1">
-                <KeyRound size={12} /> Keys are never stored here — set them in Integrations.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={saveForm}
-                  disabled={busy}
-                  className="flex items-center gap-2 px-4 py-2 text-sm bg-ink-500 text-white rounded-xl hover:bg-ink-600 disabled:opacity-50 transition-colors"
-                >
-                  {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  {editing ? 'Save changes' : 'Add provider'}
-                </button>
-              </div>
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-[11px] text-gray-400 flex items-center gap-1">
+              <KeyRound size={12} /> Keys are never stored here — set them in Integrations.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveForm}
+                disabled={busy}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-ink-500 text-white rounded-xl hover:bg-ink-600 disabled:opacity-50 transition-colors"
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                {editing ? 'Save changes' : 'Add provider'}
+              </button>
             </div>
+          </div>
         </Sheet>
       )}
     </motion.div>
-  )
+  );
 }

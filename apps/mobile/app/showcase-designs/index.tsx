@@ -1,66 +1,57 @@
-import { useCallback, useMemo, useState } from 'react'
-import {
-  View,
-  Text,
-  FlatList,
-  Image,
-  Pressable,
-  Alert,
-} from 'react-native'
-import { router } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { Plus, ImagePlus } from 'lucide-react-native'
-import {
-  showcaseDesignsApi,
-  retailerApi,
-  type ShowcaseDesignRow,
-} from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { ProductGridSkeleton } from '../../src/components/Skeleton'
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ImagePlus, Plus } from 'lucide-react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, FlatList, Image, Pressable, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ProductGridSkeleton } from '../../src/components/Skeleton';
+import { type ShowcaseDesignRow, retailerApi, showcaseDesignsApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 export default function ShowcaseDesignsScreen() {
-  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
+  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
 
   // Header identity (logo + shop name) — mirrors (tabs)/catalog.tsx.
   const { data: retailerData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
-  })
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as Record<string, any> | undefined
+  });
+  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as
+    | Record<string, any>
+    | undefined;
 
-  const [filterSlug, setFilterSlug] = useState<string | null>(null)
+  const [filterSlug, setFilterSlug] = useState<string | null>(null);
 
   const { data: listData, isLoading: listLoading } = useQuery({
     queryKey: ['showcase-designs', 'mine', { category: filterSlug }],
     queryFn: () => showcaseDesignsApi.listMine(filterSlug ?? undefined),
     staleTime: 30_000,
-  })
-  const designs: ShowcaseDesignRow[] = listData?.data ?? []
+  });
+  const designs: ShowcaseDesignRow[] = listData?.data ?? [];
 
   // DB category chips + related links (retailer picks from the admin list).
   const { data: categoriesData } = useQuery({
     queryKey: ['showcase-designs', 'categories'],
     queryFn: () => showcaseDesignsApi.categories(),
     staleTime: 60_000,
-  })
+  });
 
   // "X of Y used" badge + FAB disabled at the plan cap.
   const { data: usageData } = useQuery({
     queryKey: ['showcase-designs', 'usage'],
     queryFn: () => showcaseDesignsApi.usage(),
     staleTime: 30_000,
-  })
-  const usage = usageData?.data
-  const atCap = (usage?.limit ?? null) !== null && (usage?.used ?? 0) >= (usage?.limit ?? 0)
+  });
+  const usage = usageData?.data;
+  const atCap = (usage?.limit ?? null) !== null && (usage?.used ?? 0) >= (usage?.limit ?? 0);
 
   const categoryChips = useMemo(() => {
-    const all = { id: 'all', name: 'All', slug: 'all', sort_order: -1, related: [] }
-    return [all, ...(categoriesData?.data ?? [])]
-  }, [categoriesData])
+    const all = { id: 'all', name: 'All', slug: 'all', sort_order: -1, related: [] };
+    return [all, ...(categoriesData?.data ?? [])];
+  }, [categoriesData]);
   const handleDelete = useCallback(
     (design: ShowcaseDesignRow) => {
       Alert.alert(
@@ -73,18 +64,18 @@ export default function ShowcaseDesignsScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                await showcaseDesignsApi.remove(design.id)
-                void queryClient.invalidateQueries({ queryKey: ['showcase-designs'] })
+                await showcaseDesignsApi.remove(design.id);
+                void queryClient.invalidateQueries({ queryKey: ['showcase-designs'] });
               } catch (err) {
-                showError(err, 'Try again.', 'Delete failed')
+                showError(err, 'Try again.', 'Delete failed');
               }
             },
           },
         ],
-      )
+      );
     },
     [queryClient],
-  )
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: ShowcaseDesignRow }) => (
@@ -95,7 +86,11 @@ export default function ShowcaseDesignsScreen() {
           className="bg-white rounded-2xl overflow-hidden border border-lavender-200"
         >
           <View className="w-full aspect-[3/4] bg-lavender-100">
-            <Image source={{ uri: item.image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <Image
+              source={{ uri: item.image_url }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
           </View>
           <View className="px-2.5 py-2">
             <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
@@ -110,9 +105,9 @@ export default function ShowcaseDesignsScreen() {
       </View>
     ),
     [handleDelete],
-  )
+  );
 
-  const keyExtractor = useCallback((item: ShowcaseDesignRow) => item.id, [])
+  const keyExtractor = useCallback((item: ShowcaseDesignRow) => item.id, []);
 
   const listEmpty = useCallback(
     () => (
@@ -127,12 +122,13 @@ export default function ShowcaseDesignsScreen() {
           No designs yet
         </Text>
         <Text className="text-heliotrope-500 text-xs text-center mt-1 leading-5">
-          Add a photo of a suit, blouse, or saree design{'\n'}— it gets a light watermark automatically.
+          Add a photo of a suit, blouse, or saree design{'\n'}— it gets a light watermark
+          automatically.
         </Text>
       </View>
     ),
     [],
-  )
+  );
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -174,22 +170,26 @@ export default function ShowcaseDesignsScreen() {
           keyExtractor={(c) => c.id}
           contentContainerStyle={{ gap: 8 }}
           renderItem={({ item }) => {
-            const selected = filterSlug === (item.slug === 'all' ? null : item.slug)
-            const isAll = item.slug === 'all'
+            const selected = filterSlug === (item.slug === 'all' ? null : item.slug);
+            const isAll = item.slug === 'all';
             return (
               <AnimatedPressable
                 onPress={() => setFilterSlug(isAll ? null : item.slug)}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 className={`px-3.5 py-1.5 rounded-full border ${
-                  selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
+                  selected
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                    : 'bg-white border-lavender-200'
                 }`}
               >
-                <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                <Text
+                  className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}
+                >
                   {item.name}
                 </Text>
               </AnimatedPressable>
-            )
+            );
           }}
         />
       </View>
@@ -204,7 +204,12 @@ export default function ShowcaseDesignsScreen() {
           renderItem={renderItem}
           numColumns={2}
           columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1, paddingBottom: tabScrollPaddingBottom }}
+          contentContainerStyle={{
+            padding: 14,
+            gap: 12,
+            flexGrow: 1,
+            paddingBottom: tabScrollPaddingBottom,
+          }}
           ListEmptyComponent={listEmpty}
           windowSize={7}
           maxToRenderPerBatch={10}
@@ -241,5 +246,5 @@ export default function ShowcaseDesignsScreen() {
         </View>
       )}
     </View>
-  )
+  );
 }

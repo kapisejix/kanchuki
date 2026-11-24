@@ -1,20 +1,20 @@
-import { useEffect } from 'react'
-import { View, ActivityIndicator, Image } from 'react-native'
-import { Tabs, router } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { Home, Grid3X3, Plus, TrendingUp, MessageCircle } from 'lucide-react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { retailerApi } from '../../src/lib/api'
-import { useAuth } from '../../src/lib/auth-context'
-import { staffCan } from '../../src/lib/staff-can'
-import { useTheme } from '../../src/lib/theme'
+import { useQuery } from '@tanstack/react-query';
+import { Tabs, router } from 'expo-router';
+import { Grid3X3, Home, MessageCircle, Plus, TrendingUp } from 'lucide-react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, Image, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { retailerApi } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth-context';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
+import { staffCan } from '../../src/lib/staff-can';
+import { useTheme } from '../../src/lib/theme';
 
 export default function TabsLayout() {
-  const insets = useSafeAreaInsets()
-  const { primaryColor } = useTheme()
-  const { staffRole } = useAuth()
+  const insets = useSafeAreaInsets();
+  const { primaryColor } = useTheme();
+  const { staffRole } = useAuth();
 
   // FR-3 (team-member-access-control): the retailer's shop Staff render the
   // same tabs as the owner, gated through staffCan() — the one client mirror
@@ -22,9 +22,9 @@ export default function TabsLayout() {
   // drift from what the API enforces. Owner (staffRole null) passes every
   // check; growth/analytics/social are owner-only; salesperson also loses
   // Add (POST products). Collections is reachable from Home, not a tab.
-  const canSeeGrowth = staffCan(staffRole, 'growth')
-  const canSeeAdd = staffCan(staffRole, 'catalog.edit')
-  const canSeeSocial = META_SOCIAL_ENABLED && staffCan(staffRole, 'social')
+  const canSeeGrowth = staffCan(staffRole, 'growth');
+  const canSeeAdd = staffCan(staffRole, 'catalog.edit');
+  const canSeeSocial = META_SOCIAL_ENABLED && staffCan(staffRole, 'social');
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)
@@ -38,9 +38,9 @@ export default function TabsLayout() {
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
-  })
+  });
   const onboardingCompleted = (meData?.data as { onboarding_completed?: boolean } | undefined)
-    ?.onboarding_completed
+    ?.onboarding_completed;
 
   // Redirect only once the query has fully settled. Waiting for isFetching
   // means a stale cached `false` (e.g. the persisted offline cache from a
@@ -58,9 +58,9 @@ export default function TabsLayout() {
   // navigation signal here.
   useEffect(() => {
     if (!meLoading && !meFetching && onboardingCompleted === false) {
-      router.replace('/onboarding')
+      router.replace('/onboarding');
     }
-  }, [meLoading, meFetching, onboardingCompleted])
+  }, [meLoading, meFetching, onboardingCompleted]);
 
   // Only block the first load. A background refetch (staleTime expiry) must not
   // unmount <Tabs> — doing so swallowed the tap that triggered it, forcing a
@@ -72,7 +72,7 @@ export default function TabsLayout() {
       <View className="flex-1 items-center justify-center bg-[#F8F7FC]">
         <ActivityIndicator color={primaryColor} />
       </View>
-    )
+    );
   }
 
   return (
@@ -141,7 +141,7 @@ export default function TabsLayout() {
           tabBarLabel: () => null,
           tabBarIcon: () => null,
           tabBarButton: (props) => {
-            const { style, ...rest } = props as any
+            const { style, ...rest } = props as any;
             return (
               <AnimatedPressable
                 {...rest}
@@ -149,7 +149,10 @@ export default function TabsLayout() {
                 // Tab slot is 54px tall (64 bar − 10 padding; the bottom inset cancels out) and the
                 // 56px circle centres in it, so −27 puts the circle's centre exactly on the bar's top
                 // edge: half on the bar, half above (−50%).
-                style={[style, { top: -27, zIndex: 10, alignItems: 'center', justifyContent: 'center' }]}
+                style={[
+                  style,
+                  { top: -27, zIndex: 10, alignItems: 'center', justifyContent: 'center' },
+                ]}
                 accessibilityLabel="Add New Product"
                 accessibilityRole="button"
               >
@@ -173,7 +176,7 @@ export default function TabsLayout() {
                   <Plus color="#ffffff" size={26} strokeWidth={2.5} />
                 </View>
               </AnimatedPressable>
-            )
+            );
           },
           headerShown: false,
         }}
@@ -183,7 +186,9 @@ export default function TabsLayout() {
         options={{
           href: canSeeGrowth ? undefined : null,
           title: 'Growth',
-          tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} strokeWidth={1.8} />,
+          tabBarIcon: ({ color, size }) => (
+            <TrendingUp color={color} size={size} strokeWidth={1.8} />
+          ),
           headerShown: false,
         }}
       />
@@ -192,7 +197,9 @@ export default function TabsLayout() {
         options={{
           href: canSeeSocial ? undefined : null,
           title: 'Social',
-          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} strokeWidth={1.8} />,
+          tabBarIcon: ({ color, size }) => (
+            <MessageCircle color={color} size={size} strokeWidth={1.8} />
+          ),
           headerShown: false,
         }}
       />
@@ -218,5 +225,5 @@ export default function TabsLayout() {
         }}
       />
     </Tabs>
-  )
+  );
 }

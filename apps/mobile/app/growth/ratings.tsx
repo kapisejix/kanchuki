@@ -1,32 +1,25 @@
-import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
   ChevronLeft,
-  Star,
   ExternalLink,
   Flag,
   MessageSquare,
   ShoppingBag,
+  Star,
   Store,
-} from 'lucide-react-native'
-import {
-  ActivityIndicator,
-  Linking,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GooglePlaceField } from '../../src/components/GooglePlaceField'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { GoogleReviewsTab } from '../../src/components/GoogleReviewsTab'
-import { type GbpState, googleBusinessApi } from '../../src/lib/api/google-business'
-import { growthApi } from '../../src/lib/api/growth'
-import { useAuth } from '../../src/lib/auth-context'
-import { staffCan } from '../../src/lib/staff-can'
+} from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GooglePlaceField } from '../../src/components/GooglePlaceField';
+import { GoogleReviewsTab } from '../../src/components/GoogleReviewsTab';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { type GbpState, googleBusinessApi } from '../../src/lib/api/google-business';
+import { growthApi } from '../../src/lib/api/growth';
+import { useAuth } from '../../src/lib/auth-context';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { staffCan } from '../../src/lib/staff-can';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -35,12 +28,12 @@ const StarRating = ({
   size = 14,
   color,
 }: {
-  rating: number
-  size?: number
-  color?: string
+  rating: number;
+  size?: number;
+  color?: string;
 }) => {
-  const filled = color ?? '#BB3F95'
-  const empty = '#E0E1F6'
+  const filled = color ?? '#BB3F95';
+  const empty = '#E0E1F6';
   return (
     <View className="flex-row gap-1">
       {[1, 2, 3, 4, 5].map((i) => (
@@ -52,57 +45,57 @@ const StarRating = ({
         />
       ))}
     </View>
-  )
-}
+  );
+};
 
 const timeAgo = (date: string) => {
-  const diff = Date.now() - new Date(date).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 30) return `${days}d ago`
-  return `${Math.floor(days / 30)}mo ago`
-}
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+};
 
 // ─── Main Screen ─────────────────────────────────────────────────
 
 export default function RatingsScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const [tab, setTab] = useState<'summary' | 'product' | 'store' | 'google'>('summary')
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const [tab, setTab] = useState<'summary' | 'product' | 'store' | 'google'>('summary');
 
   // The Google tab exists only when the server says the profile is LINKED; the entry card
   // on the Summary tab shows for the in-between states. UNAVAILABLE shows neither.
   // Owner + manager read and answer Google reviews; a salesperson never asks (the server would
   // refuse). Only the owner sets it up, so only they see the setup card.
-  const { staffRole } = useAuth()
-  const canGoogleReviews = staffCan(staffRole, 'google.reviews')
+  const { staffRole } = useAuth();
+  const canGoogleReviews = staffCan(staffRole, 'google.reviews');
   const { data: gbp } = useQuery({
     queryKey: ['google-business', 'status'],
     queryFn: () => googleBusinessApi.status(),
     retry: false,
     enabled: canGoogleReviews,
-  })
-  const gbpState = gbp?.data.state
+  });
+  const gbpState = gbp?.data.state;
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'reviews', 'summary'],
     queryFn: () => growthApi.reviewSummary(),
-  })
-  const summary = data?.data
+  });
+  const summary = data?.data;
 
   const { data: productData } = useQuery({
     queryKey: ['growth', 'reviews', 'products'],
     queryFn: () => growthApi.productReviews({ limit: 20 }),
     enabled: tab === 'product',
-  })
+  });
 
   const { data: storeData } = useQuery({
     queryKey: ['growth', 'reviews', 'stores'],
     queryFn: () => growthApi.storeReviews({ limit: 20 }),
     enabled: tab === 'store',
-  })
+  });
 
   return (
     <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
@@ -144,26 +137,25 @@ export default function RatingsScreen() {
               ? [{ key: 'google' as const, label: 'Google', icon: ExternalLink }]
               : []),
           ].map(({ key, label, icon: Icon }) => {
-            const active = tab === key
+            const active = tab === key;
             return (
               <AnimatedPressable
                 key={key}
                 onPress={() => setTab(key)}
                 className={`flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-2xl border ${
-                  active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
+                  active
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                    : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
-                <Icon
-                  size={14}
-                  color={active ? '#FFFFFF' : '#928EB2'}
-                />
+                <Icon size={14} color={active ? '#FFFFFF' : '#928EB2'} />
                 <Text
                   className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                 >
                   {label}
                 </Text>
               </AnimatedPressable>
-            )
+            );
           })}
         </View>
       </View>
@@ -187,20 +179,12 @@ export default function RatingsScreen() {
             />
           )}
           {tab === 'google' && gbpState === 'LINKED' && <GoogleReviewsTab />}
-          {tab === 'product' && (
-            <ProductReviewsTab
-              reviews={productData?.data ?? []}
-            />
-          )}
-          {tab === 'store' && (
-            <StoreReviewsTab
-              reviews={storeData?.data ?? []}
-            />
-          )}
+          {tab === 'product' && <ProductReviewsTab reviews={productData?.data ?? []} />}
+          {tab === 'store' && <StoreReviewsTab reviews={storeData?.data ?? []} />}
         </ScrollView>
       )}
     </KeyboardScreen>
-  )
+  );
 }
 
 // ─── Summary Tab ─────────────────────────────────────────────────
@@ -209,14 +193,16 @@ function SummaryTab({
   summary,
   gbpState,
 }: {
-  summary: any
-  gbpState?: GbpState
+  summary: any;
+  gbpState?: GbpState;
 }) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   return (
     <View className="gap-4">
       {/* Entry to the Google reviews flow — hidden when unavailable or already linked */}
-      {(gbpState === 'NOT_REQUESTED' || gbpState === 'REQUESTED' || gbpState === 'NEEDS_ACCESS') && (
+      {(gbpState === 'NOT_REQUESTED' ||
+        gbpState === 'REQUESTED' ||
+        gbpState === 'NEEDS_ACCESS') && (
         <AnimatedPressable
           onPress={() => router.push('/growth/integrations/google-business' as never)}
           accessibilityRole="button"
@@ -263,7 +249,7 @@ function SummaryTab({
               .map(({ star, count }: { star: number; count: number }) => {
                 const pct = summary.store.rating_count
                   ? (count / summary.store.rating_count) * 100
-                  : 0
+                  : 0;
                 return (
                   <View key={star} className="flex-row items-center gap-2">
                     <Text className="text-xs text-heliotrope-500 font-semibold w-3">{star}</Text>
@@ -276,9 +262,11 @@ function SummaryTab({
                         }}
                       />
                     </View>
-                    <Text className="text-xs text-heliotrope-500 font-medium w-6 text-right">{count}</Text>
+                    <Text className="text-xs text-heliotrope-500 font-medium w-6 text-right">
+                      {count}
+                    </Text>
                   </View>
-                )
+                );
               })}
           </View>
         </View>
@@ -288,14 +276,13 @@ function SummaryTab({
       {summary.google_review_url && (
         <AnimatedPressable
           onPress={() => {
-            void Linking.openURL(summary.google_review_url)
+            void Linking.openURL(summary.google_review_url);
           }}
           accessibilityRole="button"
           accessibilityLabel="Open your Google review link"
           className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center gap-3.5"
         >
-          <View className="w-6 items-center justify-center"
-          >
+          <View className="w-6 items-center justify-center">
             <ExternalLink size={20} color="#6B4773" />
           </View>
           <View className="flex-1">
@@ -305,7 +292,9 @@ function SummaryTab({
             >
               Google & JustDial Review Link
             </Text>
-            <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">Share with happy customers via WhatsApp</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
+              Share with happy customers via WhatsApp
+            </Text>
           </View>
           <ChevronLeft size={16} color="#6B4773" style={{ transform: [{ rotate: '180deg' }] }} />
         </AnimatedPressable>
@@ -332,13 +321,16 @@ function SummaryTab({
           <View className="gap-3">
             {summary.top_products.map((p: any) => (
               <View key={p.id} className="flex-row items-center gap-3">
-                <View className="w-6 items-center justify-center"
-                >
+                <View className="w-6 items-center justify-center">
                   <ShoppingBag size={18} color="#6B4773" />
                 </View>
                 <View className="flex-1">
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                    style={{
+                      fontFamily: 'Marcellus_400Regular',
+                      letterSpacing: 0.32,
+                      fontWeight: '800',
+                    }}
                     className="text-sm text-spaceCadet-900"
                     numberOfLines={1}
                   >
@@ -371,13 +363,11 @@ function SummaryTab({
               <View key={r.id} className="border-b border-lavender-100 pb-3 last:border-b-0">
                 <View className="flex-row items-center gap-2 mb-1.5">
                   <StarRating rating={r.rating} size={12} />
-                  <Text className="text-xs text-heliotrope-500 font-medium">{timeAgo(r.created_at)}</Text>
-                  <View
-                    className="rounded-full px-2.5 py-0.5 ml-auto bg-fuchsia-500/10 border border-fuchsia-500/20"
-                  >
-                    <Text
-                      className="text-[11px] font-semibold text-fuchsia-700"
-                    >
+                  <Text className="text-xs text-heliotrope-500 font-medium">
+                    {timeAgo(r.created_at)}
+                  </Text>
+                  <View className="rounded-full px-2.5 py-0.5 ml-auto bg-fuchsia-500/10 border border-fuchsia-500/20">
+                    <Text className="text-[11px] font-semibold text-fuchsia-700">
                       {r.type === 'product' ? 'Design' : 'Boutique'}
                     </Text>
                   </View>
@@ -387,7 +377,9 @@ function SummaryTab({
                   {r.type === 'product' && r.product ? ` on ${r.product.name}` : ''}
                 </Text>
                 {r.comment && (
-                  <Text className="text-xs text-heliotrope-500 mt-1 leading-relaxed font-medium">{r.comment}</Text>
+                  <Text className="text-xs text-heliotrope-500 mt-1 leading-relaxed font-medium">
+                    {r.comment}
+                  </Text>
                 )}
               </View>
             ))}
@@ -395,7 +387,7 @@ function SummaryTab({
         </View>
       )}
     </View>
-  )
+  );
 }
 
 // ─── Product Reviews Tab ─────────────────────────────────────────
@@ -403,14 +395,12 @@ function SummaryTab({
 function ProductReviewsTab({
   reviews,
 }: {
-  reviews: any[]
+  reviews: any[];
 }) {
   if (reviews.length === 0) {
     return (
       <View className="items-center py-12">
-        <View
-          className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
-        >
+        <View className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200">
           <MessageSquare size={28} color="#6B4773" />
         </View>
         <Text
@@ -423,7 +413,7 @@ function ProductReviewsTab({
           Reviews will appear here when customers rate your collections.
         </Text>
       </View>
-    )
+    );
   }
 
   return (
@@ -432,7 +422,9 @@ function ProductReviewsTab({
         <View key={r.id} className="bg-white rounded-2xl p-5 border border-lavender-200">
           <View className="flex-row items-center gap-2 mb-2">
             <StarRating rating={r.rating} size={14} />
-            <Text className="text-xs text-heliotrope-500 font-medium ml-auto">{timeAgo(r.created_at)}</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium ml-auto">
+              {timeAgo(r.created_at)}
+            </Text>
             {r.is_flagged && (
               <View className="bg-rose-50 rounded-full px-2 py-0.5 border border-rose-200">
                 <Flag size={10} color="#e11d48" />
@@ -450,12 +442,14 @@ function ProductReviewsTab({
             by {r.display_name ?? r.customer?.name ?? 'Anonymous'}
           </Text>
           {r.comment && (
-            <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">{r.comment}</Text>
+            <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">
+              {r.comment}
+            </Text>
           )}
         </View>
       ))}
     </View>
-  )
+  );
 }
 
 // ─── Store Reviews Tab ───────────────────────────────────────────
@@ -463,14 +457,12 @@ function ProductReviewsTab({
 function StoreReviewsTab({
   reviews,
 }: {
-  reviews: any[]
+  reviews: any[];
 }) {
   if (reviews.length === 0) {
     return (
       <View className="items-center py-12">
-        <View
-          className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
-        >
+        <View className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200">
           <Store size={28} color="#6B4773" />
         </View>
         <Text
@@ -483,7 +475,7 @@ function StoreReviewsTab({
           Boutique reviews will appear here when customers rate their showroom experience.
         </Text>
       </View>
-    )
+    );
   }
 
   return (
@@ -492,7 +484,9 @@ function StoreReviewsTab({
         <View key={r.id} className="bg-white rounded-2xl p-5 border border-lavender-200">
           <View className="flex-row items-center gap-2 mb-2">
             <StarRating rating={r.rating} size={14} />
-            <Text className="text-xs text-heliotrope-500 font-medium ml-auto">{timeAgo(r.created_at)}</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium ml-auto">
+              {timeAgo(r.created_at)}
+            </Text>
             {r.is_flagged && (
               <View className="bg-rose-50 rounded-full px-2 py-0.5 border border-rose-200">
                 <Flag size={10} color="#e11d48" />
@@ -503,10 +497,12 @@ function StoreReviewsTab({
             by {r.display_name ?? r.customer?.name ?? 'Anonymous'}
           </Text>
           {r.comment && (
-            <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">{r.comment}</Text>
+            <Text className="text-xs text-spaceCadet-900 mt-2 leading-relaxed font-medium">
+              {r.comment}
+            </Text>
           )}
         </View>
       ))}
     </View>
-  )
+  );
 }

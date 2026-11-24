@@ -1,13 +1,13 @@
-// F-045 PR-4b: every My Style entry point (spec 3.1 #1-#5) links to /my-style.
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { PublicCollection } from '@kanchuki/shared';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createControllablePathname } from '@/test/__mocks__/next-navigation';
-import { clearPassportCache } from '@/lib/passport-client';
 import { AIStylist } from '@/app/c/[slug]/components/AIStylist';
 import { CollectionView } from '@/app/c/[slug]/components/CollectionView';
-import StoresDirectory from '@/app/stores/StoresDirectory';
 import ForCustomersPage from '@/app/for-customers/page';
+import StoresDirectory from '@/app/stores/StoresDirectory';
+import { clearPassportCache } from '@/lib/passport-client';
+import { createControllablePathname } from '@/test/__mocks__/next-navigation';
+import type { PublicCollection } from '@kanchuki/shared';
+// F-045 PR-4b: every My Style entry point (spec 3.1 #1-#5) links to /my-style.
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ShopperLayout from '../../layout';
 
 vi.mock('next/dynamic', () => ({ __esModule: true, default: () => () => null }));
@@ -32,13 +32,22 @@ beforeEach(() => {
       String(url).includes('/passport/me')
         ? new Response(
             JSON.stringify({
-              account: { id: 'c1', name: 'Ananya', phone_masked: '••9999', usual_size: 'M', city: 'Jaipur' },
+              account: {
+                id: 'c1',
+                name: 'Ananya',
+                phone_masked: '••9999',
+                usual_size: 'M',
+                city: 'Jaipur',
+              },
             }),
             { status: 200 },
           )
-        : new Response(JSON.stringify({ data: { stores: [], cities: [], total: 0, suggestions: [] } }), {
-            status: 200,
-          }),
+        : new Response(
+            JSON.stringify({ data: { stores: [], cities: [], total: 0, suggestions: [] } }),
+            {
+              status: 200,
+            },
+          ),
     ),
   );
 });
@@ -63,13 +72,32 @@ describe('My Style entry points', () => {
   it('#2 the storefront bottom bar has a My Style button', () => {
     const collection = {
       retailer: {
-        id: 'r1', shop_name: 'Meera Sarees', city: 'Jaipur', phone: '919999999999', logo_url: null,
-        banner_url: null, public_slug: 'meera-sarees', latitude: null, longitude: null,
+        id: 'r1',
+        shop_name: 'Meera Sarees',
+        city: 'Jaipur',
+        phone: '919999999999',
+        logo_url: null,
+        banner_url: null,
+        public_slug: 'meera-sarees',
+        latitude: null,
+        longitude: null,
       },
-      title: 'Festive Edit', description: '', expires_at: null, products: [], total: 0, page: 1,
-      page_size: 12, filters: { categories: [], colors: [], sizes: [] },
+      title: 'Festive Edit',
+      description: '',
+      expires_at: null,
+      products: [],
+      total: 0,
+      page: 1,
+      page_size: 12,
+      filters: { categories: [], colors: [], sizes: [] },
     } as unknown as PublicCollection;
-    render(<CollectionView collection={collection} slug="festive-edit" productsApiPath="/api/c/festive-edit/products" />);
+    render(
+      <CollectionView
+        collection={collection}
+        slug="festive-edit"
+        productsApiPath="/api/c/festive-edit/products"
+      />,
+    );
     expect(hrefOf(/My Style/)).toBe('/my-style');
   });
 
@@ -86,18 +114,28 @@ describe('My Style entry points', () => {
 
   it('#4 the store directory has a "Find what suits you" card', async () => {
     render(<StoresDirectory initial={null} />);
-    await waitFor(() => expect(screen.getByRole('link', { name: /Find what suits you/ })).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /Find what suits you/ })).toBeTruthy(),
+    );
     expect(hrefOf(/Find what suits you/)).toBe('/my-style');
   });
 
   it('#5 For Customers has a My Style section with a CTA', () => {
     // The marketing chrome animates on scroll; jsdom has neither API.
     vi.stubGlobal('matchMedia', () => ({
-      matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-      addListener: vi.fn(), removeListener: vi.fn(),
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
     }));
     class NoopObserver {
-      observe() {} unobserve() {} disconnect() {} takeRecords() { return []; }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
     }
     vi.stubGlobal('IntersectionObserver', NoopObserver);
     vi.stubGlobal('ResizeObserver', NoopObserver);

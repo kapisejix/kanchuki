@@ -3,30 +3,30 @@
 // web page handles OTP login + Meta OAuth + Page picker). The mobile app then
 // polls GET /me/social/accounts until the new account appears, and publishes
 // posts via POST /me/social/accounts/:id/posts.
-import { request } from './client'
+import { request } from './client';
 
 export interface SocialAccountInfo {
-  id: string
-  platform: 'FACEBOOK' | 'INSTAGRAM'
-  account_id: string
-  account_name: string
-  token_expires_at: string | null
-  connected_at: string
+  id: string;
+  platform: 'FACEBOOK' | 'INSTAGRAM';
+  account_id: string;
+  account_name: string;
+  token_expires_at: string | null;
+  connected_at: string;
 }
 
 export interface SocialPostInfo {
-  id: string
-  post_type: 'SINGLE_PRODUCT' | 'COLLECTION_LINK' | 'CAROUSEL' | 'IMAGE'
-  caption: string
+  id: string;
+  post_type: 'SINGLE_PRODUCT' | 'COLLECTION_LINK' | 'CAROUSEL' | 'IMAGE';
+  caption: string;
   /** PROCESSING: a slow Instagram Reel finished in the background (F-034 T2b). */
-  status: 'POSTED' | 'FAILED' | 'PROCESSING'
-  external_post_url: string | null
-  error_message: string | null
-  product_ids: string[]
-  collection_id: string | null
-  created_at: string
-  likes_count: number | null
-  comments_count: number | null
+  status: 'POSTED' | 'FAILED' | 'PROCESSING';
+  external_post_url: string | null;
+  error_message: string | null;
+  product_ids: string[];
+  collection_id: string | null;
+  created_at: string;
+  likes_count: number | null;
+  comments_count: number | null;
 }
 
 // ─── Composer fan-out (POST /me/social/posts — T-3.1) ───────────────────
@@ -35,46 +35,46 @@ export interface SocialPostInfo {
 
 /** Post shapes the composer can produce. IMAGE = a standalone image (e.g. a
  * watermarked Suits Design) posted from its public URL — no product. */
-export type SocialPostComposeType = 'SINGLE_PRODUCT' | 'CAROUSEL' | 'COLLECTION_LINK' | 'IMAGE'
+export type SocialPostComposeType = 'SINGLE_PRODUCT' | 'CAROUSEL' | 'COLLECTION_LINK' | 'IMAGE';
 
 /** What the post's link card resolves to (server-owned resolution, R-11). */
-export type SocialLinkType = 'none' | 'collection' | 'storefront' | 'product'
+export type SocialLinkType = 'none' | 'collection' | 'storefront' | 'product';
 
 /** One media item inside a fan-out payload — a product photo XOR a video, or
  * a standalone image_url (IMAGE posts carry no product ref). */
 export interface SocialPostItem {
-  product_id?: string
-  photo_id?: string
-  video_id?: string
-  image_url?: string
+  product_id?: string;
+  photo_id?: string;
+  video_id?: string;
+  image_url?: string;
 }
 
 /** Payload for POST /me/social/posts. */
 export interface CreateSocialPostInput {
-  client_post_id: string
-  post_type: SocialPostComposeType
+  client_post_id: string;
+  post_type: SocialPostComposeType;
   /** Connected social account ids to fan out to (1..n). */
-  targets: string[]
-  items?: SocialPostItem[]
-  collection_id?: string
-  link_type?: SocialLinkType
-  link_product_id?: string
-  caption?: string
+  targets: string[];
+  items?: SocialPostItem[];
+  collection_id?: string;
+  link_type?: SocialLinkType;
+  link_product_id?: string;
+  caption?: string;
   /** Admin post template used for this publish (usage_count += 1 server-side). */
-  template_id?: string
+  template_id?: string;
 }
 
 /** One target's outcome in the fan-out result array (partial success expected). */
 export interface SocialPostTargetResult {
-  social_account_id: string
-  platform: 'FACEBOOK' | 'INSTAGRAM'
+  social_account_id: string;
+  platform: 'FACEBOOK' | 'INSTAGRAM';
   /** PROCESSING: a slow Instagram Reel finished in the background (F-034 T2b). */
-  status: 'POSTED' | 'FAILED' | 'PROCESSING'
-  external_post_url: string | null
-  social_post_id: string
-  error_message: string | null
+  status: 'POSTED' | 'FAILED' | 'PROCESSING';
+  external_post_url: string | null;
+  social_post_id: string;
+  error_message: string | null;
   /** True when this row came from an idempotent retry, not a fresh publish. */
-  deduplicated?: boolean
+  deduplicated?: boolean;
 }
 
 /**
@@ -84,23 +84,26 @@ export interface SocialPostTargetResult {
  * GET /v1/post-templates response.
  */
 export interface PostTemplateInfo {
-  id: string
-  name: string
-  description: string | null
-  context: 'POST' | 'CAMPAIGN' | 'BOTH'
-  post_type: SocialPostComposeType | null // hint; null = retailer decides
-  caption_template: string // contains {placeholders}, resolved at publish
-  hashtags: string[]
-  occasion: string | null
-  thumbnail_url: string | null
-  usage_count: number
+  id: string;
+  name: string;
+  description: string | null;
+  context: 'POST' | 'CAMPAIGN' | 'BOTH';
+  post_type: SocialPostComposeType | null; // hint; null = retailer decides
+  caption_template: string; // contains {placeholders}, resolved at publish
+  hashtags: string[];
+  occasion: string | null;
+  thumbnail_url: string | null;
+  usage_count: number;
 }
 
 export const socialApi = {
   // No redirect_uri param → the API defaults to an https URL it owns
   // (WEB_URL/social/connect) — Facebook Login rejects custom schemes like
   // kanchuki:// with a generic error (#9).
-  getConnectUrl: (provider: 'instagram' | 'facebook' | 'youtube' | 'x' = 'instagram', redirectUri?: string) =>
+  getConnectUrl: (
+    provider: 'instagram' | 'facebook' | 'youtube' | 'x' = 'instagram',
+    redirectUri?: string,
+  ) =>
     request<{ data: { auth_url: string; state: string; provider: string } }>(
       `/v1/retailers/me/social/connect?provider=${provider}${
         redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ''
@@ -115,12 +118,12 @@ export const socialApi = {
   connectWithToken: (accessToken: string, provider: 'facebook' | 'instagram' = 'facebook') =>
     request<{
       data: {
-        connected: boolean
-        provider: string
-        handle?: string
-        account_id?: string
-        account_name?: string
-      }
+        connected: boolean;
+        provider: string;
+        handle?: string;
+        account_id?: string;
+        account_name?: string;
+      };
     }>('/v1/retailers/me/social/connect-native', {
       method: 'POST',
       body: JSON.stringify({ access_token: accessToken, provider }),
@@ -155,10 +158,9 @@ export const socialApi = {
     request<void>(`/v1/retailers/me/social/accounts/${accountId}`, { method: 'DELETE' }),
 
   listPosts: (accountId: string) =>
-    request<{ data: SocialPostInfo[] }>(
-      `/v1/retailers/me/social/accounts/${accountId}/posts`,
-      { getCacheTtlMs: 15_000 },
-    ),
+    request<{ data: SocialPostInfo[] }>(`/v1/retailers/me/social/accounts/${accountId}/posts`, {
+      getCacheTtlMs: 15_000,
+    }),
 
   /**
    * Admin post-template library for the composer picker (T-9.6). Only
@@ -178,8 +180,8 @@ export const socialApi = {
    * is unavailable — so this never hard-fails a publish flow.
    */
   suggestCaption: (payload: {
-    product_ids: string[]
-    post_type: SocialPostComposeType
+    product_ids: string[];
+    post_type: SocialPostComposeType;
   }) =>
     request<{ data: { caption: string; hashtags: string[]; source: 'ai' | 'template' } }>(
       '/v1/growth/social-caption-suggest',
@@ -196,12 +198,9 @@ export const socialApi = {
    * runs sequential Meta API calls plus IG container polling.
    */
   createPost: (payload: CreateSocialPostInput) =>
-    request<{ data: { results: SocialPostTargetResult[] } }>(
-      '/v1/retailers/me/social/posts',
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        timeoutMs: 60_000,
-      },
-    ),
-}
+    request<{ data: { results: SocialPostTargetResult[] } }>('/v1/retailers/me/social/posts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      timeoutMs: 60_000,
+    }),
+};

@@ -8,19 +8,19 @@ import {
   MY_STYLE_CONSENT,
   type MyStyleProfile,
   parseGarmentDescriptor,
-} from '@kanchuki/shared'
+} from '@kanchuki/shared';
 
-const BASE = '/api/my-style'
+const BASE = '/api/my-style';
 // Matches the server-side downscale, so the upload is never bigger than the model sees.
-const MAX_EDGE = 1568
-const START_TIMEOUT_MS = 30_000
-const POLL_TIMEOUT_MS = 10_000
+const MAX_EDGE = 1568;
+const START_TIMEOUT_MS = 30_000;
+const POLL_TIMEOUT_MS = 10_000;
 
 // What Android and iOS cameras/galleries produce. HEIC/HEIF is only accepted here because
 // it is decoded and re-encoded below; the API itself sniffs bytes and takes JPEG/PNG/WebP.
 // An empty type is let through (some Android pickers omit it): the decode is the real gate.
-const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'])
-const MAX_PICK_BYTES = 25 * 1024 * 1024
+const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+const MAX_PICK_BYTES = 25 * 1024 * 1024;
 
 /**
  * Re-encode any photo the browser can decode as a <=1568px JPEG (the API refuses HEIC).
@@ -29,51 +29,51 @@ const MAX_PICK_BYTES = 25 * 1024 * 1024
  */
 export async function prepareUpload(file: Blob): Promise<Blob> {
   if ((file.type && !PHOTO_TYPES.has(file.type.toLowerCase())) || file.size > MAX_PICK_BYTES) {
-    throw new Error('unsupported')
+    throw new Error('unsupported');
   }
-  const unreadable = () => new Error('unreadable')
-  if (typeof createImageBitmap !== 'function') throw unreadable()
-  let bitmap: ImageBitmap
+  const unreadable = () => new Error('unreadable');
+  if (typeof createImageBitmap !== 'function') throw unreadable();
+  let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file) // honours EXIF orientation
+    bitmap = await createImageBitmap(file); // honours EXIF orientation
   } catch {
-    throw unreadable() // e.g. HEIC on a browser that cannot decode it
+    throw unreadable(); // e.g. HEIC on a browser that cannot decode it
   }
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw unreadable()
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  bitmap.close?.()
+  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw unreadable();
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, 'image/jpeg', 0.85),
-  )
-  if (!blob) throw unreadable()
-  return blob
+  );
+  if (!blob) throw unreadable();
+  return blob;
 }
 
-const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError'
+const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
 
 /** fetch with a timeout; `outer` (sheet closed) aborts it too. */
 async function timedFetch(url: string, init: RequestInit, ms: number, outer?: AbortSignal) {
-  const ctrl = new AbortController()
-  const stop = () => ctrl.abort()
-  const timer = setTimeout(stop, ms)
-  outer?.addEventListener('abort', stop)
+  const ctrl = new AbortController();
+  const stop = () => ctrl.abort();
+  const timer = setTimeout(stop, ms);
+  outer?.addEventListener('abort', stop);
   try {
-    return await fetch(url, { ...init, credentials: 'include', signal: ctrl.signal })
+    return await fetch(url, { ...init, credentials: 'include', signal: ctrl.signal });
   } finally {
-    clearTimeout(timer)
-    outer?.removeEventListener('abort', stop)
+    clearTimeout(timer);
+    outer?.removeEventListener('abort', stop);
   }
 }
 
 /** "1 December": the day the monthly photo-read allowance starts over (counters reset by calendar month). */
 export function resetDay(now = new Date()): string {
-  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  return `1 ${next.toLocaleString('en-IN', { month: 'long' })}`
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return `1 ${next.toLocaleString('en-IN', { month: 'long' })}`;
 }
 
 const START_ERRORS: Record<number, string> = {
@@ -82,25 +82,25 @@ const START_ERRORS: Record<number, string> = {
   404: 'Photo reading is switched off for now. Please try later.',
   413: 'That photo is too large. Please take a smaller one.',
   422: "We couldn't use that photo. Please take a clear photo and try again.",
-}
-const GENERIC = 'Something went wrong. Please try again.'
+};
+const GENERIC = 'Something went wrong. Please try again.';
 
 export type StartResult =
   | { kind: 'started'; jobId: string }
   | { kind: 'unauthorized' }
   | { kind: 'error'; message: string }
-  | { kind: 'aborted' }
+  | { kind: 'aborted' };
 
 /** 'garment' = find similar: the photo is of a garment, not of the shopper. */
-export type AnalyzeMode = 'selfie' | 'garment'
+export type AnalyzeMode = 'selfie' | 'garment';
 
 export async function startAnalysis(
   photo: Blob,
   signal?: AbortSignal,
   mode: AnalyzeMode = 'selfie',
 ): Promise<StartResult> {
-  const form = new FormData()
-  form.append('photo', photo, 'photo.jpg')
+  const form = new FormData();
+  form.append('photo', photo, 'photo.jpg');
   try {
     const res = await timedFetch(
       `${BASE}/analyze?consent_version=${encodeURIComponent(MY_STYLE_CONSENT.version)}${
@@ -109,24 +109,24 @@ export async function startAnalysis(
       { method: 'POST', body: form }, // no content-type: the browser adds the boundary
       START_TIMEOUT_MS,
       signal,
-    )
-    if (res.status === 401) return { kind: 'unauthorized' }
+    );
+    if (res.status === 401) return { kind: 'unauthorized' };
     if (res.status === 402) {
       return {
         kind: 'error',
         message: `You've used this month's limit of photo reads. It starts over on ${resetDay()}. You can still browse, filter and take the quick quiz.`,
-      }
+      };
     }
-    if (!res.ok) return { kind: 'error', message: START_ERRORS[res.status] ?? GENERIC }
-    const json = (await res.json().catch(() => null)) as { data?: { job_id?: string } } | null
-    const jobId = json?.data?.job_id
-    return jobId ? { kind: 'started', jobId } : { kind: 'error', message: GENERIC }
+    if (!res.ok) return { kind: 'error', message: START_ERRORS[res.status] ?? GENERIC };
+    const json = (await res.json().catch(() => null)) as { data?: { job_id?: string } } | null;
+    const jobId = json?.data?.job_id;
+    return jobId ? { kind: 'started', jobId } : { kind: 'error', message: GENERIC };
   } catch (e) {
-    if (isAbort(e) && signal?.aborted) return { kind: 'aborted' }
+    if (isAbort(e) && signal?.aborted) return { kind: 'aborted' };
     return {
       kind: 'error',
       message: 'Could not send your photo. Please check your connection and try again.',
-    }
+    };
   }
 }
 
@@ -140,7 +140,7 @@ const FAILED: Record<string, string> = {
   multiple_garments: 'That photo has several pieces in it. Please pick one with a single piece.',
   read_failed: 'We could not read that photo. Please try again.',
   expired: 'That took too long and the photo was dropped. Please try again.',
-}
+};
 
 export type PollResult =
   | { kind: 'processing' }
@@ -149,7 +149,7 @@ export type PollResult =
   | { kind: 'unauthorized' }
   | { kind: 'gone' }
   | { kind: 'error' }
-  | { kind: 'aborted' }
+  | { kind: 'aborted' };
 
 export async function pollAnalysis(
   jobId: string,
@@ -162,83 +162,95 @@ export async function pollAnalysis(
       { method: 'GET' },
       POLL_TIMEOUT_MS,
       signal,
-    )
-    if (res.status === 401) return { kind: 'unauthorized' }
-    if (res.status === 404) return { kind: 'gone' }
-    if (!res.ok) return { kind: 'error' }
+    );
+    if (res.status === 401) return { kind: 'unauthorized' };
+    if (res.status === 404) return { kind: 'gone' };
+    if (!res.ok) return { kind: 'error' };
     const json = (await res.json().catch(() => null)) as {
-      data?: { status?: string; profile?: MyStyleProfile; garment?: unknown; reason?: string }
-    } | null
-    const d = json?.data
-    if (d?.status === 'processing') return { kind: 'processing' }
+      data?: { status?: string; profile?: MyStyleProfile; garment?: unknown; reason?: string };
+    } | null;
+    const d = json?.data;
+    if (d?.status === 'processing') return { kind: 'processing' };
     if (d?.status === 'ready') {
       // A ready without what this mode needs is an error, never a success (RC-060).
       if (mode === 'garment') {
-        const garment = parseGarmentDescriptor(d.garment)
-        return garment ? { kind: 'ready', garment } : { kind: 'error' }
+        const garment = parseGarmentDescriptor(d.garment);
+        return garment ? { kind: 'ready', garment } : { kind: 'error' };
       }
-      return d.profile ? { kind: 'ready', profile: d.profile } : { kind: 'error' }
+      return d.profile ? { kind: 'ready', profile: d.profile } : { kind: 'error' };
     }
     if (d?.status === 'failed') {
       return {
         kind: 'failed',
         message: FAILED[d.reason ?? ''] ?? 'We could not read that photo. Please try again.',
-      }
+      };
     }
     if (d?.status === 'cancelled') {
-      return { kind: 'failed', message: 'Your style data was cleared, so this photo was not used.' }
+      return {
+        kind: 'failed',
+        message: 'Your style data was cleared, so this photo was not used.',
+      };
     }
-    return { kind: 'error' }
+    return { kind: 'error' };
   } catch (e) {
-    return isAbort(e) && signal?.aborted ? { kind: 'aborted' } : { kind: 'error' }
+    return isAbort(e) && signal?.aborted ? { kind: 'aborted' } : { kind: 'error' };
   }
 }
 
 /** "Clear my data". Only {data:{ok:true}} counts as cleared. */
 export async function clearProfile(): Promise<'ok' | 'unauthorized' | 'error'> {
   try {
-    const res = await timedFetch(`${BASE}/profile/clear`, { method: 'POST' }, START_TIMEOUT_MS)
-    if (res.status === 401) return 'unauthorized'
-    if (!res.ok) return 'error'
-    const json = (await res.json().catch(() => null)) as { data?: { ok?: boolean } } | null
-    return json?.data?.ok === true ? 'ok' : 'error'
+    const res = await timedFetch(`${BASE}/profile/clear`, { method: 'POST' }, START_TIMEOUT_MS);
+    if (res.status === 401) return 'unauthorized';
+    if (!res.ok) return 'error';
+    const json = (await res.json().catch(() => null)) as { data?: { ok?: boolean } } | null;
+    return json?.data?.ok === true ? 'ok' : 'error';
   } catch {
-    return 'error'
+    return 'error';
   }
 }
 
 /** Save self-entered centimetres. A field set to null removes it. Only {data:{measurements}} counts as saved. */
 export async function saveMeasurements(
   body: Partial<Record<'height_cm' | 'bust_cm' | 'waist_cm' | 'hip_cm', number | null>> & {
-    consent_version?: string
+    consent_version?: string;
   },
 ): Promise<'ok' | 'unauthorized' | 'invalid' | 'error'> {
   try {
     const res = await timedFetch(
       `${BASE}/measurements`,
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) },
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      },
       START_TIMEOUT_MS,
-    )
-    if (res.status === 401) return 'unauthorized'
-    if (res.status === 422) return 'invalid'
-    if (!res.ok) return 'error'
-    const json = (await res.json().catch(() => null)) as { data?: { measurements?: unknown } } | null
-    return json?.data?.measurements ? 'ok' : 'error'
+    );
+    if (res.status === 401) return 'unauthorized';
+    if (res.status === 422) return 'invalid';
+    if (!res.ok) return 'error';
+    const json = (await res.json().catch(() => null)) as {
+      data?: { measurements?: unknown };
+    } | null;
+    return json?.data?.measurements ? 'ok' : 'error';
   } catch {
-    return 'error'
+    return 'error';
   }
 }
 
 /** "Remove my measurements": deletes the numbers and ends the measurements consent. Only {data:{ok:true}} counts. */
 export async function withdrawMeasurements(): Promise<'ok' | 'unauthorized' | 'error'> {
   try {
-    const res = await timedFetch(`${BASE}/measurements/withdraw`, { method: 'POST' }, START_TIMEOUT_MS)
-    if (res.status === 401) return 'unauthorized'
-    if (!res.ok) return 'error'
-    const json = (await res.json().catch(() => null)) as { data?: { ok?: boolean } } | null
-    return json?.data?.ok === true ? 'ok' : 'error'
+    const res = await timedFetch(
+      `${BASE}/measurements/withdraw`,
+      { method: 'POST' },
+      START_TIMEOUT_MS,
+    );
+    if (res.status === 401) return 'unauthorized';
+    if (!res.ok) return 'error';
+    const json = (await res.json().catch(() => null)) as { data?: { ok?: boolean } } | null;
+    return json?.data?.ok === true ? 'ok' : 'error';
   } catch {
-    return 'error'
+    return 'error';
   }
 }
-

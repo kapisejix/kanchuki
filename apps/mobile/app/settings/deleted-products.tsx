@@ -1,56 +1,53 @@
-import { useCallback } from 'react'
-import { formatPriceRange } from '@kanchuki/shared'
-import {
-  View, Text, FlatList, Image,
-  Alert,
-} from 'react-native'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { RotateCcw, Trash2, PackageX } from 'lucide-react-native'
-import { CustomerListSkeleton } from '../../src/components/Skeleton'
-import { productApi } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { ScreenHeader } from '../../src/components/ScreenHeader'
+import { formatPriceRange } from '@kanchuki/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { PackageX, RotateCcw, Trash2 } from 'lucide-react-native';
+import { useCallback } from 'react';
+import { Alert, FlatList, Image, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { CustomerListSkeleton } from '../../src/components/Skeleton';
+import { productApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { useTheme } from '../../src/lib/theme';
 
 type DeletedProduct = {
-  id: string
-  name: string | null
-  category: string | null
-  price_min: number | null
-  price_max: number | null
-  deleted_at: string
-  photos: { url: string }[]
-}
+  id: string;
+  name: string | null;
+  category: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  deleted_at: string;
+  photos: { url: string }[];
+};
 
 export default function DeletedProductsScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
+  const { primaryColor, colors } = useTheme();
+  const { screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'deleted'],
     queryFn: () => productApi.listDeleted(),
-  })
-  const products = ((data as { data: DeletedProduct[] } | undefined)?.data ?? [])
+  });
+  const products = (data as { data: DeletedProduct[] } | undefined)?.data ?? [];
 
   const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ['products', 'deleted'] })
-    void queryClient.invalidateQueries({ queryKey: ['products', 'list'] })
-  }
+    void queryClient.invalidateQueries({ queryKey: ['products', 'deleted'] });
+    void queryClient.invalidateQueries({ queryKey: ['products', 'list'] });
+  };
 
   const restore = useMutation({
     mutationFn: (id: string) => productApi.restore(id),
     onSuccess: invalidate,
     onError: (err: Error) => showError(err, 'Failed to restore product'),
-  })
+  });
 
   const purge = useMutation({
     mutationFn: (id: string) => productApi.purge(id),
     onSuccess: invalidate,
     onError: (err: Error) => showError(err, 'Failed to delete permanently'),
-  })
+  });
 
   const handlePurge = useCallback(
     (product: DeletedProduct) => {
@@ -61,16 +58,20 @@ export default function DeletedProductsScreen() {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Delete Forever', style: 'destructive', onPress: () => purge.mutate(product.id) },
         ],
-      )
+      );
     },
     [purge],
-  )
+  );
 
   const renderItem = useCallback(
     ({ item }: { item: DeletedProduct }) => (
       <View className="bg-white rounded-2xl p-3 border border-lavender-200 flex-row items-center">
         {item.photos[0] ? (
-          <Image source={{ uri: item.photos[0].url }} className="w-14 h-14 rounded-xl mr-3" resizeMode="cover" />
+          <Image
+            source={{ uri: item.photos[0].url }}
+            className="w-14 h-14 rounded-xl mr-3"
+            resizeMode="cover"
+          />
         ) : (
           <View className="w-14 h-14 rounded-xl bg-sand-100 items-center justify-center mr-3">
             <PackageX size={20} color={colors.sand[400]} />
@@ -105,7 +106,7 @@ export default function DeletedProductsScreen() {
       </View>
     ),
     [restore, purge, handlePurge, primaryColor, colors.rust, colors.sand],
-  )
+  );
 
   return (
     <View className="flex-1 bg-ink-50">
@@ -136,5 +137,5 @@ export default function DeletedProductsScreen() {
         )}
       </View>
     </View>
-  )
+  );
 }

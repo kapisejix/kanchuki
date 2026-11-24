@@ -1,31 +1,31 @@
-'use client'
+'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import Image from 'next/image'
-import { Sparkles, Send, Loader2, X, MessageCircle } from 'lucide-react'
-import { formatPrice } from '@kanchuki/shared'
-import { Sheet } from '@/components/Sheet'
-import { ReportAiContent } from '@/components/ReportAiContent'
+import { ReportAiContent } from '@/components/ReportAiContent';
+import { Sheet } from '@/components/Sheet';
+import { formatPrice } from '@kanchuki/shared';
+import { Loader2, MessageCircle, Send, Sparkles, X } from 'lucide-react';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Recommendation {
-  product_id: string
-  name: string
-  category: string | null
-  color: string | null
-  price: number | null
-  photo_url: string | null
-  rationale: string
+  product_id: string;
+  name: string;
+  category: string | null;
+  color: string | null;
+  price: number | null;
+  photo_url: string | null;
+  rationale: string;
 }
 
 interface StylistResponse {
-  recommendations: Recommendation[]
-  stylist_note: string
+  recommendations: Recommendation[];
+  stylist_note: string;
 }
 
 interface Props {
-  storeSlug: string
-  storeName: string
-  onProductTap?: (productId: string) => void
+  storeSlug: string;
+  storeName: string;
+  onProductTap?: (productId: string) => void;
 }
 
 // Last-resort chips — only shown when the store has no products to derive
@@ -35,100 +35,103 @@ const FALLBACK_SUGGESTIONS = [
   'Something for a wedding',
   'Something for daily wear',
   'Show me your best sellers',
-]
+];
 
 export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<StylistResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [suggestions, setSuggestions] = useState<string[] | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<StylistResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 300)
-  }, [open])
+    if (open) setTimeout(() => inputRef.current?.focus(), 300);
+  }, [open]);
 
   // Starter chips grounded in this store's own catalog — fetched once, the
   // first time the sheet opens, so a shopper who never opens it costs no
   // request (same cost-consciousness as the visual-viewport listeners below).
   useEffect(() => {
-    if (!open || suggestions !== null) return
-    let cancelled = false
+    if (!open || suggestions !== null) return;
+    let cancelled = false;
     fetch(`/api/stylist?slug=${encodeURIComponent(storeSlug)}`)
       .then((res) => res.json())
       .then((json: { data?: { suggestions?: string[] } }) => {
-        if (cancelled) return
-        const fetched = json.data?.suggestions
-        setSuggestions(fetched && fetched.length > 0 ? fetched : FALLBACK_SUGGESTIONS)
+        if (cancelled) return;
+        const fetched = json.data?.suggestions;
+        setSuggestions(fetched && fetched.length > 0 ? fetched : FALLBACK_SUGGESTIONS);
       })
       .catch(() => {
-        if (!cancelled) setSuggestions(FALLBACK_SUGGESTIONS)
-      })
+        if (!cancelled) setSuggestions(FALLBACK_SUGGESTIONS);
+      });
     return () => {
-      cancelled = true
-    }
-  }, [open, suggestions, storeSlug])
+      cancelled = true;
+    };
+  }, [open, suggestions, storeSlug]);
 
-  const handleSubmit = useCallback(async (q: string) => {
-    if (!q.trim()) return
-    setLoading(true)
-    setError(null)
-    setResults(null)
+  const handleSubmit = useCallback(
+    async (q: string) => {
+      if (!q.trim()) return;
+      setLoading(true);
+      setError(null);
+      setResults(null);
 
-    try {
-      const res = await fetch('/api/stylist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: storeSlug, query: q.trim() }),
-      })
+      try {
+        const res = await fetch('/api/stylist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: storeSlug, query: q.trim() }),
+        });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error?.message ?? 'Stylist unavailable')
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error?.message ?? 'Stylist unavailable');
+        }
+
+        const json = (await res.json()) as { data: StylistResponse };
+        setResults(json.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      } finally {
+        setLoading(false);
       }
-
-      const json = await res.json() as { data: StylistResponse }
-      setResults(json.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
-      setLoading(false)
-    }
-  }, [storeSlug])
+    },
+    [storeSlug],
+  );
 
   // Push a history entry when the overlay opens so the phone/browser Back
   // button closes the modal instead of exiting the entire store page.
   // Mirrors the pattern already used by ProductDetailSheet.
   const openOverlay = useCallback(() => {
-    setOpen(true)
-    window.history.pushState({ kanchukiAiStylist: true }, '')
-  }, [])
+    setOpen(true);
+    window.history.pushState({ kanchukiAiStylist: true }, '');
+  }, []);
 
   // Close by popping our history entry only — the popstate handler below flips
   // `open`. Calling setOpen(false) here too made the effect cleanup fire a
   // second history.back() that also popped an open product sheet's entry, so
   // hiding the stylist closed the product detail with it.
   const closeOverlay = useCallback(() => {
-    window.history.back()
-  }, [])
+    window.history.back();
+  }, []);
 
   useEffect(() => {
-    if (!open) return
-    let poppedByUser = false
+    if (!open) return;
+    let poppedByUser = false;
     const handlePopState = () => {
-      poppedByUser = true
-      setOpen(false)
-    }
-    window.addEventListener('popstate', handlePopState)
+      poppedByUser = true;
+      setOpen(false);
+    };
+    window.addEventListener('popstate', handlePopState);
     return () => {
-      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('popstate', handlePopState);
       // If the component unmounts without a popstate (e.g. parent re-renders),
       // clean up the history entry we pushed.
-      if (!poppedByUser && window.history.state?.kanchukiAiStylist === true) window.history.back()
-    }
-  }, [open])
+      if (!poppedByUser && window.history.state?.kanchukiAiStylist === true) window.history.back();
+    };
+  }, [open]);
 
   return (
     <>
@@ -187,7 +190,8 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                 </div>
                 <p className="text-sm font-semibold text-gray-900">What are you looking for?</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Tell me the occasion, color, budget, or style — I&apos;ll find the perfect match from {storeName}&apos;s collection.
+                  Tell me the occasion, color, budget, or style — I&apos;ll find the perfect match
+                  from {storeName}&apos;s collection.
                 </p>
               </div>
               <div className="space-y-2">
@@ -215,7 +219,10 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
             <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
               <p className="text-sm text-red-600">{error}</p>
               <button
-                onClick={() => { setError(null); setResults(null) }}
+                onClick={() => {
+                  setError(null);
+                  setResults(null);
+                }}
                 className="text-xs text-red-500 underline mt-1"
               >
                 Try again
@@ -226,11 +233,15 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
           {results && (
             <>
               {results.stylist_note && (
-                <p className="text-[10px] text-gray-400 text-center italic">{results.stylist_note}</p>
+                <p className="text-[10px] text-gray-400 text-center italic">
+                  {results.stylist_note}
+                </p>
               )}
               {results.recommendations.length === 0 ? (
                 <div className="text-center py-6">
-                  <p className="text-sm text-gray-500">No matching items found. Try a different query!</p>
+                  <p className="text-sm text-gray-500">
+                    No matching items found. Try a different query!
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -250,12 +261,17 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                             className="object-cover w-full h-full"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">✨</div>
+                          <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
+                            ✨
+                          </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">{rec.name}</p>
-                        <p className="text-xs text-gray-500">{rec.category}{rec.color ? ` · ${rec.color}` : ''}</p>
+                        <p className="text-xs text-gray-500">
+                          {rec.category}
+                          {rec.color ? ` · ${rec.color}` : ''}
+                        </p>
                         {rec.price != null && (
                           <p className="text-xs font-bold text-cyan-700 mt-1">
                             {formatPrice(rec.price)}
@@ -272,7 +288,10 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                 </div>
               )}
               <button
-                onClick={() => { setResults(null); setQuery('') }}
+                onClick={() => {
+                  setResults(null);
+                  setQuery('');
+                }}
                 className="w-full text-center text-xs text-cyan-600 hover:text-cyan-700 font-medium py-2"
               >
                 Ask for something else
@@ -292,8 +311,8 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !loading) {
-                  void handleSubmit(query)
-                  setQuery('')
+                  void handleSubmit(query);
+                  setQuery('');
                 }
               }}
               placeholder="e.g. Pink silk suit for a wedding"
@@ -301,7 +320,10 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
               disabled={loading}
             />
             <button
-              onClick={() => { void handleSubmit(query); setQuery('') }}
+              onClick={() => {
+                void handleSubmit(query);
+                setQuery('');
+              }}
               disabled={!query.trim() || loading}
               className="bg-cyan-600 disabled:bg-gray-200 text-white w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
             >
@@ -318,5 +340,5 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
         </div>
       </Sheet>
     </>
-  )
+  );
 }

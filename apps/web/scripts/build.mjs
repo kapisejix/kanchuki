@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 // Cross-platform build wrapper: `next build` MUST run with NODE_ENV=production.
 //
 // Why this file exists (root-caused 2026-08-11):
@@ -24,24 +25,23 @@
 // (what CI, Railway and devs run). A bare `pnpm exec next build` bypasses the
 // package.json script and inherits the polluted NODE_ENV — always build via
 // `pnpm build`.
-import { createRequire } from 'node:module'
-import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module';
 
-process.env.NODE_ENV = 'production'
+process.env.NODE_ENV = 'production';
 
-const require = createRequire(import.meta.url)
+const require = createRequire(import.meta.url);
 // Resolve next's CLI from THIS workspace (pnpm virtual store, not a global).
-const nextBin = require.resolve('next/dist/bin/next')
+const nextBin = require.resolve('next/dist/bin/next');
 
 // Forward any extra args (e.g. `--debug`) after `build`.
 const result = spawnSync(process.execPath, [nextBin, 'build', ...process.argv.slice(2)], {
   stdio: 'inherit',
   env: process.env,
-})
+});
 
 if (result.error) {
-  console.error('build.mjs: failed to spawn next build:', result.error.message)
-  process.exit(1)
+  console.error('build.mjs: failed to spawn next build:', result.error.message);
+  process.exit(1);
 }
 
-process.exit(result.status ?? 1)
+process.exit(result.status ?? 1);

@@ -1,24 +1,24 @@
-import React from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Database,
-  Layers,
-  Table2,
-  KeyRound,
-  RefreshCw,
-  Loader2,
+  AlertCircle,
   ChevronDown,
   ChevronRight,
-  AlertCircle,
-} from 'lucide-react'
-import type { SchemaInfo } from './types'
+  Database,
+  KeyRound,
+  Layers,
+  Loader2,
+  RefreshCw,
+  Table2,
+} from 'lucide-react';
+import React from 'react';
+import type { SchemaInfo } from './types';
 
 export function TypeBadge({ type, maxLen }: { type: string | null; maxLen: number | null }) {
-  if (!type) return <span className="text-gray-300">—</span>
+  if (!type) return <span className="text-gray-300">—</span>;
 
-  let display = type
+  let display = type;
   if (maxLen && ['varchar', 'character varying', 'char'].includes(type)) {
-    display = `${type}(${maxLen})`
+    display = `${type}(${maxLen})`;
   }
 
   const colors: Record<string, string> = {
@@ -39,28 +39,28 @@ export function TypeBadge({ type, maxLen }: { type: string | null; maxLen: numbe
     uuid: 'text-gray-200 bg-gray-200 border-gray-200',
     jsonb: 'text-violet-600 bg-violet-50 border-violet-200',
     json: 'text-violet-600 bg-violet-50 border-violet-200',
-  }
+  };
 
-  const colorClass = colors[type] ?? 'text-gray-500 bg-gray-50 border-gray-200'
+  const colorClass = colors[type] ?? 'text-gray-500 bg-gray-50 border-gray-200';
 
   return (
     <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${colorClass}`}>
       {display}
     </span>
-  )
+  );
 }
 
 interface SchemaBrowserProps {
-  schema: SchemaInfo[] | null
-  schemaSummary: { total_tables: number; total_columns: number } | null
-  schemaLoading: boolean
-  schemaError: string
-  expandedSchemas: Set<string>
-  expandedTables: Set<string>
-  onToggleSchema: (name: string) => void
-  onToggleTable: (name: string) => void
-  onSelectTable: (tableName: string) => void
-  onRefresh: () => void
+  schema: SchemaInfo[] | null;
+  schemaSummary: { total_tables: number; total_columns: number } | null;
+  schemaLoading: boolean;
+  schemaError: string;
+  expandedSchemas: Set<string>;
+  expandedTables: Set<string>;
+  onToggleSchema: (name: string) => void;
+  onToggleTable: (name: string) => void;
+  onSelectTable: (tableName: string) => void;
+  onRefresh: () => void;
 }
 
 export function SchemaBrowser({
@@ -118,7 +118,7 @@ export function SchemaBrowser({
       {schema && (
         <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
           {schema.map((sch) => {
-            const isSchemaOpen = expandedSchemas.has(sch.schema_name)
+            const isSchemaOpen = expandedSchemas.has(sch.schema_name);
             return (
               <div
                 key={sch.schema_name}
@@ -154,8 +154,8 @@ export function SchemaBrowser({
                       className="border-t border-gray-200/70 divide-y divide-gray-200/40 bg-white"
                     >
                       {sch.tables.map((table) => {
-                        const tableKey = `${sch.schema_name}.${table.table_name}`
-                        const isTableOpen = expandedTables.has(tableKey)
+                        const tableKey = `${sch.schema_name}.${table.table_name}`;
+                        const isTableOpen = expandedTables.has(tableKey);
 
                         return (
                           <div key={table.table_name}>
@@ -164,7 +164,10 @@ export function SchemaBrowser({
                                 onClick={() => onToggleTable(tableKey)}
                                 className="flex items-center gap-2 flex-1 text-left"
                               >
-                                <Table2 size={13} className="text-gray-400 group-hover:text-gray-600" />
+                                <Table2
+                                  size={13}
+                                  className="text-gray-400 group-hover:text-gray-600"
+                                />
                                 <span className="text-xs font-medium text-gray-700">
                                   {table.table_name}
                                 </span>
@@ -194,7 +197,9 @@ export function SchemaBrowser({
                                       )}
                                       <span
                                         className={`font-mono ${
-                                          col.is_primary_key ? 'font-bold text-gray-900' : 'text-gray-700'
+                                          col.is_primary_key
+                                            ? 'font-bold text-gray-900'
+                                            : 'text-gray-700'
                                         }`}
                                       >
                                         {col.column_name}
@@ -209,17 +214,16 @@ export function SchemaBrowser({
                               </div>
                             )}
                           </div>
-                        )
+                        );
                       })}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-            )
+            );
           })}
         </div>
       )}
     </div>
-  )
+  );
 }
-

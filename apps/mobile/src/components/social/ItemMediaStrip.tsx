@@ -1,15 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
-import { Image } from 'expo-image'
-import { Check, Play } from 'lucide-react-native'
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native'
-import type { ProductDetail } from '@kanchuki/shared'
-import { productApi } from '../../lib/api'
-import { useTheme } from '../../lib/theme'
-import { AnimatedPressable } from '../AnimatedPressable'
-import type { ComposeMedia, ComposeProduct } from './types'
+import type { ProductDetail } from '@kanchuki/shared';
+import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { Check, Play } from 'lucide-react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { productApi } from '../../lib/api';
+import { useTheme } from '../../lib/theme';
+import { AnimatedPressable } from '../AnimatedPressable';
+import type { ComposeMedia, ComposeProduct } from './types';
 
 interface MediaTile {
-  media: ComposeMedia
+  media: ComposeMedia;
 }
 
 /**
@@ -28,50 +28,55 @@ export function ItemMediaStrip({
   onSelect,
   allowVideos,
 }: {
-  product: ComposeProduct
-  selection: ComposeMedia | null | undefined
-  onSelect: (media: ComposeMedia) => void
-  allowVideos: boolean
+  product: ComposeProduct;
+  selection: ComposeMedia | null | undefined;
+  onSelect: (media: ComposeMedia) => void;
+  allowVideos: boolean;
 }) {
-  const { colors } = useTheme()
+  const { colors } = useTheme();
 
   const { data, isLoading } = useQuery({
     queryKey: ['product', product.id],
     queryFn: () => productApi.get(product.id),
-  })
-  const detail = (data as { data: ProductDetail } | undefined)?.data
+  });
+  const detail = (data as { data: ProductDetail } | undefined)?.data;
 
   if (isLoading && !detail) {
-    return <ActivityIndicator size="small" color={colors.sand[400]} className="py-4" />
+    return <ActivityIndicator size="small" color={colors.sand[400]} className="py-4" />;
   }
   if (!detail) {
     return (
       <Text className="text-[11px] text-rust-600">
         Could not load media for this product — pull it up in the catalog and try again.
       </Text>
-    )
+    );
   }
 
   const photos = [...detail.photos]
-    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
-    .filter((p) => !p.is_video)
-  const videos = (allowVideos ? detail.videos ?? [] : []).filter((v) => v.public_url)
+    .sort(
+      (a, b) =>
+        Number(b.is_primary) - Number(a.is_primary) || (a.sort_order ?? 0) - (b.sort_order ?? 0),
+    )
+    .filter((p) => !p.is_video);
+  const videos = (allowVideos ? (detail.videos ?? []) : []).filter((v) => v.public_url);
 
   const tiles: MediaTile[] = [
     ...photos.map((p) => ({ media: { kind: 'photo' as const, photo_id: p.id, url: p.url } })),
-    ...videos.map((v) => ({ media: { kind: 'video' as const, video_id: v.id, url: v.public_url } })),
-  ]
+    ...videos.map((v) => ({
+      media: { kind: 'video' as const, video_id: v.id, url: v.public_url },
+    })),
+  ];
 
   if (tiles.length === 0) {
     return (
       <Text className="text-[11px] text-rust-600">
         No {allowVideos ? 'photos or videos' : 'photos'} yet — add media to this product first.
       </Text>
-    )
+    );
   }
 
-  const selectedKey = (m: ComposeMedia) => (m.kind === 'photo' ? m.photo_id : m.video_id) ?? m.url
-  const currentKey = selection ? selectedKey(selection) : null
+  const selectedKey = (m: ComposeMedia) => (m.kind === 'photo' ? m.photo_id : m.video_id) ?? m.url;
+  const currentKey = selection ? selectedKey(selection) : null;
 
   return (
     <View>
@@ -85,10 +90,14 @@ export function ItemMediaStrip({
           <Text className="text-[11px] text-sand-400">Tap to change photo</Text>
         )}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+      >
         {tiles.map(({ media }) => {
-          const key = selectedKey(media)
-          const active = currentKey === key
+          const key = selectedKey(media);
+          const active = currentKey === key;
           return (
             <AnimatedPressable
               key={key}
@@ -117,9 +126,9 @@ export function ItemMediaStrip({
                 </View>
               ) : null}
             </AnimatedPressable>
-          )
+          );
         })}
       </ScrollView>
     </View>
-  )
+  );
 }

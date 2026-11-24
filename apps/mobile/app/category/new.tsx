@@ -168,7 +168,11 @@ export default function NewCategoryScreen() {
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-base text-spaceCadet-900"
               >
                 Select a Product
@@ -247,7 +251,11 @@ export default function NewCategoryScreen() {
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-base text-spaceCadet-900 truncate flex-1"
                 numberOfLines={1}
               >

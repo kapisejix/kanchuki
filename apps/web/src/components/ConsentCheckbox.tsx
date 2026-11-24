@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
+import Link from 'next/link';
 
 interface Props {
-  checked: boolean
-  onChange: (checked: boolean) => void
-  className?: string
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  className?: string;
 }
 
 export function ConsentCheckbox({ checked, onChange, className = '' }: Props) {
@@ -30,5 +30,5 @@ export function ConsentCheckbox({ checked, onChange, className = '' }: Props) {
         , and consent to being contacted about this.
       </span>
     </label>
-  )
+  );
 }

@@ -1,27 +1,27 @@
 // F-045 PR-5b: every card action goes through here (today: Shortlist + Enquire). A future
 // purchase action is one more button in this component (spec §5 seam 1) — nothing is built
 // for it now.
-'use client'
+'use client';
 
-import { Heart, MessageCircle, Sparkles } from 'lucide-react'
-import type { FeedCard } from './lib'
+import { Heart, MessageCircle, Sparkles } from 'lucide-react';
+import type { FeedCard } from './lib';
 
 interface Props {
-  card: FeedCard
-  saved: boolean
+  card: FeedCard;
+  saved: boolean;
   /** The store already has the maximum number of shortlisted pieces. */
-  full: boolean
-  busy: boolean
-  onToggle: () => void
-  onEnquire: () => void
+  full: boolean;
+  busy: boolean;
+  onToggle: () => void;
+  onEnquire: () => void;
   /** Complete the look (PR-10b). Absent = no button (e.g. already inside that tab). */
-  onLook?: () => void
+  onLook?: () => void;
 }
 
-const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50'
+const FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50';
 
 export function StyleCardActions({ card, saved, full, busy, onToggle, onEnquire, onLook }: Props) {
-  if (!card.retailer.slug) return null
+  if (!card.retailer.slug) return null;
   return (
     <div className="mt-3">
       {/* A two-column grid card is ~158px wide at 360px, so Shortlist is a
@@ -66,5 +66,5 @@ export function StyleCardActions({ card, saved, full, busy, onToggle, onEnquire,
         </button>
       )}
     </div>
-  )
+  );
 }

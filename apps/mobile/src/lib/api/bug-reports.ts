@@ -1,6 +1,6 @@
-import { request } from "./client";
+import { request } from './client';
 
-export type BugReportSeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type BugReportSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export type BugReportSubmission = {
   description: string;
@@ -21,9 +21,9 @@ export const bugReportApi = {
   /** Submit a bug report from the mobile app */
   submit: (data: BugReportSubmission) =>
     request<{ data: { id: string; status: string; created_at: string } }>(
-      "/v1/retailers/me/bug-reports",
+      '/v1/retailers/me/bug-reports',
       {
-        method: "POST",
+        method: 'POST',
         body: JSON.stringify(data),
         timeoutMs: 15_000,
       },

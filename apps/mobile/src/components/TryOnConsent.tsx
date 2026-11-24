@@ -1,8 +1,8 @@
-import { Text, View } from 'react-native'
-import { ShieldCheck } from 'lucide-react-native'
-import { TRY_ON_CONSENT } from '@kanchuki/shared'
-import { GradientButton } from './GradientButton'
-import { AnimatedPressable } from './AnimatedPressable'
+import { TRY_ON_CONSENT } from '@kanchuki/shared';
+import { ShieldCheck } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
+import { GradientButton } from './GradientButton';
 
 /**
  * F-040 — the in-store consent screen.
@@ -24,9 +24,9 @@ export function TryOnConsent({
   onDecline,
   busy,
 }: {
-  onAccept: () => void
-  onDecline: () => void
-  busy?: boolean
+  onAccept: () => void;
+  onDecline: () => void;
+  busy?: boolean;
 }) {
   return (
     <View className="flex-1 px-5 py-6">
@@ -43,10 +43,7 @@ export function TryOnConsent({
 
       <View className="gap-3 mb-4">
         {TRY_ON_CONSENT.points.map((point) => (
-          <View
-            key={point.label}
-            className="bg-white rounded-2xl border border-sand-200 p-3.5"
-          >
+          <View key={point.label} className="bg-white rounded-2xl border border-sand-200 p-3.5">
             <Text className="text-xs font-bold text-ink-900 mb-1">{point.label}</Text>
             <Text className="text-xs text-ink-600 leading-4">{point.text}</Text>
           </View>
@@ -56,7 +53,8 @@ export function TryOnConsent({
       <Text className="text-xs text-ink-700 leading-4 mb-2">{TRY_ON_CONSENT.training}</Text>
       <Text className="text-xs text-ink-600 leading-4 mb-5">{TRY_ON_CONSENT.withdrawal}</Text>
 
-      <GradientButton variant="web"
+      <GradientButton
+        variant="web"
         label={TRY_ON_CONSENT.acceptLabel}
         onPress={onAccept}
         loading={busy}
@@ -66,10 +64,8 @@ export function TryOnConsent({
         accessibilityRole="button"
         className="mt-3 py-3 items-center"
       >
-        <Text className="text-sm font-semibold text-ink-600">
-          {TRY_ON_CONSENT.declineLabel}
-        </Text>
+        <Text className="text-sm font-semibold text-ink-600">{TRY_ON_CONSENT.declineLabel}</Text>
       </AnimatedPressable>
     </View>
-  )
+  );
 }

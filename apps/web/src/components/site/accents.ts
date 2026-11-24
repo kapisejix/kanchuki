@@ -8,7 +8,17 @@
 // string->Tailwind-class lookups, so they live server-safe here; Chrome.tsx
 // re-exports them for the client components that also need them.
 
-export type ColorAccent = 'cobalt' | 'terracotta' | 'iris' | 'moss' | 'fern' | 'lilac' | 'mint' | 'sandal' | 'volt' | 'mist'
+export type ColorAccent =
+  | 'cobalt'
+  | 'terracotta'
+  | 'iris'
+  | 'moss'
+  | 'fern'
+  | 'lilac'
+  | 'mint'
+  | 'sandal'
+  | 'volt'
+  | 'mist';
 
 // Solid chip background — one saturated block per accent (colabs.com.au
 // modular service modules).
@@ -23,7 +33,7 @@ export const ACCENT_BG: Record<ColorAccent, string> = {
   sandal: 'bg-sandal',
   volt: 'bg-volt',
   mist: 'bg-mist',
-}
+};
 
 // Title/icon text on the chip — light chips get near-black text; saturated
 // chips get white.
@@ -38,7 +48,7 @@ export const ACCENT_TEXT: Record<ColorAccent, string> = {
   sandal: 'text-carbon',
   volt: 'text-carbon',
   mist: 'text-carbon',
-}
+};
 
 // Body/description text on the same chips — one step softer than the title.
 // Dark chips keep near-white body text (high opacity for AA contrast at 14px);
@@ -54,4 +64,4 @@ export const ACCENT_SUBTLE: Record<ColorAccent, string> = {
   sandal: 'text-carbon/75',
   volt: 'text-carbon/75',
   mist: 'text-carbon/75',
-}
+};

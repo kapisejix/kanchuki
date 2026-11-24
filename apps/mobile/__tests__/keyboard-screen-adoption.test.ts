@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
-import { stripComments } from '@kanchuki/shared/testing'
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { stripComments } from '@kanchuki/shared/testing';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Keyboard-wrapper adoption guard.
@@ -18,10 +18,10 @@ import { stripComments } from '@kanchuki/shared/testing'
  * behaviour it passes `behavior` to the wrapper.
  */
 
-const APP_DIR = join(__dirname, '..', 'app')
-const WRAPPER_REL = 'src/components/KeyboardScreen.tsx'
-const WRAPPER_ABS = join(__dirname, '..', WRAPPER_REL)
-const WRAPPER_TEST_REL = 'src/components/KeyboardScreen.test.tsx'
+const APP_DIR = join(__dirname, '..', 'app');
+const WRAPPER_REL = 'src/components/KeyboardScreen.tsx';
+const WRAPPER_ABS = join(__dirname, '..', WRAPPER_REL);
+const WRAPPER_TEST_REL = 'src/components/KeyboardScreen.test.tsx';
 
 /**
  * Screens still allowed to render a raw `KeyboardAvoidingView`.
@@ -30,7 +30,7 @@ const WRAPPER_TEST_REL = 'src/components/KeyboardScreen.test.tsx'
  * it. The guard asserts the file still contains the raw view, so a stale entry
  * (the migration finished but the exemption was left behind) fails too.
  */
-const EXCLUDED: Record<string, string> = {}
+const EXCLUDED: Record<string, string> = {};
 
 /**
  * Screens that own a `TextInput` but do not render `KeyboardScreen`.
@@ -44,19 +44,19 @@ const NO_WRAPPER: Record<string, string> = {
   'app/(tabs)/catalog.tsx': 'Search field in the header; nothing is laid out below it to hide.',
   'app/(tabs)/customers.tsx': 'Search field in the header; nothing is laid out below it to hide.',
   'app/ai-search.tsx': 'Single query field at the top, results scroll below it.',
-}
+};
 
 /** Slash-normalised path of `file` relative to `apps/mobile`. */
 function relToRoot(file: string): string {
-  return relative(join(__dirname, '..'), file).split('\\').join('/')
+  return relative(join(__dirname, '..'), file).split('\\').join('/');
 }
 
 function walk(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = join(dir, entry.name)
-    if (entry.isDirectory()) return walk(full)
-    return entry.isFile() && entry.name.endsWith('.tsx') ? [full] : []
-  })
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return walk(full);
+    return entry.isFile() && entry.name.endsWith('.tsx') ? [full] : [];
+  });
 }
 
 // Comment-stripped source, so a tombstone comment explaining WHY the raw view is
@@ -72,61 +72,59 @@ function appSources(): Array<{ path: string; source: string }> {
   return walk(APP_DIR).map((file) => ({
     path: relToRoot(file),
     source: stripComments(readFileSync(file, 'utf8')),
-  }))
+  }));
 }
 
-const RAW_VIEW = /\bKeyboardAvoidingView\b/
-const PLATFORM_TERNARY = /Platform\.OS\s*===\s*['"]ios['"]\s*\?\s*['"]padding['"]/
+const RAW_VIEW = /\bKeyboardAvoidingView\b/;
+const PLATFORM_TERNARY = /Platform\.OS\s*===\s*['"]ios['"]\s*\?\s*['"]padding['"]/;
 
 describe('mobile keyboard wrapper adoption', () => {
-  const sources = appSources()
-  const excluded = Object.keys(EXCLUDED)
+  const sources = appSources();
+  const excluded = Object.keys(EXCLUDED);
 
   it('finds screen sources to scan', () => {
     // Without this a broken directory walk would make every assertion below
     // vacuously pass.
-    expect(sources.length).toBeGreaterThan(30)
-  })
+    expect(sources.length).toBeGreaterThan(30);
+  });
 
   it('keeps the raw KeyboardAvoidingView out of every screen but the exceptions', () => {
-    const offenders = sources.filter((s) => RAW_VIEW.test(s.source)).map((s) => s.path)
-    expect(offenders.sort()).toEqual(excluded.sort())
-  })
+    const offenders = sources.filter((s) => RAW_VIEW.test(s.source)).map((s) => s.path);
+    expect(offenders.sort()).toEqual(excluded.sort());
+  });
 
   it('has no stale exceptions', () => {
     for (const path of excluded) {
-      const file = join(APP_DIR, '..', path)
-      expect(existsSync(file), `${path} is exempt but no longer exists`).toBe(true)
+      const file = join(APP_DIR, '..', path);
+      expect(existsSync(file), `${path} is exempt but no longer exists`).toBe(true);
       expect(
         RAW_VIEW.test(stripComments(readFileSync(file, 'utf8'))),
         `${path} is exempt but no longer uses the raw view — delete the exemption`,
-      ).toBe(true)
+      ).toBe(true);
     }
-  })
+  });
 
   it('never re-derives the platform behaviour inside a screen', () => {
-    const offenders = sources
-      .filter((s) => PLATFORM_TERNARY.test(s.source))
-      .map((s) => s.path)
-    expect(offenders.sort()).toEqual(excluded.sort())
-  })
+    const offenders = sources.filter((s) => PLATFORM_TERNARY.test(s.source)).map((s) => s.path);
+    expect(offenders.sort()).toEqual(excluded.sort());
+  });
 
   it('wraps every screen that owns a TextInput (or lists why not)', () => {
     const offenders = sources
       .filter((s) => /<TextInput\b/.test(s.source) && !s.source.includes('<KeyboardScreen'))
-      .map((s) => s.path)
-    expect(offenders.sort()).toEqual(Object.keys(NO_WRAPPER).sort())
-  })
+      .map((s) => s.path);
+    expect(offenders.sort()).toEqual(Object.keys(NO_WRAPPER).sort());
+  });
 
   it('has no stale NO_WRAPPER entries', () => {
     for (const path of Object.keys(NO_WRAPPER)) {
-      const source = sources.find((s) => s.path === path)?.source
-      expect(source, `${path} is listed in NO_WRAPPER but no longer exists`).toBeDefined()
+      const source = sources.find((s) => s.path === path)?.source;
+      expect(source, `${path} is listed in NO_WRAPPER but no longer exists`).toBeDefined();
       expect(source, `${path} now renders KeyboardScreen — delete the entry`).not.toContain(
         '<KeyboardScreen',
-      )
+      );
     }
-  })
+  });
 
   // Inputs the `<TextInput` scan cannot see because they live in a child component
   // (RC-119). Derived, not listed: a component under src/ that owns a `<TextInput`
@@ -134,35 +132,38 @@ describe('mobile keyboard wrapper adoption', () => {
   // imports one without wrapping. Every screen that imports an input component by
   // name must render <KeyboardScreen (barrel imports included).
   const importsName = (source: string, name: string) =>
-    new RegExp(`import\\s*\\{[^}]*\\b${name}\\b`).test(source)
+    new RegExp(`import\\s*\\{[^}]*\\b${name}\\b`).test(source);
 
   function inputComponentNames(): string[] {
     const files = walk(join(__dirname, '..', 'src'))
       .filter((f) => !f.endsWith('.test.tsx'))
       .map((f) => ({
-        name: f.split(/[\\/]/).pop()!.replace(/\.tsx$/, ''),
+        name: f
+          .split(/[\\/]/)
+          .pop()!
+          .replace(/\.tsx$/, ''),
         source: stripComments(readFileSync(f, 'utf8')),
-      }))
+      }));
     const names = new Set(
       files
         .filter((f) => /<TextInput\b/.test(f.source) && !f.source.includes('<KeyboardScreen'))
         .map((f) => f.name),
-    )
+    );
     for (let grew = true; grew; ) {
-      grew = false
+      grew = false;
       for (const f of files) {
-        if (names.has(f.name) || f.source.includes('<KeyboardScreen')) continue
+        if (names.has(f.name) || f.source.includes('<KeyboardScreen')) continue;
         if ([...names].some((n) => importsName(f.source, n))) {
-          names.add(f.name)
-          grew = true
+          names.add(f.name);
+          grew = true;
         }
       }
     }
-    return [...names]
+    return [...names];
   }
 
   it('wraps every screen that imports an input component', () => {
-    const names = inputComponentNames()
+    const names = inputComponentNames();
     // a broken derivation must not pass vacuously
     expect(names).toEqual(
       expect.arrayContaining([
@@ -171,63 +172,63 @@ describe('mobile keyboard wrapper adoption', () => {
         'StockEditor',
         'ProductAttributesForm',
       ]),
-    )
+    );
     const offenders = sources
       .filter((s) => names.some((n) => importsName(s.source, n)))
       .filter((s) => !s.source.includes('<KeyboardScreen') && !(s.path in NO_WRAPPER))
-      .map((s) => s.path)
-    expect(offenders).toEqual([])
-  })
+      .map((s) => s.path);
+    expect(offenders).toEqual([]);
+  });
 
   // ReportProblem wraps itself (its importers include src/ErrorBoundary, outside app/).
   it('wraps ReportProblem in KeyboardScreen', () => {
     const source = stripComments(
       readFileSync(join(__dirname, '..', 'src/components/ReportProblem.tsx'), 'utf8'),
-    )
-    expect(source).toContain('<KeyboardScreen')
-    expect(source).toMatch(/import\s*\{[^}]*\bKeyboardScreen\b/)
-  })
+    );
+    expect(source).toContain('<KeyboardScreen');
+    expect(source).toMatch(/import\s*\{[^}]*\bKeyboardScreen\b/);
+  });
 
   it('imports the wrapper wherever it renders it', () => {
     const importing = sources
       .filter((s) => /import\s*\{[^}]*\bKeyboardScreen\b/.test(s.source))
-      .map((s) => s.path)
+      .map((s) => s.path);
     for (const path of importing) {
-      const source = sources.find((s) => s.path === path)?.source ?? ''
+      const source = sources.find((s) => s.path === path)?.source ?? '';
       expect(source, `${path} imports KeyboardScreen but never renders it`).toContain(
         '<KeyboardScreen',
-      )
+      );
       // `app/a/b/file.tsx` sits two directories under apps/mobile.
-      const depth = path.split('/').length - 1
-      const expected = `${'../'.repeat(depth)}src/components/KeyboardScreen`
+      const depth = path.split('/').length - 1;
+      const expected = `${'../'.repeat(depth)}src/components/KeyboardScreen`;
       expect(source, `${path} imports KeyboardScreen from the wrong path`).toContain(
         `from '${expected}'`,
-      )
+      );
     }
-    expect(importing.length).toBeGreaterThan(30)
-  })
+    expect(importing.length).toBeGreaterThan(30);
+  });
 
   it('renders the wrapper only from files that import it', () => {
     const rendering = sources
       .filter((s) => s.source.includes('<KeyboardScreen'))
-      .map((s) => s.path)
+      .map((s) => s.path);
     for (const path of rendering) {
-      const source = sources.find((s) => s.path === path)?.source ?? ''
+      const source = sources.find((s) => s.path === path)?.source ?? '';
       expect(source, `${path} renders KeyboardScreen without importing it`).toMatch(
         /import\s*\{[^}]*\bKeyboardScreen\b/,
-      )
+      );
     }
-  })
+  });
 
   it('decides the platform behaviour in exactly one place', () => {
-    const source = stripComments(readFileSync(WRAPPER_ABS, 'utf8'))
-    expect(source).toMatch(/Platform\.OS\s*===\s*'ios'\s*\?\s*'padding'\s*:\s*'height'/)
-  })
+    const source = stripComments(readFileSync(WRAPPER_ABS, 'utf8'));
+    expect(source).toMatch(/Platform\.OS\s*===\s*'ios'\s*\?\s*'padding'\s*:\s*'height'/);
+  });
 
   it('keeps the wrapper covered by its own test', () => {
-    const test = readFileSync(join(__dirname, '..', WRAPPER_TEST_REL), 'utf8')
+    const test = readFileSync(join(__dirname, '..', WRAPPER_TEST_REL), 'utf8');
     // The Android branch is the one that silently regresses: nothing fails if
     // it collapses to 'padding', the input just disappears behind the keyboard.
-    expect(test).toMatch(/toBe\('height'\)/)
-  })
-})
+    expect(test).toMatch(/toBe\('height'\)/);
+  });
+});

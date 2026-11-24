@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { ReactNode } from 'react'
+import { motion } from 'framer-motion';
+import { ReactNode } from 'react';
 
 export const pageVariants = {
   initial: { opacity: 0, y: 24, scale: 0.97 },
@@ -23,7 +23,7 @@ export const pageVariants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -34,7 +34,7 @@ const containerVariants = {
       delayChildren: 0.1,
     },
   },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -46,13 +46,13 @@ const itemVariants = {
       ease: [0.16, 1, 0.3, 1],
     },
   },
-}
+};
 
 interface PageTransitionWrapperProps {
-  children?: ReactNode
-  className?: string
+  children?: ReactNode;
+  className?: string;
   /** If true, children will have staggered entrance animation */
-  staggered?: boolean
+  staggered?: boolean;
 }
 
 /**
@@ -80,7 +80,7 @@ export function PageTransitionWrapper({
       >
         {children}
       </motion.div>
-    )
+    );
   }
 
   return (
@@ -93,7 +93,7 @@ export function PageTransitionWrapper({
     >
       {children}
     </motion.div>
-  )
+  );
 }
 
-export default PageTransitionWrapper
+export default PageTransitionWrapper;

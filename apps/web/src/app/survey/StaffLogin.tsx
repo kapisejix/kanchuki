@@ -1,83 +1,88 @@
-import { useState, useEffect, type FormEvent } from 'react'
-import { Lock, Send, Sparkles, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowLeft, CheckCircle2, Loader2, Lock, Send, Sparkles } from 'lucide-react';
+import { type FormEvent, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 export interface TeamSession {
-  token: string
-  name: string
-  referralCode?: string
-  teamMemberId?: string
+  token: string;
+  name: string;
+  referralCode?: string;
+  teamMemberId?: string;
 }
 
 export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => void }) {
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
-  const [stage, setStage] = useState<'phone' | 'otp'>('phone')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [resendTimer, setResendTimer] = useState(0)
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [stage, setStage] = useState<'phone' | 'otp'>('phone');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [resendTimer, setResendTimer] = useState(0);
 
   useEffect(() => {
-    if (resendTimer <= 0) return
+    if (resendTimer <= 0) return;
     const interval = setInterval(() => {
-      setResendTimer((t) => (t > 0 ? t - 1 : 0))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [resendTimer])
+      setResendTimer((t) => (t > 0 ? t - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   async function sendOtp(e?: FormEvent) {
-    if (e) e.preventDefault()
-    if (phone.length !== 10) return
-    setBusy(true)
-    setError('')
+    if (e) e.preventDefault();
+    if (phone.length !== 10) return;
+    setBusy(true);
+    setError('');
     try {
       const res = await fetch(`${API_URL}/v1/auth/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
-      })
+      });
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? 'Could not send OTP')
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? 'Could not send OTP');
       }
-      setStage('otp')
-      setResendTimer(30)
+      setStage('otp');
+      setResendTimer(30);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send OTP — check number and try again.')
+      setError(
+        err instanceof Error ? err.message : 'Could not send OTP — check number and try again.',
+      );
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   async function verifyOtp(e: FormEvent) {
-    e.preventDefault()
-    if (otp.length < 4) return
-    setBusy(true)
-    setError('')
+    e.preventDefault();
+    if (otp.length < 4) return;
+    setBusy(true);
+    setError('');
     try {
       const res = await fetch(`${API_URL}/v1/auth/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, otp }),
-      })
-      const json = await res.json()
-      const token = json?.data?.access_token
-      const isStaff = json?.data?.is_staff
+      });
+      const json = await res.json();
+      const token = json?.data?.access_token;
+      const isStaff = json?.data?.is_staff;
       if (!res.ok || !token || !isStaff) {
-        throw new Error(json?.error?.message ?? 'Invalid OTP code or this number is not a registered staff member.')
+        throw new Error(
+          json?.error?.message ??
+            'Invalid OTP code or this number is not a registered staff member.',
+        );
       }
       onLogin({
         token,
         name: json.data.team_member?.name ?? 'Staff Member',
         referralCode: json.data.team_member?.referral_code ?? '',
         teamMemberId: json.data.team_member?.id ?? '',
-      })
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code or unregistered staff member.')
+      setError(err instanceof Error ? err.message : 'Invalid code or unregistered staff member.');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
@@ -97,7 +102,8 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
           <Sparkles size={16} className="text-amber-500" />
         </h1>
         <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-          Log in with your registered staff phone number to access the Retailer Discovery & Market Survey tool.
+          Log in with your registered staff phone number to access the Retailer Discovery & Market
+          Survey tool.
         </p>
 
         {error && (
@@ -121,7 +127,10 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
               className="space-y-4 text-left"
             >
               <div>
-                <label htmlFor="staffPhone" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                <label
+                  htmlFor="staffPhone"
+                  className="block text-xs font-semibold text-gray-700 mb-1.5"
+                >
                   Mobile Number
                 </label>
                 <div className="relative flex items-center">
@@ -213,9 +222,9 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
                 <button
                   type="button"
                   onClick={() => {
-                    setStage('phone')
-                    setOtp('')
-                    setError('')
+                    setStage('phone');
+                    setOtp('');
+                    setError('');
                   }}
                   className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1 transition-colors"
                 >
@@ -224,7 +233,9 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
                 </button>
 
                 {resendTimer > 0 ? (
-                  <span className="text-xs text-gray-400 font-medium">Resend in {resendTimer}s</span>
+                  <span className="text-xs text-gray-400 font-medium">
+                    Resend in {resendTimer}s
+                  </span>
                 ) : (
                   <button
                     type="button"
@@ -241,5 +252,5 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
         </AnimatePresence>
       </motion.div>
     </div>
-  )
+  );
 }

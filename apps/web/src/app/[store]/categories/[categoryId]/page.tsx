@@ -1,9 +1,9 @@
 import { API_URL as apiUrl } from '@/lib/apiUrl';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import type { PublicCollection } from '@kanchuki/shared';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { CollectionView } from '../../../c/[slug]/components/CollectionView';
-import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 
 interface Props {
   params: Promise<{ store: string; categoryId: string }>;

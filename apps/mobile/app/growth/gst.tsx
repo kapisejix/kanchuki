@@ -1,53 +1,61 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { router } from 'expo-router'
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
+  CheckCircle,
   ChevronLeft,
+  ChevronRight,
+  Clock,
+  FileText,
   Receipt,
   TrendingUp,
-  FileText,
-  CheckCircle,
-  Clock,
-  ChevronRight,
-} from 'lucide-react-native'
-import { RefreshControl, ScrollView, Text, View } from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { inrFromPaise } from '../../src/lib/format-inr'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { growthApi, type GstTransaction, type GstSummary, type GstMonthly, type GstTransactions } from '../../src/lib/api/growth'
+} from 'lucide-react-native';
+import { useState } from 'react';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import {
+  type GstMonthly,
+  type GstSummary,
+  type GstTransaction,
+  type GstTransactions,
+  growthApi,
+} from '../../src/lib/api/growth';
+import { inrFromPaise } from '../../src/lib/format-inr';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // Every GST amount from the API is integer paise (RC-109), and may be omitted
 // on an empty ledger — inrFromPaise converts and never throws on a missing number.
-const inr = inrFromPaise
+const inr = inrFromPaise;
 
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function GstScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const [tab, setTab] = useState<'summary' | 'monthly' | 'transactions'>('summary')
-  const currentYear = new Date().getFullYear()
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>()
-  const [selectedYear, setSelectedYear] = useState(currentYear)
-  const [txPage, setTxPage] = useState(1)
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const [tab, setTab] = useState<'summary' | 'monthly' | 'transactions'>('summary');
+  const currentYear = new Date().getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState<number | undefined>();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [txPage, setTxPage] = useState(1);
 
-  const { data: summaryData, isLoading: summaryLoading, refetch, isRefetching } = useQuery({
+  const {
+    data: summaryData,
+    isLoading: summaryLoading,
+    refetch,
+    isRefetching,
+  } = useQuery({
     queryKey: ['growth', 'gst', 'summary', selectedMonth, selectedYear],
     queryFn: () => growthApi.gstSummary({ month: selectedMonth, year: selectedYear }),
-  })
-  const summary = summaryData?.data
+  });
+  const summary = summaryData?.data;
 
   const { data: monthlyData, isLoading: monthlyLoading } = useQuery({
     queryKey: ['growth', 'gst', 'monthly', selectedYear],
     queryFn: () => growthApi.gstMonthly(selectedYear),
-  })
-  const monthly = monthlyData?.data
+  });
+  const monthly = monthlyData?.data;
 
   const { data: txData, isLoading: txLoading } = useQuery({
     queryKey: ['growth', 'gst', 'transactions', selectedMonth, selectedYear, txPage],
@@ -57,10 +65,10 @@ export default function GstScreen() {
         year: selectedYear,
         page: txPage,
       }),
-  })
-  const transactions = txData?.data
+  });
+  const transactions = txData?.data;
 
-  const isLoading = summaryLoading || monthlyLoading || txLoading
+  const isLoading = summaryLoading || monthlyLoading || txLoading;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -121,13 +129,15 @@ export default function GstScreen() {
               { key: 'transactions', label: 'Invoices' },
             ] as const
           ).map((t) => {
-            const active = tab === t.key
+            const active = tab === t.key;
             return (
               <AnimatedPressable
                 key={t.key}
                 onPress={() => setTab(t.key)}
                 className={`flex-1 items-center py-2.5 rounded-2xl border ${
-                  active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
+                  active
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                    : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 <Text
@@ -136,7 +146,7 @@ export default function GstScreen() {
                   {t.label}
                 </Text>
               </AnimatedPressable>
-            )
+            );
           })}
         </View>
       </View>
@@ -144,15 +154,22 @@ export default function GstScreen() {
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+        }
       >
         {/* Month filter chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 pt-3.5 mb-2">
           <View className="flex-row gap-2">
             <AnimatedPressable
-              onPress={() => { setSelectedMonth(undefined); setTxPage(1) }}
+              onPress={() => {
+                setSelectedMonth(undefined);
+                setTxPage(1);
+              }}
               className={`rounded-full px-4 py-1.5 border ${
-                !selectedMonth ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
+                !selectedMonth
+                  ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                  : 'bg-lavender-50 border-lavender-200'
               }`}
             >
               <Text
@@ -162,13 +179,18 @@ export default function GstScreen() {
               </Text>
             </AnimatedPressable>
             {MONTHS.map((m, i) => {
-              const active = selectedMonth === i + 1
+              const active = selectedMonth === i + 1;
               return (
                 <AnimatedPressable
                   key={i}
-                  onPress={() => { setSelectedMonth(i + 1); setTxPage(1) }}
+                  onPress={() => {
+                    setSelectedMonth(i + 1);
+                    setTxPage(1);
+                  }}
                   className={`rounded-full px-4 py-1.5 border ${
-                    active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
+                    active
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                      : 'bg-lavender-50 border-lavender-200'
                   }`}
                 >
                   <Text
@@ -177,7 +199,7 @@ export default function GstScreen() {
                     {m}
                   </Text>
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </ScrollView>
@@ -191,15 +213,11 @@ export default function GstScreen() {
         ) : tab === 'monthly' && monthly ? (
           <MonthlyTab monthly={monthly} />
         ) : tab === 'transactions' && transactions ? (
-          <TransactionsTab
-            transactions={transactions}
-            page={txPage}
-            onPageChange={setTxPage}
-          />
+          <TransactionsTab transactions={transactions} page={txPage} onPageChange={setTxPage} />
         ) : null}
       </ScrollView>
     </View>
-  )
+  );
 }
 
 // ─── Summary Tab ──────────────────────────────────────────────────
@@ -207,7 +225,7 @@ export default function GstScreen() {
 function SummaryTab({
   summary,
 }: {
-  summary: GstSummary
+  summary: GstSummary;
 }) {
   return (
     <View className="px-4 pt-2">
@@ -258,7 +276,11 @@ function SummaryTab({
             <View className="flex-row items-center justify-between">
               <Text className="text-sm font-semibold text-spaceCadet-900">Total GST Liability</Text>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-base text-fuchsia-700"
               >
                 {inr(summary.total_gst)}
@@ -300,7 +322,7 @@ function SummaryTab({
         </View>
       </View>
     </View>
-  )
+  );
 }
 
 // ─── Monthly Tab ──────────────────────────────────────────────────
@@ -308,9 +330,9 @@ function SummaryTab({
 function MonthlyTab({
   monthly,
 }: {
-  monthly: GstMonthly
+  monthly: GstMonthly;
 }) {
-  const maxGst = Math.max(...monthly.months.map((m) => m.gst), 1)
+  const maxGst = Math.max(...monthly.months.map((m) => m.gst), 1);
 
   return (
     <View className="px-4 pt-2">
@@ -323,13 +345,14 @@ function MonthlyTab({
 
       <View className="gap-3">
         {monthly.months.map((m) => (
-          <View
-            key={m.month}
-            className="bg-white rounded-2xl border border-lavender-200 p-4"
-          >
+          <View key={m.month} className="bg-white rounded-2xl border border-lavender-200 p-4">
             <View className="flex-row items-center justify-between mb-2">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-base text-spaceCadet-900"
               >
                 {m.month_name}
@@ -348,11 +371,13 @@ function MonthlyTab({
               />
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-xs text-heliotrope-500 font-medium">
-                Sales: {inr(m.sales)}
-              </Text>
+              <Text className="text-xs text-heliotrope-500 font-medium">Sales: {inr(m.sales)}</Text>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-sm text-fuchsia-700"
               >
                 GST: {inr(m.gst)}
@@ -362,7 +387,7 @@ function MonthlyTab({
         ))}
       </View>
     </View>
-  )
+  );
 }
 
 // ─── Transactions Tab ─────────────────────────────────────────────
@@ -372,9 +397,9 @@ function TransactionsTab({
   page,
   onPageChange,
 }: {
-  transactions: GstTransactions
-  page: number
-  onPageChange: (p: number) => void
+  transactions: GstTransactions;
+  page: number;
+  onPageChange: (p: number) => void;
 }) {
   return (
     <View className="px-4 pt-2">
@@ -409,7 +434,9 @@ function TransactionsTab({
             onPress={() => onPageChange(Math.max(1, page - 1))}
             disabled={page <= 1}
             className={`rounded-2xl px-5 py-2.5 border ${
-              page <= 1 ? 'bg-lavender-50 border-lavender-200 opacity-50' : 'bg-white border-lavender-200'
+              page <= 1
+                ? 'bg-lavender-50 border-lavender-200 opacity-50'
+                : 'bg-white border-lavender-200'
             }`}
           >
             <Text className="text-xs font-semibold text-spaceCadet-900">← Prev</Text>
@@ -424,7 +451,7 @@ function TransactionsTab({
         </View>
       )}
     </View>
-  )
+  );
 }
 
 // ─── Transaction Row ──────────────────────────────────────────────
@@ -432,10 +459,10 @@ function TransactionsTab({
 function TxRow({
   tx,
 }: {
-  tx: GstTransaction
+  tx: GstTransaction;
 }) {
-  const date = new Date(tx.date)
-  const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+  const date = new Date(tx.date);
+  const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
   return (
     <View className="bg-white rounded-2xl border border-lavender-200 p-4">
@@ -462,9 +489,7 @@ function TxRow({
         {tx.has_invoice ? (
           <View className="flex-row items-center gap-1 bg-emerald-50 rounded-full px-2.5 py-0.5 border border-emerald-200">
             <CheckCircle size={11} color="#16a34a" />
-            <Text className="text-[11px] font-semibold text-emerald-700">
-              {tx.invoice_number}
-            </Text>
+            <Text className="text-[11px] font-semibold text-emerald-700">{tx.invoice_number}</Text>
           </View>
         ) : (
           <View className="bg-amber-50 rounded-full px-2.5 py-0.5 border border-amber-200">
@@ -473,7 +498,7 @@ function TxRow({
         )}
       </View>
     </View>
-  )
+  );
 }
 
 // ─── Shared Components ────────────────────────────────────────────
@@ -484,10 +509,10 @@ function StatCard({
   icon,
   flex,
 }: {
-  label: string
-  value: string
-  icon: React.ReactNode
-  flex?: boolean
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  flex?: boolean;
 }) {
   return (
     <View
@@ -495,9 +520,7 @@ function StatCard({
       style={flex ? { flex: 1 } : undefined}
     >
       <View className="flex-row items-center gap-2 mb-2">
-        <View className="w-6 items-center justify-center">
-          {icon}
-        </View>
+        <View className="w-6 items-center justify-center">{icon}</View>
         <Text className="text-[11px] font-semibold text-heliotrope-500">{label}</Text>
       </View>
       <Text
@@ -508,20 +531,20 @@ function StatCard({
         {value}
       </Text>
     </View>
-  )
+  );
 }
 
 function BreakdownRow({
   label,
   value,
 }: {
-  label: string
-  value: string
+  label: string;
+  value: string;
 }) {
   return (
     <View className="flex-row items-center justify-between">
       <Text className="text-xs text-heliotrope-500 font-medium">{label}</Text>
       <Text className="text-xs font-semibold text-spaceCadet-900">{value}</Text>
     </View>
-  )
+  );
 }

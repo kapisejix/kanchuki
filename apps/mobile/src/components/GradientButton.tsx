@@ -1,7 +1,7 @@
-import { Text, View, ActivityIndicator, type ViewStyle } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
-import { ArrowRight } from 'lucide-react-native'
-import { AnimatedPressable } from './AnimatedPressable'
+import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowRight } from 'lucide-react-native';
+import { ActivityIndicator, Text, View, type ViewStyle } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
 
 /** Primary CTA — signature gradient fill (#231F48 Space Cadet → #560A39 Tyrian Purple) + shadow + press-scale.
  * Exactly matches .slide-btn-signature and .slide-btn-signature-compact from 2026 luxury design.
@@ -24,27 +24,27 @@ export function GradientButton({
   radius = 16,
   style,
 }: {
-  label: string
-  onPress: () => void
-  disabled?: boolean
-  loading?: boolean
-  icon?: React.ReactNode
-  accentBadge?: React.ReactNode | null
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+  icon?: React.ReactNode;
+  accentBadge?: React.ReactNode | null;
   /** Override gradient stops (defaults to signature #231F48 Space Cadet → #560A39 Tyrian Purple) */
-  colors?: [string, string]
+  colors?: [string, string];
   /** Auto-width compact centered button (just text + arrow badge, no stretched space) */
-  compact?: boolean
+  compact?: boolean;
   /** 'signature' = current look; 'web' = matches the customer web product-sheet button */
-  variant?: 'signature' | 'web'
+  variant?: 'signature' | 'web';
   /** web variant only: icon after the label (e.g. a white arrow) */
-  iconRight?: React.ReactNode
+  iconRight?: React.ReactNode;
   /** corner radius, web variant (default 16 — owner 2026-10-16; signature variant stays 24) */
-  radius?: number
-  style?: ViewStyle
+  radius?: number;
+  style?: ViewStyle;
 }) {
-  const isDisabled = disabled || loading
-  const isWeb = variant === 'web'
-  const gradientColors = colors ?? ['#231F48', '#560A39']
+  const isDisabled = disabled || loading;
+  const isWeb = variant === 'web';
+  const gradientColors = colors ?? ['#231F48', '#560A39'];
 
   const shadow: ViewStyle = isWeb
     ? {
@@ -64,14 +64,14 @@ export function GradientButton({
         shadowOpacity: 0.28,
         shadowRadius: 14,
         elevation: 6,
-      }
+      };
 
   const badgeContent =
-    isWeb && accentBadge === undefined
-      ? null
-      : accentBadge !== undefined
-        ? accentBadge
-        : <ArrowRight size={16} color="white" strokeWidth={2.2} />
+    isWeb && accentBadge === undefined ? null : accentBadge !== undefined ? (
+      accentBadge
+    ) : (
+      <ArrowRight size={16} color="white" strokeWidth={2.2} />
+    );
 
   return (
     <AnimatedPressable
@@ -103,63 +103,73 @@ export function GradientButton({
       >
         {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
         {loading ? (
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <ActivityIndicator color="#FFFFFF" size="small" />
           </View>
         ) : null}
-          <>
+        <>
+          <View
+            style={{
+              opacity: loading ? 0 : 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: isWeb ? 'center' : undefined,
+              gap: 8,
+              flexShrink: 1,
+              marginRight: isWeb && !badgeContent ? 0 : 8,
+            }}
+          >
+            {icon}
+            {/* web variant: no line limit — full label shows, wraps to a 2nd line if long.
+                  signature variant keeps its original one-line behaviour (other screens unchanged). */}
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: isWeb ? 10 : 12,
+                fontWeight: '800',
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+                ...(isWeb ? { textAlign: 'center', flexShrink: 1 } : null),
+              }}
+              numberOfLines={isWeb ? undefined : 1}
+            >
+              {label}
+            </Text>
+            {isWeb ? iconRight : null}
+          </View>
+          {badgeContent ? (
             <View
               style={{
                 opacity: loading ? 0 : 1,
-                flexDirection: 'row',
+                width: 32,
+                height: 32,
+                borderRadius: 12,
+                backgroundColor: '#BB3F95',
                 alignItems: 'center',
-                justifyContent: isWeb ? 'center' : undefined,
-                gap: 8,
-                flexShrink: 1,
-                marginRight: isWeb && !badgeContent ? 0 : 8,
+                justifyContent: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+                elevation: 2,
+                flexShrink: 0,
               }}
             >
-              {icon}
-              {/* web variant: no line limit — full label shows, wraps to a 2nd line if long.
-                  signature variant keeps its original one-line behaviour (other screens unchanged). */}
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: isWeb ? 10 : 12,
-                  fontWeight: '800',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.8,
-                  ...(isWeb ? { textAlign: 'center', flexShrink: 1 } : null),
-                }}
-                numberOfLines={isWeb ? undefined : 1}
-              >
-                {label}
-              </Text>
-              {isWeb ? iconRight : null}
+              {badgeContent}
             </View>
-            {badgeContent ? (
-              <View
-                style={{
-                  opacity: loading ? 0 : 1,
-                  width: 32,
-                  height: 32,
-                  borderRadius: 12,
-                  backgroundColor: '#BB3F95',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 4,
-                  elevation: 2,
-                  flexShrink: 0,
-                }}
-              >
-                {badgeContent}
-              </View>
-            ) : null}
-          </>
+          ) : null}
+        </>
       </LinearGradient>
     </AnimatedPressable>
-  )
+  );
 }

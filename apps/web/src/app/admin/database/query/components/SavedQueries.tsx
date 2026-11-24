@@ -1,14 +1,14 @@
-import React from 'react'
-import { Bookmark, Play, Trash2, Edit3, X, Check } from 'lucide-react'
-import type { SavedQuery } from './types'
+import { Bookmark, Check, Edit3, Play, Trash2, X } from 'lucide-react';
+import React from 'react';
+import type { SavedQuery } from './types';
 
 interface SavedQueriesProps {
-  visible: boolean
-  onClose: () => void
-  savedQueries: SavedQuery[]
-  onSelectQuery: (sql: string) => void
-  onDeleteQuery: (id: string) => void
-  onRenameQuery: (id: string, newName: string) => void
+  visible: boolean;
+  onClose: () => void;
+  savedQueries: SavedQuery[];
+  onSelectQuery: (sql: string) => void;
+  onDeleteQuery: (id: string) => void;
+  onRenameQuery: (id: string, newName: string) => void;
 }
 
 export function SavedQueries({
@@ -19,22 +19,22 @@ export function SavedQueries({
   onDeleteQuery,
   onRenameQuery,
 }: SavedQueriesProps) {
-  const [editingId, setEditingId] = React.useState<string | null>(null)
-  const [editingName, setEditingName] = React.useState('')
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editingName, setEditingName] = React.useState('');
 
-  if (!visible) return null
+  if (!visible) return null;
 
   const handleStartRename = (q: SavedQuery) => {
-    setEditingId(q.id)
-    setEditingName(q.name)
-  }
+    setEditingId(q.id);
+    setEditingName(q.name);
+  };
 
   const handleSaveRename = (id: string) => {
     if (editingName.trim()) {
-      onRenameQuery(id, editingName.trim())
+      onRenameQuery(id, editingName.trim());
     }
-    setEditingId(null)
-  }
+    setEditingId(null);
+  };
 
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col">
@@ -119,8 +119,8 @@ export function SavedQueries({
 
               <button
                 onClick={() => {
-                  onSelectQuery(q.query)
-                  onClose()
+                  onSelectQuery(q.query);
+                  onClose();
                 }}
                 className="w-full py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
               >
@@ -132,6 +132,5 @@ export function SavedQueries({
         )}
       </div>
     </div>
-  )
+  );
 }
-

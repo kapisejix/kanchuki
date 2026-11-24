@@ -10,13 +10,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useScreenInsets } from '../../src/lib/safe-area';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
-import { ScreenHeader } from '../../src/components/ScreenHeader';
-import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { type CatalogUploadTicket, catalogUploadApi } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 import { useTheme } from '../../src/lib/theme';
 
 // ─── Request Form (no ticket yet) ───────────────────────────────────
@@ -46,14 +46,18 @@ function RequestForm() {
       <View className="w-16 h-16 bg-ink-100 rounded-2xl items-center justify-center mb-4">
         <Package size={28} color={primaryColor} />
       </View>
-      <Text className="text-2xl font-semibold text-spaceCadet-900">Get help adding your catalog</Text>
+      <Text className="text-2xl font-semibold text-spaceCadet-900">
+        Get help adding your catalog
+      </Text>
       <Text className="text-heliotrope-500 text-base mt-2 leading-5">
         A Kanchuki team member visits your shop and uploads your entire catalog for you. Tell us
         roughly how many items you have — we&apos;ll quote a price and propose a visit time.
       </Text>
 
       <View className="mt-6">
-        <Text className="text-sm font-semibold text-heliotrope-600 mb-2">About how many items?</Text>
+        <Text className="text-sm font-semibold text-heliotrope-600 mb-2">
+          About how many items?
+        </Text>
         <TextInput
           value={itemCount}
           onChangeText={(t) => setItemCount(t.replace(/[^0-9]/g, ''))}
@@ -82,7 +86,8 @@ function RequestForm() {
       </View>
 
       <View className="mt-6">
-        <GradientButton variant="web"
+        <GradientButton
+          variant="web"
           label="Request Catalog Upload Help"
           onPress={() => create.mutate()}
           disabled={!canSubmit}
@@ -127,7 +132,9 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
         <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
           <Clock size={28} color={colors.turmeric[600]} />
         </View>
-        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Request received</Text>
+        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">
+          Request received
+        </Text>
         <Text className="text-heliotrope-500 text-base mt-2 text-center leading-5">
           Our team is reviewing your request for {ticket.item_count_requested ?? 'your'} items.
           We&apos;ll notify you with a price and visit time soon. Pull down to refresh.
@@ -143,7 +150,9 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
         <View className="w-16 h-16 bg-ink-100 rounded-2xl items-center justify-center mb-4">
           <IndianRupee size={28} color={primaryColor} />
         </View>
-        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Your quote is ready</Text>
+        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">
+          Your quote is ready
+        </Text>
         <Text className="text-3xl font-bold text-ink-600 mt-3">₹{ticket.quoted_price_inr}</Text>
         <Text className="text-heliotrope-500 text-sm mt-2 text-center leading-5">
           for {ticket.item_count_requested ?? 'your'} items. Pay now to pick your visit slot.
@@ -175,7 +184,9 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
             <Check size={28} color={colors.turmeric[600]} />
           </View>
-          <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Payment received</Text>
+          <Text className="text-xl font-semibold text-spaceCadet-900 text-center">
+            Payment received
+          </Text>
         </View>
 
         {slots.length === 0 ? (

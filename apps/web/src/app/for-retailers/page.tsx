@@ -1,38 +1,107 @@
-import type { Metadata } from 'next'
-import { Camera, Wand2, MessageCircle, Store, Heart, Package, ScanLine, WifiOff, Users } from 'lucide-react'
-import { Navbar, Footer, Section, SectionHeader, ColorCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
-import { ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/accents'
-import { getPlanPricing, rupees } from '@/lib/plan-pricing'
-import { appLink } from '@/lib/deep-links'
+import {
+  AnimatedSection,
+  ColorCard,
+  FinalCta,
+  Footer,
+  Navbar,
+  PageHero,
+  Section,
+  SectionHeader,
+} from '@/components/site/Chrome';
+import { ACCENT_SUBTLE, ACCENT_TEXT } from '@/components/site/accents';
+import { appLink } from '@/lib/deep-links';
+import { getPlanPricing, rupees } from '@/lib/plan-pricing';
+import {
+  Camera,
+  Heart,
+  MessageCircle,
+  Package,
+  ScanLine,
+  Store,
+  Users,
+  Wand2,
+  WifiOff,
+} from 'lucide-react';
+import type { Metadata } from 'next';
 
-const perMonth = (p: { monthly: number } | undefined) => (p ? ` ${rupees(p.monthly)}/mo` : '')
+const perMonth = (p: { monthly: number } | undefined) => (p ? ` ${rupees(p.monthly)}/mo` : '');
 // RC-179: product caps come from the API (what the server enforces); undefined = API down.
 const count = (n: number | null | undefined) =>
-  n === undefined ? 'a set number of' : n === null ? 'unlimited' : n.toLocaleString('en-IN')
+  n === undefined ? 'a set number of' : n === null ? 'unlimited' : n.toLocaleString('en-IN');
 
 export const metadata: Metadata = {
   title: 'For Retailers — AI Catalog & WhatsApp Selling for Clothing Stores | Kanchuki',
   description:
     'Photograph your dresses, AI writes the catalog, share on WhatsApp. No website needed. Built for Indian clothing stores — 14-day free trial.',
-}
+};
 
 const FEATURES = [
-  { icon: Camera, title: 'The catalog that writes itself', desc: 'Photograph a dress. AI adds category, subtype, colour, fabric and occasion, writes a short description, suggests a name, and generates an auto SKU. Edit anything it gets wrong — your picks always win.', accent: 'cobalt' as const },
-  { icon: Wand2, title: 'AI works in the background', desc: 'Click photos, set a price, tap save. While you go back to the shop floor, AI tags the product and writes its details. No loading screen to wait on.', accent: 'volt' as const },
-  { icon: Wand2, title: 'Clean, straight photos', desc: 'Rotate and crop before you save. On the Pro plan, remove the background in one tap — no photographer needed.', accent: 'terracotta' as const },
-  { icon: MessageCircle, title: 'Sell on WhatsApp', desc: 'Select the pieces you want to show, get a collection link, share it on WhatsApp. Customers browse, favourite and tap Enquire to message you directly. No app for them, no website for you.', accent: 'iris' as const },
-  { icon: Store, title: 'Your own store page', desc: 'Every shop gets a free storefront at its own link (e.g. kanchuki.app/store/your-shop) with your shop name, logo and categories, plus a store QR code you can print for the counter.', accent: 'moss' as const },
-  { icon: Heart, title: 'Know your customers', desc: 'Save each customer’s colour, style, budget and occasions. Search your own racks in plain language: "pink cotton suit under ₹2000".', accent: 'mint' as const },
-  { icon: Package, title: 'Bulk onboarding', desc: 'Got 500–3,000 SKUs from a supplier? Import the supplier PDF/catalog, or shoot your racks shelf-by-shelf and let AI detect each item. A catalog-upload visit service is also available.', accent: 'cobalt' as const },
-  { icon: ScanLine, title: 'Scan-to-sell', desc: 'Print the SKU + QR tag for each design. When a piece sells, scan the tag — it’s marked SOLD, even if your internet is down. Syncs when you’re back online.', accent: 'fern' as const },
-  { icon: WifiOff, title: 'Offline-first', desc: 'Built for shops where the network is patchy. Browse your catalog, change a product’s status — it queues up and syncs when the connection returns.', accent: 'sandal' as const },
-  { icon: Users, title: 'Team, staff and control', desc: 'Add staff with their own logins — a helper can scan-to-sell or add products without touching your account. You own your data; deletion is supported.', accent: 'iris' as const },
-]
+  {
+    icon: Camera,
+    title: 'The catalog that writes itself',
+    desc: 'Photograph a dress. AI adds category, subtype, colour, fabric and occasion, writes a short description, suggests a name, and generates an auto SKU. Edit anything it gets wrong — your picks always win.',
+    accent: 'cobalt' as const,
+  },
+  {
+    icon: Wand2,
+    title: 'AI works in the background',
+    desc: 'Click photos, set a price, tap save. While you go back to the shop floor, AI tags the product and writes its details. No loading screen to wait on.',
+    accent: 'volt' as const,
+  },
+  {
+    icon: Wand2,
+    title: 'Clean, straight photos',
+    desc: 'Rotate and crop before you save. On the Pro plan, remove the background in one tap — no photographer needed.',
+    accent: 'terracotta' as const,
+  },
+  {
+    icon: MessageCircle,
+    title: 'Sell on WhatsApp',
+    desc: 'Select the pieces you want to show, get a collection link, share it on WhatsApp. Customers browse, favourite and tap Enquire to message you directly. No app for them, no website for you.',
+    accent: 'iris' as const,
+  },
+  {
+    icon: Store,
+    title: 'Your own store page',
+    desc: 'Every shop gets a free storefront at its own link (e.g. kanchuki.app/store/your-shop) with your shop name, logo and categories, plus a store QR code you can print for the counter.',
+    accent: 'moss' as const,
+  },
+  {
+    icon: Heart,
+    title: 'Know your customers',
+    desc: 'Save each customer’s colour, style, budget and occasions. Search your own racks in plain language: "pink cotton suit under ₹2000".',
+    accent: 'mint' as const,
+  },
+  {
+    icon: Package,
+    title: 'Bulk onboarding',
+    desc: 'Got 500–3,000 SKUs from a supplier? Import the supplier PDF/catalog, or shoot your racks shelf-by-shelf and let AI detect each item. A catalog-upload visit service is also available.',
+    accent: 'cobalt' as const,
+  },
+  {
+    icon: ScanLine,
+    title: 'Scan-to-sell',
+    desc: 'Print the SKU + QR tag for each design. When a piece sells, scan the tag — it’s marked SOLD, even if your internet is down. Syncs when you’re back online.',
+    accent: 'fern' as const,
+  },
+  {
+    icon: WifiOff,
+    title: 'Offline-first',
+    desc: 'Built for shops where the network is patchy. Browse your catalog, change a product’s status — it queues up and syncs when the connection returns.',
+    accent: 'sandal' as const,
+  },
+  {
+    icon: Users,
+    title: 'Team, staff and control',
+    desc: 'Add staff with their own logins — a helper can scan-to-sell or add products without touching your account. You own your data; deletion is supported.',
+    accent: 'iris' as const,
+  },
+];
 
 const COMING_SOON = [
   { feature: 'Hindi UI', status: 'Year 1' },
   { feature: 'Play Store / iOS app listings', status: 'Coming soon — Android APK available now' },
-]
+];
 
 // §5B.1 — affiliate referral capture (docs/tasks/done/post-referral-cleanup-and-launch.md §5B).
 // The shareable link T3 already mints (buildReferralLink) points HERE with
@@ -40,16 +109,16 @@ const COMING_SOON = [
 // referral-link shape, not two. Cosmetic shape check only (display gating,
 // not a security boundary): T4's server-side write is the real validator, and
 // a garbage ?ref= must render the page exactly as if it were absent.
-const REF_CODE_PATTERN = /^KAN-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/
+const REF_CODE_PATTERN = /^KAN-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
 
 export default async function ForRetailersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string }>
+  searchParams: Promise<{ ref?: string }>;
 }) {
-  const price = await getPlanPricing()
-  const rawRef = (await searchParams).ref?.trim().toUpperCase()
-  const refCode = rawRef && REF_CODE_PATTERN.test(rawRef) ? rawRef : null
+  const price = await getPlanPricing();
+  const rawRef = (await searchParams).ref?.trim().toUpperCase();
+  const refCode = rawRef && REF_CODE_PATTERN.test(rawRef) ? rawRef : null;
   return (
     <>
       <Navbar />
@@ -87,13 +156,20 @@ export default async function ForRetailersPage({
       <Section id="features">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
-            <SectionHeader tag="What the app does" title="Everything your shop needs, on one phone" />
+            <SectionHeader
+              tag="What the app does"
+              title="Everything your shop needs, on one phone"
+            />
           </AnimatedSection>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             {FEATURES.map((f) => (
               <ColorCard key={f.title} accent={f.accent} className="p-6 sm:p-7">
                 <f.icon size={24} strokeWidth={1.5} className={`mb-4 ${ACCENT_TEXT[f.accent]}`} />
-                <h3 className={`font-display text-base font-semibold mb-2 ${ACCENT_TEXT[f.accent]}`}>{f.title}</h3>
+                <h3
+                  className={`font-display text-base font-semibold mb-2 ${ACCENT_TEXT[f.accent]}`}
+                >
+                  {f.title}
+                </h3>
                 <p className={`text-sm leading-relaxed ${ACCENT_SUBTLE[f.accent]}`}>{f.desc}</p>
               </ColorCard>
             ))}
@@ -107,11 +183,28 @@ export default async function ForRetailersPage({
             <SectionHeader tag="Pricing" title="Pricing that fits a small shop" />
           </AnimatedSection>
           <ul className="space-y-3 text-carbon/70 text-sm sm:text-base leading-relaxed">
-            <li><strong className="text-carbon">Starter{perMonth(price?.STARTER)}</strong> — one shop, {count(price?.STARTER.max_products)} products, unlimited customers, AI tagging included.</li>
-            <li><strong className="text-carbon">Growth{perMonth(price?.GROWTH)}</strong> — {count(price?.GROWTH.max_products)} products, unlimited customers, unlimited links.</li>
-            <li><strong className="text-carbon">Pro{perMonth(price?.PRO)}</strong> — {count(price?.PRO.max_products)} products, multi-staff, campaign system, one-tap background removal.</li>
+            <li>
+              <strong className="text-carbon">Starter{perMonth(price?.STARTER)}</strong> — one shop,{' '}
+              {count(price?.STARTER.max_products)} products, unlimited customers, AI tagging
+              included.
+            </li>
+            <li>
+              <strong className="text-carbon">Growth{perMonth(price?.GROWTH)}</strong> —{' '}
+              {count(price?.GROWTH.max_products)} products, unlimited customers, unlimited links.
+            </li>
+            <li>
+              <strong className="text-carbon">Pro{perMonth(price?.PRO)}</strong> —{' '}
+              {count(price?.PRO.max_products)} products, multi-staff, campaign system, one-tap
+              background removal.
+            </li>
           </ul>
-          <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
+          <p className="mt-6 text-sm text-carbon/50">
+            14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Full details on{' '}
+            <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">
+              the pricing page
+            </a>
+            .
+          </p>
         </div>
       </Section>
 
@@ -126,7 +219,9 @@ export default async function ForRetailersPage({
                 {COMING_SOON.map((row, i) => (
                   <tr key={row.feature} className={i % 2 === 0 ? 'bg-white' : 'bg-cream'}>
                     <td className="px-5 py-4 text-carbon/70">{row.feature}</td>
-                    <td className="px-5 py-4 text-cobalt-600 font-medium whitespace-nowrap">{row.status}</td>
+                    <td className="px-5 py-4 text-cobalt-600 font-medium whitespace-nowrap">
+                      {row.status}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -143,5 +238,5 @@ export default async function ForRetailersPage({
       />
       <Footer />
     </>
-  )
+  );
 }

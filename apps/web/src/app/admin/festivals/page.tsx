@@ -1,31 +1,23 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  CalendarDays,
-  Plus,
-  X,
-  Pencil,
-  Trash2,
-  MapPin,
-  type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
-import { Sheet } from '@/components/Sheet'
+import { Sheet } from '@/components/Sheet';
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CalendarDays, type LucideIcon, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
 type Festival = {
-  id: number
-  name: string
-  region: string
-  starts_at: string
-  ends_at: string
-  created_at: string
-}
+  id: number;
+  name: string;
+  region: string;
+  starts_at: string;
+  ends_at: string;
+  created_at: string;
+};
 
 // Common regions/states for the quick-pick — admins can also type any region.
 const REGION_SUGGESTIONS = [
@@ -43,76 +35,83 @@ const REGION_SUGGESTIONS = [
   'KARNATAKA',
   'ODISHA',
   'ASSAM',
-]
+];
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
 const fmtDate = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function periodBadge(f: Festival): { label: string; cls: string } {
-  const now = Date.now()
-  const start = new Date(f.starts_at).getTime()
-  const end = new Date(f.ends_at).getTime()
-  if (now >= start && now <= end) return { label: 'Active now', cls: 'bg-green-50 text-green-600 border-green-100' }
-  if (now < start) return { label: 'Upcoming', cls: 'bg-ink-50 text-ink-600 border-ink-100' }
-  return { label: 'Past', cls: 'bg-gray-50 text-gray-400 border-gray-100' }
+  const now = Date.now();
+  const start = new Date(f.starts_at).getTime();
+  const end = new Date(f.ends_at).getTime();
+  if (now >= start && now <= end)
+    return { label: 'Active now', cls: 'bg-green-50 text-green-600 border-green-100' };
+  if (now < start) return { label: 'Upcoming', cls: 'bg-ink-50 text-ink-600 border-ink-100' };
+  return { label: 'Past', cls: 'bg-gray-50 text-gray-400 border-gray-100' };
 }
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
-}
+};
 const itemVariants = {
   hidden: { opacity: 0, y: 14 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 220, damping: 24 } },
-}
+};
 
 // ─── Main Page ────────────────────────────────────────────────────
 
 export default function FestivalsPage() {
-  const [festivals, setFestivals] = useState<Festival[] | null>(null)
-  const [error, setError] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Festival | null>(null)
+  const [festivals, setFestivals] = useState<Festival[] | null>(null);
+  const [error, setError] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Festival | null>(null);
 
   const load = async () => {
     try {
-      const res = await fetch(`${API_URL}/v1/admin/festivals`, adminGetOptions())
-      const json = await res.json()
+      const res = await fetch(`${API_URL}/v1/admin/festivals`, adminGetOptions());
+      const json = await res.json();
       if (!json?.data) {
-        setError('The API returned an error while loading festivals.')
-        return
+        setError('The API returned an error while loading festivals.');
+        return;
       }
-      setFestivals(json.data)
+      setFestivals(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load festivals')
+      setError(err instanceof Error ? err.message : 'Failed to load festivals');
     }
-  }
+  };
 
   useEffect(() => {
-    void load()
-  }, [])
+    void load();
+  }, []);
 
   const remove = async (f: Festival) => {
-    if (!window.confirm(`Delete "${f.name}"? Campaigns already created for it keep their name.`)) return
+    if (!window.confirm(`Delete "${f.name}"? Campaigns already created for it keep their name.`))
+      return;
     try {
       const res = await fetch(`${API_URL}/v1/admin/festivals/${f.id}`, {
         ...(await adminMutateOptions()),
         method: 'DELETE',
-      })
+      });
       if (!res.ok && res.status !== 204) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? `Delete failed (HTTP ${res.status})`)
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? `Delete failed (HTTP ${res.status})`);
       }
-      await load()
+      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete festival')
+      setError(err instanceof Error ? err.message : 'Failed to delete festival');
     }
-  }
+  };
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
@@ -121,14 +120,14 @@ export default function FestivalsPage() {
             <CalendarDays size={20} className="text-ink-500" />
           </div>
           <p className="text-sm text-gray-500 max-w-2xl">
-            The campaign festival calendar — add state-wise / region-wise offers with exact
-            start and end dates. Retailers see this read-only when building festival campaigns.
+            The campaign festival calendar — add state-wise / region-wise offers with exact start
+            and end dates. Retailers see this read-only when building festival campaigns.
           </p>
         </div>
         <motion.button
           onClick={() => {
-            setEditing(null)
-            setFormOpen(true)
+            setEditing(null);
+            setFormOpen(true);
           }}
           whileTap={{ scale: 0.97 }}
           className="bg-ink-600 hover:bg-ink-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 shrink-0"
@@ -169,17 +168,27 @@ export default function FestivalsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500">Festival</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Region</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Starts</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500">
+                    Festival
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Region
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Starts
+                  </th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Ends</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Status</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500">Actions</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Status
+                  </th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {festivals.map((f, i) => {
-                  const badge = periodBadge(f)
+                  const badge = periodBadge(f);
                   return (
                     <motion.tr
                       key={f.id}
@@ -202,10 +211,16 @@ export default function FestivalsPage() {
                           {f.region.replace(/_/g, ' ')}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-gray-600 tabular-nums">{fmtDate(f.starts_at)}</td>
-                      <td className="px-4 py-3.5 text-gray-600 tabular-nums">{fmtDate(f.ends_at)}</td>
+                      <td className="px-4 py-3.5 text-gray-600 tabular-nums">
+                        {fmtDate(f.starts_at)}
+                      </td>
+                      <td className="px-4 py-3.5 text-gray-600 tabular-nums">
+                        {fmtDate(f.ends_at)}
+                      </td>
                       <td className="px-4 py-3.5">
-                        <span className={`text-[10px] font-semibold rounded-full px-2.5 py-1 border ${badge.cls}`}>
+                        <span
+                          className={`text-[10px] font-semibold rounded-full px-2.5 py-1 border ${badge.cls}`}
+                        >
                           {badge.label}
                         </span>
                       </td>
@@ -213,8 +228,8 @@ export default function FestivalsPage() {
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => {
-                              setEditing(f)
-                              setFormOpen(true)
+                              setEditing(f);
+                              setFormOpen(true);
                             }}
                             className="p-2 text-gray-400 hover:text-ink-600 hover:bg-ink-50 rounded-lg transition-colors"
                             aria-label={`Edit ${f.name}`}
@@ -231,7 +246,7 @@ export default function FestivalsPage() {
                         </div>
                       </td>
                     </motion.tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
@@ -246,14 +261,14 @@ export default function FestivalsPage() {
             festival={editing}
             onClose={() => setFormOpen(false)}
             onSaved={async () => {
-              setFormOpen(false)
-              await load()
+              setFormOpen(false);
+              await load();
             }}
           />
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }
 
 // ── Add / edit modal ──────────────────────────────────────────────
@@ -263,34 +278,34 @@ function FestivalFormModal({
   onClose,
   onSaved,
 }: {
-  festival: Festival | null
-  onClose: () => void
-  onSaved: () => Promise<void>
+  festival: Festival | null;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
 }) {
-  const [name, setName] = useState(festival?.name ?? '')
-  const [region, setRegion] = useState(festival?.region ?? 'PAN_INDIA')
-  const [startsAt, setStartsAt] = useState(() => (festival ? festival.starts_at.slice(0, 10) : ''))
-  const [endsAt, setEndsAt] = useState(() => (festival ? festival.ends_at.slice(0, 10) : ''))
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [name, setName] = useState(festival?.name ?? '');
+  const [region, setRegion] = useState(festival?.region ?? 'PAN_INDIA');
+  const [startsAt, setStartsAt] = useState(() => (festival ? festival.starts_at.slice(0, 10) : ''));
+  const [endsAt, setEndsAt] = useState(() => (festival ? festival.ends_at.slice(0, 10) : ''));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const canSubmit = name.trim() && region.trim() && startsAt && endsAt && !saving
+  const canSubmit = name.trim() && region.trim() && startsAt && endsAt && !saving;
 
   const submit = async () => {
-    if (!canSubmit) return
+    if (!canSubmit) return;
     if (new Date(endsAt) <= new Date(startsAt)) {
-      setError('End date must be after the start date.')
-      return
+      setError('End date must be after the start date.');
+      return;
     }
-    setSaving(true)
-    setError('')
+    setSaving(true);
+    setError('');
     try {
       const payload = {
         name: name.trim(),
         region: region.trim().toUpperCase(),
         starts_at: `${startsAt}T00:00:00Z`,
         ends_at: `${endsAt}T23:59:59Z`,
-      }
+      };
       const res = await fetch(
         festival ? `${API_URL}/v1/admin/festivals/${festival.id}` : `${API_URL}/v1/admin/festivals`,
         {
@@ -298,17 +313,17 @@ function FestivalFormModal({
           method: festival ? 'PUT' : 'POST',
           body: JSON.stringify(payload),
         },
-      )
+      );
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? `Failed to save (HTTP ${res.status})`)
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? `Failed to save (HTTP ${res.status})`);
       }
-      await onSaved()
+      await onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save festival')
-      setSaving(false)
+      setError(err instanceof Error ? err.message : 'Failed to save festival');
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <Sheet
@@ -325,112 +340,108 @@ function FestivalFormModal({
       }}
       ariaLabel={festival ? 'Edit Festival' : 'Add Festival'}
     >
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <CalendarDays size={17} className="text-ink-500" />
-            {festival ? 'Edit Festival' : 'Add Festival'}
-          </h3>
-          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" aria-label="Close">
-            <X size={18} />
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+          <CalendarDays size={17} className="text-ink-500" />
+          {festival ? 'Edit Festival' : 'Add Festival'}
+        </h3>
+        <button
+          onClick={onClose}
+          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Festival Name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Diwali, Pongal, Wedding Season…"
+            autoFocus
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Region / State</label>
+          <input
+            value={region}
+            onChange={(e) => setRegion(e.target.value)}
+            placeholder="PAN_INDIA or a state, e.g. TAMIL_NADU"
+            list="festival-regions"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
+          />
+          <datalist id="festival-regions">
+            {REGION_SUGGESTIONS.map((r) => (
+              <option key={r} value={r} />
+            ))}
+          </datalist>
+          <p className="text-[11px] text-gray-400 mt-1">
+            {region === 'PAN_INDIA'
+              ? 'PAN_INDIA = nationwide offer. Pick a state for a regional festival.'
+              : `Regional offer for ${region.replace(/_/g, ' ')}`}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Starts</label>
+            <input
+              type="date"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Ends</label>
+            <input
+              type="date"
+              value={endsAt}
+              min={startsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl px-3 py-2.5">
+            {error}
+          </div>
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <motion.button
+            onClick={() => void submit()}
+            disabled={!canSubmit}
+            whileTap={canSubmit ? { scale: 0.98 } : undefined}
+            className="bg-ink-600 hover:bg-ink-500 flex-1 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Plus size={16} />
+                {festival ? 'Save Changes' : 'Add Festival'}
+              </>
+            )}
+          </motion.button>
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-3 rounded-xl"
+          >
+            Cancel
           </button>
         </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-              Festival Name
-            </label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Diwali, Pongal, Wedding Season…"
-              autoFocus
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-              Region / State
-            </label>
-            <input
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder="PAN_INDIA or a state, e.g. TAMIL_NADU"
-              list="festival-regions"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
-            />
-            <datalist id="festival-regions">
-              {REGION_SUGGESTIONS.map((r) => (
-                <option key={r} value={r} />
-              ))}
-            </datalist>
-            <p className="text-[11px] text-gray-400 mt-1">
-              {region === 'PAN_INDIA'
-                ? 'PAN_INDIA = nationwide offer. Pick a state for a regional festival.'
-                : `Regional offer for ${region.replace(/_/g, ' ')}`}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                Starts
-              </label>
-              <input
-                type="date"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-                Ends
-              </label>
-              <input
-                type="date"
-                value={endsAt}
-                min={startsAt}
-                onChange={(e) => setEndsAt(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl px-3 py-2.5">
-              {error}
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 pt-1">
-            <motion.button
-              onClick={() => void submit()}
-              disabled={!canSubmit}
-              whileTap={canSubmit ? { scale: 0.98 } : undefined}
-              className="bg-ink-600 hover:bg-ink-500 flex-1 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold py-3 rounded-xl shadow-lg flex items-center justify-center gap-2"
-            >
-              {saving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  <Plus size={16} />
-                  {festival ? 'Save Changes' : 'Add Festival'}
-                </>
-              )}
-            </motion.button>
-            <button
-              onClick={onClose}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-3 rounded-xl"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+      </div>
     </Sheet>
-  )
+  );
 }

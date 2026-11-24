@@ -12,9 +12,12 @@ export async function GET(
   const { collection } = await params;
   const qs = request.nextUrl.search;
 
-  const res = await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(collection)}${qs}`, {
-    next: { revalidate: 0 },
-  });
+  const res = await fetch(
+    `${apiUrl}/v1/public/collections/${encodeURIComponent(collection)}${qs}`,
+    {
+      next: { revalidate: 0 },
+    },
+  );
   const body = await res.text();
   return new NextResponse(body, {
     status: res.status,

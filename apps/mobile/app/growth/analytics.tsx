@@ -1,6 +1,5 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { router } from 'expo-router'
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
   BarChart3,
   Calendar,
@@ -12,17 +11,22 @@ import {
   TrendingUp,
   Trophy,
   Users,
-} from 'lucide-react-native'
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { growthApi, type SeasonalAnalytics, type SeasonalPeriod } from '../../src/lib/api/growth'
+} from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { type SeasonalAnalytics, type SeasonalPeriod, growthApi } from '../../src/lib/api/growth';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 // ─── Roadmap R — campaign & commerce analytics with India-retail
 // dimensions: festival, customer segment, hour-of-day, product category,
 // video-vs-photo performance, and per-A/B-variant results + significance.
 
-function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+function Section({
+  icon,
+  title,
+  children,
+}: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-2 mb-3.5">
@@ -31,7 +35,7 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
       </View>
       {children}
     </View>
-  )
+  );
 }
 
 function OpenRateRow({
@@ -40,12 +44,12 @@ function OpenRateRow({
   opened,
   barColor,
 }: {
-  label: string
-  sent: number
-  opened: number
-  barColor?: string
+  label: string;
+  sent: number;
+  opened: number;
+  barColor?: string;
 }) {
-  const rate = sent > 0 ? opened / sent : 0
+  const rate = sent > 0 ? opened / sent : 0;
   return (
     <View className="mb-3">
       <View className="flex-row items-center justify-between mb-1.5">
@@ -66,26 +70,31 @@ function OpenRateRow({
         />
       </View>
     </View>
-  )
+  );
 }
 
 // ─── Roadmap R — Seasonal Section ──────────────────────────────
 
-function SeasonalSection({ data, loading, period, onPeriodChange }: {
-  data: SeasonalAnalytics | undefined
-  loading: boolean
-  period: SeasonalPeriod
-  onPeriodChange: (p: SeasonalPeriod) => void
+function SeasonalSection({
+  data,
+  loading,
+  period,
+  onPeriodChange,
+}: {
+  data: SeasonalAnalytics | undefined;
+  loading: boolean;
+  period: SeasonalPeriod;
+  onPeriodChange: (p: SeasonalPeriod) => void;
 }) {
   return (
     <Section icon={<Calendar size={16} color="#6B4773" />} title="Seasonal comparison">
       {/* Period toggle */}
       <View className="flex-row bg-lavender-100 rounded-2xl p-1 mb-4 border border-lavender-200">
-        {([
+        {[
           { key: 'wedding' as const, label: 'Wedding Season' },
           { key: 'daily' as const, label: 'Daily Wear' },
-        ]).map((p) => {
-          const active = period === p.key
+        ].map((p) => {
+          const active = period === p.key;
           return (
             <AnimatedPressable
               key={p.key}
@@ -96,11 +105,13 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
                 active ? 'bg-spaceCadet-900 shadow-sm' : 'bg-transparent'
               }`}
             >
-              <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
+              <Text
+                className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+              >
                 {p.label}
               </Text>
             </AnimatedPressable>
-          )
+          );
         })}
       </View>
 
@@ -116,9 +127,10 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
           {data.summary.biggestSwing && (
             <View className="bg-fuchsia-500/10 rounded-2xl p-3.5 mb-3.5 border border-fuchsia-500/20">
               <Text className="text-xs font-semibold text-fuchsia-800">
-                Biggest swing: {data.summary.biggestSwing.category}{' '}
-                ({data.summary.biggestSwing.metric})
-                {' '}{data.summary.biggestSwing.deltaPct > 0 ? '+' : ''}{data.summary.biggestSwing.deltaPct}%
+                Biggest swing: {data.summary.biggestSwing.category} (
+                {data.summary.biggestSwing.metric}){' '}
+                {data.summary.biggestSwing.deltaPct > 0 ? '+' : ''}
+                {data.summary.biggestSwing.deltaPct}%
               </Text>
             </View>
           )}
@@ -139,7 +151,10 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
           {data.categories.slice(0, 8).map((cat) => (
             <View key={cat.category} className="mb-3">
               <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                <Text
+                  className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2"
+                  numberOfLines={1}
+                >
                   {cat.category}
                 </Text>
                 <View className="flex-row items-center gap-2">
@@ -148,7 +163,8 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
                   </Text>
                   {data.comparePeriod && (
                     <Text className="text-[11px] text-spaceCadet-900 font-semibold">
-                      {cat.deltaPct.opens > 0 ? '+' : ''}{cat.deltaPct.opens}%
+                      {cat.deltaPct.opens > 0 ? '+' : ''}
+                      {cat.deltaPct.opens}%
                     </Text>
                   )}
                 </View>
@@ -173,33 +189,33 @@ function SeasonalSection({ data, loading, period, onPeriodChange }: {
         </>
       )}
     </Section>
-  )
+  );
 }
 
 function Empty({ text }: { text: string }) {
-  return <Text className="text-xs text-heliotrope-500 text-center py-4 font-medium">{text}</Text>
+  return <Text className="text-xs text-heliotrope-500 text-center py-4 font-medium">{text}</Text>;
 }
 
 export default function GrowthAnalyticsScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const [seasonalPeriod, setSeasonalPeriod] = useState<SeasonalPeriod>('wedding')
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const [seasonalPeriod, setSeasonalPeriod] = useState<SeasonalPeriod>('wedding');
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'analytics'],
     queryFn: () => growthApi.analytics(),
-  })
-  const stats = data?.data
+  });
+  const stats = data?.data;
 
   const { data: seasonalData, isLoading: seasonalLoading } = useQuery({
     queryKey: ['growth', 'analytics', 'seasonal', seasonalPeriod],
     queryFn: () => growthApi.seasonal(seasonalPeriod),
-  })
-  const seasonal = seasonalData?.data
+  });
+  const seasonal = seasonalData?.data;
 
-  const maxHourOpens = stats ? Math.max(1, ...stats.by_hour.map((h) => h.opens)) : 1
+  const maxHourOpens = stats ? Math.max(1, ...stats.by_hour.map((h) => h.opens)) : 1;
   const maxCategoryTotal = stats
     ? Math.max(1, ...stats.by_category.map((c) => c.views + c.enquiries))
-    : 1
+    : 1;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -225,7 +241,9 @@ export default function GrowthAnalyticsScreen() {
             >
               Campaign Analytics
             </Text>
-            <Text className="text-xs text-heliotrope-500 font-medium">Festivals, segments, timing & A/B results</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium">
+              Festivals, segments, timing & A/B results
+            </Text>
           </View>
         </View>
       </View>
@@ -238,7 +256,9 @@ export default function GrowthAnalyticsScreen() {
         <ScrollView
           className="flex-1 px-4 pt-4"
           contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           <View className="gap-4">
             {/* Campaigns overview */}
@@ -248,7 +268,12 @@ export default function GrowthAnalyticsScreen() {
               ) : (
                 <>
                   {Object.entries(stats.by_type).map(([type, v]) => (
-                    <OpenRateRow key={type} label={type.replace(/_/g, ' ')} sent={v.sent} opened={v.opened} />
+                    <OpenRateRow
+                      key={type}
+                      label={type.replace(/_/g, ' ')}
+                      sent={v.sent}
+                      opened={v.opened}
+                    />
                   ))}
                   {Object.keys(stats.by_festival).length > 0 && (
                     <>
@@ -275,13 +300,22 @@ export default function GrowthAnalyticsScreen() {
               <Section icon={<Trophy size={16} color="#6B4773" />} title="A/B winners">
                 <View className="gap-3">
                   {stats.by_variant.map((ab) => (
-                    <View key={ab.campaign_id} className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
-                      <Text className="text-xs font-semibold text-spaceCadet-900 mb-2.5" numberOfLines={1}>
+                    <View
+                      key={ab.campaign_id}
+                      className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200"
+                    >
+                      <Text
+                        className="text-xs font-semibold text-spaceCadet-900 mb-2.5"
+                        numberOfLines={1}
+                      >
                         {ab.campaign_name}
                       </Text>
                       {ab.variants.map((v) => (
                         <View key={v.label} className="flex-row items-center justify-between py-1">
-                          <Text className="text-xs text-spaceCadet-900 font-medium flex-1 mr-2" numberOfLines={1}>
+                          <Text
+                            className="text-xs text-spaceCadet-900 font-medium flex-1 mr-2"
+                            numberOfLines={1}
+                          >
                             {v.label}
                           </Text>
                           <Text className="text-xs font-semibold text-spaceCadet-900">
@@ -316,9 +350,24 @@ export default function GrowthAnalyticsScreen() {
 
             {/* Segments */}
             <Section icon={<Users size={16} color="#6B4773" />} title="By customer segment">
-              <OpenRateRow label="VIP (spent ≥ ₹2,000)" sent={stats.by_segment.VIP?.sent ?? 0} opened={stats.by_segment.VIP?.opened ?? 0} barColor="#BB3F95" />
-              <OpenRateRow label="Regular" sent={stats.by_segment.REGULAR?.sent ?? 0} opened={stats.by_segment.REGULAR?.opened ?? 0} barColor="#231F48" />
-              <OpenRateRow label="Never purchased" sent={stats.by_segment.NEVER_PURCHASED?.sent ?? 0} opened={stats.by_segment.NEVER_PURCHASED?.opened ?? 0} barColor="#560A39" />
+              <OpenRateRow
+                label="VIP (spent ≥ ₹2,000)"
+                sent={stats.by_segment.VIP?.sent ?? 0}
+                opened={stats.by_segment.VIP?.opened ?? 0}
+                barColor="#BB3F95"
+              />
+              <OpenRateRow
+                label="Regular"
+                sent={stats.by_segment.REGULAR?.sent ?? 0}
+                opened={stats.by_segment.REGULAR?.opened ?? 0}
+                barColor="#231F48"
+              />
+              <OpenRateRow
+                label="Never purchased"
+                sent={stats.by_segment.NEVER_PURCHASED?.sent ?? 0}
+                opened={stats.by_segment.NEVER_PURCHASED?.opened ?? 0}
+                barColor="#560A39"
+              />
             </Section>
 
             {/* Hour of day */}
@@ -336,7 +385,9 @@ export default function GrowthAnalyticsScreen() {
                           backgroundColor: '#BB3F95',
                         }}
                       />
-                      <Text className="text-[11px] font-semibold text-heliotrope-500 mt-1">{h.hour}:00</Text>
+                      <Text className="text-[11px] font-semibold text-heliotrope-500 mt-1">
+                        {h.hour}:00
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -344,14 +395,20 @@ export default function GrowthAnalyticsScreen() {
             </Section>
 
             {/* Categories */}
-            <Section icon={<BarChart3 size={16} color="#6B4773" />} title="Categories · last 30 days">
+            <Section
+              icon={<BarChart3 size={16} color="#6B4773" />}
+              title="Categories · last 30 days"
+            >
               {stats.by_category.length === 0 ? (
                 <Empty text="No views or enquiries in the last 30 days." />
               ) : (
                 stats.by_category.slice(0, 6).map((c) => (
                   <View key={c.category} className="mb-3">
                     <View className="flex-row items-center justify-between mb-1.5">
-                      <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                      <Text
+                        className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2"
+                        numberOfLines={1}
+                      >
                         {c.category}
                       </Text>
                       <Text className="text-[11px] text-heliotrope-500 font-medium">
@@ -373,7 +430,10 @@ export default function GrowthAnalyticsScreen() {
             </Section>
 
             {/* Video vs photo */}
-            <Section icon={<Film size={16} color="#6B4773" />} title="Video vs photo · last 30 days">
+            <Section
+              icon={<Film size={16} color="#6B4773" />}
+              title="Video vs photo · last 30 days"
+            >
               <View className="flex-row gap-3">
                 <View className="flex-1 bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
                   <View className="flex-row items-center gap-1.5 mb-1.5">
@@ -381,7 +441,11 @@ export default function GrowthAnalyticsScreen() {
                     <Text className="text-xs font-semibold text-spaceCadet-900">With video</Text>
                   </View>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                    style={{
+                      fontFamily: 'Marcellus_400Regular',
+                      letterSpacing: 0.32,
+                      fontWeight: '800',
+                    }}
                     className="text-xl text-spaceCadet-900"
                   >
                     {stats.video_vs_photo.video.enquiries}
@@ -397,7 +461,11 @@ export default function GrowthAnalyticsScreen() {
                     <Text className="text-xs font-semibold text-spaceCadet-900">Photo only</Text>
                   </View>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                    style={{
+                      fontFamily: 'Marcellus_400Regular',
+                      letterSpacing: 0.32,
+                      fontWeight: '800',
+                    }}
                     className="text-xl text-spaceCadet-900"
                   >
                     {stats.video_vs_photo.photo.enquiries}
@@ -409,8 +477,8 @@ export default function GrowthAnalyticsScreen() {
                 </View>
               </View>
               <Text className="text-[11px] text-heliotrope-500 mt-2.5 font-medium">
-                Products with a video clip vs without — a quick read on whether video is pulling
-                its weight.
+                Products with a video clip vs without — a quick read on whether video is pulling its
+                weight.
               </Text>
             </Section>
 
@@ -432,5 +500,5 @@ export default function GrowthAnalyticsScreen() {
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

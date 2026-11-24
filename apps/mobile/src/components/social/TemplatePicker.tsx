@@ -1,14 +1,14 @@
-import { useState } from 'react'
-import { ScrollView, Text, View } from 'react-native'
-import { CheckCircle2, Sparkles } from 'lucide-react-native'
-import type { PostTemplateInfo } from '../../lib/api/social'
-import { AnimatedPressable } from '../AnimatedPressable'
+import { CheckCircle2, Sparkles } from 'lucide-react-native';
+import { useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
+import type { PostTemplateInfo } from '../../lib/api/social';
+import { AnimatedPressable } from '../AnimatedPressable';
 
 interface TemplatePickerProps {
-  templates: PostTemplateInfo[]
-  selectedId: string | null
-  onSelect: (template: PostTemplateInfo | null) => void
-  colors: any
+  templates: PostTemplateInfo[];
+  selectedId: string | null;
+  onSelect: (template: PostTemplateInfo | null) => void;
+  colors: any;
 }
 
 /**
@@ -20,14 +20,11 @@ interface TemplatePickerProps {
 export function TemplatePicker({ templates, selectedId, onSelect, colors }: TemplatePickerProps) {
   const occasions = [
     'All',
-    ...new Set(
-      templates
-        .map((t) => t.occasion?.trim())
-        .filter((o): o is string => Boolean(o)),
-    ),
-  ]
-  const [occasion, setOccasion] = useState<string>('All')
-  const filtered = occasion === 'All' ? templates : templates.filter((t) => t.occasion === occasion)
+    ...new Set(templates.map((t) => t.occasion?.trim()).filter((o): o is string => Boolean(o))),
+  ];
+  const [occasion, setOccasion] = useState<string>('All');
+  const filtered =
+    occasion === 'All' ? templates : templates.filter((t) => t.occasion === occasion);
 
   return (
     <View>
@@ -35,7 +32,7 @@ export function TemplatePicker({ templates, selectedId, onSelect, colors }: Temp
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2.5">
           <View className="flex-row gap-2 px-0.5 py-0.5">
             {occasions.map((o) => {
-              const active = occasion === o
+              const active = occasion === o;
               return (
                 <AnimatedPressable
                   key={o}
@@ -52,7 +49,7 @@ export function TemplatePicker({ templates, selectedId, onSelect, colors }: Temp
                     {o}
                   </Text>
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </ScrollView>
@@ -69,7 +66,7 @@ export function TemplatePicker({ templates, selectedId, onSelect, colors }: Temp
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View className="flex-row gap-2.5 pb-1">
             {filtered.map((t) => {
-              const selected = selectedId === t.id
+              const selected = selectedId === t.id;
               return (
                 <AnimatedPressable
                   key={t.id}
@@ -97,7 +94,9 @@ export function TemplatePicker({ templates, selectedId, onSelect, colors }: Temp
                   <View className="flex-row gap-1.5 mt-2">
                     {t.occasion ? (
                       <View className="bg-fuchsia-50 rounded-full px-2 py-0.5">
-                        <Text className="text-[11px] font-semibold text-fuchsia-700">{t.occasion}</Text>
+                        <Text className="text-[11px] font-semibold text-fuchsia-700">
+                          {t.occasion}
+                        </Text>
                       </View>
                     ) : null}
                     {t.post_type ? (
@@ -109,11 +108,11 @@ export function TemplatePicker({ templates, selectedId, onSelect, colors }: Temp
                     ) : null}
                   </View>
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

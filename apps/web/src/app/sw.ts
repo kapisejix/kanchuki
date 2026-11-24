@@ -183,7 +183,8 @@ sw.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const raw = (event.notification.data as { url?: unknown } | null)?.url;
   // Same-origin paths only: a push must never open an arbitrary site.
-  const url = typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/my-stores';
+  const url =
+    typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/my-stores';
   event.waitUntil(
     sw.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
       const open = wins.find((w) => new URL(w.url).pathname === url);

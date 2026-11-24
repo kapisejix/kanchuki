@@ -1,53 +1,53 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { safeHttpUrl } from '@/lib/safe-url'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { safeHttpUrl } from '@/lib/safe-url';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  RefreshCw,
-  Store,
-  ShoppingBag,
-  Package,
   AlertTriangle,
   ExternalLink,
   Link2,
-  X,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+  Package,
+  RefreshCw,
+  ShoppingBag,
+  Store,
+  X,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
 type ChannelSync = {
-  id: string
-  retailer_id: string
-  channel: string
-  status: string
-  last_synced_at: string | null
-  last_sync_error: string | null
-  products_synced: number
-  orders_synced: number
-  channel_shop_id: string | null
-  channel_shop_url: string | null
-  is_active: boolean
-  created_at: string
-  retailer: { id: string; shop_name: string; phone: string }
-}
+  id: string;
+  retailer_id: string;
+  channel: string;
+  status: string;
+  last_synced_at: string | null;
+  last_sync_error: string | null;
+  products_synced: number;
+  orders_synced: number;
+  channel_shop_id: string | null;
+  channel_shop_url: string | null;
+  is_active: boolean;
+  created_at: string;
+  retailer: { id: string; shop_name: string; phone: string };
+};
 
 type AggregatorStats = {
-  total_connections: number
-  active_connections: number
-  sync_errors: number
-  retailers_with_channels: number
+  total_connections: number;
+  active_connections: number;
+  sync_errors: number;
+  retailers_with_channels: number;
   by_channel: {
-    channel: string
-    count: number
-    total_products: number
-    total_orders: number
-  }[]
-}
+    channel: string;
+    count: number;
+    total_products: number;
+    total_orders: number;
+  }[];
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   FLIPKART: 'Flipkart',
   AMAZON: 'Amazon',
   OTHER: 'Other',
-}
+};
 
 const CHANNEL_EMOJI: Record<string, string> = {
   MEESHO: '🛍️',
@@ -69,7 +69,7 @@ const CHANNEL_EMOJI: Record<string, string> = {
   FLIPKART: '🛒',
   AMAZON: '📦',
   OTHER: '🔗',
-}
+};
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   CONNECTED: { bg: 'bg-green-50 border-green-100', text: 'text-green-600' },
@@ -78,52 +78,63 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   DISCONNECTED: { bg: 'bg-gray-50 border-gray-100', text: 'text-gray-400' },
   CONNECTING: { bg: 'bg-amber-50 border-amber-100', text: 'text-amber-600' },
   SUSPENDED: { bg: 'bg-orange-50 border-orange-100', text: 'text-orange-600' },
-}
+};
 
 const fmtDate = (iso: string | null) =>
   iso
-    ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '—'
+    ? new Date(iso).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—';
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
-}
+};
 const itemVariants = {
   hidden: { opacity: 0, y: 14 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 220, damping: 24 } },
-}
+};
 
 // ─── Main Page ────────────────────────────────────────────────────
 
 export default function AggregatorsPage() {
-  const [syncs, setSyncs] = useState<ChannelSync[] | null>(null)
-  const [stats, setStats] = useState<AggregatorStats | null>(null)
-  const [error, setError] = useState('')
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [selected, setSelected] = useState<ChannelSync | null>(null)
+  const [syncs, setSyncs] = useState<ChannelSync[] | null>(null);
+  const [stats, setStats] = useState<AggregatorStats | null>(null);
+  const [error, setError] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selected, setSelected] = useState<ChannelSync | null>(null);
 
   const load = async () => {
     try {
       const [syncsRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/v1/admin/aggregators`, adminGetOptions()),
         fetch(`${API_URL}/v1/admin/aggregators/stats`, adminGetOptions()),
-      ])
-      const syncsJson = await syncsRes.json()
-      const statsJson = await statsRes.json()
-      if (syncsJson?.data) setSyncs(syncsJson.data)
-      if (statsJson?.data) setStats(statsJson.data)
+      ]);
+      const syncsJson = await syncsRes.json();
+      const statsJson = await statsRes.json();
+      if (syncsJson?.data) setSyncs(syncsJson.data);
+      if (statsJson?.data) setStats(statsJson.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load aggregator data')
+      setError(err instanceof Error ? err.message : 'Failed to load aggregator data');
     }
-  }
+  };
 
   useEffect(() => {
-    void load()
-  }, [])
+    void load();
+  }, []);
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
@@ -132,8 +143,8 @@ export default function AggregatorsPage() {
             <RefreshCw size={20} className="text-indigo-500" />
           </div>
           <p className="text-sm text-gray-500 max-w-2xl">
-            Monitor retailer connections to external marketplaces (Meesho, Instamojo, etc.).
-            Track product sync health, order aggregation, and channel-specific stats.
+            Monitor retailer connections to external marketplaces (Meesho, Instamojo, etc.). Track
+            product sync health, order aggregation, and channel-specific stats.
           </p>
         </div>
       </motion.div>
@@ -150,25 +161,40 @@ export default function AggregatorsPage() {
       {/* Stats cards */}
       {stats && (
         <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard icon={Link2} label="Total Connections" value={String(stats.total_connections)} color="indigo" />
-          <StatsCard icon={Store} label="Active" value={String(stats.active_connections)} color="green" />
-          <StatsCard icon={AlertTriangle} label="Errors" value={String(stats.sync_errors)} color="red" />
-          <StatsCard icon={ShoppingBag} label="Retailers" value={String(stats.retailers_with_channels)} color="blue" />
+          <StatsCard
+            icon={Link2}
+            label="Total Connections"
+            value={String(stats.total_connections)}
+            color="indigo"
+          />
+          <StatsCard
+            icon={Store}
+            label="Active"
+            value={String(stats.active_connections)}
+            color="green"
+          />
+          <StatsCard
+            icon={AlertTriangle}
+            label="Errors"
+            value={String(stats.sync_errors)}
+            color="red"
+          />
+          <StatsCard
+            icon={ShoppingBag}
+            label="Retailers"
+            value={String(stats.retailers_with_channels)}
+            color="blue"
+          />
         </motion.div>
       )}
 
       {/* Channel breakdown */}
       {stats && stats.by_channel.length > 0 && (
         <motion.div variants={itemVariants}>
-          <h2 className="text-xs font-semibold text-gray-500 mb-2.5">
-            By Marketplace
-          </h2>
+          <h2 className="text-xs font-semibold text-gray-500 mb-2.5">By Marketplace</h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {stats.by_channel.map((ch) => (
-              <div
-                key={ch.channel}
-                className="bg-white rounded-2xl border border-gray-200/80 p-4"
-              >
+              <div key={ch.channel} className="bg-white rounded-2xl border border-gray-200/80 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg">{CHANNEL_EMOJI[ch.channel] ?? '🔗'}</span>
                   <span className="text-sm font-semibold text-gray-900">
@@ -217,18 +243,32 @@ export default function AggregatorsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500">Retailer</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Channel</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Products</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Orders</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">Last Sync</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500">Actions</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500">
+                    Retailer
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Channel
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Status
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Products
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Orders
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500">
+                    Last Sync
+                  </th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {syncs.map((s, i) => {
-                  const sc = STATUS_COLORS[s.status] ?? STATUS_COLORS.DISCONNECTED
+                  const sc = STATUS_COLORS[s.status] ?? STATUS_COLORS.DISCONNECTED;
                   return (
                     <motion.tr
                       key={s.id}
@@ -243,7 +283,9 @@ export default function AggregatorsPage() {
                             <Store size={16} className="text-indigo-500" />
                           </div>
                           <div>
-                            <span className="font-semibold text-gray-900">{s.retailer.shop_name}</span>
+                            <span className="font-semibold text-gray-900">
+                              {s.retailer.shop_name}
+                            </span>
                             <p className="text-xs text-gray-400">{s.retailer.phone}</p>
                           </div>
                         </div>
@@ -255,13 +297,21 @@ export default function AggregatorsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`inline-flex items-center text-[10px] font-semibold uppercase rounded-full px-2.5 py-1 border ${sc.bg} ${sc.text}`}>
+                        <span
+                          className={`inline-flex items-center text-[10px] font-semibold uppercase rounded-full px-2.5 py-1 border ${sc.bg} ${sc.text}`}
+                        >
                           {s.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 font-semibold text-gray-900">{s.products_synced.toLocaleString()}</td>
-                      <td className="px-4 py-3.5 font-semibold text-gray-900">{s.orders_synced.toLocaleString()}</td>
-                      <td className="px-4 py-3.5 text-gray-500 text-xs">{fmtDate(s.last_synced_at)}</td>
+                      <td className="px-4 py-3.5 font-semibold text-gray-900">
+                        {s.products_synced.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3.5 font-semibold text-gray-900">
+                        {s.orders_synced.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3.5 text-gray-500 text-xs">
+                        {fmtDate(s.last_synced_at)}
+                      </td>
                       <td className="px-6 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           {safeHttpUrl(s.channel_shop_url) && (
@@ -277,8 +327,8 @@ export default function AggregatorsPage() {
                           )}
                           <button
                             onClick={() => {
-                              setSelected(s)
-                              setDetailOpen(true)
+                              setSelected(s);
+                              setDetailOpen(true);
                             }}
                             className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                             aria-label="View details"
@@ -288,7 +338,7 @@ export default function AggregatorsPage() {
                         </div>
                       </td>
                     </motion.tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
@@ -303,7 +353,7 @@ export default function AggregatorsPage() {
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }
 
 // ── Stats card ─────────────────────────────────────────────────────
@@ -314,18 +364,18 @@ function StatsCard({
   value,
   color,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string
-  color: 'indigo' | 'green' | 'red' | 'blue'
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  color: 'indigo' | 'green' | 'red' | 'blue';
 }) {
   const colorMap = {
     indigo: { bg: 'bg-indigo-50 border-indigo-100', icon: 'text-indigo-500' },
     green: { bg: 'bg-green-50 border-green-100', icon: 'text-green-500' },
     red: { bg: 'bg-red-50 border-red-100', icon: 'text-red-500' },
     blue: { bg: 'bg-blue-50 border-blue-100', icon: 'text-blue-500' },
-  }
-  const c = colorMap[color]
+  };
+  const c = colorMap[color];
   return (
     <motion.div
       variants={itemVariants}
@@ -339,13 +389,13 @@ function StatsCard({
       </div>
       <p className="text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
     </motion.div>
-  )
+  );
 }
 
 // ── Detail modal ───────────────────────────────────────────────────
 
 function DetailModal({ sync, onClose }: { sync: ChannelSync; onClose: () => void }) {
-  const sc = STATUS_COLORS[sync.status] ?? STATUS_COLORS.DISCONNECTED
+  const sc = STATUS_COLORS[sync.status] ?? STATUS_COLORS.DISCONNECTED;
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -367,25 +417,66 @@ function DetailModal({ sync, onClose }: { sync: ChannelSync; onClose: () => void
             <span>{CHANNEL_EMOJI[sync.channel] ?? '🔗'}</span>
             {CHANNEL_LABELS[sync.channel] ?? sync.channel} Connection
           </h3>
-          <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+            aria-label="Close"
+          >
             <X size={18} />
           </button>
         </div>
 
         <div className="space-y-3">
-          <DetailRow label="Retailer" value={`${sync.retailer.shop_name} (${sync.retailer.phone})`} />
-          <DetailRow label="Status" value={<span className={`inline-flex items-center text-[10px] font-semibold uppercase rounded-full px-2.5 py-1 border ${sc.bg} ${sc.text}`}>{sync.status}</span>} />
+          <DetailRow
+            label="Retailer"
+            value={`${sync.retailer.shop_name} (${sync.retailer.phone})`}
+          />
+          <DetailRow
+            label="Status"
+            value={
+              <span
+                className={`inline-flex items-center text-[10px] font-semibold uppercase rounded-full px-2.5 py-1 border ${sc.bg} ${sc.text}`}
+              >
+                {sync.status}
+              </span>
+            }
+          />
           <DetailRow label="Shop ID" value={sync.channel_shop_id ?? '—'} />
-          <DetailRow label="Shop URL" value={safeHttpUrl(sync.channel_shop_url) ? <a href={safeHttpUrl(sync.channel_shop_url)} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:underline">{sync.channel_shop_url}</a> : '—'} />
+          <DetailRow
+            label="Shop URL"
+            value={
+              safeHttpUrl(sync.channel_shop_url) ? (
+                <a
+                  href={safeHttpUrl(sync.channel_shop_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-500 hover:underline"
+                >
+                  {sync.channel_shop_url}
+                </a>
+              ) : (
+                '—'
+              )
+            }
+          />
           <DetailRow label="Products Synced" value={String(sync.products_synced)} />
           <DetailRow label="Orders Synced" value={String(sync.orders_synced)} />
           <DetailRow label="Last Sync" value={fmtDate(sync.last_synced_at)} />
-          <DetailRow label="Error" value={sync.last_sync_error ? <span className="text-red-500">{sync.last_sync_error}</span> : '—'} />
+          <DetailRow
+            label="Error"
+            value={
+              sync.last_sync_error ? (
+                <span className="text-red-500">{sync.last_sync_error}</span>
+              ) : (
+                '—'
+              )
+            }
+          />
           <DetailRow label="Connected Since" value={fmtDate(sync.created_at)} />
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -394,5 +485,5 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
       <span className="text-xs font-semibold text-gray-500 uppercase">{label}</span>
       <span className="text-sm text-gray-900 text-right max-w-[60%]">{value}</span>
     </div>
-  )
+  );
 }

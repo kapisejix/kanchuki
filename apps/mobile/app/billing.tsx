@@ -5,9 +5,9 @@ import { ChevronLeft, CreditCard, Mail } from 'lucide-react-native';
 // Plans & Billing — read-only (Play Payments policy): no prices, purchase path,
 // or pointer to outside payment. Do not add any without Play Billing.
 import { Linking, ScrollView, Text, View } from 'react-native';
-import { useScreenInsets } from '../src/lib/safe-area';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { retailerApi } from '../src/lib/api';
+import { useScreenInsets } from '../src/lib/safe-area';
 
 const SUPPORT_EMAIL = 'support@kanchuki.app';
 
@@ -91,7 +91,6 @@ export default function BillingScreen() {
             </Text>
           </AnimatedPressable>
         </View>
-
       </ScrollView>
     </View>
   );

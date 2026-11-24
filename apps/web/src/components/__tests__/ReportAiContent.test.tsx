@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ReportAiContent } from '../ReportAiContent';
 
 function stubFetch(status = 201) {
-  const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}', { status }));
+  const fetchMock = vi.fn(
+    async (_url: string, _init?: RequestInit) => new Response('{}', { status }),
+  );
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
@@ -17,7 +19,9 @@ describe('ReportAiContent', () => {
     const f = stubFetch();
     render(<ReportAiContent feature="AI Stylist" contentRef="demo-store" />);
     fireEvent.click(screen.getByRole('button', { name: /report this ai content/i }));
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'It showed something offensive' } });
+    fireEvent.change(screen.getByRole('textbox'), {
+      target: { value: 'It showed something offensive' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /send report/i }));
     await waitFor(() => expect(screen.getByRole('status')).toBeTruthy());
     const [url, init] = f.mock.calls[0] as [string, RequestInit];

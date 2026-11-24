@@ -1,17 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react-native'
-import React from 'react'
-import { View, Text } from 'react-native'
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ── Mock react-query ──────────────────────────────────────────────
 
-const mockUseQuery = vi.fn()
+const mockUseQuery = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useMutation: () => ({ mutate: vi.fn(), isPending: false }),
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
-}))
+}));
 
 // ── Mock the API module ────────────────────────────────────────────
 
@@ -21,7 +21,7 @@ vi.mock('../../src/lib/api', () => ({
     search: vi.fn(),
     updateStatus: vi.fn(),
   },
-}))
+}));
 
 // ── Simple mock CatalogScreen ─────────────────────────────────────
 // Avoids loading the real catalog.tsx (esbuild OOM on its dep tree).
@@ -29,30 +29,41 @@ vi.mock('../../src/lib/api', () => ({
 
 function CatalogScreen() {
   // Safety check: if useQuery isn't available (e.g. not mocked yet), render nothing
-  const query = typeof mockUseQuery === 'function' ? mockUseQuery('products') : { data: undefined, isLoading: false }
-  const { data, isLoading } = query || { data: undefined, isLoading: false }
+  const query =
+    typeof mockUseQuery === 'function'
+      ? mockUseQuery('products')
+      : { data: undefined, isLoading: false };
+  const { data, isLoading } = query || { data: undefined, isLoading: false };
 
   if (isLoading) {
-    return React.createElement(View, { testID: 'loading' },
+    return React.createElement(
+      View,
+      { testID: 'loading' },
       React.createElement(Text, null, 'Loading...'),
-    )
+    );
   }
 
-  const products = data?.data ?? []
+  const products = data?.data ?? [];
   if (products.length === 0) {
-    return React.createElement(View, { testID: 'empty' },
+    return React.createElement(
+      View,
+      { testID: 'empty' },
       React.createElement(Text, null, 'No products found'),
-    )
+    );
   }
 
-  return React.createElement(View, { testID: 'product-grid' },
+  return React.createElement(
+    View,
+    { testID: 'product-grid' },
     ...products.map((p: { id: string; category?: string; status?: string }) =>
-      React.createElement(View, { key: p.id, testID: `product-${p.id}` },
+      React.createElement(
+        View,
+        { key: p.id, testID: `product-${p.id}` },
         React.createElement(Text, null, p.category ?? 'Unknown'),
         React.createElement(Text, null, p.status ?? 'AVAILABLE'),
       ),
     ),
-  )
+  );
 }
 
 // ── Sample products for testing ───────────────────────────────────
@@ -94,7 +105,7 @@ const sampleProducts = [
     location_notes: null,
     ai_tagged: false,
   },
-]
+];
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -102,51 +113,51 @@ function mockProducts(products = sampleProducts) {
   mockUseQuery.mockReturnValue({
     data: { data: products, pagination: { cursor: null, has_more: false } },
     isLoading: false,
-  })
+  });
 }
 
 function mockLoading() {
   mockUseQuery.mockReturnValue({
     data: undefined,
     isLoading: true,
-  })
+  });
 }
 
 function mockEmpty() {
   mockUseQuery.mockReturnValue({
     data: { data: [], pagination: { cursor: null, has_more: false } },
     isLoading: false,
-  })
+  });
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
-})
+  vi.clearAllMocks();
+});
 
 // ── Tests ──────────────────────────────────────────────────────────
 
 describe('CatalogScreen', () => {
   it('renders loading spinner while fetching', () => {
-    mockLoading()
+    mockLoading();
     // JSX rather than React.createElement: render()'s ReactElement type resolves
     // a React 18 @types/react copy (via @types/react-dom@18) while createElement
     // returns React 19's FunctionComponentElement — a known mixed-types mismatch.
     // JSX.Element (<T = any>) bridges the two type universes cleanly.
-    const tree = render(<CatalogScreen />)
-    expect(tree.toJSON()).toMatchSnapshot('loading-state')
-  })
+    const tree = render(<CatalogScreen />);
+    expect(tree.toJSON()).toMatchSnapshot('loading-state');
+  });
 
   it('renders empty state when no products', () => {
-    mockEmpty()
-    const tree = render(<CatalogScreen />)
-    expect(tree.toJSON()).toMatchSnapshot('empty-state')
-  })
+    mockEmpty();
+    const tree = render(<CatalogScreen />);
+    expect(tree.toJSON()).toMatchSnapshot('empty-state');
+  });
 
   it('renders product grid with items', () => {
-    mockProducts()
-    const tree = render(<CatalogScreen />)
-    expect(tree.toJSON()).toMatchSnapshot('product-grid')
-  })
+    mockProducts();
+    const tree = render(<CatalogScreen />);
+    expect(tree.toJSON()).toMatchSnapshot('product-grid');
+  });
 
   it('renders mixed products: available, sold, untagged', () => {
     mockProducts([
@@ -198,8 +209,8 @@ describe('CatalogScreen', () => {
         location_notes: null,
         ai_tagged: true,
       },
-    ])
-    const tree = render(<CatalogScreen />)
-    expect(tree.toJSON()).toMatchSnapshot('mixed-products')
-  })
-})
+    ]);
+    const tree = render(<CatalogScreen />);
+    expect(tree.toJSON()).toMatchSnapshot('mixed-products');
+  });
+});

@@ -1,36 +1,36 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Sheet } from '@/components/Sheet'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
-import dynamic from 'next/dynamic'
+import { Sheet } from '@/components/Sheet';
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Play,
-  Bookmark,
-  History,
-  Database,
-  Loader2,
   AlertCircle,
+  Bookmark,
+  Check,
+  Database,
+  History,
+  Loader2,
+  Play,
+  RotateCcw,
   Terminal,
   X,
-  Check,
-  RotateCcw,
-} from 'lucide-react'
+} from 'lucide-react';
+import dynamic from 'next/dynamic';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-import { SchemaBrowser } from './components/SchemaBrowser'
-import { QueryResultsTable } from './components/QueryResultsTable'
-import { QueryHistory } from './components/QueryHistory'
-import { SavedQueries } from './components/SavedQueries'
+import { QueryHistory } from './components/QueryHistory';
+import { QueryResultsTable } from './components/QueryResultsTable';
+import { SavedQueries } from './components/SavedQueries';
+import { SchemaBrowser } from './components/SchemaBrowser';
 import type {
-  QueryResult,
   HistoryEntry,
+  QueryResult,
   SavedQuery,
   SchemaInfo,
   SchemaResponse,
-} from './components/types'
+} from './components/types';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -39,27 +39,27 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
       <Loader2 size={20} className="text-gray-500 animate-spin" />
     </div>
   ),
-})
+});
 
 function downloadCsv(columns: string[], rows: Record<string, unknown>[], filename: string) {
-  const header = columns.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')
+  const header = columns.map((c) => `"${c.replace(/"/g, '""')}"`).join(',');
   const data = rows.map((row) =>
     columns
       .map((col) => {
-        const val = row[col]
-        if (val === null || val === undefined) return ''
-        return `"${String(val).replace(/"/g, '""')}"`
+        const val = row[col];
+        if (val === null || val === undefined) return '';
+        return `"${String(val).replace(/"/g, '""')}"`;
       })
       .join(','),
-  )
-  const csv = [header, ...data].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
+  );
+  const csv = [header, ...data].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 const SAMPLE_QUERIES = [
@@ -83,7 +83,7 @@ const SAMPLE_QUERIES = [
     query:
       'SELECT r.shop_name, r.city, r.plan, COUNT(p.id) AS product_count FROM retailers r JOIN products p ON p.retailer_id = r.id AND p.deleted_at IS NULL WHERE r.deleted_at IS NULL GROUP BY r.id, r.shop_name, r.city, r.plan ORDER BY product_count DESC LIMIT 10;',
   },
-]
+];
 
 export default function DatabaseQueryPage() {
   const [sql, setSql] = useState(`-- Write your SQL query here
@@ -91,57 +91,57 @@ SELECT table_name, table_schema
 FROM information_schema.tables
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
 ORDER BY table_name
-LIMIT 20;`)
-  const [result, setResult] = useState<QueryResult | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [isValid, setIsValid] = useState(true)
-  const [validationMsg, setValidationMsg] = useState('')
+LIMIT 20;`);
+  const [result, setResult] = useState<QueryResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isValid, setIsValid] = useState(true);
+  const [validationMsg, setValidationMsg] = useState('');
 
   // Drawers
-  const [history, setHistory] = useState<HistoryEntry[]>([])
-  const [showHistory, setShowHistory] = useState(false)
-  const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([])
-  const [showSaved, setShowSaved] = useState(false)
-  const [showSaveDialog, setShowSaveDialog] = useState(false)
-  const [saveQueryName, setSaveQueryName] = useState('')
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
+  const [showSaved, setShowSaved] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveQueryName, setSaveQueryName] = useState('');
 
   // Schema state
-  const [schema, setSchema] = useState<SchemaInfo[] | null>(null)
+  const [schema, setSchema] = useState<SchemaInfo[] | null>(null);
   const [schemaSummary, setSchemaSummary] = useState<{
-    total_tables: number
-    total_columns: number
-  } | null>(null)
-  const [showSchema, setShowSchema] = useState(false)
-  const [schemaLoading, setSchemaLoading] = useState(false)
-  const [schemaError, setSchemaError] = useState('')
-  const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set())
-  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set())
+    total_tables: number;
+    total_columns: number;
+  } | null>(null);
+  const [showSchema, setShowSchema] = useState(false);
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState('');
+  const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set());
+  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
 
-  const resultRef = useRef<HTMLDivElement>(null)
-  const runQueryRef = useRef<() => void>(() => {})
+  const resultRef = useRef<HTMLDivElement>(null);
+  const runQueryRef = useRef<() => void>(() => {});
 
   // Load audit history and saved queries on mount
   useEffect(() => {
-    ;(async () => {
+    (async () => {
       try {
         const res = await fetch(
           `${API_URL}/v1/admin/audit-logs?resource_type=DatabaseQuery&limit=50`,
           adminGetOptions(),
-        )
-        if (!res.ok) return
+        );
+        if (!res.ok) return;
         const json = (await res.json()) as {
           data: Array<{
-            action: string
-            created_at: string
+            action: string;
+            created_at: string;
             metadata: {
-              query_preview?: string
-              row_count?: number
-              execution_time_ms?: number
-              error?: string
-            } | null
-          }>
-        }
+              query_preview?: string;
+              row_count?: number;
+              execution_time_ms?: number;
+              error?: string;
+            } | null;
+          }>;
+        };
         setHistory(
           json.data.map((row) => ({
             query: row.metadata?.query_preview ?? '',
@@ -149,77 +149,75 @@ LIMIT 20;`)
             execution_time_ms: row.metadata?.execution_time_ms,
             row_count: row.metadata?.row_count,
             error:
-              row.action === 'QUERY_ERROR'
-                ? row.metadata?.error ?? 'Query failed'
-                : undefined,
+              row.action === 'QUERY_ERROR' ? (row.metadata?.error ?? 'Query failed') : undefined,
           })),
-        )
+        );
       } catch {
         // Fallback
       }
-    })()
+    })();
 
     try {
-      const saved = localStorage.getItem('admin_saved_queries')
-      if (saved) setSavedQueries(JSON.parse(saved) as SavedQuery[])
+      const saved = localStorage.getItem('admin_saved_queries');
+      if (saved) setSavedQueries(JSON.parse(saved) as SavedQuery[]);
     } catch {
       // Ignore
     }
-  }, [])
+  }, []);
 
   const fetchSchema = useCallback(
     async (force = false) => {
-      if (schema !== null && !force) return
-      setSchemaLoading(true)
-      setSchemaError('')
-      if (force) setSchema(null)
+      if (schema !== null && !force) return;
+      setSchemaLoading(true);
+      setSchemaError('');
+      if (force) setSchema(null);
       try {
-        const res = await fetch(`${API_URL}/v1/admin/schema`, adminGetOptions())
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
-        const json = (await res.json()) as SchemaResponse
-        setSchema(json.data.schemas)
-        setSchemaSummary(json.data.summary)
+        const res = await fetch(`${API_URL}/v1/admin/schema`, adminGetOptions());
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const json = (await res.json()) as SchemaResponse;
+        setSchema(json.data.schemas);
+        setSchemaSummary(json.data.summary);
         if (json.data.schemas.length > 0) {
-          setExpandedSchemas(new Set([json.data.schemas[0].schema_name]))
+          setExpandedSchemas(new Set([json.data.schemas[0].schema_name]));
         }
       } catch (err) {
-        setSchemaError(err instanceof Error ? err.message : 'Failed to load schema')
+        setSchemaError(err instanceof Error ? err.message : 'Failed to load schema');
       } finally {
-        setSchemaLoading(false)
+        setSchemaLoading(false);
       }
     },
     [schema],
-  )
+  );
 
   const saveHistory = useCallback((entry: HistoryEntry) => {
-    setHistory((prev) => [entry, ...prev].slice(0, 50))
-  }, [])
+    setHistory((prev) => [entry, ...prev].slice(0, 50));
+  }, []);
 
   const validateSql = useCallback((value: string | undefined) => {
-    const trimmed = (value ?? '').trim()
+    const trimmed = (value ?? '').trim();
     if (!trimmed) {
-      setIsValid(false)
-      setValidationMsg('Query is empty')
-      return
+      setIsValid(false);
+      setValidationMsg('Query is empty');
+      return;
     }
-    const stripped = trimmed.replace(/^\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/)*\s*/m, '').trim()
-    const firstWord = stripped.split(/[\s(]/)[0]?.toUpperCase() ?? ''
+    const stripped = trimmed.replace(/^\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/)*\s*/m, '').trim();
+    const firstWord = stripped.split(/[\s(]/)[0]?.toUpperCase() ?? '';
     if (!['SELECT', 'EXPLAIN', 'WITH'].includes(firstWord)) {
-      setIsValid(false)
-      setValidationMsg(`Only SELECT, EXPLAIN, and WITH are allowed (got "${firstWord}")`)
-      return
+      setIsValid(false);
+      setValidationMsg(`Only SELECT, EXPLAIN, and WITH are allowed (got "${firstWord}")`);
+      return;
     }
-    setIsValid(true)
-    setValidationMsg('')
-  }, [])
+    setIsValid(true);
+    setValidationMsg('');
+  }, []);
 
   const handleRun = async () => {
-    const trimmed = sql.trim()
-    if (!trimmed) return
+    const trimmed = sql.trim();
+    if (!trimmed) return;
 
-    setLoading(true)
-    setError('')
-    setResult(null)
+    setLoading(true);
+    setError('');
+    setResult(null);
 
     try {
       // RC-112: a mutating admin call needs the CSRF token + cookie, or it 403s.
@@ -227,94 +225,94 @@ LIMIT 20;`)
         method: 'POST',
         ...(await adminMutateOptions()),
         body: JSON.stringify({ query: trimmed }),
-      })
-      const json = await res.json()
+      });
+      const json = await res.json();
 
       if (!res.ok) {
-        const msg = json?.error?.message ?? `HTTP ${res.status}: ${res.statusText}`
-        setError(msg)
-        saveHistory({ query: trimmed, timestamp: new Date().toISOString(), error: msg })
-        return
+        const msg = json?.error?.message ?? `HTTP ${res.status}: ${res.statusText}`;
+        setError(msg);
+        saveHistory({ query: trimmed, timestamp: new Date().toISOString(), error: msg });
+        return;
       }
 
-      setResult(json.data)
+      setResult(json.data);
       saveHistory({
         query: trimmed,
         timestamp: new Date().toISOString(),
         execution_time_ms: json.data.execution_time_ms,
         row_count: json.data.row_count,
-      })
+      });
 
       setTimeout(() => {
-        resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 200)
+        resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Query failed'
-      setError(msg)
-      saveHistory({ query: trimmed, timestamp: new Date().toISOString(), error: msg })
+      const msg = err instanceof Error ? err.message : 'Query failed';
+      setError(msg);
+      saveHistory({ query: trimmed, timestamp: new Date().toISOString(), error: msg });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    runQueryRef.current = handleRun
-  })
+    runQueryRef.current = handleRun;
+  });
 
   const loadSample = (query: string) => {
-    setSql(query)
-    setResult(null)
-    setError('')
-    validateSql(query)
-  }
+    setSql(query);
+    setResult(null);
+    setError('');
+    validateSql(query);
+  };
 
   const persistSavedQueries = useCallback((queries: SavedQuery[]) => {
     try {
-      localStorage.setItem('admin_saved_queries', JSON.stringify(queries))
+      localStorage.setItem('admin_saved_queries', JSON.stringify(queries));
     } catch {
       // Ignore
     }
-  }, [])
+  }, []);
 
   const handleSaveQuery = () => {
-    if (!saveQueryName.trim() || !sql.trim()) return
+    if (!saveQueryName.trim() || !sql.trim()) return;
     const newSaved: SavedQuery = {
       id: `sq_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       name: saveQueryName.trim(),
       query: sql.trim(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }
-    const updated = [newSaved, ...savedQueries].slice(0, 100)
-    setSavedQueries(updated)
-    persistSavedQueries(updated)
-    setShowSaveDialog(false)
-    setSaveQueryName('')
-  }
+    };
+    const updated = [newSaved, ...savedQueries].slice(0, 100);
+    setSavedQueries(updated);
+    persistSavedQueries(updated);
+    setShowSaveDialog(false);
+    setSaveQueryName('');
+  };
 
   const handleDeleteSaved = (id: string) => {
-    const updated = savedQueries.filter((q) => q.id !== id)
-    setSavedQueries(updated)
-    persistSavedQueries(updated)
-  }
+    const updated = savedQueries.filter((q) => q.id !== id);
+    setSavedQueries(updated);
+    persistSavedQueries(updated);
+  };
 
   const handleRenameSaved = (id: string, newName: string) => {
     const updated = savedQueries.map((q) =>
       q.id === id ? { ...q, name: newName, updated_at: new Date().toISOString() } : q,
-    )
-    setSavedQueries(updated)
-    persistSavedQueries(updated)
-  }
+    );
+    setSavedQueries(updated);
+    persistSavedQueries(updated);
+  };
 
   const handleDownloadCsv = () => {
-    if (!result) return
-    downloadCsv(result.columns, result.rows, `query_result_${Date.now()}.csv`)
-  }
+    if (!result) return;
+    downloadCsv(result.columns, result.rows, `query_result_${Date.now()}.csv`);
+  };
 
   const handleCopyJson = () => {
-    if (!result) return
-    navigator.clipboard.writeText(JSON.stringify(result.rows, null, 2))
-  }
+    if (!result) return;
+    navigator.clipboard.writeText(JSON.stringify(result.rows, null, 2));
+  };
 
   return (
     <div className="bg-gray-900 min-h-screen text-gray-100 p-6 md:p-8">
@@ -326,7 +324,9 @@ LIMIT 20;`)
               <Terminal size={24} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Database Query Console</h1>
+              <h1 className="text-xl font-bold text-white tracking-tight">
+                Database Query Console
+              </h1>
               <p className="text-xs text-gray-400">
                 Execute safe read-only SQL queries against Kanchuki PostgreSQL
               </p>
@@ -337,8 +337,8 @@ LIMIT 20;`)
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                setShowSchema(!showSchema)
-                if (!showSchema) void fetchSchema()
+                setShowSchema(!showSchema);
+                if (!showSchema) void fetchSchema();
               }}
               className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                 showSchema
@@ -370,9 +370,7 @@ LIMIT 20;`)
 
         {/* Sample Queries Bar */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-gray-400 mr-1">
-            Templates:
-          </span>
+          <span className="text-xs font-semibold text-gray-400 mr-1">Templates:</span>
           {SAMPLE_QUERIES.map((sample) => (
             <button
               key={sample.label}
@@ -398,22 +396,22 @@ LIMIT 20;`)
                 expandedTables={expandedTables}
                 onToggleSchema={(name) =>
                   setExpandedSchemas((prev) => {
-                    const n = new Set(prev)
-                    if (n.has(name)) n.delete(name)
-                    else n.add(name)
-                    return n
+                    const n = new Set(prev);
+                    if (n.has(name)) n.delete(name);
+                    else n.add(name);
+                    return n;
                   })
                 }
                 onToggleTable={(key) =>
                   setExpandedTables((prev) => {
-                    const n = new Set(prev)
-                    if (n.has(key)) n.delete(key)
-                    else n.add(key)
-                    return n
+                    const n = new Set(prev);
+                    if (n.has(key)) n.delete(key);
+                    else n.add(key);
+                    return n;
                   })
                 }
                 onSelectTable={(tableName) => {
-                  loadSample(`SELECT * FROM ${tableName} LIMIT 20;`)
+                  loadSample(`SELECT * FROM ${tableName} LIMIT 20;`);
                 }}
                 onRefresh={() => void fetchSchema(true)}
               />
@@ -425,9 +423,7 @@ LIMIT 20;`)
             {/* Query Editor Box */}
             <div className="bg-gray-800/60 rounded-2xl border border-gray-700/60 p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-300">
-                  SQL Editor (Monaco)
-                </span>
+                <span className="text-xs font-bold text-gray-300">SQL Editor (Monaco)</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowSaveDialog(true)}
@@ -455,8 +451,8 @@ LIMIT 20;`)
                   theme="vs-dark"
                   value={sql}
                   onChange={(val) => {
-                    setSql(val ?? '')
-                    validateSql(val)
+                    setSql(val ?? '');
+                    validateSql(val);
                   }}
                   options={{
                     minimap: { enabled: false },
@@ -502,30 +498,30 @@ LIMIT 20;`)
           panelClassName="bg-gray-900 border border-gray-800 rounded-2xl p-5 max-w-md w-full space-y-4 max-h-full overflow-y-auto"
           ariaLabel="Save Current Query"
         >
-            <h3 className="text-sm font-bold text-white">Save Current Query</h3>
-            <input
-              type="text"
-              placeholder="e.g. Active subscriptions this month"
-              value={saveQueryName}
-              onChange={(e) => setSaveQueryName(e.target.value)}
-              className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowSaveDialog(false)}
-                className="px-3 py-1.5 rounded-xl border border-gray-700 text-xs font-semibold text-gray-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveQuery}
-                disabled={!saveQueryName.trim()}
-                className="px-4 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-xs font-bold text-white"
-              >
-                Save
-              </button>
-            </div>
+          <h3 className="text-sm font-bold text-white">Save Current Query</h3>
+          <input
+            type="text"
+            placeholder="e.g. Active subscriptions this month"
+            value={saveQueryName}
+            onChange={(e) => setSaveQueryName(e.target.value)}
+            className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setShowSaveDialog(false)}
+              className="px-3 py-1.5 rounded-xl border border-gray-700 text-xs font-semibold text-gray-400 hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveQuery}
+              disabled={!saveQueryName.trim()}
+              className="px-4 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-xs font-bold text-white"
+            >
+              Save
+            </button>
+          </div>
         </Sheet>
       )}
 
@@ -548,5 +544,5 @@ LIMIT 20;`)
         onRenameQuery={handleRenameSaved}
       />
     </div>
-  )
+  );
 }

@@ -15,8 +15,18 @@ vi.mock('next/image', () => ({
 const DESIGNS = {
   data: {
     designs: [
-      { id: 'd1', name: 'Boat Neck', image_url: 'https://cdn.test/d1.jpg', category: { slug: 'suits', name: 'Suits' } },
-      { id: 'd2', name: null, image_url: 'https://cdn.test/d2.jpg', category: { slug: 'gala', name: 'Gala' } },
+      {
+        id: 'd1',
+        name: 'Boat Neck',
+        image_url: 'https://cdn.test/d1.jpg',
+        category: { slug: 'suits', name: 'Suits' },
+      },
+      {
+        id: 'd2',
+        name: null,
+        image_url: 'https://cdn.test/d2.jpg',
+        category: { slug: 'gala', name: 'Gala' },
+      },
     ],
     category: { slug: 'suits', name: 'Suits', related: ['suits', 'gala', 'baju'] },
   },
@@ -77,9 +87,12 @@ describe('ShowcaseDesigns strip', () => {
   });
 
   it('fails open — a fetch error keeps the strip hidden, not crashed', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      throw new Error('network down');
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('network down');
+      }),
+    );
     const { container } = render(<ShowcaseDesigns productId="prod-1" storeSlug="meera-sarees" />);
     await waitFor(() => expect(container.textContent).toBe(''));
   });

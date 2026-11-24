@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 // Spec step 2: self-entered measurements. Shopper-only (never shown to a store), saved to the
 // account, removable in one tap. There is deliberately no weight field. "Saved" is only
@@ -8,56 +8,56 @@ import {
   MY_STYLE_MEASUREMENT_RANGES,
   feetInchesToCm,
   inMeasurementRange,
-} from '@kanchuki/shared'
-import { Ruler, Trash2 } from 'lucide-react'
-import { useRef, useState } from 'react'
-import { BTN_SECONDARY, CARD, IconTile } from '../ui'
-import { saveMeasurements, withdrawMeasurements } from './analyze'
-import type { Measurements } from './lib'
+} from '@kanchuki/shared';
+import { Ruler, Trash2 } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { BTN_SECONDARY, CARD, IconTile } from '../ui';
+import { saveMeasurements, withdrawMeasurements } from './analyze';
+import type { Measurements } from './lib';
 
-type Field = 'height_cm' | 'bust_cm' | 'waist_cm' | 'hip_cm'
+type Field = 'height_cm' | 'bust_cm' | 'waist_cm' | 'hip_cm';
 const LABEL: Record<Field, string> = {
   height_cm: 'Height',
   bust_cm: 'Bust / chest',
   waist_cm: 'Waist',
   hip_cm: 'Hip',
-}
-const FIELDS: Field[] = ['height_cm', 'bust_cm', 'waist_cm', 'hip_cm']
-const INPUT = 'w-full rounded-xl border border-lavender-200 px-3 py-2 text-sm text-spaceCadet-900'
+};
+const FIELDS: Field[] = ['height_cm', 'bust_cm', 'waist_cm', 'hip_cm'];
+const INPUT = 'w-full rounded-xl border border-lavender-200 px-3 py-2 text-sm text-spaceCadet-900';
 
 export function MeasurementsCard({
   initial,
   onSaved,
 }: {
-  initial: Measurements | null
-  onSaved: () => void
+  initial: Measurements | null;
+  onSaved: () => void;
 }) {
   const [vals, setVals] = useState<Record<Field, string>>({
     height_cm: initial?.height_cm?.toString() ?? '',
     bust_cm: initial?.bust_cm?.toString() ?? '',
     waist_cm: initial?.waist_cm?.toString() ?? '',
     hip_cm: initial?.hip_cm?.toString() ?? '',
-  })
-  const [ftIn, setFtIn] = useState(false)
-  const [feet, setFeet] = useState('')
-  const [inches, setInches] = useState('')
-  const [msg, setMsg] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null)
-  const [busy, setBusy] = useState(false)
+  });
+  const [ftIn, setFtIn] = useState(false);
+  const [feet, setFeet] = useState('');
+  const [inches, setInches] = useState('');
+  const [msg, setMsg] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
   // Saved measurements imply a live consent (they cannot be stored without one), so only a
   // shopper with none meets the consent step.
-  const [step, setStep] = useState<'consent' | 'declined' | 'form'>(initial ? 'form' : 'consent')
-  const busyRef = useRef(false) // sync guard: two taps can land before state commits (RC-015)
+  const [step, setStep] = useState<'consent' | 'declined' | 'form'>(initial ? 'form' : 'consent');
+  const busyRef = useRef(false); // sync guard: two taps can land before state commits (RC-015)
 
   async function run(body: Parameters<typeof saveMeasurements>[0], okText: string) {
-    if (busyRef.current) return
-    busyRef.current = true
-    setBusy(true)
-    const r = await saveMeasurements(body)
-    busyRef.current = false
-    setBusy(false)
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    const r = await saveMeasurements(body);
+    busyRef.current = false;
+    setBusy(false);
     if (r === 'ok') {
-      setMsg({ kind: 'ok', text: okText })
-      onSaved()
+      setMsg({ kind: 'ok', text: okText });
+      onSaved();
     } else {
       setMsg({
         kind: 'error',
@@ -65,55 +65,55 @@ export function MeasurementsCard({
           r === 'unauthorized'
             ? 'Your session ended. Please sign in again.'
             : 'We could not save your measurements. Please try again.',
-      })
+      });
     }
   }
 
   function save() {
-    const body: Partial<Record<Field, number>> = {}
+    const body: Partial<Record<Field, number>> = {};
     for (const f of FIELDS) {
-      let raw = vals[f].trim()
+      let raw = vals[f].trim();
       if (f === 'height_cm' && ftIn) {
         raw =
           !feet.trim() && !inches.trim()
             ? ''
-            : String(feetInchesToCm(Number(feet || 0), Number(inches || 0)))
+            : String(feetInchesToCm(Number(feet || 0), Number(inches || 0)));
       }
-      if (!raw) continue
-      const n = Number(raw)
+      if (!raw) continue;
+      const n = Number(raw);
       if (!inMeasurementRange(f, n)) {
-        const r = MY_STYLE_MEASUREMENT_RANGES[f]
+        const r = MY_STYLE_MEASUREMENT_RANGES[f];
         setMsg({
           kind: 'error',
           text: `${LABEL[f]} should be a whole number between ${r.min} and ${r.max} cm.`,
-        })
-        return
+        });
+        return;
       }
-      body[f] = n
+      body[f] = n;
     }
     if (Object.keys(body).length === 0) {
-      setMsg({ kind: 'error', text: 'Enter at least one measurement.' })
-      return
+      setMsg({ kind: 'error', text: 'Enter at least one measurement.' });
+      return;
     }
     void run(
       { ...body, consent_version: MY_STYLE_BODY_CONSENT.version },
       'Saved. We will use it to suggest sizes.',
-    )
+    );
   }
 
   async function remove() {
-    if (busyRef.current) return
-    busyRef.current = true
-    setBusy(true)
-    const r = await withdrawMeasurements()
-    busyRef.current = false
-    setBusy(false)
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    const r = await withdrawMeasurements();
+    busyRef.current = false;
+    setBusy(false);
     if (r === 'ok') {
-      setVals({ height_cm: '', bust_cm: '', waist_cm: '', hip_cm: '' })
-      setFeet('')
-      setInches('')
-      setMsg({ kind: 'ok', text: 'Your measurements were removed.' })
-      onSaved()
+      setVals({ height_cm: '', bust_cm: '', waist_cm: '', hip_cm: '' });
+      setFeet('');
+      setInches('');
+      setMsg({ kind: 'ok', text: 'Your measurements were removed.' });
+      onSaved();
     } else {
       setMsg({
         kind: 'error',
@@ -121,7 +121,7 @@ export function MeasurementsCard({
           r === 'unauthorized'
             ? 'Your session ended. Please sign in again.'
             : 'We could not remove your measurements. Please try again.',
-      })
+      });
     }
   }
 
@@ -163,7 +163,7 @@ export function MeasurementsCard({
           </div>
         )}
       </section>
-    )
+    );
   }
 
   return (
@@ -173,8 +173,8 @@ export function MeasurementsCard({
         <h2 className="text-base font-bold text-spaceCadet-900">Your measurements</h2>
       </div>
       <p className="text-xs text-heliotrope-500 mt-3">
-        Only you can see these. They are saved to your account to suggest sizes, and are never shown to a
-        store. You can delete them any time.
+        Only you can see these. They are saved to your account to suggest sizes, and are never shown
+        to a store. You can delete them any time.
       </p>
 
       <div className="grid grid-cols-2 gap-3 mt-4">
@@ -239,9 +239,9 @@ export function MeasurementsCard({
       <details className="mt-3 text-xs text-heliotrope-500">
         <summary className="cursor-pointer font-semibold">How to measure</summary>
         <p className="mt-1">
-          Use a soft tape over thin clothes, snug but not tight. Bust: around the fullest part. Waist: the
-          narrowest part, above the navel. Hip: around the fullest part. Height: standing straight, no
-          shoes. Sizes are approximate.
+          Use a soft tape over thin clothes, snug but not tight. Bust: around the fullest part.
+          Waist: the narrowest part, above the navel. Hip: around the fullest part. Height: standing
+          straight, no shoes. Sizes are approximate.
         </p>
       </details>
 
@@ -271,5 +271,5 @@ export function MeasurementsCard({
         </p>
       )}
     </section>
-  )
+  );
 }

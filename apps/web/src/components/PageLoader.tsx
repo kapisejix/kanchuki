@@ -1,24 +1,24 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 
 interface PageLoaderProps {
-  variant?: 'fullscreen' | 'card' | 'minimal'
-  text?: string
+  variant?: 'fullscreen' | 'card' | 'minimal';
+  text?: string;
 }
 
 const containerVariants = {
   initial: { opacity: 0 },
   animate: { opacity: 1, transition: { duration: 0.3 } },
-}
+};
 
 const shimmerVariants = {
   animate: {
     x: ['-100%', '200%'],
     transition: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' },
   },
-}
+};
 
 export function PageLoader({ variant = 'fullscreen', text = 'Loading...' }: PageLoaderProps) {
   if (variant === 'card') {
@@ -47,7 +47,7 @@ export function PageLoader({ variant = 'fullscreen', text = 'Loading...' }: Page
           </div>
         ))}
       </motion.div>
-    )
+    );
   }
 
   if (variant === 'minimal') {
@@ -63,7 +63,7 @@ export function PageLoader({ variant = 'fullscreen', text = 'Loading...' }: Page
           <span className="text-sm">{text}</span>
         </div>
       </motion.div>
-    )
+    );
   }
 
   // Fullscreen variant (default)
@@ -121,7 +121,7 @@ export function PageLoader({ variant = 'fullscreen', text = 'Loading...' }: Page
         </div>
       </div>
     </motion.div>
-  )
+  );
 }
 
-export default PageLoader
+export default PageLoader;

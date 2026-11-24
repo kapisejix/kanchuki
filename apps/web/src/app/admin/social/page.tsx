@@ -1,75 +1,75 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { safeHttpUrl } from '@/lib/safe-url';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  RefreshCw,
-  Share2,
-  Users,
   CheckCircle,
-  XCircle,
   ExternalLink,
-  X,
   Facebook,
   Instagram,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
-import { safeHttpUrl } from '@/lib/safe-url'
+  RefreshCw,
+  Share2,
+  Users,
+  X,
+  XCircle,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
 type SocialAccount = {
-  id: string
-  retailer_id: string
-  retailer_name: string
-  retailer_city: string
-  platform: string
-  account_id: string
-  account_name: string
-  is_active: boolean
-  post_count: number
-  token_expires_at: string | null
-  connected_at: string
-}
+  id: string;
+  retailer_id: string;
+  retailer_name: string;
+  retailer_city: string;
+  platform: string;
+  account_id: string;
+  account_name: string;
+  is_active: boolean;
+  post_count: number;
+  token_expires_at: string | null;
+  connected_at: string;
+};
 
 type SocialStats = {
-  total_accounts: number
-  active_accounts: number
-  inactive_accounts: number
-  by_platform: { platform: string; count: number }[]
-  total_posts: number
-  posts_by_status: { status: string; count: number }[]
-}
+  total_accounts: number;
+  active_accounts: number;
+  inactive_accounts: number;
+  by_platform: { platform: string; count: number }[];
+  total_posts: number;
+  posts_by_status: { status: string; count: number }[];
+};
 
 type SocialPost = {
-  id: string
-  retailer_id: string
-  retailer_name: string
-  platform: string
-  post_type: string
-  caption: string | null
-  status: string
-  external_post_url: string | null
-  error_message: string | null
-  product_ids: string[]
-  collection_id: string | null
-  created_at: string
-}
+  id: string;
+  retailer_id: string;
+  retailer_name: string;
+  platform: string;
+  post_type: string;
+  caption: string | null;
+  status: string;
+  external_post_url: string | null;
+  error_message: string | null;
+  product_ids: string[];
+  collection_id: string | null;
+  created_at: string;
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
 const PLATFORM_EMOJI: Record<string, string> = {
   FACEBOOK: '📘',
   INSTAGRAM: '📸',
-}
+};
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
   POSTED: { bg: 'bg-green-50 border-green-100', text: 'text-green-600', label: 'Posted' },
   FAILED: { bg: 'bg-red-50 border-red-100', text: 'text-red-600', label: 'Failed' },
-}
+};
 
 const fmtDate = (iso: string | null) =>
   iso
@@ -80,29 +80,29 @@ const fmtDate = (iso: string | null) =>
         hour: '2-digit',
         minute: '2-digit',
       })
-    : '—'
+    : '—';
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
-}
+};
 const itemVariants = {
   hidden: { opacity: 0, y: 14 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 220, damping: 24 } },
-}
+};
 
 // ─── Main Page ────────────────────────────────────────────────────
 
 export default function SocialPage() {
-  const [accounts, setAccounts] = useState<SocialAccount[] | null>(null)
-  const [stats, setStats] = useState<SocialStats | null>(null)
-  const [posts, setPosts] = useState<SocialPost[] | null>(null)
-  const [error, setError] = useState('')
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [selected, setSelected] = useState<SocialAccount | null>(null)
-  const [tab, setTab] = useState<'accounts' | 'posts'>('accounts')
-  const [disconnecting, setDisconnecting] = useState<string | null>(null)
-  const [disconnectError, setDisconnectError] = useState('')
+  const [accounts, setAccounts] = useState<SocialAccount[] | null>(null);
+  const [stats, setStats] = useState<SocialStats | null>(null);
+  const [posts, setPosts] = useState<SocialPost[] | null>(null);
+  const [error, setError] = useState('');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selected, setSelected] = useState<SocialAccount | null>(null);
+  const [tab, setTab] = useState<'accounts' | 'posts'>('accounts');
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [disconnectError, setDisconnectError] = useState('');
 
   const load = async () => {
     try {
@@ -110,50 +110,55 @@ export default function SocialPage() {
         fetch(`${API_URL}/v1/admin/social/accounts`, adminGetOptions()),
         fetch(`${API_URL}/v1/admin/social/stats`, adminGetOptions()),
         fetch(`${API_URL}/v1/admin/social/posts?limit=50`, adminGetOptions()),
-      ])
-      const accountsJson = await accountsRes.json()
-      const statsJson = await statsRes.json()
-      const postsJson = await postsRes.json()
-      if (accountsJson?.data) setAccounts(accountsJson.data)
-      if (statsJson?.data) setStats(statsJson.data)
-      if (postsJson?.data) setPosts(postsJson.data.posts)
+      ]);
+      const accountsJson = await accountsRes.json();
+      const statsJson = await statsRes.json();
+      const postsJson = await postsRes.json();
+      if (accountsJson?.data) setAccounts(accountsJson.data);
+      if (statsJson?.data) setStats(statsJson.data);
+      if (postsJson?.data) setPosts(postsJson.data.posts);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load social data')
+      setError(err instanceof Error ? err.message : 'Failed to load social data');
     }
-  }
+  };
 
   useEffect(() => {
-    void load()
-  }, [])
+    void load();
+  }, []);
 
   const handleDisconnect = async (id: string) => {
-    setDisconnectError('')
+    setDisconnectError('');
     try {
-      setDisconnecting(id)
+      setDisconnecting(id);
       // RC-112: DELETE needs the CSRF token + cookie (adminGetOptions has neither),
       // and a failure used to be swallowed, so Disconnect did nothing and said nothing.
       const res = await fetch(`${API_URL}/v1/admin/social/accounts/${id}`, {
         method: 'DELETE',
         ...(await adminMutateOptions()),
-      })
+      });
       if (res.ok) {
-        setAccounts((prev) => (prev ? prev.filter((a) => a.id !== id) : null))
-        setDetailOpen(false)
-        setSelected(null)
-        void load()
+        setAccounts((prev) => (prev ? prev.filter((a) => a.id !== id) : null));
+        setDetailOpen(false);
+        setSelected(null);
+        void load();
       } else {
-        const json = await res.json().catch(() => null)
-        setDisconnectError(json?.error?.message ?? `Disconnect failed (HTTP ${res.status})`)
+        const json = await res.json().catch(() => null);
+        setDisconnectError(json?.error?.message ?? `Disconnect failed (HTTP ${res.status})`);
       }
     } catch (err) {
-      setDisconnectError(err instanceof Error ? err.message : 'Disconnect failed')
+      setDisconnectError(err instanceof Error ? err.message : 'Disconnect failed');
     } finally {
-      setDisconnecting(null)
+      setDisconnecting(null);
     }
-  }
+  };
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-start justify-between gap-4">
         <div>
@@ -162,8 +167,8 @@ export default function SocialPage() {
             <Share2 size={20} className="text-indigo-500" />
           </div>
           <p className="text-sm text-gray-500 max-w-2xl">
-            Monitor retailer Facebook and Instagram connections, post history, and
-            success rates. Manage connected accounts across the platform.
+            Monitor retailer Facebook and Instagram connections, post history, and success rates.
+            Manage connected accounts across the platform.
           </p>
         </div>
         <button
@@ -187,10 +192,30 @@ export default function SocialPage() {
       {/* Stats cards */}
       {stats && (
         <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard icon={Users} label="Connected Accounts" value={String(stats.active_accounts)} color="indigo" />
-          <StatsCard icon={CheckCircle} label="Total Posts" value={String(stats.total_posts)} color="green" />
-          <StatsCard icon={XCircle} label="Failed Posts" value={String(stats.posts_by_status.find((s) => s.status === 'FAILED')?.count ?? 0)} color="red" />
-          <StatsCard icon={Share2} label="Platforms" value={stats.by_platform.map((p) => `${p.platform} (${p.count})`).join(', ') || 'None'} color="blue" />
+          <StatsCard
+            icon={Users}
+            label="Connected Accounts"
+            value={String(stats.active_accounts)}
+            color="indigo"
+          />
+          <StatsCard
+            icon={CheckCircle}
+            label="Total Posts"
+            value={String(stats.total_posts)}
+            color="green"
+          />
+          <StatsCard
+            icon={XCircle}
+            label="Failed Posts"
+            value={String(stats.posts_by_status.find((s) => s.status === 'FAILED')?.count ?? 0)}
+            color="red"
+          />
+          <StatsCard
+            icon={Share2}
+            label="Platforms"
+            value={stats.by_platform.map((p) => `${p.platform} (${p.count})`).join(', ') || 'None'}
+            color="blue"
+          />
         </motion.div>
       )}
 
@@ -211,7 +236,10 @@ export default function SocialPage() {
 
       {/* Accounts table */}
       {tab === 'accounts' && accounts && (
-        <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <motion.div
+          variants={itemVariants}
+          className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -230,7 +258,11 @@ export default function SocialPage() {
                   <tr
                     key={account.id}
                     className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer"
-                    onClick={() => { setSelected(account); setDisconnectError(''); setDetailOpen(true) }}
+                    onClick={() => {
+                      setSelected(account);
+                      setDisconnectError('');
+                      setDetailOpen(true);
+                    }}
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{account.retailer_name}</div>
@@ -263,10 +295,10 @@ export default function SocialPage() {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={(e) => {
-                          e.stopPropagation()
-                          setSelected(account)
-                          setDisconnectError('')
-                          setDetailOpen(true)
+                          e.stopPropagation();
+                          setSelected(account);
+                          setDisconnectError('');
+                          setDetailOpen(true);
                         }}
                         className="text-indigo-500 hover:text-indigo-700 text-xs font-medium"
                       >
@@ -290,7 +322,10 @@ export default function SocialPage() {
 
       {/* Posts table */}
       {tab === 'posts' && posts && (
-        <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <motion.div
+          variants={itemVariants}
+          className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -306,7 +341,7 @@ export default function SocialPage() {
               </thead>
               <tbody>
                 {posts.map((post) => {
-                  const statusConf = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.POSTED
+                  const statusConf = STATUS_CONFIG[post.status] ?? STATUS_CONFIG.POSTED;
                   return (
                     <tr key={post.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                       <td className="px-4 py-3 font-medium text-gray-900">{post.retailer_name}</td>
@@ -335,7 +370,9 @@ export default function SocialPage() {
                           {statusConf.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{fmtDate(post.created_at)}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        {fmtDate(post.created_at)}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         {safeHttpUrl(post.external_post_url) ? (
                           <a
@@ -352,7 +389,7 @@ export default function SocialPage() {
                         )}
                       </td>
                     </tr>
-                  )
+                  );
                 })}
                 {posts.length === 0 && (
                   <tr>
@@ -388,7 +425,8 @@ export default function SocialPage() {
                 <div>
                   <h3 className="text-lg font-bold text-gray-900">{selected.account_name}</h3>
                   <p className="text-sm text-gray-500">
-                    {PLATFORM_EMOJI[selected.platform]} {selected.platform} — {selected.retailer_name}
+                    {PLATFORM_EMOJI[selected.platform]} {selected.platform} —{' '}
+                    {selected.retailer_name}
                   </p>
                 </div>
                 <button
@@ -400,7 +438,10 @@ export default function SocialPage() {
               </div>
 
               <div className="p-5 space-y-4">
-                <DetailRow label="Retailer" value={`${selected.retailer_name} (${selected.retailer_city})`} />
+                <DetailRow
+                  label="Retailer"
+                  value={`${selected.retailer_name} (${selected.retailer_city})`}
+                />
                 <DetailRow label="Platform" value={selected.platform} />
                 <DetailRow label="Account ID" value={selected.account_id} />
                 <DetailRow label="Posts Published" value={String(selected.post_count)} />
@@ -433,7 +474,7 @@ export default function SocialPage() {
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }
 
 // ─── Components ───────────────────────────────────────────────────
@@ -444,17 +485,17 @@ function StatsCard({
   value,
   color,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string
-  color: string
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  color: string;
 }) {
   const colorMap: Record<string, string> = {
     indigo: 'bg-indigo-50 text-indigo-600',
     green: 'bg-green-50 text-green-600',
     red: 'bg-red-50 text-red-600',
     blue: 'bg-blue-50 text-blue-600',
-  }
+  };
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-4">
       <div className="flex items-center gap-2 mb-2">
@@ -465,7 +506,7 @@ function StatsCard({
       </div>
       <div className="text-xl font-bold text-gray-900">{value}</div>
     </div>
-  )
+  );
 }
 
 function DetailRow({
@@ -473,9 +514,9 @@ function DetailRow({
   value,
   warn,
 }: {
-  label: string
-  value: string
-  warn?: boolean
+  label: string;
+  value: string;
+  warn?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between">
@@ -484,5 +525,5 @@ function DetailRow({
         {value}
       </span>
     </div>
-  )
+  );
 }

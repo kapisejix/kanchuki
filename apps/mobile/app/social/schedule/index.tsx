@@ -60,7 +60,11 @@ function PlatformCard({
 
       {tokenBad &&
         (isOwner ? (
-          <GradientButton variant="web" label="Reconnect" onPress={() => router.push('/settings/social')} />
+          <GradientButton
+            variant="web"
+            label="Reconnect"
+            onPress={() => router.push('/settings/social')}
+          />
         ) : (
           <Text className="text-xs text-red-600 font-semibold">
             Ask the shop owner to reconnect {p.platform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}.

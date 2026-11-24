@@ -1,44 +1,42 @@
-import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
   ArrowRight,
-  ChevronLeft,
   CheckCircle,
-  XCircle,
+  ChevronLeft,
   Settings2,
   Share2,
-} from 'lucide-react-native'
-import {
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { BrandIcon, type Brand } from '../../src/components/BrandIcon'
-import { DangerButton } from '../../src/components/DangerButton'
-import { GradientButton } from '../../src/components/GradientButton'
-import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
-import { growthApi } from '../../src/lib/api/growth'
-import { retailerApi } from '../../src/lib/api/retailer'
+  XCircle,
+} from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { type Brand, BrandIcon } from '../../src/components/BrandIcon';
+import { DangerButton } from '../../src/components/DangerButton';
+import { GradientButton } from '../../src/components/GradientButton';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton';
+import { growthApi } from '../../src/lib/api/growth';
+import { retailerApi } from '../../src/lib/api/retailer';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
-type TabType = 'all' | 'social' | 'ads'
+type TabType = 'all' | 'social' | 'ads';
 
 export default function IntegrationsScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<TabType>('all')
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabType>('all');
 
-  const { data: integrations, isLoading, refetch, isRefetching } = useQuery({
+  const {
+    data: integrations,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery({
     queryKey: ['growth', 'integrations'],
     queryFn: () => growthApi.integrations(),
-  })
-  const data = integrations?.data
+  });
+  const data = integrations?.data;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -74,7 +72,7 @@ export default function IntegrationsScreen() {
               { key: 'ads', label: 'Ad Discovery (3)' },
             ] as const
           ).map((tab) => {
-            const active = activeTab === tab.key
+            const active = activeTab === tab.key;
             return (
               <AnimatedPressable
                 key={tab.key}
@@ -93,7 +91,7 @@ export default function IntegrationsScreen() {
                   {tab.label}
                 </Text>
               </AnimatedPressable>
-            )
+            );
           })}
         </View>
       </View>
@@ -106,14 +104,20 @@ export default function IntegrationsScreen() {
         <ScrollView
           className="flex-1 px-4 pt-4"
           contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           {/* Hero Banner */}
           <View className="bg-white rounded-2xl p-5 mb-4 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-1.5">
               <Share2 size={18} color="#6B4773" />
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-spaceCadet-900 text-base"
               >
                 Social and ad accounts
@@ -134,56 +138,69 @@ export default function IntegrationsScreen() {
                 Social media accounts
               </Text>
 
-              {META_SOCIAL_ENABLED && (<>
-              {/* Instagram Business */}
-              <IntegrationCard
-                brand="instagram"
-                title="Instagram Business & Creator"
-                subtitle="Auto-publish 6s video reels, catalog photo carousels, and stories"
-                configured={data?.instagram?.configured ?? false}
-                configuredAt={data?.instagram?.configured_at ?? null}
-                metaLabel={data?.instagram?.handle ? `@${data.instagram.handle}` : undefined}
-                onConfigure={() => router.push('/growth/integrations/instagram' as any)}
-                onDisconnect={() => {
-                  Alert.alert('Disconnect Instagram?', 'Your Instagram Business account will be unlinked.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectInstagram()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-                      },
-                    },
-                  ])
-                }}
-              />
+              {META_SOCIAL_ENABLED && (
+                <>
+                  {/* Instagram Business */}
+                  <IntegrationCard
+                    brand="instagram"
+                    title="Instagram Business & Creator"
+                    subtitle="Auto-publish 6s video reels, catalog photo carousels, and stories"
+                    configured={data?.instagram?.configured ?? false}
+                    configuredAt={data?.instagram?.configured_at ?? null}
+                    metaLabel={data?.instagram?.handle ? `@${data.instagram.handle}` : undefined}
+                    onConfigure={() => router.push('/growth/integrations/instagram' as any)}
+                    onDisconnect={() => {
+                      Alert.alert(
+                        'Disconnect Instagram?',
+                        'Your Instagram Business account will be unlinked.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Disconnect',
+                            style: 'destructive',
+                            onPress: async () => {
+                              await growthApi.disconnectInstagram();
+                              void queryClient.invalidateQueries({
+                                queryKey: ['growth', 'integrations'],
+                              });
+                            },
+                          },
+                        ],
+                      );
+                    }}
+                  />
 
-              {/* Facebook Page */}
-              <IntegrationCard
-                brand="facebook"
-                title="Facebook Boutique Page"
-                subtitle="Publish festival lookbooks, collection links, and status announcements"
-                configured={data?.facebook?.configured ?? false}
-                configuredAt={data?.facebook?.configured_at ?? null}
-                metaLabel={data?.facebook?.page_name ?? undefined}
-                onConfigure={() => router.push('/growth/integrations/facebook' as any)}
-                onDisconnect={() => {
-                  Alert.alert('Disconnect Facebook?', 'Your Facebook Page will be disconnected.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectFacebook()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-                      },
-                    },
-                  ])
-                }}
-              />
-
-              </>)}
+                  {/* Facebook Page */}
+                  <IntegrationCard
+                    brand="facebook"
+                    title="Facebook Boutique Page"
+                    subtitle="Publish festival lookbooks, collection links, and status announcements"
+                    configured={data?.facebook?.configured ?? false}
+                    configuredAt={data?.facebook?.configured_at ?? null}
+                    metaLabel={data?.facebook?.page_name ?? undefined}
+                    onConfigure={() => router.push('/growth/integrations/facebook' as any)}
+                    onDisconnect={() => {
+                      Alert.alert(
+                        'Disconnect Facebook?',
+                        'Your Facebook Page will be disconnected.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Disconnect',
+                            style: 'destructive',
+                            onPress: async () => {
+                              await growthApi.disconnectFacebook();
+                              void queryClient.invalidateQueries({
+                                queryKey: ['growth', 'integrations'],
+                              });
+                            },
+                          },
+                        ],
+                      );
+                    }}
+                  />
+                </>
+              )}
 
               {/* WhatsApp Cloud API */}
               <IntegrationCard
@@ -194,17 +211,23 @@ export default function IntegrationsScreen() {
                 configuredAt={data?.whatsapp?.configured_at ?? null}
                 onConfigure={() => router.push('/growth/integrations/whatsapp' as any)}
                 onDisconnect={() => {
-                  Alert.alert('Disconnect WhatsApp API?', 'Your WhatsApp Cloud API account will be unlinked.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await retailerApi.disconnectWhatsAppApi()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
+                  Alert.alert(
+                    'Disconnect WhatsApp API?',
+                    'Your WhatsApp Cloud API account will be unlinked.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Disconnect',
+                        style: 'destructive',
+                        onPress: async () => {
+                          await retailerApi.disconnectWhatsAppApi();
+                          void queryClient.invalidateQueries({
+                            queryKey: ['growth', 'integrations'],
+                          });
+                        },
                       },
-                    },
-                  ])
+                    ],
+                  );
                 }}
               />
             </View>
@@ -217,31 +240,38 @@ export default function IntegrationsScreen() {
                 Ad platforms and local search
               </Text>
 
-              {META_SOCIAL_ENABLED && (<>
-              {/* Facebook Ads */}
-              <IntegrationCard
-                brand="facebook-ads"
-                title="Facebook Local Awareness Ads"
-                subtitle="Create local ad campaigns across Instagram & Facebook"
-                configured={data?.facebook_ads.configured ?? false}
-                configuredAt={data?.facebook_ads.configured_at ?? null}
-                onConfigure={() => router.push('/growth/integrations/fb-ads' as any)}
-                onDisconnect={() => {
-                  Alert.alert('Disconnect Facebook Ads?', 'Your Facebook Ads account will be disconnected.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectFbAds()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-                      },
-                    },
-                  ])
-                }}
-              />
-
-              </>)}
+              {META_SOCIAL_ENABLED && (
+                <>
+                  {/* Facebook Ads */}
+                  <IntegrationCard
+                    brand="facebook-ads"
+                    title="Facebook Local Awareness Ads"
+                    subtitle="Create local ad campaigns across Instagram & Facebook"
+                    configured={data?.facebook_ads.configured ?? false}
+                    configuredAt={data?.facebook_ads.configured_at ?? null}
+                    onConfigure={() => router.push('/growth/integrations/fb-ads' as any)}
+                    onDisconnect={() => {
+                      Alert.alert(
+                        'Disconnect Facebook Ads?',
+                        'Your Facebook Ads account will be disconnected.',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Disconnect',
+                            style: 'destructive',
+                            onPress: async () => {
+                              await growthApi.disconnectFbAds();
+                              void queryClient.invalidateQueries({
+                                queryKey: ['growth', 'integrations'],
+                              });
+                            },
+                          },
+                        ],
+                      );
+                    }}
+                  />
+                </>
+              )}
 
               {/* Google Ads */}
               <IntegrationCard
@@ -252,17 +282,23 @@ export default function IntegrationsScreen() {
                 configuredAt={data?.google_ads.configured_at ?? null}
                 onConfigure={() => router.push('/growth/integrations/google-ads' as any)}
                 onDisconnect={() => {
-                  Alert.alert('Disconnect Google Ads?', 'Your Google Ads account will be disconnected.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Disconnect',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await growthApi.disconnectGoogleAds()
-                        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
+                  Alert.alert(
+                    'Disconnect Google Ads?',
+                    'Your Google Ads account will be disconnected.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Disconnect',
+                        style: 'destructive',
+                        onPress: async () => {
+                          await growthApi.disconnectGoogleAds();
+                          void queryClient.invalidateQueries({
+                            queryKey: ['growth', 'integrations'],
+                          });
+                        },
                       },
-                    },
-                  ])
+                    ],
+                  );
                 }}
               />
             </View>
@@ -270,7 +306,7 @@ export default function IntegrationsScreen() {
         </ScrollView>
       )}
     </View>
-  )
+  );
 }
 
 // ─── Integration Card ─────────────────────────────────────────────
@@ -285,14 +321,14 @@ function IntegrationCard({
   onConfigure,
   onDisconnect,
 }: {
-  brand: Brand
-  title: string
-  subtitle: string
-  configured: boolean
-  configuredAt: string | null
-  metaLabel?: string
-  onConfigure: () => void
-  onDisconnect: () => void
+  brand: Brand;
+  title: string;
+  subtitle: string;
+  configured: boolean;
+  configuredAt: string | null;
+  metaLabel?: string;
+  onConfigure: () => void;
+  onDisconnect: () => void;
 }) {
   return (
     <View className="bg-white rounded-2xl border border-lavender-200 p-4 mb-4">
@@ -318,7 +354,9 @@ function IntegrationCard({
               </View>
             )}
           </View>
-          <Text className="text-xs text-heliotrope-500 mb-2 leading-relaxed font-medium">{subtitle}</Text>
+          <Text className="text-xs text-heliotrope-500 mb-2 leading-relaxed font-medium">
+            {subtitle}
+          </Text>
           {configured && (metaLabel || configuredAt) && (
             <View className="flex-row flex-wrap items-center gap-2 mb-2">
               {metaLabel && (
@@ -362,5 +400,5 @@ function IntegrationCard({
         )}
       </View>
     </View>
-  )
+  );
 }

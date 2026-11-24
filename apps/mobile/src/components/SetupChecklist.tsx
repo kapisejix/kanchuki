@@ -1,15 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import { X } from 'lucide-react-native'
-import { Alert, Text, View } from 'react-native'
-import { type SetupChecklistItem, retailerApi } from '../lib/api'
-import { useAuth } from '../lib/auth-context'
-import { showError } from '../lib/errors'
-import { staffCan } from '../lib/staff-can'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { X } from 'lucide-react-native';
+import { Alert, Text, View } from 'react-native';
+import { type SetupChecklistItem, retailerApi } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
+import { showError } from '../lib/errors';
 import { META_SOCIAL_ENABLED } from '../lib/meta-social';
-import { AnimatedPressable } from './AnimatedPressable'
+import { staffCan } from '../lib/staff-can';
+import { AnimatedPressable } from './AnimatedPressable';
 
-type Key = SetupChecklistItem['key']
+type Key = SetupChecklistItem['key'];
 
 // What each row says and where "Set it up myself" goes. Status itself comes from the
 // server (derived from real data) — nothing about "done" is decided or stored here.
@@ -49,52 +49,53 @@ const COPY: Record<Key, { title: string; why: string; href: string }> = {
     why: 'Send collections to many customers at once',
     href: '/growth/integrations/whatsapp',
   },
-}
+};
 
-const QUERY_KEY = ['retailer', 'setup-checklist']
+const QUERY_KEY = ['retailer', 'setup-checklist'];
 
 // "Complete your profile" block for the owner's dashboard. Renders nothing while loading,
 // on error, for staff roles (no request is even sent), and once nothing is left to do.
 export function SetupChecklist() {
-  const { staffRole } = useAuth()
-  const allowed = staffCan(staffRole, 'setup')
-  const queryClient = useQueryClient()
+  const { staffRole } = useAuth();
+  const allowed = staffCan(staffRole, 'setup');
+  const queryClient = useQueryClient();
 
   const { data } = useQuery({
     queryKey: QUERY_KEY,
     queryFn: () => retailerApi.getSetupChecklist(),
     enabled: allowed,
     retry: false,
-  })
+  });
 
-  const refresh = () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
 
   const dismiss = useMutation({
     mutationFn: (key: Key) => retailerApi.dismissSetupItem(key),
     onSuccess: refresh,
     onError: (e) => showError(e, 'Could not hide this'),
-  })
+  });
   const restore = useMutation({
     mutationFn: () => retailerApi.restoreSetupItems(),
     onSuccess: refresh,
     onError: (e) => showError(e, 'Could not show hidden items'),
-  })
+  });
   const ask = useMutation({
     mutationFn: (key: Key) => retailerApi.askTeamToSetUp(key),
     onSuccess: refresh,
     onError: (e) => showError(e, 'Could not send your request'),
-  })
+  });
 
-  if (!allowed || !data) return null
+  if (!allowed || !data) return null;
 
   // Keys this build has no copy for (added by a newer API) are ignored, not rendered: an
   // old build must never crash on a checklist item it does not know.
   const items = data.data.items.filter(
-    (i) => i.key in COPY && (META_SOCIAL_ENABLED || (i.key !== 'facebook' && i.key !== 'instagram')),
-  )
-  const open = items.filter((i) => i.status !== 'done' && !i.dismissed)
-  const hidden = items.filter((i) => i.status !== 'done' && i.dismissed).length
-  if (open.length === 0 && hidden === 0) return null
+    (i) =>
+      i.key in COPY && (META_SOCIAL_ENABLED || (i.key !== 'facebook' && i.key !== 'instagram')),
+  );
+  const open = items.filter((i) => i.status !== 'done' && !i.dismissed);
+  const hidden = items.filter((i) => i.status !== 'done' && i.dismissed).length;
+  if (open.length === 0 && hidden === 0) return null;
 
   const confirmAsk = (key: Key) =>
     Alert.alert(
@@ -104,7 +105,7 @@ export function SetupChecklist() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Ask for help', onPress: () => ask.mutate(key) },
       ],
-    )
+    );
 
   return (
     <View className="mx-5 mb-3 bg-white rounded-2xl border border-lavender-200 p-4 gap-3">
@@ -118,7 +119,9 @@ export function SetupChecklist() {
         <View key={item.key} className="border border-lavender-200 rounded-2xl p-3">
           <View className="flex-row items-start justify-between gap-2">
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-spaceCadet-900">{COPY[item.key].title}</Text>
+              <Text className="text-sm font-semibold text-spaceCadet-900">
+                {COPY[item.key].title}
+              </Text>
               <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">
                 {item.status === 'requested'
                   ? 'Requested — our team will call you'
@@ -174,5 +177,5 @@ export function SetupChecklist() {
         </AnimatedPressable>
       )}
     </View>
-  )
+  );
 }

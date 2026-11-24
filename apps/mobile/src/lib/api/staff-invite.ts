@@ -1,19 +1,19 @@
-import { request } from './client'
+import { request } from './client';
 
 // ─── Public staff-invite (docs/tasks/done/staff-invite-tokens.md §5.3/5.4) ─────
 // Called from the LOGGED-OUT join screen (app/join.tsx) — no session needed.
 // The server owns the invite's phone number; the client only ever sees the
 // masked form and a success signal.
 
-export type StaffInviteStatus = 'pending' | 'used' | 'expired' | 'revoked'
+export type StaffInviteStatus = 'pending' | 'used' | 'expired' | 'revoked';
 
 export type StaffInviteInfo = {
-  shop_name: string | null
-  member_name: string
-  role: string
-  phone_masked: string
-  status: StaffInviteStatus
-}
+  shop_name: string | null;
+  member_name: string;
+  role: string;
+  phone_masked: string;
+  status: StaffInviteStatus;
+};
 
 export const staffInviteApi = {
   /** Resolve an invite token → masked join summary (404 = unknown/expired/revoked). */
@@ -31,4 +31,4 @@ export const staffInviteApi = {
       // never opened the OTP screen — while the SMS still arrived.
       { method: 'POST', timeoutMs: 30_000 },
     ),
-}
+};

@@ -1,47 +1,47 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
+  Bell,
   ChevronLeft,
   ChevronRight,
+  Cpu,
+  CreditCard,
+  HardDrive,
+  type LucideIcon,
   Search,
+  Settings,
   Shield,
   Store,
   User,
-  Cpu,
-  Settings,
-  CreditCard,
-  HardDrive,
-  Bell,
-  type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type LogEntry = {
-  id: string
-  actor_id: string | null
-  actor_type: string | null
-  action: string
-  resource_type: string
-  resource_id: string | null
-  metadata: Record<string, unknown> | null
-  ip_address: string | null
-  created_at: string
-}
+  id: string;
+  actor_id: string | null;
+  actor_type: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  metadata: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+};
 
 type BurstAlert = {
-  action: string
-  resource_type: string
-  actor_type: string
-  count: number
-  threshold: number
-  flagged: boolean
-}
+  action: string;
+  resource_type: string;
+  actor_type: string;
+  count: number;
+  threshold: number;
+  flagged: boolean;
+};
 
 const ACTION_ICONS: Record<string, LucideIcon> = {
   CREATE: User,
@@ -55,101 +55,106 @@ const ACTION_ICONS: Record<string, LucideIcon> = {
   QUERY_ERROR: Cpu,
   CONNECT_PAYMENT_ACCOUNT: CreditCard,
   DISCONNECT_PAYMENT_ACCOUNT: CreditCard,
-}
+};
 
 function actionColor(action: string): string {
-  if (action.includes('DELETE') || action.includes('BULK')) return 'text-red-600 bg-red-50 border-red-200'
-  if (action.includes('CREATE')) return 'text-green-600 bg-green-50 border-green-200'
-  if (action.includes('UPDATE') || action.includes('CHANGE') || action.includes('EXTEND')) return 'text-amber-600 bg-amber-50 border-amber-200'
-  if (action.includes('ERROR') || action.includes('FAIL')) return 'text-red-600 bg-red-50 border-red-200'
-  if (action === 'LOGIN') return 'text-blue-600 bg-blue-50 border-blue-200'
-  if (action === 'QUERY') return 'text-purple-600 bg-purple-50 border-purple-200'
-  return 'text-gray-600 bg-gray-50 border-gray-200'
+  if (action.includes('DELETE') || action.includes('BULK'))
+    return 'text-red-600 bg-red-50 border-red-200';
+  if (action.includes('CREATE')) return 'text-green-600 bg-green-50 border-green-200';
+  if (action.includes('UPDATE') || action.includes('CHANGE') || action.includes('EXTEND'))
+    return 'text-amber-600 bg-amber-50 border-amber-200';
+  if (action.includes('ERROR') || action.includes('FAIL'))
+    return 'text-red-600 bg-red-50 border-red-200';
+  if (action === 'LOGIN') return 'text-blue-600 bg-blue-50 border-blue-200';
+  if (action === 'QUERY') return 'text-purple-600 bg-purple-50 border-purple-200';
+  return 'text-gray-600 bg-gray-50 border-gray-200';
 }
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 25 } },
-}
+};
 
 export default function ActivityFeedPage() {
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const [bursts, setBursts] = useState<BurstAlert[]>([])
-  const [loading, setLoading] = useState(true)
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [total, setTotal] = useState(0)
-  const [filters, setFilters] = useState({ actor_type: '', action: '', resource_type: '' })
-  const [cursorHistory, setCursorHistory] = useState<string[]>([])
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [bursts, setBursts] = useState<BurstAlert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [filters, setFilters] = useState({ actor_type: '', action: '', resource_type: '' });
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
 
-  const load = useCallback(async (cursorVal?: string) => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('limit', '30')
-      if (filters.actor_type) params.set('actor_type', filters.actor_type)
-      if (filters.action) params.set('action', filters.action)
-      if (filters.resource_type) params.set('resource_type', filters.resource_type)
-      if (cursorVal) params.set('cursor', cursorVal)
+  const load = useCallback(
+    async (cursorVal?: string) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set('limit', '30');
+        if (filters.actor_type) params.set('actor_type', filters.actor_type);
+        if (filters.action) params.set('action', filters.action);
+        if (filters.resource_type) params.set('resource_type', filters.resource_type);
+        if (cursorVal) params.set('cursor', cursorVal);
 
-      const res = await fetch(`${API_URL}/v1/admin/activity?${params}`, adminGetOptions())
-      const json = await res.json()
-      // Guard: a 500 from the API returns { error: {...} } with no .data /
-      // .pagination — keep the last successful feed instead of crashing on
-      // `json.data.logs` or `json.pagination.has_more`.
-      if (!res.ok || !Array.isArray(json?.data?.logs)) {
-        setHasMore(false)
-        setCursor(null)
-        return
+        const res = await fetch(`${API_URL}/v1/admin/activity?${params}`, adminGetOptions());
+        const json = await res.json();
+        // Guard: a 500 from the API returns { error: {...} } with no .data /
+        // .pagination — keep the last successful feed instead of crashing on
+        // `json.data.logs` or `json.pagination.has_more`.
+        if (!res.ok || !Array.isArray(json?.data?.logs)) {
+          setHasMore(false);
+          setCursor(null);
+          return;
+        }
+        setLogs(json.data.logs ?? []);
+        setBursts(json.data.bursts ?? []);
+        setHasMore(json.pagination?.has_more ?? false);
+        setCursor(json.pagination?.cursor ?? null);
+        setTotal(json.pagination?.total ?? 0);
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
       }
-      setLogs(json.data.logs ?? [])
-      setBursts(json.data.bursts ?? [])
-      setHasMore(json.pagination?.has_more ?? false)
-      setCursor(json.pagination?.cursor ?? null)
-      setTotal(json.pagination?.total ?? 0)
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false)
-    }
-  }, [filters])
+    },
+    [filters],
+  );
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleNext = () => {
     if (cursor) {
-      setCursorHistory((prev) => [...prev, cursor])
-      load(cursor)
+      setCursorHistory((prev) => [...prev, cursor]);
+      load(cursor);
     }
-  }
+  };
 
   const handlePrev = () => {
-    const prev = cursorHistory[cursorHistory.length - 1]
+    const prev = cursorHistory[cursorHistory.length - 1];
     if (prev) {
-      setCursorHistory((prevHistory) => prevHistory.slice(0, -1))
-      load(prev)
+      setCursorHistory((prevHistory) => prevHistory.slice(0, -1));
+      load(prev);
     }
-  }
+  };
 
   const applyFilters = (e: React.FormEvent) => {
-    e.preventDefault()
-    setCursorHistory([])
-    load()
-  }
+    e.preventDefault();
+    setCursorHistory([]);
+    load();
+  };
 
-  const formatAction = (action: string) => action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  const formatAction = (action: string) =>
+    action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="bg-ink-600 p-2.5 rounded-xl shadow-lg">
@@ -191,7 +196,10 @@ export default function ActivityFeedPage() {
       {/* Filters */}
       <form onSubmit={applyFilters} className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors"
+          />
           <input
             value={filters.action}
             onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}
@@ -248,7 +256,7 @@ export default function ActivityFeedPage() {
         ) : (
           <motion.div variants={containerVariants} initial="hidden" animate="visible">
             {logs.map((log) => {
-              const Icon = ACTION_ICONS[log.action] ?? Activity
+              const Icon = ACTION_ICONS[log.action] ?? Activity;
               return (
                 <motion.div
                   key={log.id}
@@ -260,7 +268,9 @@ export default function ActivityFeedPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-md border ${actionColor(log.action)}`}>
+                      <span
+                        className={`text-xs font-semibold px-1.5 py-0.5 rounded-md border ${actionColor(log.action)}`}
+                      >
                         {formatAction(log.action)}
                       </span>
                       <span className="text-xs text-gray-400 font-medium">{log.resource_type}</span>
@@ -276,7 +286,9 @@ export default function ActivityFeedPage() {
                     </p>
                     {log.metadata && (
                       <details className="mt-1">
-                        <summary className="text-[10px] text-gray-400 cursor-pointer hover:text-gray-600">Metadata</summary>
+                        <summary className="text-[10px] text-gray-400 cursor-pointer hover:text-gray-600">
+                          Metadata
+                        </summary>
                         <pre className="mt-1 text-[10px] text-gray-500 bg-gray-50 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap">
                           {JSON.stringify(log.metadata, null, 2)}
                         </pre>
@@ -286,12 +298,14 @@ export default function ActivityFeedPage() {
                   <div className="text-right shrink-0">
                     <div className="text-xs text-gray-400 whitespace-nowrap">
                       {new Date(log.created_at).toLocaleDateString('en-IN', {
-                        day: '2-digit', month: 'short',
+                        day: '2-digit',
+                        month: 'short',
                       })}
                     </div>
                     <div className="text-[10px] text-gray-300">
                       {new Date(log.created_at).toLocaleTimeString('en-IN', {
-                        hour: '2-digit', minute: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </div>
                     {log.ip_address && (
@@ -299,7 +313,7 @@ export default function ActivityFeedPage() {
                     )}
                   </div>
                 </motion.div>
-              )
+              );
             })}
           </motion.div>
         )}
@@ -317,7 +331,9 @@ export default function ActivityFeedPage() {
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="text-xs text-gray-400 font-mono">Page {cursorHistory.length + 1}</span>
+              <span className="text-xs text-gray-400 font-mono">
+                Page {cursorHistory.length + 1}
+              </span>
               <button
                 onClick={handleNext}
                 disabled={!hasMore}
@@ -331,5 +347,5 @@ export default function ActivityFeedPage() {
         )}
       </div>
     </motion.div>
-  )
+  );
 }

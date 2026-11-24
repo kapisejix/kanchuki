@@ -74,7 +74,13 @@ describe('mapStoreVisits', () => {
     const rows = mapStoreVisits({
       stores: [
         {
-          retailer: { id: 'ret_3', shop_name: 'New Shop', city: null, logo_url: null, public_slug: null },
+          retailer: {
+            id: 'ret_3',
+            shop_name: 'New Shop',
+            city: null,
+            logo_url: null,
+            public_slug: null,
+          },
           last_visited_at: '2026-09-16T10:00:00.000Z',
           visit_count: 1,
           is_muted: false,
@@ -90,8 +96,14 @@ describe('mapStoreVisits', () => {
   it('drops malformed rows instead of rendering blank store cards', () => {
     const rows = mapStoreVisits({
       stores: [
-        { retailer: { id: 'ret_ok', shop_name: 'Good Shop', public_slug: 'good-shop' }, last_visited_at: '2026-09-15T10:00:00.000Z' },
-        { retailer: { id: 'ret_no_name', shop_name: null, public_slug: 'x' }, last_visited_at: '2026-09-15T10:00:00.000Z' },
+        {
+          retailer: { id: 'ret_ok', shop_name: 'Good Shop', public_slug: 'good-shop' },
+          last_visited_at: '2026-09-15T10:00:00.000Z',
+        },
+        {
+          retailer: { id: 'ret_no_name', shop_name: null, public_slug: 'x' },
+          last_visited_at: '2026-09-15T10:00:00.000Z',
+        },
         { retailer: null, last_visited_at: '2026-09-15T10:00:00.000Z' },
         { last_visited_at: '2026-09-15T10:00:00.000Z' },
         null,

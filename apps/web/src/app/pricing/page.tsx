@@ -1,37 +1,51 @@
-import type { Metadata } from 'next'
-import { PLAN_LIMITS, ADDON_PRICING } from '@kanchuki/shared'
-import { Navbar, Footer, Section, SectionHeader, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
-import { getPlanPricing, rupees, type PlanPrices } from '@/lib/plan-pricing'
-import { PricingTable } from './PricingTable'
+import {
+  AnimatedSection,
+  FinalCta,
+  Footer,
+  Navbar,
+  PageHero,
+  Section,
+  SectionHeader,
+} from '@/components/site/Chrome';
+import { type PlanPrices, getPlanPricing, rupees } from '@/lib/plan-pricing';
+import { ADDON_PRICING, PLAN_LIMITS } from '@kanchuki/shared';
+import type { Metadata } from 'next';
+import { PricingTable } from './PricingTable';
 
 // Live Starter price from plan_pricing; generic copy if the API is unavailable.
 export async function generateMetadata(): Promise<Metadata> {
-  const starter = (await getPlanPricing())?.STARTER.monthly
-  const from = starter != null ? ` from ${rupees(starter)}/mo` : ''
+  const starter = (await getPlanPricing())?.STARTER.monthly;
+  const from = starter != null ? ` from ${rupees(starter)}/mo` : '';
   return {
     title: `Pricing${from ? ` —${from}` : ''} for Indian Clothing Stores | Kanchuki`,
     description: `Kanchuki plans${from} — AI photo catalog, WhatsApp collections, store page. 14-day free trial, no credit card. UPI, GST invoices, INR only.`,
-  }
+  };
 }
 
 // Numeric cells: products come from the API (the cap the server enforces, RC-179);
 // customers / links still from PLAN_LIMITS, which billing writes onto the retailer.
-const PLAN_ORDER = ['STARTER', 'GROWTH', 'PRO'] as const
-const limitRow = (label: string, key: 'max_customers' | 'max_collection_links_per_month', suffix = '') => ({
+const PLAN_ORDER = ['STARTER', 'GROWTH', 'PRO'] as const;
+const limitRow = (
+  label: string,
+  key: 'max_customers' | 'max_collection_links_per_month',
+  suffix = '',
+) => ({
   label,
   values: PLAN_ORDER.map((p) => {
-    const n: number = PLAN_LIMITS[p][key]
-    return Number.isFinite(n) ? `${n.toLocaleString('en-IN')}${suffix}` : 'Unlimited'
+    const n: number = PLAN_LIMITS[p][key];
+    return Number.isFinite(n) ? `${n.toLocaleString('en-IN')}${suffix}` : 'Unlimited';
   }) as [string, string, string],
-})
+});
 
-const rowsFor = (pricing: PlanPrices | null): { label: string; values: [string, string, string] }[] => [
+const rowsFor = (
+  pricing: PlanPrices | null,
+): { label: string; values: [string, string, string] }[] => [
   {
     label: 'Products',
     values: PLAN_ORDER.map((p) => {
-      if (!pricing) return '—'
-      const n = pricing[p].max_products
-      return n === null ? 'Unlimited' : n.toLocaleString('en-IN')
+      if (!pricing) return '—';
+      const n = pricing[p].max_products;
+      return n === null ? 'Unlimited' : n.toLocaleString('en-IN');
     }) as [string, string, string],
   },
   limitRow('Customers', 'max_customers'),
@@ -44,22 +58,46 @@ const rowsFor = (pricing: PlanPrices | null): { label: string; values: [string, 
   { label: 'Customer preferences (colour / style / budget)', values: ['✅', '✅', '✅'] },
   { label: 'Multi-staff logins', values: ['—', '—', '✅'] },
   { label: 'Bulk onboarding (PDF / racks)', values: ['—', '✅', '✅'] },
-]
+];
 
 const oldWay = (from: string | null) => [
-  { label: 'Catalog photos', old: 'Photographer + editor, ₹2,000–5,000 per shoot', kanchuki: 'Your phone camera + AI tags (Pro: background removal)' },
-  { label: 'Writing product descriptions', old: 'Hours of typing or a hired assistant', kanchuki: 'Included (AI writes them)' },
-  { label: 'A website', old: '₹10,000–50,000 + maintenance', kanchuki: 'Included (your store page + WhatsApp links)' },
-  { label: 'Monthly cost', old: 'Easily ₹2,000+ with no results yet', kanchuki: from ? `From ${from}, results the same week` : 'Results the same week' },
-]
+  {
+    label: 'Catalog photos',
+    old: 'Photographer + editor, ₹2,000–5,000 per shoot',
+    kanchuki: 'Your phone camera + AI tags (Pro: background removal)',
+  },
+  {
+    label: 'Writing product descriptions',
+    old: 'Hours of typing or a hired assistant',
+    kanchuki: 'Included (AI writes them)',
+  },
+  {
+    label: 'A website',
+    old: '₹10,000–50,000 + maintenance',
+    kanchuki: 'Included (your store page + WhatsApp links)',
+  },
+  {
+    label: 'Monthly cost',
+    old: 'Easily ₹2,000+ with no results yet',
+    kanchuki: from ? `From ${from}, results the same week` : 'Results the same week',
+  },
+];
 
 const FAQ = [
-  { q: 'Is there really no credit card for the trial?', a: 'Correct. Start free, and only pay when you\'re sure it works for your shop.' },
+  {
+    q: 'Is there really no credit card for the trial?',
+    a: "Correct. Start free, and only pay when you're sure it works for your shop.",
+  },
   { q: 'Can I switch plans later?', a: 'Yes — upgrade or downgrade anytime.' },
-  { q: 'What happens when I hit a product limit?', a: 'You can buy an add-on pack for that month, or upgrade the plan. Nothing gets deleted.' },
-  { q: 'Is GST added on top?', a: 'Prices include GST invoicing — you get proper invoices for every payment.' },
-
-]
+  {
+    q: 'What happens when I hit a product limit?',
+    a: 'You can buy an add-on pack for that month, or upgrade the plan. Nothing gets deleted.',
+  },
+  {
+    q: 'Is GST added on top?',
+    a: 'Prices include GST invoicing — you get proper invoices for every payment.',
+  },
+];
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -69,19 +107,22 @@ const jsonLd = {
     name: f.q,
     acceptedAnswer: { '@type': 'Answer', text: f.a },
   })),
-}
+};
 
 export default async function PricingPage() {
-  const pricing = await getPlanPricing()
-  const addons = ADDON_PRICING as Record<string, { label: string; price_paise: number }[]>
-  const addonLines = Object.values(addons).flat()
+  const pricing = await getPlanPricing();
+  const addons = ADDON_PRICING as Record<string, { label: string; price_paise: number }[]>;
+  const addonLines = Object.values(addons).flat();
 
   return (
     <>
       {/* JSON-LD from a static, locally-authored FAQ array (no user/DB input) — the
           standard Next.js pattern for structured data. `<` is escaped so the
           payload can never prematurely close the script tag. */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+      />
       <Navbar />
       <PageHero
         tag="Pricing"
@@ -95,14 +136,21 @@ export default async function PricingPage() {
             <SectionHeader tag="Choose your plan" title="Every plan starts free for 14 days" />
           </AnimatedSection>
           <PricingTable pricing={pricing} rows={rowsFor(pricing)} />
-          <p className="text-center text-sm text-carbon/40 mt-8">14-day free trial · no credit card · UPI (GPay/PhonePe/PayTM), cards, netbanking · INR only · GST invoices.</p>
+          <p className="text-center text-sm text-carbon/40 mt-8">
+            14-day free trial · no credit card · UPI (GPay/PhonePe/PayTM), cards, netbanking · INR
+            only · GST invoices.
+          </p>
         </div>
       </Section>
 
       <Section className="bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
-            <SectionHeader tag="Add-ons" title="Only if you need more" subtitle="For shops on a plan who hit a limit in a busy month — buy more without changing plans." />
+            <SectionHeader
+              tag="Add-ons"
+              title="Only if you need more"
+              subtitle="For shops on a plan who hit a limit in a busy month — buy more without changing plans."
+            />
           </AnimatedSection>
           <div className="overflow-x-auto rounded-2xl border border-carbon/10 bg-white">
             <table className="w-full text-sm">
@@ -110,7 +158,9 @@ export default async function PricingPage() {
                 {addonLines.map((a, i) => (
                   <tr key={a.label} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/70'}>
                     <td className="px-5 py-3.5 text-carbon/70">{a.label}</td>
-                    <td className="px-5 py-3.5 text-carbon font-semibold text-right">₹{(a.price_paise / 100).toLocaleString('en-IN')}</td>
+                    <td className="px-5 py-3.5 text-carbon font-semibold text-right">
+                      ₹{(a.price_paise / 100).toLocaleString('en-IN')}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -128,9 +178,15 @@ export default async function PricingPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-carbon/10 bg-cream">
-                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider"> </th>
-                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">Old way</th>
-                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">Kanchuki</th>
+                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">
+                    {' '}
+                  </th>
+                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">
+                    Old way
+                  </th>
+                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">
+                    Kanchuki
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -154,7 +210,10 @@ export default async function PricingPage() {
           </AnimatedSection>
           <div className="space-y-3">
             {FAQ.map((f) => (
-              <div key={f.q} className="bg-white rounded-2xl border border-carbon/10 p-6 transition-colors hover:border-carbon/25">
+              <div
+                key={f.q}
+                className="bg-white rounded-2xl border border-carbon/10 p-6 transition-colors hover:border-carbon/25"
+              >
                 <h3 className="text-sm font-semibold text-carbon mb-2">{f.q}</h3>
                 <p className="text-sm text-carbon/60 leading-relaxed">{f.a}</p>
               </div>
@@ -171,5 +230,5 @@ export default async function PricingPage() {
       />
       <Footer />
     </>
-  )
+  );
 }

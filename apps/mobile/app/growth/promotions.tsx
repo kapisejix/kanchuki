@@ -1,49 +1,56 @@
-import { formatPaiseShort } from '@kanchuki/shared'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import { ChevronLeft, Percent, Plus, Tag, Trash2 } from 'lucide-react-native'
-import { ActivityIndicator, Alert, RefreshControl, ScrollView, Switch, Text, View } from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { growthApi, type Promotion } from '../../src/lib/api/growth'
-import { showError } from '../../src/lib/errors'
-
+import { formatPaiseShort } from '@kanchuki/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ChevronLeft, Percent, Plus, Tag, Trash2 } from 'lucide-react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { type Promotion, growthApi } from '../../src/lib/api/growth';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 function promoBadge(p: Promotion) {
-  if (p.discount_type === 'PERCENT') return `${p.discount_value}% off`
-  return `${formatPaiseShort(p.discount_value)} off`
+  if (p.discount_type === 'PERCENT') return `${p.discount_value}% off`;
+  return `${formatPaiseShort(p.discount_value)} off`;
 }
 
 export default function PromotionsScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'promotions'],
     queryFn: () => growthApi.promotions(),
-  })
-  const promotions = data?.data ?? []
+  });
+  const promotions = data?.data ?? [];
 
   const toggleActive = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       growthApi.updatePromotion(id, { is_active }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['growth', 'promotions'] }),
     onError: (err) => showError(err, 'Failed to update promotion'),
-  })
+  });
 
   const remove = useMutation({
     mutationFn: (id: string) => growthApi.deletePromotion(id),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['growth', 'promotions'] }),
     onError: (err) => showError(err, 'Failed to delete promotion'),
-  })
+  });
 
   const confirmDelete = (p: Promotion) => {
     Alert.alert('Delete promotion?', `"${p.code}" will stop working for new orders.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => remove.mutate(p.id) },
-    ])
-  }
+    ]);
+  };
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -88,9 +95,7 @@ export default function PromotionsScreen() {
       ) : promotions.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
-            <View
-              className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
-            >
+            <View className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200">
               <Percent size={28} color="#6B4773" />
             </View>
             <Text
@@ -100,10 +105,15 @@ export default function PromotionsScreen() {
               No Promotions Yet
             </Text>
             <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
-              Create a discount code — percentage off or flat ₹ — for your store or specific products.
+              Create a discount code — percentage off or flat ₹ — for your store or specific
+              products.
             </Text>
             <View className="w-48 mt-5">
-              <GradientButton variant="web" label="Create Promotion" onPress={() => router.push('/growth/promotion-form')} />
+              <GradientButton
+                variant="web"
+                label="Create Promotion"
+                onPress={() => router.push('/growth/promotion-form')}
+              />
             </View>
           </View>
         </ScrollView>
@@ -111,20 +121,25 @@ export default function PromotionsScreen() {
         <ScrollView
           className="flex-1 px-4 pt-4"
           contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           <View className="gap-3.5">
             {promotions.map((p) => (
               <View key={p.id} className="bg-white rounded-2xl p-5 border border-lavender-200">
                 <View className="flex-row items-center justify-between mb-2">
                   <View className="flex-row items-center gap-3 flex-1 mr-2">
-                    <View className="w-6 items-center justify-center"
-                    >
+                    <View className="w-6 items-center justify-center">
                       <Tag size={18} color="#6B4773" />
                     </View>
                     <View className="flex-1">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                        style={{
+                          fontFamily: 'Marcellus_400Regular',
+                          letterSpacing: 0.32,
+                          fontWeight: '800',
+                        }}
                         className="text-lg text-spaceCadet-900"
                         numberOfLines={1}
                       >
@@ -146,8 +161,12 @@ export default function PromotionsScreen() {
                   />
                 </View>
                 <View className="flex-row items-center gap-2 mt-2 pt-3 border-t border-lavender-200">
-                  <View className={`rounded-full px-3 py-1 ${p.is_active ? 'bg-fuchsia-500/15 border border-fuchsia-500/30' : 'bg-lavender-100 border border-lavender-200'}`}>
-                    <Text className={`text-[11px] font-semibold ${p.is_active ? 'text-emerald-700' : 'text-heliotrope-500'}`}>
+                  <View
+                    className={`rounded-full px-3 py-1 ${p.is_active ? 'bg-fuchsia-500/15 border border-fuchsia-500/30' : 'bg-lavender-100 border border-lavender-200'}`}
+                  >
+                    <Text
+                      className={`text-[11px] font-semibold ${p.is_active ? 'text-emerald-700' : 'text-heliotrope-500'}`}
+                    >
                       {p.is_active ? 'Active' : 'Inactive'}
                     </Text>
                   </View>
@@ -172,10 +191,14 @@ export default function PromotionsScreen() {
             ))}
           </View>
           <View className="mt-5">
-            <GradientButton variant="web" label="+ New Promotion" onPress={() => router.push('/growth/promotion-form')} />
+            <GradientButton
+              variant="web"
+              label="+ New Promotion"
+              onPress={() => router.push('/growth/promotion-form')}
+            />
           </View>
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

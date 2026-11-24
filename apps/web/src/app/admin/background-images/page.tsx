@@ -1,100 +1,106 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Image as ImageIcon, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react'
-import Image from 'next/image'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { Eye, EyeOff, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type BackgroundImage = {
-  id: string
-  name: string
-  image_url: string
-  thumbnail_url: string | null
-  is_active: boolean
-  tone: 'LIGHT' | 'DARK' | null
-  created_at: string
-}
+  id: string;
+  name: string;
+  image_url: string;
+  thumbnail_url: string | null;
+  is_active: boolean;
+  tone: 'LIGHT' | 'DARK' | null;
+  created_at: string;
+};
 
 export default function BackgroundImagesPage() {
-  const [rows, setRows] = useState<BackgroundImage[]>([])
-  const [loading, setLoading] = useState(true)
-  const [status, setStatus] = useState('')
-  const [preview, setPreview] = useState<string | null>(null)
+  const [rows, setRows] = useState<BackgroundImage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [preview, setPreview] = useState<string | null>(null);
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/background-images`, adminGetOptions())
-    const json = await res.json()
-    setRows(json.data ?? [])
-    setLoading(false)
-  }
+    const res = await fetch(`${API_URL}/v1/admin/background-images`, adminGetOptions());
+    const json = await res.json();
+    setRows(json.data ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   const deleteRow = async (row: BackgroundImage) => {
-    if (!confirm(`Delete "${row.name}"? Products using it fall back to Auto backdrop.`)) return
+    if (!confirm(`Delete "${row.name}"? Products using it fall back to Auto backdrop.`)) return;
     const res = await fetch(`${API_URL}/v1/admin/background-images/${row.id}`, {
       ...(await adminMutateOptions()),
       method: 'DELETE',
       // adminMutateOptions() sets Content-Type: application/json — Fastify then
       // 500s on an empty body ("body must be object"). Send an empty object.
       body: '{}',
-    })
+    });
     if (!res.ok) {
-      const detail = await res.text().catch(() => '')
-      setStatus(`❌ Delete failed (HTTP ${res.status})${detail ? ` — ${detail.slice(0, 200)}` : ''}`)
-      return
+      const detail = await res.text().catch(() => '');
+      setStatus(
+        `❌ Delete failed (HTTP ${res.status})${detail ? ` — ${detail.slice(0, 200)}` : ''}`,
+      );
+      return;
     }
-    setRows((prev) => prev.filter((r) => r.id !== row.id))
-    setStatus(`✅ "${row.name}" deleted`)
-  }
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setStatus(`✅ "${row.name}" deleted`);
+  };
 
   const toggleActive = async (row: BackgroundImage) => {
     await fetch(`${API_URL}/v1/admin/background-images/${row.id}`, {
       ...(await adminMutateOptions()),
       method: 'PATCH',
       body: JSON.stringify({ is_active: !row.is_active }),
-    })
-    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)))
-  }
+    });
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)));
+  };
 
   // F-028: admin can override the auto-computed tone (used by the
   // dark-garment→light / light-garment→dark auto-contrast backdrop picker).
   const setTone = async (row: BackgroundImage, tone: 'LIGHT' | 'DARK' | null) => {
-    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tone } : r)))
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tone } : r)));
     try {
       await fetch(`${API_URL}/v1/admin/background-images/${row.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify({ tone }),
-      })
+      });
     } catch {
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tone: row.tone } : r)))
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tone: row.tone } : r)));
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-5xl"
+    >
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Background Images</h1>
           <ImageIcon size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          F-011: curated backdrops retailers can pick for their product photos and 360° spin.
-          F-028: each backdrop carries a tone (auto-computed, admin-overridable) so the AI pipeline
+          F-011: curated backdrops retailers can pick for their product photos and 360° spin. F-028:
+          each backdrop carries a tone (auto-computed, admin-overridable) so the AI pipeline
           auto-picks a contrasting backdrop — dark garment → light, light garment → dark. Inactive
           backgrounds stay applied to products that already use them, but drop out of the picker.
         </p>
@@ -138,7 +144,9 @@ export default function BackgroundImagesPage() {
                   <button
                     onClick={() => toggleActive(row)}
                     className={`p-1.5 rounded-lg transition-colors ${
-                      row.is_active ? 'text-ink-600 hover:bg-ink-50' : 'text-gray-400 hover:bg-gray-50'
+                      row.is_active
+                        ? 'text-ink-600 hover:bg-ink-50'
+                        : 'text-gray-400 hover:bg-gray-50'
                     }`}
                     aria-label={row.is_active ? 'Deactivate' : 'Activate'}
                   >
@@ -168,10 +176,7 @@ export default function BackgroundImagesPage() {
                 <select
                   value={row.tone ?? ''}
                   onChange={(e) =>
-                    void setTone(
-                      row,
-                      (e.target.value || null) as 'LIGHT' | 'DARK' | null,
-                    )
+                    void setTone(row, (e.target.value || null) as 'LIGHT' | 'DARK' | null)
                   }
                   className="text-[10px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600"
                   aria-label={`Tone for ${row.name}`}
@@ -205,5 +210,5 @@ export default function BackgroundImagesPage() {
         </div>
       )}
     </motion.div>
-  )
+  );
 }

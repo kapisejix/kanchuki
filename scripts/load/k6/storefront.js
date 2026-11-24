@@ -20,8 +20,8 @@
 // and hoped for.
 
 import { check, fail } from 'k6';
-import { Counter } from 'k6/metrics';
 import http from 'k6/http';
+import { Counter } from 'k6/metrics';
 import { assertSafeBaseUrl, buildPublicMix, chooseEndpoint, parseRate } from './mix.js';
 
 const BASE_URL = assertSafeBaseUrl(__ENV.LOADTEST_BASE_URL);
@@ -79,7 +79,9 @@ export function setup() {
     tags: { endpoint: 'setup' },
   });
   if (storesRes.status !== 200) {
-    fail(`setup: GET /v1/public/stores returned ${storesRes.status} — is ${BASE_URL} the staging API?`);
+    fail(
+      `setup: GET /v1/public/stores returned ${storesRes.status} — is ${BASE_URL} the staging API?`,
+    );
   }
   let stores = [];
   try {
@@ -104,7 +106,9 @@ export function setup() {
   const products = productsRes.status === 200 ? (productsRes.json('data.products') ?? []) : [];
   const productIds = products.map((p) => p.id).filter(Boolean);
   if (productIds.length === 0) {
-    fail(`setup: ${slugs[0]} returned no public products — the product-grid and detail routes would 404.`);
+    fail(
+      `setup: ${slugs[0]} returned no public products — the product-grid and detail routes would 404.`,
+    );
   }
 
   const collectionsRes = http.get(`${BASE_URL}/v1/public/retailers/${slugs[0]}/collections`, {

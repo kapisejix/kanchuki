@@ -1,111 +1,121 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { Gauge, Loader2, AlertCircle, Save, RefreshCw } from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { AlertCircle, Gauge, Loader2, RefreshCw, Save } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type RateLimitEntry = {
-  window_ms: number
-  max_requests: number
-  description: string
-  is_default: boolean
-}
+  window_ms: number;
+  max_requests: number;
+  description: string;
+  is_default: boolean;
+};
 
-type RateLimits = Record<string, RateLimitEntry>
+type RateLimits = Record<string, RateLimitEntry>;
 
 export default function RateLimitsPage() {
-  const [limits, setLimits] = useState<RateLimits>({})
-  const [originalLimits, setOriginalLimits] = useState<RateLimits>({})
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [editedKeys, setEditedKeys] = useState<Set<string>>(new Set())
+  const [limits, setLimits] = useState<RateLimits>({});
+  const [originalLimits, setOriginalLimits] = useState<RateLimits>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editedKeys, setEditedKeys] = useState<Set<string>>(new Set());
 
   const loadLimits = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/rate-limits`, adminGetOptions())
-      if (!res.ok) throw new Error('Failed to load')
-      const json = await res.json()
-      setLimits(json.data ?? {})
-      setOriginalLimits(JSON.parse(JSON.stringify(json.data ?? {})))
+      const res = await fetch(`${API_URL}/v1/admin/settings/rate-limits`, adminGetOptions());
+      if (!res.ok) throw new Error('Failed to load');
+      const json = await res.json();
+      setLimits(json.data ?? {});
+      setOriginalLimits(JSON.parse(JSON.stringify(json.data ?? {})));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
+      setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
-  useEffect(() => { loadLimits() }, [loadLimits])
+  useEffect(() => {
+    loadLimits();
+  }, [loadLimits]);
 
   const updateLimit = (key: string, field: 'window_ms' | 'max_requests', value: number) => {
     setLimits((prev) => ({
       ...prev,
       [key]: { ...prev[key], [field]: value, is_default: false },
-    }))
-    setEditedKeys((prev) => new Set(prev).add(key))
-  }
+    }));
+    setEditedKeys((prev) => new Set(prev).add(key));
+  };
 
   const hasChanges = Object.keys(limits).some((k) => {
-    const orig = originalLimits[k]
-    const curr = limits[k]
-    return orig && curr && (orig.window_ms !== curr.window_ms || orig.max_requests !== curr.max_requests)
-  })
+    const orig = originalLimits[k];
+    const curr = limits[k];
+    return (
+      orig && curr && (orig.window_ms !== curr.window_ms || orig.max_requests !== curr.max_requests)
+    );
+  });
 
   const handleSave = async () => {
-    setSaving(true)
-    setError('')
-    setSuccess('')
+    setSaving(true);
+    setError('');
+    setSuccess('');
     try {
-      const payload: Record<string, { window_ms: number; max_requests: number }> = {}
+      const payload: Record<string, { window_ms: number; max_requests: number }> = {};
       for (const [key, val] of Object.entries(limits)) {
-        payload[key] = { window_ms: val.window_ms, max_requests: val.max_requests }
+        payload[key] = { window_ms: val.window_ms, max_requests: val.max_requests };
       }
       const res = await fetch(`${API_URL}/v1/admin/settings/rate-limits`, {
         ...(await adminMutateOptions()),
         method: 'PUT',
         body: JSON.stringify({ limits: payload }),
-      })
-      if (!res.ok) throw new Error('Failed to save')
-      setOriginalLimits(JSON.parse(JSON.stringify(limits)))
-      setEditedKeys(new Set())
-      setSuccess('Rate limits updated successfully')
-      setTimeout(() => setSuccess(''), 3000)
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setOriginalLimits(JSON.parse(JSON.stringify(limits)));
+      setEditedKeys(new Set());
+      setSuccess('Rate limits updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const formatWindow = (ms: number): string => {
-    if (ms >= 3600000) return `${ms / 3600000}h`
-    if (ms >= 60000) return `${ms / 60000}min`
-    return `${ms / 1000}s`
-  }
+    if (ms >= 3600000) return `${ms / 3600000}h`;
+    if (ms >= 60000) return `${ms / 60000}min`;
+    return `${ms / 1000}s`;
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 size={24} className="animate-spin text-gray-400" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <Gauge size={24} className="text-gray-700" />
             <h1 className="text-2xl font-bold text-gray-900">Rate Limits</h1>
           </div>
-          <p className="text-sm text-gray-500">Configure request rate limits per endpoint — changes apply immediately</p>
+          <p className="text-sm text-gray-500">
+            Configure request rate limits per endpoint — changes apply immediately
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <motion.button
@@ -151,16 +161,23 @@ export default function RateLimitsPage() {
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/50">
               <th className="text-left px-5 py-3 font-semibold text-gray-600 text-xs">Endpoint</th>
-              <th className="text-left px-5 py-3 font-semibold text-gray-600 text-xs">Description</th>
+              <th className="text-left px-5 py-3 font-semibold text-gray-600 text-xs">
+                Description
+              </th>
               <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs">Window</th>
-              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs">Max Requests</th>
+              <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs">
+                Max Requests
+              </th>
               <th className="text-right px-5 py-3 font-semibold text-gray-600 text-xs">Rate</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(limits).map(([key, entry], i) => {
-              const isEdited = editedKeys.has(key)
-              const ratePerSec = entry.window_ms > 0 ? (entry.max_requests / (entry.window_ms / 1000)).toFixed(1) : '∞'
+              const isEdited = editedKeys.has(key);
+              const ratePerSec =
+                entry.window_ms > 0
+                  ? (entry.max_requests / (entry.window_ms / 1000)).toFixed(1)
+                  : '∞';
               return (
                 <motion.tr
                   key={key}
@@ -170,8 +187,12 @@ export default function RateLimitsPage() {
                   className={`border-b border-gray-50 last:border-0 ${isEdited ? 'bg-ink-50/50' : ''}`}
                 >
                   <td className="px-5 py-4">
-                    <code className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-mono">{key}</code>
-                    {isEdited && <span className="ml-2 text-[10px] text-ink-600 font-medium">Edited</span>}
+                    <code className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md font-mono">
+                      {key}
+                    </code>
+                    {isEdited && (
+                      <span className="ml-2 text-[10px] text-ink-600 font-medium">Edited</span>
+                    )}
                   </td>
                   <td className="px-5 py-4 text-gray-500 text-xs">{entry.description}</td>
                   <td className="px-5 py-4 text-right">
@@ -193,7 +214,9 @@ export default function RateLimitsPage() {
                       min={1}
                       max={10000}
                       value={entry.max_requests}
-                      onChange={(e) => updateLimit(key, 'max_requests', Math.max(1, Number(e.target.value)))}
+                      onChange={(e) =>
+                        updateLimit(key, 'max_requests', Math.max(1, Number(e.target.value)))
+                      }
                       className="w-20 px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 text-right focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                     />
                   </td>
@@ -201,7 +224,7 @@ export default function RateLimitsPage() {
                     {ratePerSec}/s
                   </td>
                 </motion.tr>
-              )
+              );
             })}
           </tbody>
         </table>
@@ -214,5 +237,5 @@ export default function RateLimitsPage() {
         </div>
       )}
     </motion.div>
-  )
+  );
 }

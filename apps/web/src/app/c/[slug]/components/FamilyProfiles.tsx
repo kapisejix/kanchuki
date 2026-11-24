@@ -1,79 +1,87 @@
-'use client'
+'use client';
 
-import { SIZE_OPTIONS } from '@kanchuki/shared'
-import { useState, useEffect, useCallback } from 'react'
-import { Users, Plus, X, Check, User } from 'lucide-react'
-const RELATION_OPTIONS = ['Mom', 'Sister', 'Daughter', 'Wife', 'Friend', 'Other'] as const
+import { SIZE_OPTIONS } from '@kanchuki/shared';
+import { Check, Plus, User, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+const RELATION_OPTIONS = ['Mom', 'Sister', 'Daughter', 'Wife', 'Friend', 'Other'] as const;
 
 interface FamilyProfile {
-  id: string
-  name: string
-  relation: string
-  size: string
+  id: string;
+  name: string;
+  relation: string;
+  size: string;
 }
 
 interface Props {
-  storeSlug: string
-  onSelectProfile: (profile: FamilyProfile | null) => void
-  activeProfile: FamilyProfile | null
+  storeSlug: string;
+  onSelectProfile: (profile: FamilyProfile | null) => void;
+  activeProfile: FamilyProfile | null;
 }
 
 function profilesKey(storeSlug: string): string {
-  return `kanchuki_family_${storeSlug}`
+  return `kanchuki_family_${storeSlug}`;
 }
 
 function loadProfiles(storeSlug: string): FamilyProfile[] {
-  if (typeof window === 'undefined') return []
+  if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(profilesKey(storeSlug))
-    return raw ? JSON.parse(raw) as FamilyProfile[] : []
-  } catch { return [] }
+    const raw = localStorage.getItem(profilesKey(storeSlug));
+    return raw ? (JSON.parse(raw) as FamilyProfile[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 function saveProfiles(storeSlug: string, profiles: FamilyProfile[]): void {
   try {
-    localStorage.setItem(profilesKey(storeSlug), JSON.stringify(profiles))
+    localStorage.setItem(profilesKey(storeSlug), JSON.stringify(profiles));
   } catch {}
 }
 
 export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Props) {
-  const [profiles, setProfiles] = useState<FamilyProfile[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newRelation, setNewRelation] = useState<string | null>(null)
-  const [newSize, setNewSize] = useState<string | null>(null)
+  const [profiles, setProfiles] = useState<FamilyProfile[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newRelation, setNewRelation] = useState<string | null>(null);
+  const [newSize, setNewSize] = useState<string | null>(null);
 
   useEffect(() => {
-    setProfiles(loadProfiles(storeSlug))
-  }, [storeSlug])
+    setProfiles(loadProfiles(storeSlug));
+  }, [storeSlug]);
 
   const handleAdd = useCallback(() => {
-    if (!newName.trim() || !newRelation || !newSize) return
+    if (!newName.trim() || !newRelation || !newSize) return;
     const profile: FamilyProfile = {
       id: Date.now().toString(),
       name: newName.trim(),
       relation: newRelation,
       size: newSize,
-    }
-    const updated = [...profiles, profile]
-    setProfiles(updated)
-    saveProfiles(storeSlug, updated)
-    setNewName('')
-    setNewRelation(null)
-    setNewSize(null)
-    setShowForm(false)
-  }, [newName, newRelation, newSize, profiles, storeSlug])
+    };
+    const updated = [...profiles, profile];
+    setProfiles(updated);
+    saveProfiles(storeSlug, updated);
+    setNewName('');
+    setNewRelation(null);
+    setNewSize(null);
+    setShowForm(false);
+  }, [newName, newRelation, newSize, profiles, storeSlug]);
 
-  const handleRemove = useCallback((id: string) => {
-    const updated = profiles.filter((p) => p.id !== id)
-    setProfiles(updated)
-    saveProfiles(storeSlug, updated)
-    if (activeProfile?.id === id) onSelectProfile(null)
-  }, [profiles, storeSlug, activeProfile, onSelectProfile])
+  const handleRemove = useCallback(
+    (id: string) => {
+      const updated = profiles.filter((p) => p.id !== id);
+      setProfiles(updated);
+      saveProfiles(storeSlug, updated);
+      if (activeProfile?.id === id) onSelectProfile(null);
+    },
+    [profiles, storeSlug, activeProfile, onSelectProfile],
+  );
 
-  const handleSelect = useCallback((profile: FamilyProfile | null) => {
-    onSelectProfile(profile)
-  }, [onSelectProfile])
+  const handleSelect = useCallback(
+    (profile: FamilyProfile | null) => {
+      onSelectProfile(profile);
+    },
+    [onSelectProfile],
+  );
 
   return (
     <section className="bg-white border border-gray-100 rounded-2xl p-4">
@@ -104,7 +112,9 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
         }`}
       >
         <User size={14} className={!activeProfile ? 'text-indigo-600' : 'text-gray-400'} />
-        <span className={`text-xs font-medium ${!activeProfile ? 'text-indigo-800' : 'text-gray-600'}`}>
+        <span
+          className={`text-xs font-medium ${!activeProfile ? 'text-indigo-800' : 'text-gray-600'}`}
+        >
           My Size
         </span>
         {!activeProfile && <Check size={12} className="text-indigo-500 ml-auto" />}
@@ -123,12 +133,18 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
           >
             <span className="text-sm">🎀</span>
             <div className="text-left">
-              <span className={`text-xs font-medium ${activeProfile?.id === profile.id ? 'text-indigo-800' : 'text-gray-700'}`}>
+              <span
+                className={`text-xs font-medium ${activeProfile?.id === profile.id ? 'text-indigo-800' : 'text-gray-700'}`}
+              >
                 {profile.name}
               </span>
-              <span className="text-[10px] text-gray-400 ml-1.5">{profile.relation} · {profile.size}</span>
+              <span className="text-[10px] text-gray-400 ml-1.5">
+                {profile.relation} · {profile.size}
+              </span>
             </div>
-            {activeProfile?.id === profile.id && <Check size={12} className="text-indigo-500 ml-auto" />}
+            {activeProfile?.id === profile.id && (
+              <Check size={12} className="text-indigo-500 ml-auto" />
+            )}
           </button>
           <button
             onClick={() => handleRemove(profile.id)}
@@ -154,7 +170,10 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
             {RELATION_OPTIONS.map((rel) => (
               <button
                 key={rel}
-                onClick={() => { setNewRelation(rel); if (!newName) setNewName(rel) }}
+                onClick={() => {
+                  setNewRelation(rel);
+                  if (!newName) setNewName(rel);
+                }}
                 className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${
                   newRelation === rel
                     ? 'bg-indigo-600 text-white'
@@ -192,5 +211,5 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
         </div>
       )}
     </section>
-  )
+  );
 }

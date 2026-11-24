@@ -1,18 +1,15 @@
-import { useState, useCallback } from 'react'
-import {
-  View, Text, ScrollView, RefreshControl,
-  ActivityIndicator,
-} from 'react-native'
-import { router, useFocusEffect } from 'expo-router'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { useQuery } from '@tanstack/react-query'
-import { Store, MapPin, Package, ArrowRight } from 'lucide-react-native'
-import { teamApi, type SupportTicket, type TeamMemberInfo } from '../../src/lib/team-api'
-import { enterCatalogSession } from '../../src/lib/catalog-delegate'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { ScreenHeader } from '../../src/components/ScreenHeader'
+import { useQuery } from '@tanstack/react-query';
+import { router, useFocusEffect } from 'expo-router';
+import { ArrowRight, MapPin, Package, Store } from 'lucide-react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { enterCatalogSession } from '../../src/lib/catalog-delegate';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { type SupportTicket, type TeamMemberInfo, teamApi } from '../../src/lib/team-api';
+import { useTheme } from '../../src/lib/theme';
 
 // F-020: only tickets ready for an on-site upload — assigned to me, paid,
 // and a visit slot confirmed. General support tickets aren't shown here;
@@ -23,52 +20,52 @@ function readyForSession(ticket: SupportTicket, myId: string): boolean {
     ticket.status === 'ASSIGNED' &&
     ticket.paid_at != null &&
     ticket.confirmed_slot != null
-  )
+  );
 }
 
 export default function CatalogTicketsScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { screenPaddingBottom } = useScreenInsets()
-  const [starting, setStarting] = useState<string | null>(null)
+  const { primaryColor, colors } = useTheme();
+  const { screenPaddingBottom } = useScreenInsets();
+  const [starting, setStarting] = useState<string | null>(null);
 
-  const { data: meData } = useQuery({ queryKey: ['staff', 'me'], queryFn: () => teamApi.getMe() })
-  const me = (meData as { data: TeamMemberInfo } | undefined)?.data
+  const { data: meData } = useQuery({ queryKey: ['staff', 'me'], queryFn: () => teamApi.getMe() });
+  const me = (meData as { data: TeamMemberInfo } | undefined)?.data;
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['staff', 'catalog-tickets'],
     queryFn: () => teamApi.getTickets({ ticket_type: 'CATALOG_UPLOAD' }),
-  })
+  });
 
   useFocusEffect(
     useCallback(() => {
-      void refetch()
+      void refetch();
     }, [refetch]),
-  )
+  );
 
   const tickets = ((data as { data: SupportTicket[] } | undefined)?.data ?? []).filter((t) =>
     me ? readyForSession(t, me.id) : false,
-  )
+  );
 
   const handleStart = async (ticket: SupportTicket) => {
-    setStarting(ticket.id)
+    setStarting(ticket.id);
     try {
-      const res = await teamApi.startCatalogSession(ticket.id)
+      const res = await teamApi.startCatalogSession(ticket.id);
       await enterCatalogSession({
         token: res.data.token,
         shop_name: ticket.retailer.shop_name,
         ticket_id: ticket.id,
-      })
+      });
       if (ticket.item_count_requested != null && ticket.item_count_requested >= 100) {
-        router.push(`/product/bulk-onboard?target=${ticket.item_count_requested}`)
+        router.push(`/product/bulk-onboard?target=${ticket.item_count_requested}`);
       } else {
-        router.push('/product/add')
+        router.push('/product/add');
       }
     } catch (err) {
-      showError(err as Error, 'Could not start the upload session')
+      showError(err as Error, 'Could not start the upload session');
     } finally {
-      setStarting(null)
+      setStarting(null);
     }
-  }
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -80,7 +77,9 @@ export default function CatalogTicketsScreen() {
         <ScrollView
           className="flex-1 px-4"
           contentContainerStyle={{ paddingTop: 12, paddingBottom: screenPaddingBottom }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           {tickets.length === 0 ? (
             <View className="items-center py-16">
@@ -107,7 +106,11 @@ export default function CatalogTicketsScreen() {
                     ~{t.item_count_requested ?? '?'} items · visit{' '}
                     {t.confirmed_slot &&
                       new Date(t.confirmed_slot).toLocaleString('en-IN', {
-                        weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
                       })}
                   </Text>
                   <AnimatedPressable
@@ -119,7 +122,9 @@ export default function CatalogTicketsScreen() {
                       <ActivityIndicator color="white" size="small" />
                     ) : (
                       <>
-                        <Text className="text-white text-sm font-semibold">Start Upload Session</Text>
+                        <Text className="text-white text-sm font-semibold">
+                          Start Upload Session
+                        </Text>
                         <ArrowRight size={16} color="white" />
                       </>
                     )}
@@ -131,5 +136,5 @@ export default function CatalogTicketsScreen() {
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

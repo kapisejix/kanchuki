@@ -14,7 +14,7 @@
  * assumed vision-capable.
  */
 
-export type VisionCapability = 'vision' | 'text-only' | 'unknown'
+export type VisionCapability = 'vision' | 'text-only' | 'unknown';
 
 /**
  * Model families known to accept image inputs. Substring match on the
@@ -51,7 +51,7 @@ const VISION_MARKERS = [
   'xgen-mm',
   'florence',
   'kosmos',
-]
+];
 
 /**
  * Model families known to be text-only (no image input). Checked AFTER the
@@ -78,15 +78,15 @@ const TEXT_ONLY_MARKERS = [
   // Note: no bare 'grok-3' marker — Grok 3 accepts image inputs, so grok
   // models resolve to 'unknown' (the safe default) rather than a wrong warning.
   'qwen3', // qwen3 / qwen3-next are text-only; qwen*-vl variants are caught above
-]
+];
 
 /** Classify a single model name string. */
 export function classifyVisionModel(modelName: string | null | undefined): VisionCapability {
-  if (!modelName) return 'unknown'
-  const name = modelName.trim().toLowerCase()
-  if (!name) return 'unknown'
+  if (!modelName) return 'unknown';
+  const name = modelName.trim().toLowerCase();
+  if (!name) return 'unknown';
 
-  if (VISION_MARKERS.some((marker) => name.includes(marker))) return 'vision'
-  if (TEXT_ONLY_MARKERS.some((marker) => name.includes(marker))) return 'text-only'
-  return 'unknown'
+  if (VISION_MARKERS.some((marker) => name.includes(marker))) return 'vision';
+  if (TEXT_ONLY_MARKERS.some((marker) => name.includes(marker))) return 'text-only';
+  return 'unknown';
 }

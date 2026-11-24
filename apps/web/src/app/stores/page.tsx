@@ -1,49 +1,49 @@
-import type { Metadata } from 'next'
-import { API_URL } from '@/lib/apiUrl'
-import { Footer, Navbar, PageHero, Section } from '@/components/site/Chrome'
-import type { StoreCardData } from '@/lib/nearby-stores'
-import { ldJson } from '../[store]/lib/store-seo'
-import StoresDirectory from './StoresDirectory'
+import { Footer, Navbar, PageHero, Section } from '@/components/site/Chrome';
+import { API_URL } from '@/lib/apiUrl';
+import type { StoreCardData } from '@/lib/nearby-stores';
+import type { Metadata } from 'next';
+import { ldJson } from '../[store]/lib/store-seo';
+import StoresDirectory from './StoresDirectory';
 
 export const metadata: Metadata = {
   title: 'Store Directory — Real Clothing Stores on Kanchuki',
   description:
     'Browse real clothing stores on Kanchuki — suits, sarees, kurtis, lehengas and more, searchable by city. Message shops directly on WhatsApp.',
-}
+};
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app'
-export const revalidate = 300 // 5 min — the directory page itself; filters run client-side
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
+export const revalidate = 300; // 5 min — the directory page itself; filters run client-side
 
-export type { StoreCardData }
+export type { StoreCardData };
 
 export interface StoresDirectoryData {
-  stores: StoreCardData[]
-  total: number
-  page: number
-  page_size: number
-  total_pages: number
-  cities: { city: string; count: number }[]
+  stores: StoreCardData[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  cities: { city: string; count: number }[];
   /** true when the list was fetched with the shopper's coordinates */
-  nearby: boolean
+  nearby: boolean;
   /** radius the API settled on (2 → 5 → 10 km); null outside nearby mode */
-  radius_km: number | null
+  radius_km: number | null;
 }
 
 async function fetchDirectory(): Promise<StoresDirectoryData | null> {
   try {
     const res = await fetch(`${API_URL}/v1/public/stores?page=1&pageSize=12`, {
       next: { revalidate },
-    })
-    if (!res.ok) return null
-    const json = (await res.json()) as { data: StoresDirectoryData }
-    return json.data
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data: StoresDirectoryData };
+    return json.data;
   } catch {
-    return null
+    return null;
   }
 }
 
 export default async function StoresPage() {
-  const initial = await fetchDirectory()
+  const initial = await fetchDirectory();
 
   // JSON-LD ItemList of ClothingStore — real stores only, from the live
   // directory (docs/PLAN.md (Stores page copy); honesty gate: never invent
@@ -64,7 +64,7 @@ export default async function StoresPage() {
           },
         })),
       }
-    : null
+    : null;
 
   return (
     <>
@@ -86,5 +86,5 @@ export default async function StoresPage() {
       </Section>
       <Footer />
     </>
-  )
+  );
 }

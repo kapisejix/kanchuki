@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 // Client-only (form state + fetch) — posts to POST /v1/team/survey
 // (apps/api/src/routes/team/team-survey.ts, staff-only via TEAM_JWT),
@@ -6,40 +6,40 @@
 // (SECTIONS/UI in ./translations.ts) so the 3 languages share one render
 // path instead of 3 copies of this component.
 
-import { useState, type FormEvent } from 'react'
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Send,
-  Languages,
-  LogOut,
-  Sparkles,
+  Check,
   CheckCircle2,
   Copy,
-  Share2,
-  QrCode,
-  Check,
-  UserCheck,
-  Store,
   ExternalLink,
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { SECTIONS, UI, LIKERT_LEVELS, type Locale, type Question } from './translations'
+  Languages,
+  LogOut,
+  QrCode,
+  Send,
+  Share2,
+  Sparkles,
+  Store,
+  UserCheck,
+} from 'lucide-react';
+import { type FormEvent, useState } from 'react';
+import { LIKERT_LEVELS, type Locale, type Question, SECTIONS, UI } from './translations';
 
 const LANGS: { key: Locale; label: string }[] = [
   { key: 'en', label: 'English' },
   { key: 'hi', label: 'हिन्दी' },
   { key: 'pa', label: 'ਪੰਜਾਬੀ' },
-]
+];
 
 function LikertField({ q, locale }: { q: Question; locale: Locale }) {
-  const [selected, setSelected] = useState<string>('')
-  const label = q.label[locale]
+  const [selected, setSelected] = useState<string>('');
+  const label = q.label[locale];
 
   return (
     <div className="q">
       <span className="qtext font-medium text-gray-800 mb-2 block">{label}</span>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-1.5">
         {LIKERT_LEVELS.map((level) => {
-          const isSelected = selected === level.value
+          const isSelected = selected === level.value;
           return (
             <label
               key={level.value}
@@ -59,19 +59,19 @@ function LikertField({ q, locale }: { q: Question; locale: Locale }) {
               />
               <span>{level.label[locale]}</span>
             </label>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 
 function Field({ q, locale }: { q: Question; locale: Locale }) {
-  const label = q.label[locale]
-  const hint = q.hint?.[locale]
+  const label = q.label[locale];
+  const hint = q.hint?.[locale];
 
   if (q.type === 'likert') {
-    return <LikertField q={q} locale={locale} />
+    return <LikertField q={q} locale={locale} />;
   }
 
   if (q.type === 'text' || q.type === 'tel') {
@@ -88,7 +88,7 @@ function Field({ q, locale }: { q: Question; locale: Locale }) {
           className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all"
         />
       </div>
-    )
+    );
   }
 
   if (q.type === 'select') {
@@ -113,7 +113,7 @@ function Field({ q, locale }: { q: Question; locale: Locale }) {
           ))}
         </select>
       </div>
-    )
+    );
   }
 
   if (q.type === 'textarea') {
@@ -129,7 +129,7 @@ function Field({ q, locale }: { q: Question; locale: Locale }) {
           className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all"
         />
       </div>
-    )
+    );
   }
 
   if (q.type === 'radio' || q.type === 'checkbox') {
@@ -166,16 +166,16 @@ function Field({ q, locale }: { q: Question; locale: Locale }) {
           )}
         </div>
       </div>
-    )
+    );
   }
 
-  return null
+  return null;
 }
 
 interface SubmitResult {
-  submissionId: string
-  referralCode: string
-  onboardingUrl: string
+  submissionId: string;
+  referralCode: string;
+  onboardingUrl: string;
 }
 
 export function SurveyForm({
@@ -185,79 +185,79 @@ export function SurveyForm({
   teamMemberId,
   onLogout,
 }: {
-  token: string
-  staffName: string
-  referralCode?: string
-  teamMemberId?: string
-  onLogout: () => void
+  token: string;
+  staffName: string;
+  referralCode?: string;
+  teamMemberId?: string;
+  onLogout: () => void;
 }) {
-  const [locale, setLocale] = useState<Locale>('en')
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [result, setResult] = useState<SubmitResult | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [showQr, setShowQr] = useState(false)
+  const [locale, setLocale] = useState<Locale>('en');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [result, setResult] = useState<SubmitResult | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
-  const activeRefCode = result?.referralCode || initialRefCode || teamMemberId || 'STAFF'
+  const activeRefCode = result?.referralCode || initialRefCode || teamMemberId || 'STAFF';
   const onboardingLink =
-    result?.onboardingUrl || `https://kanchuki.com/for-retailers?ref=${activeRefCode}`
+    result?.onboardingUrl || `https://kanchuki.com/for-retailers?ref=${activeRefCode}`;
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = e.currentTarget
-    const data = new FormData(form)
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
 
-    const payload: Record<string, string | string[]> = { locale }
+    const payload: Record<string, string | string[]> = { locale };
     const checkboxNames = new Set(
       SECTIONS.flatMap((s) => s.questions)
         .filter((q) => q.type === 'checkbox')
         .map((q) => q.name),
-    )
+    );
     for (const key of Array.from(new Set(data.keys()))) {
-      const values = data.getAll(key).map(String).filter(Boolean)
-      if (values.length === 0) continue
-      payload[key] = checkboxNames.has(key) ? values : (values[0] ?? '')
+      const values = data.getAll(key).map(String).filter(Boolean);
+      if (values.length === 0) continue;
+      payload[key] = checkboxNames.has(key) ? values : (values[0] ?? '');
     }
 
-    setStatus('sending')
+    setStatus('sending');
     try {
-      const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+      const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
       const res = await fetch(`${apiUrl}/v1/team/survey`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
-      })
+      });
       if (res.status === 401 || res.status === 403) {
-        onLogout()
-        return
+        onLogout();
+        return;
       }
-      if (!res.ok) throw new Error('failed')
-      const json = await res.json().catch(() => null)
-      const dataObj = json?.data
+      if (!res.ok) throw new Error('failed');
+      const json = await res.json().catch(() => null);
+      const dataObj = json?.data;
       setResult({
         submissionId: dataObj?.submission_id ?? `SRV-${Date.now().toString(36).toUpperCase()}`,
         referralCode: dataObj?.referral_code ?? activeRefCode,
         onboardingUrl:
           dataObj?.onboarding_url ?? `https://kanchuki.com/for-retailers?ref=${activeRefCode}`,
-      })
-      setStatus('sent')
-      form.reset()
+      });
+      setStatus('sent');
+      form.reset();
     } catch {
-      setStatus('error')
+      setStatus('error');
     }
   }
 
   const copyLink = () => {
-    navigator.clipboard.writeText(onboardingLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2500)
-  }
+    navigator.clipboard.writeText(onboardingLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   const shareWhatsapp = () => {
     const text = encodeURIComponent(
       `Namaste! Create your clothing store's digital catalog in minutes on Kanchuki (AI auto-tagging + WhatsApp selling). Register here: ${onboardingLink}\n\nReferred by: ${staffName} (Code: ${activeRefCode})`,
-    )
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer')
-  }
+    );
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
 
   if (status === 'sent') {
     return (
@@ -378,15 +378,15 @@ export function SurveyForm({
         <button
           type="button"
           onClick={() => {
-            setStatus('idle')
-            setResult(null)
+            setStatus('idle');
+            setResult(null);
           }}
           className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white text-sm font-semibold rounded-xl shadow-md transition-all"
         >
           {UI.submitAnother[locale]}
         </button>
       </motion.div>
-    )
+    );
   }
 
   return (
@@ -473,5 +473,5 @@ export function SurveyForm({
         </button>
       </form>
     </div>
-  )
+  );
 }

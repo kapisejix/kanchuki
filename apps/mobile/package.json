@@ -63,10 +63,7 @@
   },
   "expo": {
     "install": {
-      "exclude": [
-        "@types/react",
-        "@react-navigation/native"
-      ]
+      "exclude": ["@types/react", "@react-navigation/native"]
     }
   },
   "devDependencies": {

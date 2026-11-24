@@ -1,4 +1,4 @@
-import { KeyboardAvoidingView, Platform, type KeyboardAvoidingViewProps } from 'react-native'
+import { KeyboardAvoidingView, type KeyboardAvoidingViewProps, Platform } from 'react-native';
 
 /**
  * Platform behaviour for keeping the focused input above the software keyboard.
@@ -12,12 +12,12 @@ import { KeyboardAvoidingView, Platform, type KeyboardAvoidingViewProps } from '
  * Both platform branches are load-bearing; do not collapse this to one value.
  */
 export const KEYBOARD_BEHAVIOR: NonNullable<KeyboardAvoidingViewProps['behavior']> =
-  Platform.OS === 'ios' ? 'padding' : 'height'
+  Platform.OS === 'ios' ? 'padding' : 'height';
 
 export type KeyboardScreenProps = KeyboardAvoidingViewProps & {
   /** Layout classes for the wrapper. Defaults to filling the screen. */
-  className?: string
-}
+  className?: string;
+};
 
 /**
  * Screen-level wrapper that lifts its content above the software keyboard.
@@ -39,7 +39,7 @@ export function KeyboardScreen({ className = 'flex-1', behavior, ...rest }: Keyb
       behavior={behavior ?? KEYBOARD_BEHAVIOR}
       {...rest}
     />
-  )
+  );
 }
 
-export default KeyboardScreen
+export default KeyboardScreen;

@@ -1,63 +1,63 @@
-'use client'
+'use client';
 
+import { Check, Copy, MessageCircle, Share2 } from 'lucide-react';
 // Share actions for the design permalink — Web Share API when available,
 // WhatsApp wa.me deep link, and copy-link. Mirrors the mobile design detail
 // screen (docs/tasks/done/suits-designs.md §2.4): the permalink is the shareable
 // artifact.
-import { useState } from 'react'
-import { Check, Copy, MessageCircle, Share2 } from 'lucide-react'
+import { useState } from 'react';
 
 interface Props {
-  name: string
-  permalink: string
-  imageUrl: string
+  name: string;
+  permalink: string;
+  imageUrl: string;
 }
 
 export function DesignShareActions({ name, permalink, imageUrl }: Props) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
     // Web Share API — WhatsApp/other targets when the browser provides them.
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: name, text: name, url: permalink })
-        return
+        await navigator.share({ title: name, text: name, url: permalink });
+        return;
       } catch {
         // Dismissed by the user (AbortError) or unsupported payload — fall
         // through to copy-link so there is always an outcome.
       }
     }
-    await handleCopy()
-  }
+    await handleCopy();
+  };
 
   const handleWhatsApp = () => {
     window.open(
       `https://wa.me/?text=${encodeURIComponent(`${name} — ${permalink}`)}`,
       '_blank',
       'noopener,noreferrer',
-    )
-  }
+    );
+  };
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(permalink)
+      await navigator.clipboard.writeText(permalink);
     } catch {
       // Clipboard unavailable (permission/secure-context) — last-resort
       // fallback keeps the action non-dead.
-      const el = document.createElement('textarea')
-      el.value = permalink
-      document.body.appendChild(el)
-      el.select()
-      document.execCommand('copy')
-      document.body.removeChild(el)
+      const el = document.createElement('textarea');
+      el.value = permalink;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
     }
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 2000)
-  }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
 
   // imageUrl is kept for callers that want to attach the file later — the
   // current Web Share spec only guarantees url/text in most mobile browsers.
-  void imageUrl
+  void imageUrl;
 
   return (
     <div className="mt-6 flex flex-col gap-2.5">
@@ -85,5 +85,5 @@ export function DesignShareActions({ name, permalink, imageUrl }: Props) {
         </button>
       </div>
     </div>
-  )
+  );
 }

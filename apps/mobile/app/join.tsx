@@ -1,10 +1,10 @@
-import { router, useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { GradientButton } from '../src/components/GradientButton'
-import { ApiError, staffInviteApi, type StaffInviteInfo } from '../src/lib/api'
-import { showError } from '../src/lib/errors'
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GradientButton } from '../src/components/GradientButton';
+import { ApiError, type StaffInviteInfo, staffInviteApi } from '../src/lib/api';
+import { showError } from '../src/lib/errors';
 
 /**
  * Tokenized staff invite join screen (docs/tasks/done/staff-invite-tokens.md §6.1).
@@ -25,57 +25,57 @@ type LoadState =
   | { kind: 'ready'; info: StaffInviteInfo }
   | { kind: 'used' }
   | { kind: 'error' }
-  | { kind: 'dead' }
+  | { kind: 'dead' };
 
 export default function JoinScreen() {
-  const insets = useSafeAreaInsets()
-  const { token } = useLocalSearchParams<{ token?: string }>()
-  const [state, setState] = useState<LoadState>({ kind: 'loading' })
-  const [sending, setSending] = useState(false)
+  const insets = useSafeAreaInsets();
+  const { token } = useLocalSearchParams<{ token?: string }>();
+  const [state, setState] = useState<LoadState>({ kind: 'loading' });
+  const [sending, setSending] = useState(false);
   // Bumped by the Retry button to re-run the fetch after a transient failure.
-  const [reload, setReload] = useState(0)
+  const [reload, setReload] = useState(0);
 
   // Fetch the invite summary when the token appears. On a deep-link cold start
   // the param may not be populated on first render — this refetches when it
   // does, and short-circuits once we've loaded it.
   useEffect(() => {
-    if (!token) return
-    let cancelled = false
+    if (!token) return;
+    let cancelled = false;
     const load = async () => {
-      setState({ kind: 'loading' })
+      setState({ kind: 'loading' });
       try {
-        const { data } = await staffInviteApi.get(token)
-        if (cancelled) return
-        if (data.status === 'pending') setState({ kind: 'ready', info: data })
-        else if (data.status === 'used') setState({ kind: 'used' })
-        else setState({ kind: 'dead' })
+        const { data } = await staffInviteApi.get(token);
+        if (cancelled) return;
+        if (data.status === 'pending') setState({ kind: 'ready', info: data });
+        else if (data.status === 'used') setState({ kind: 'used' });
+        else setState({ kind: 'dead' });
       } catch (err) {
-        if (cancelled) return
+        if (cancelled) return;
         // Only a 404 (unknown/expired/revoked — the server keeps them
         // indistinguishable) is a real dead end. Anything else is a transient
         // failure (no connection, API hiccup): offer Retry instead of telling
         // the member the invite is invalid when it may be perfectly fine.
-        const apiErr = err instanceof ApiError ? err : null
+        const apiErr = err instanceof ApiError ? err : null;
         if (apiErr?.status === 404) {
-          setState({ kind: 'dead' })
+          setState({ kind: 'dead' });
         } else {
-          setState({ kind: 'error' })
+          setState({ kind: 'error' });
         }
       }
-    }
-    void load()
+    };
+    void load();
     return () => {
-      cancelled = true
-    }
-  }, [token, reload])
+      cancelled = true;
+    };
+  }, [token, reload]);
 
   const handleContinue = async () => {
-    if (!token || sending) return
-    setSending(true)
+    if (!token || sending) return;
+    setSending(true);
     try {
       // Server sends the OTP to the invite's bound phone. The client never
       // learns the number — it only gets a masked confirmation.
-      await staffInviteApi.sendOtp(token)
+      await staffInviteApi.sendOtp(token);
       router.replace({
         pathname: '/auth/otp',
         // invite_token + the masked bound phone for display (the full number
@@ -84,15 +84,15 @@ export default function JoinScreen() {
           invite_token: token,
           masked: state.kind === 'ready' ? state.info.phone_masked : '',
         },
-      })
+      });
     } catch (err) {
-      showError(err, 'Could not send the OTP. Try again.')
+      showError(err, 'Could not send the OTP. Try again.');
     } finally {
-      setSending(false)
+      setSending(false);
     }
-  }
+  };
 
-  const goToLogin = () => router.replace('/auth/phone')
+  const goToLogin = () => router.replace('/auth/phone');
 
   return (
     <ScrollView
@@ -126,9 +126,7 @@ export default function JoinScreen() {
                 {state.info.role === 'manager' ? 'Manager' : 'Team member'}
               </Text>
               <View className="mt-5 bg-lavender-50 rounded-2xl p-4">
-                <Text className="text-xs font-semibold text-heliotrope-500">
-                  Verification
-                </Text>
+                <Text className="text-xs font-semibold text-heliotrope-500">Verification</Text>
                 <Text className="text-sm text-spaceCadet-800 mt-2">
                   We&apos;ll send a one-time password (OTP) to {state.info.phone_masked}.
                 </Text>
@@ -173,7 +171,8 @@ export default function JoinScreen() {
 
       <View className="mt-8 gap-3">
         {state.kind === 'ready' && (
-          <GradientButton variant="web"
+          <GradientButton
+            variant="web"
             label={sending ? 'Sending OTP…' : 'Continue'}
             onPress={() => void handleContinue()}
             disabled={sending}
@@ -187,7 +186,10 @@ export default function JoinScreen() {
           <GradientButton variant="web" label="Retry" onPress={() => setReload((r) => r + 1)} />
         )}
         {state.kind === 'ready' && (
-          <Pressable onPress={goToLogin} className="py-3 items-center border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center">
+          <Pressable
+            onPress={goToLogin}
+            className="py-3 items-center border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
+          >
             <Text className="text-heliotrope-500 text-sm font-semibold">
               Log in with a different account
             </Text>
@@ -195,5 +197,5 @@ export default function JoinScreen() {
         )}
       </View>
     </ScrollView>
-  )
+  );
 }

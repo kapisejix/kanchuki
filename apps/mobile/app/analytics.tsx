@@ -1,59 +1,54 @@
-import { UNLIMITED } from '@kanchuki/shared'
-import { memo } from 'react'
+import { UNLIMITED } from '@kanchuki/shared';
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-} from 'react-native'
-import { router } from 'expo-router'
-import { useScreenInsets } from '../src/lib/safe-area'
-import { useQuery } from '@tanstack/react-query'
-import {
-  Eye,
-  MessageCircle,
-  Heart,
-  Package,
-  TrendingUp,
   BarChart3,
+  Eye,
+  Heart,
+  MessageCircle,
+  Package,
   Store,
-} from 'lucide-react-native'
-import { analyticsApi } from '../src/lib/api'
-import { AnalyticsSkeleton } from '../src/components/Skeleton'
-import { AnimatedPressable } from '../src/components/AnimatedPressable'
-import { GradientButton } from '../src/components/GradientButton'
+  TrendingUp,
+} from 'lucide-react-native';
+import { memo } from 'react';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { GradientButton } from '../src/components/GradientButton';
+import { AnalyticsSkeleton } from '../src/components/Skeleton';
+import { analyticsApi } from '../src/lib/api';
+import { useScreenInsets } from '../src/lib/safe-area';
 
 // ── Types ─────────────────────────────────────────────────────────
 
 type Analytics = {
-  daily_trends: { date: string; views: number; enquiries: number }[]
-  category_breakdown: { category: string; count: number }[]
-  status_breakdown: { status: string; count: number }[]
+  daily_trends: { date: string; views: number; enquiries: number }[];
+  category_breakdown: { category: string; count: number }[];
+  status_breakdown: { status: string; count: number }[];
   recent_collections: {
-    id: string
-    title: string
-    slug: string
-    status: string
-    view_count: number
-    enquiry_count: number
-    favorite_count: number
-    product_count: number
-    created_at: string
-  }[]
+    id: string;
+    title: string;
+    slug: string;
+    status: string;
+    view_count: number;
+    enquiry_count: number;
+    favorite_count: number;
+    product_count: number;
+    created_at: string;
+  }[];
   plan: {
-    plan: string
-    plan_status: string
-    max_products: number
-    max_customers: number
-  } | null
-}
+    plan: string;
+    plan_status: string;
+    max_products: number;
+    max_customers: number;
+  } | null;
+};
 
 // ── Helpers ────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return days[d.getDay()]
+  const d = new Date(dateStr + 'T00:00:00');
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  return days[d.getDay()];
 }
 
 // ponytail: categorical chart palette needs 6 distinct swatches — the blanket
@@ -71,19 +66,17 @@ const StatCard = memo(function StatCard({
   subtitle,
   onPress,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: string | number
-  color?: string
-  subtitle?: string
-  onPress?: () => void
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  color?: string;
+  subtitle?: string;
+  onPress?: () => void;
 }) {
   const content = (
     <View className="flex-1 bg-white rounded-2xl p-5 border border-lavender-200 min-w-[48%]">
       <View className="flex-row items-center gap-2 mb-3">
-        <View className="w-6 h-6 justify-center">
-          {icon}
-        </View>
+        <View className="w-6 h-6 justify-center">{icon}</View>
       </View>
       <Text
         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
@@ -92,15 +85,21 @@ const StatCard = memo(function StatCard({
         {value}
       </Text>
       <Text className="text-xs font-semibold text-spaceCadet-900 mt-1">{label}</Text>
-      {subtitle && <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">{subtitle}</Text>}
+      {subtitle && (
+        <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">{subtitle}</Text>
+      )}
     </View>
-  )
+  );
 
   if (onPress) {
-    return <AnimatedPressable onPress={onPress} className="w-[48%]">{content}</AnimatedPressable>
+    return (
+      <AnimatedPressable onPress={onPress} className="w-[48%]">
+        {content}
+      </AnimatedPressable>
+    );
   }
-  return <View className="w-[48%]">{content}</View>
-})
+  return <View className="w-[48%]">{content}</View>;
+});
 
 // ── Mini Bar Chart ─────────────────────────────────────────────────
 
@@ -109,15 +108,15 @@ function MiniBarChart({
   maxValue,
   color,
 }: {
-  data: { label: string; value: number }[]
-  maxValue: number
-  color: string
+  data: { label: string; value: number }[];
+  maxValue: number;
+  color: string;
 }) {
-  const max = Math.max(maxValue, 1)
+  const max = Math.max(maxValue, 1);
   return (
     <View className="flex-row items-end gap-2 h-24 pt-2">
       {data.map((d, i) => {
-        const height = Math.max((d.value / max) * 70, d.value > 0 ? 8 : 3)
+        const height = Math.max((d.value / max) * 70, d.value > 0 ? 8 : 3);
         return (
           <View key={i} className="flex-1 items-center gap-1.5">
             <Text className="text-[11px] text-heliotrope-500 font-semibold">
@@ -132,10 +131,10 @@ function MiniBarChart({
             />
             <Text className="text-[11px] text-heliotrope-500 font-semibold">{d.label}</Text>
           </View>
-        )
+        );
       })}
     </View>
-  )
+  );
 }
 
 // ── Category Breakdown ─────────────────────────────────────────────
@@ -143,26 +142,17 @@ function MiniBarChart({
 function CategoryBreakdown({
   data,
 }: {
-  data: { category: string; count: number }[]
+  data: { category: string; count: number }[];
 }) {
-  const CHART_COLORS = [
-    '#231F48',
-    '#560A39',
-    '#6B4773',
-    '#5E7196',
-    '#928EB2',
-    '#C8CAEE',
-  ]
-  const total = data.reduce((s, d) => s + d.count, 0)
-  if (total === 0) return null
+  const CHART_COLORS = ['#231F48', '#560A39', '#6B4773', '#5E7196', '#928EB2', '#C8CAEE'];
+  const total = data.reduce((s, d) => s + d.count, 0);
+  if (total === 0) return null;
 
   return (
     <View className="bg-white rounded-2xl p-5 border border-lavender-200">
-      <Text className="text-xs font-semibold text-spaceCadet-900 mb-4">
-        Products by Category
-      </Text>
+      <Text className="text-xs font-semibold text-spaceCadet-900 mb-4">Products by Category</Text>
       {data.slice(0, 6).map((d, i) => {
-        const pct = Math.round((d.count / total) * 100)
+        const pct = Math.round((d.count / total) * 100);
         return (
           <View key={d.category} className="flex-row items-center gap-3 mb-3">
             <View
@@ -186,10 +176,10 @@ function CategoryBreakdown({
               />
             </View>
           </View>
-        )
+        );
       })}
     </View>
-  )
+  );
 }
 
 // ── Collection Card ────────────────────────────────────────────────
@@ -197,7 +187,7 @@ function CategoryBreakdown({
 const CollectionCard = memo(function CollectionCard({
   item,
 }: {
-  item: Analytics['recent_collections'][0]
+  item: Analytics['recent_collections'][0];
 }) {
   return (
     <AnimatedPressable
@@ -248,8 +238,8 @@ const CollectionCard = memo(function CollectionCard({
         </View>
       </View>
     </AnimatedPressable>
-  )
-})
+  );
+});
 
 // ── Plan Usage Bar ─────────────────────────────────────────────────
 
@@ -258,11 +248,11 @@ function PlanUsageBar({
   max,
   label,
 }: {
-  current: number
-  max: number
-  label: string
+  current: number;
+  max: number;
+  label: string;
 }) {
-  const pct = Math.min(Math.round((current / Math.max(max, 1)) * 100), 100)
+  const pct = Math.min(Math.round((current / Math.max(max, 1)) * 100), 100);
   return (
     <View className="mb-3">
       <View className="flex-row justify-between items-center mb-1.5">
@@ -281,37 +271,35 @@ function PlanUsageBar({
         />
       </View>
     </View>
-  )
+  );
 }
 
 // ── Analytics Screen ───────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['analytics'],
     queryFn: () => analyticsApi.getAnalytics(),
     staleTime: 60_000,
     gcTime: 300_000,
-  })
+  });
 
-  const analytics = (data as { data: Analytics } | undefined)?.data
+  const analytics = (data as { data: Analytics } | undefined)?.data;
 
   if (isLoading) {
-    return <AnalyticsSkeleton />
+    return <AnalyticsSkeleton />;
   }
 
-  const trends = analytics?.daily_trends ?? []
-  const maxViews = Math.max(...trends.map((d) => d.views), 1)
-  const totalViews = trends.reduce((s, d) => s + d.views, 0)
-  const totalEnquiries = trends.reduce((s, d) => s + d.enquiries, 0)
+  const trends = analytics?.daily_trends ?? [];
+  const maxViews = Math.max(...trends.map((d) => d.views), 1);
+  const totalViews = trends.reduce((s, d) => s + d.views, 0);
+  const totalEnquiries = trends.reduce((s, d) => s + d.enquiries, 0);
 
   return (
     <ScrollView
       className="flex-1 bg-[#F8F7FC]"
-      refreshControl={
-        <RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />
-      }
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />}
     >
       {/* Page Header */}
       <View
@@ -347,28 +335,23 @@ export default function AnalyticsScreen() {
           <StatCard
             icon={<Package size={20} color="#6B4773" />}
             label="Available SKUs"
-            value={
-              (analytics?.status_breakdown
-                ?.find((s) => s.status === 'AVAILABLE')
-                ?.count ?? 0).toLocaleString('en-IN')
-            }
+            value={(
+              analytics?.status_breakdown?.find((s) => s.status === 'AVAILABLE')?.count ?? 0
+            ).toLocaleString('en-IN')}
           />
           <StatCard
             icon={<BarChart3 size={20} color="#6B4773" />}
             label="Total Products"
-            value={
-              (analytics?.status_breakdown
-                ?.reduce((s, g) => s + g.count, 0) ?? 0).toLocaleString('en-IN')
-            }
+            value={(
+              analytics?.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0
+            ).toLocaleString('en-IN')}
           />
         </View>
 
         {/* Daily Trend Chart */}
         <View className="bg-white rounded-2xl p-5 border border-lavender-200">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-spaceCadet-900">
-              Daily Views (7 Days)
-            </Text>
+            <Text className="text-xs font-semibold text-spaceCadet-900">Daily Views (7 Days)</Text>
             <TrendingUp size={16} color="#6B4773" />
           </View>
           <MiniBarChart
@@ -390,9 +373,7 @@ export default function AnalyticsScreen() {
         {trends.some((d) => d.enquiries > 0) && (
           <View className="bg-white rounded-2xl p-5 border border-lavender-200">
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-xs font-semibold text-spaceCadet-900">
-                Daily Enquiries
-              </Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900">Daily Enquiries</Text>
               <MessageCircle size={16} color="#6B4773" />
             </View>
             <MiniBarChart
@@ -415,17 +396,13 @@ export default function AnalyticsScreen() {
         {analytics?.plan && (
           <View className="bg-white rounded-2xl p-5 border border-lavender-200">
             <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xs font-semibold text-spaceCadet-900">
-                Plan Usage & Limits
-              </Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900">Plan Usage & Limits</Text>
               <View className="flex-row items-center gap-1.5">
                 <Store size={14} color="#6B4773" />
                 <Text className="text-xs text-spaceCadet-900 font-semibold">
                   {analytics.plan.plan}
                 </Text>
-                <View
-                  className="px-2.5 py-0.5 rounded-full bg-lavender-100 border border-lavender-200"
-                >
+                <View className="px-2.5 py-0.5 rounded-full bg-lavender-100 border border-lavender-200">
                   <Text className="text-[11px] font-semibold text-heliotrope-600">
                     {analytics.plan.plan_status}
                   </Text>
@@ -434,9 +411,7 @@ export default function AnalyticsScreen() {
             </View>
             <PlanUsageBar
               label="Products in Catalog"
-              current={
-                analytics.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0
-              }
+              current={analytics.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0}
               max={analytics.plan.max_products}
             />
             <PlanUsageBar
@@ -478,5 +453,5 @@ export default function AnalyticsScreen() {
 
       <View style={{ height: screenPaddingBottom }} />
     </ScrollView>
-  )
+  );
 }

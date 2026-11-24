@@ -27,7 +27,7 @@
 // flags. The real API infers demographic from the product row (category/name);
 // see resolveIndianModelDescription() in studio-shoot.ts.
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 
 const BFL_BASE = 'https://api.bfl.ai/v1';
@@ -53,14 +53,14 @@ const SCENES = {
     'Replace the background with a clean seamless white studio backdrop (marketplace style). Keep {MODEL} if present. Soft even 5500K lighting, soft contact shadow.',
   diwali:
     'Place this exact outfit on {MODEL} in a festive Diwali setting, rows of glowing clay diyas and marigold torans strictly in soft background bokeh.',
-  rain:
-    'Place this exact outfit on {MODEL} on a moody rain-soaked city street at dusk, wet reflective pavement and warm shop-window bokeh behind.',
+  rain: 'Place this exact outfit on {MODEL} on a moody rain-soaked city street at dusk, wet reflective pavement and warm shop-window bokeh behind.',
   mustard_field:
     'Place this exact outfit on {MODEL} standing in a bright Punjab mustard-flower field under open blue sky, gentle breeze, shallow depth of field.',
 };
 
 const MODEL_PHRASE = ({ gender, age }) => {
-  const g = gender === 'male' ? 'Indian male' : gender === 'kids' ? 'Indian child' : 'Indian female';
+  const g =
+    gender === 'male' ? 'Indian male' : gender === 'kids' ? 'Indian child' : 'Indian female';
   if (age === 'kid') return `a charming young ${g} model (age 5-8)`;
   if (age === 'teen') return `a stylish ${g} teenage fashion model (age 16-18)`;
   if (age === 'senior') return `a graceful mature ${g} fashion model (age 45+)`;
@@ -137,13 +137,18 @@ async function main() {
       (SCENES[scene] ?? SCENES.studio).replace('{MODEL}', MODEL_PHRASE(flags)) + COLOR_TAIL;
     console.log(`kontext: ${basename(productPath)} -> ${scene}\n  ${prompt.slice(0, 110)}...`);
     const sample = await fluxKontext(prompt, await fileToDataUrl(productPath), bflKey);
-    const dest = join(OUT_DIR, `kontext-${basename(productPath, extname(productPath))}-${scene}.jpg`);
+    const dest = join(
+      OUT_DIR,
+      `kontext-${basename(productPath, extname(productPath))}-${scene}.jpg`,
+    );
     await downloadTo(sample, dest);
     console.log(`  saved ${dest}`);
     return;
   }
 
-  console.error('modes: kontext <product.jpg> <scene> [--gender male/female/kids] [--age kid/teen/adult/senior]');
+  console.error(
+    'modes: kontext <product.jpg> <scene> [--gender male/female/kids] [--age kid/teen/adult/senior]',
+  );
   console.error(`scenes: ${Object.keys(SCENES).join(', ')}`);
   process.exit(1);
 }

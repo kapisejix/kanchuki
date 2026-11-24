@@ -21,7 +21,9 @@ describe('auto pose', () => {
   });
 
   it('offers dupatta poses when there is a dupatta', () => {
-    expect(benchPoseChoices('suit', true)).toEqual(expect.arrayContaining(['hold_dupatta', 'dupatta_flow']));
+    expect(benchPoseChoices('suit', true)).toEqual(
+      expect.arrayContaining(['hold_dupatta', 'dupatta_flow']),
+    );
   });
 
   it('never shows a stride, a seat or a flare for a half-body garment', () => {

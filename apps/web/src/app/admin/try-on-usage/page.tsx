@@ -1,52 +1,58 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Cpu, Loader2 } from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { Cpu, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type Usage = {
-  totals: { jobs: number; completed: number; failed: number; gpu_ms_sum: number; gpu_ms_avg: number | null }
-  by_day: { day: string; jobs: number; gpu_ms_sum: number }[]
-  by_retailer: { retailer_id: string; shop_name: string; jobs: number; gpu_ms_sum: number }[]
-}
+  totals: {
+    jobs: number;
+    completed: number;
+    failed: number;
+    gpu_ms_sum: number;
+    gpu_ms_avg: number | null;
+  };
+  by_day: { day: string; jobs: number; gpu_ms_sum: number }[];
+  by_retailer: { retailer_id: string; shop_name: string; jobs: number; gpu_ms_sum: number }[];
+};
 
 // Spec 10.2: Rs 3 / 45.9 s. Estimate only - set your real RunPod rate.
-const DEFAULT_RATE_PER_SEC = 0.066
+const DEFAULT_RATE_PER_SEC = 0.066;
 
 export default function TryOnUsagePage() {
-  const [days, setDays] = useState(30)
-  const [rate, setRate] = useState(DEFAULT_RATE_PER_SEC)
-  const [data, setData] = useState<Usage | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [days, setDays] = useState(30);
+  const [rate, setRate] = useState(DEFAULT_RATE_PER_SEC);
+  const [data, setData] = useState<Usage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
     fetch(`${API_URL}/v1/admin/try-on-usage?days=${days}`, adminGetOptions())
       .then(async (res) => {
-        if (!res.ok) throw new Error(`Request failed (${res.status})`)
-        return res.json()
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        return res.json();
       })
       .then((json) => {
-        if (!cancelled) setData(json.data ?? null)
+        if (!cancelled) setData(json.data ?? null);
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load')
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load');
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+        if (!cancelled) setLoading(false);
+      });
     return () => {
-      cancelled = true
-    }
-  }, [days])
+      cancelled = true;
+    };
+  }, [days]);
 
-  const secs = (ms: number) => ms / 1000
-  const inr = (ms: number) => `Rs ${(secs(ms) * rate).toFixed(2)}`
+  const secs = (ms: number) => ms / 1000;
+  const inr = (ms: number) => `Rs ${(secs(ms) * rate).toFixed(2)}`;
 
   return (
     <div className="space-y-6">
@@ -56,7 +62,9 @@ export default function TryOnUsagePage() {
           <Cpu size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          GPU time per finished try-on. Failed jobs are counted but add 0 ms. Try-ons includes pending and discarded jobs; the average is over rows with a recorded GPU time. Days are UTC.
+          GPU time per finished try-on. Failed jobs are counted but add 0 ms. Try-ons includes
+          pending and discarded jobs; the average is over rows with a recorded GPU time. Days are
+          UTC.
         </p>
       </div>
 
@@ -129,7 +137,7 @@ export default function TryOnUsagePage() {
         </>
       )}
     </div>
-  )
+  );
 }
 
 function Tile({ label, value }: { label: string; value: string }) {
@@ -138,7 +146,7 @@ function Tile({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-gray-500 font-medium">{label}</p>
       <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
     </div>
-  )
+  );
 }
 
 function Table({
@@ -146,9 +154,9 @@ function Table({
   head,
   rows,
 }: {
-  title: string
-  head: string[]
-  rows: (string | number)[][]
+  title: string;
+  head: string[];
+  rows: (string | number)[][];
 }) {
   return (
     <div className="bg-white/80 rounded-2xl border border-gray-200/80 p-4 overflow-x-auto">
@@ -184,5 +192,5 @@ function Table({
         </tbody>
       </table>
     </div>
-  )
+  );
 }

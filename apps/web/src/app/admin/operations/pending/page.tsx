@@ -1,91 +1,93 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { Sheet } from '@/components/Sheet';
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  Clock,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
+  CheckCircle2,
+  Clock,
   Loader2,
   RefreshCw,
   Shield,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
-import { Sheet } from '@/components/Sheet'
+  XCircle,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type PendingOperation = {
-  id: string
-  type: string
-  description: string
-  requested_by: string
-  requested_at: string
-  metadata: Record<string, unknown> | null
-}
+  id: string;
+  type: string;
+  description: string;
+  requested_by: string;
+  requested_at: string;
+  metadata: Record<string, unknown> | null;
+};
 
 export default function PendingApprovalsPage() {
-  const [operations, setOperations] = useState<PendingOperation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [error, setError] = useState('')
-  const [rejectModal, setRejectModal] = useState<{ id: string; type: string } | null>(null)
-  const [rejectReason, setRejectReason] = useState('')
+  const [operations, setOperations] = useState<PendingOperation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [rejectModal, setRejectModal] = useState<{ id: string; type: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const loadOperations = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`${API_URL}/v1/admin/operations/pending`, adminGetOptions())
-      if (!res.ok) throw new Error('Failed to load')
-      const json = await res.json()
-      setOperations(json.data ?? [])
+      const res = await fetch(`${API_URL}/v1/admin/operations/pending`, adminGetOptions());
+      if (!res.ok) throw new Error('Failed to load');
+      const json = await res.json();
+      setOperations(json.data ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
+      setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
-  useEffect(() => { loadOperations() }, [loadOperations])
+  useEffect(() => {
+    loadOperations();
+  }, [loadOperations]);
 
   const handleApprove = async (id: string) => {
-    setActionLoading(id)
+    setActionLoading(id);
     try {
       const res = await fetch(`${API_URL}/v1/admin/operations/${id}/approve`, {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({}),
-      })
-      if (!res.ok) throw new Error('Failed to approve')
-      setOperations((prev) => prev.filter((op) => op.id !== id))
+      });
+      if (!res.ok) throw new Error('Failed to approve');
+      setOperations((prev) => prev.filter((op) => op.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to approve')
+      setError(err instanceof Error ? err.message : 'Failed to approve');
     } finally {
-      setActionLoading(null)
+      setActionLoading(null);
     }
-  }
+  };
 
   const handleReject = async () => {
-    if (!rejectModal || !rejectReason.trim()) return
-    setActionLoading(rejectModal.id)
+    if (!rejectModal || !rejectReason.trim()) return;
+    setActionLoading(rejectModal.id);
     try {
       const res = await fetch(`${API_URL}/v1/admin/operations/${rejectModal.id}/reject`, {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({ reason: rejectReason.trim() }),
-      })
-      if (!res.ok) throw new Error('Failed to reject')
-      setOperations((prev) => prev.filter((op) => op.id !== rejectModal.id))
-      setRejectModal(null)
-      setRejectReason('')
+      });
+      if (!res.ok) throw new Error('Failed to reject');
+      setOperations((prev) => prev.filter((op) => op.id !== rejectModal.id));
+      setRejectModal(null);
+      setRejectReason('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reject')
+      setError(err instanceof Error ? err.message : 'Failed to reject');
     } finally {
-      setActionLoading(null)
+      setActionLoading(null);
     }
-  }
+  };
 
   return (
     <motion.div
@@ -125,11 +127,7 @@ export default function PendingApprovalsPage() {
           <Loader2 size={24} className="animate-spin text-gray-400" />
         </div>
       ) : operations.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-16"
-        >
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-16">
           <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 size={32} className="text-green-500" />
           </div>
@@ -206,46 +204,55 @@ export default function PendingApprovalsPage() {
       {rejectModal && (
         <Sheet
           open
-          onClose={() => { setRejectModal(null); setRejectReason('') }}
+          onClose={() => {
+            setRejectModal(null);
+            setRejectReason('');
+          }}
           overlayClassName="z-50 flex items-center justify-center p-4 bg-black/50"
           panelClassName="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-full overflow-y-auto"
-          panelAnimation={{ initial: { scale: 0.95, opacity: 0 }, animate: { scale: 1, opacity: 1 } }}
+          panelAnimation={{
+            initial: { scale: 0.95, opacity: 0 },
+            animate: { scale: 1, opacity: 1 },
+          }}
           ariaLabel="Reject Operation"
         >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Reject Operation</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Provide a reason for rejecting this {rejectModal.type.toLowerCase()} operation.
-            </p>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Reason for rejection..."
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 min-h-[100px]"
-              autoFocus
-            />
-            <div className="flex items-center justify-end gap-3 mt-4">
-              <button
-                onClick={() => { setRejectModal(null); setRejectReason('') }}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={handleReject}
-                disabled={!rejectReason.trim() || actionLoading === rejectModal.id}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
-              >
-                {actionLoading === rejectModal.id ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <XCircle size={14} />
-                )}
-                Reject
-              </motion.button>
-            </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Reject Operation</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Provide a reason for rejecting this {rejectModal.type.toLowerCase()} operation.
+          </p>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Reason for rejection..."
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 min-h-[100px]"
+            autoFocus
+          />
+          <div className="flex items-center justify-end gap-3 mt-4">
+            <button
+              onClick={() => {
+                setRejectModal(null);
+                setRejectReason('');
+              }}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={handleReject}
+              disabled={!rejectReason.trim() || actionLoading === rejectModal.id}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl transition disabled:opacity-50"
+            >
+              {actionLoading === rejectModal.id ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <XCircle size={14} />
+              )}
+              Reject
+            </motion.button>
+          </div>
         </Sheet>
       )}
     </motion.div>
-  )
+  );
 }

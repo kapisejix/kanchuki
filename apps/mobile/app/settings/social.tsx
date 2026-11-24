@@ -1,31 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
-import {
-  Check,
-  Heart,
-  MessageCircle,
-  Plus,
-  RefreshCw,
-  X,
-} from 'lucide-react-native';
 import * as ExpoLinking from 'expo-linking';
-import {
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Modal,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { useScreenInsets } from '../../src/lib/safe-area';
+import { router } from 'expo-router';
+import { Check, Heart, MessageCircle, Plus, RefreshCw, X } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, Modal, ScrollView, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
-import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { BrandIcon } from '../../src/components/BrandIcon';
 import { DangerButton } from '../../src/components/DangerButton';
 import { GradientButton } from '../../src/components/GradientButton';
-import { WhiteButton, WHITE_BUTTON_INK } from '../../src/components/WhiteButton';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton';
 import { socialApi } from '../../src/lib/api';
 import type { SocialAccountInfo, SocialPostInfo } from '../../src/lib/api/social';
 import { showError } from '../../src/lib/errors';
@@ -34,6 +18,7 @@ import {
   FacebookAuthUnavailable,
   loginWithFacebook,
 } from '../../src/lib/facebook-auth';
+import { useScreenInsets } from '../../src/lib/safe-area';
 import { useTheme } from '../../src/lib/theme';
 
 export default function SocialSettingsScreen() {
@@ -45,7 +30,8 @@ export default function SocialSettingsScreen() {
     queryKey: ['social', 'accounts'],
     queryFn: () => socialApi.listAccounts(),
   });
-  const accounts: SocialAccountInfo[] = (accountsData as { data: SocialAccountInfo[] } | undefined)?.data ?? [];
+  const accounts: SocialAccountInfo[] =
+    (accountsData as { data: SocialAccountInfo[] } | undefined)?.data ?? [];
 
   const [historyAccount, setHistoryAccount] = useState<SocialAccountInfo | null>(null);
   const [connecting, setConnecting] = useState(false);
@@ -105,7 +91,9 @@ export default function SocialSettingsScreen() {
     const res = await socialApi.getConnectUrl('facebook');
     const authUrl = res.data?.auth_url;
     if (!authUrl) {
-      throw new Error('Server did not return a Facebook login URL (social publishing not configured).');
+      throw new Error(
+        'Server did not return a Facebook login URL (social publishing not configured).',
+      );
     }
     await Linking.openURL(authUrl);
   };
@@ -136,7 +124,9 @@ export default function SocialSettingsScreen() {
         try {
           await openConnectViaWeb();
         } catch (webErr) {
-          setConnectError(webErr instanceof Error ? webErr.message : 'Could not open Facebook connect');
+          setConnectError(
+            webErr instanceof Error ? webErr.message : 'Could not open Facebook connect',
+          );
         }
         return;
       }
@@ -175,7 +165,10 @@ export default function SocialSettingsScreen() {
       {/* Header */}
       <ScreenHeader title="Social Media" />
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <Text className="text-xs text-heliotrope-500 leading-5 mb-4">
           Connect your Facebook Page to post products and collection links directly from Kanchuki.
           Your posts can carry your store link so customers can shop right away.
@@ -197,7 +190,9 @@ export default function SocialSettingsScreen() {
                 <View className="mb-3">
                   <BrandIcon brand="facebook" size={56} />
                 </View>
-                <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">No accounts connected</Text>
+                <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">
+                  No accounts connected
+                </Text>
                 <Text className="text-xs text-heliotrope-500 text-center mb-4">
                   Connect your Facebook Page to start posting your products.
                 </Text>
@@ -211,7 +206,10 @@ export default function SocialSettingsScreen() {
             ) : (
               <>
                 {accounts.map((account) => (
-                  <View key={account.id} className="bg-white rounded-2xl p-4 border border-lavender-200 mb-3">
+                  <View
+                    key={account.id}
+                    className="bg-white rounded-2xl p-4 border border-lavender-200 mb-3"
+                  >
                     <View className="flex-row items-center">
                       <View className="mr-3">
                         <BrandIcon brand="facebook" size={40} />
@@ -242,7 +240,10 @@ export default function SocialSettingsScreen() {
                         />
                       </View>
                       <View className="flex-1">
-                        <DangerButton label="Disconnect" onPress={() => confirmDisconnect(account)} />
+                        <DangerButton
+                          label="Disconnect"
+                          onPress={() => confirmDisconnect(account)}
+                        />
                       </View>
                     </View>
                   </View>
@@ -297,7 +298,11 @@ function HistoryModal({
         <View className="bg-white rounded-t-3xl w-full p-5 max-h-[80%]">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-lg font-semibold text-spaceCadet-900">Post history</Text>
-            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable
+              onPress={onClose}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
               <X size={20} color={colors.sand[400]} />
             </AnimatedPressable>
           </View>
@@ -326,7 +331,9 @@ function HistoryModal({
                         <Text className="text-[11px] font-semibold text-turmeric-600">Posted</Text>
                       </View>
                     ) : post.status === 'PROCESSING' ? (
-                      <Text className="text-[11px] font-semibold text-heliotrope-500">Posting…</Text>
+                      <Text className="text-[11px] font-semibold text-heliotrope-500">
+                        Posting…
+                      </Text>
                     ) : (
                       <Text className="text-[11px] font-semibold text-rust-600">Failed</Text>
                     )}
@@ -338,11 +345,15 @@ function HistoryModal({
                     <View className="flex-row items-center gap-3 mb-1.5">
                       <View className="flex-row items-center gap-1">
                         <Heart size={12} color={colors.rust[400]} />
-                        <Text className="text-[11px] text-heliotrope-500">{post.likes_count ?? 0}</Text>
+                        <Text className="text-[11px] text-heliotrope-500">
+                          {post.likes_count ?? 0}
+                        </Text>
                       </View>
                       <View className="flex-row items-center gap-1">
                         <MessageCircle size={12} color={colors.sand[400]} />
-                        <Text className="text-[11px] text-heliotrope-500">{post.comments_count ?? 0}</Text>
+                        <Text className="text-[11px] text-heliotrope-500">
+                          {post.comments_count ?? 0}
+                        </Text>
                       </View>
                     </View>
                   )}
@@ -355,7 +366,8 @@ function HistoryModal({
                         {post.error_message}
                       </Text>
                     ) : post.external_post_url ? (
-                      <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+                      <AnimatedPressable
+                        className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                         onPress={() => void Linking.openURL(post.external_post_url!)}
                         hitSlop={6}
                       >

@@ -77,11 +77,13 @@ describe('ProductGallery', () => {
     expect(clip1?.muted).toBe(true);
     expect(clip2?.autoplay).toBe(false);
     expect(clip2?.getAttribute('preload')).toBe('none');
-    expect(screen.queryByRole('button', { name: 'Close fullscreen photo' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Close fullscreen photo' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders the variant color chip and jumps to its slide on tap', () => {
-        const { container } = render(
+    const { container } = render(
       <ProductGallery photos={PHOTOS} variants={VARIANTS} alt="Kurta Set" />,
     );
     // Chip exists for the photo variant; Teal (no photo) is a static chip.

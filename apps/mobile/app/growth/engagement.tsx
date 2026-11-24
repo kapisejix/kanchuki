@@ -19,9 +19,7 @@ function Section({
     <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-2 mb-3.5">
         {icon}
-        <Text className="text-xs font-semibold text-spaceCadet-900">
-          {title}
-        </Text>
+        <Text className="text-xs font-semibold text-spaceCadet-900">{title}</Text>
       </View>
       {children}
     </View>
@@ -35,10 +33,10 @@ function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string
       style={{ width: '48.5%' }}
     >
       {icon}
-      <Text className="text-lg font-semibold text-spaceCadet-900">{value.toLocaleString('en-IN')}</Text>
-      <Text className="text-[11px] text-heliotrope-500 font-medium">
-        {label}
+      <Text className="text-lg font-semibold text-spaceCadet-900">
+        {value.toLocaleString('en-IN')}
       </Text>
+      <Text className="text-[11px] text-heliotrope-500 font-medium">{label}</Text>
     </View>
   );
 }
@@ -58,9 +56,7 @@ function TopList({
   if (entries.length === 0) {
     return (
       <View className="mb-3">
-        <Text className="text-[11px] font-semibold text-spaceCadet-900 mb-1.5">
-          {title}
-        </Text>
+        <Text className="text-[11px] font-semibold text-spaceCadet-900 mb-1.5">{title}</Text>
         <Text className="text-xs text-heliotrope-500">No data in range</Text>
       </View>
     );
@@ -68,48 +64,46 @@ function TopList({
   const max = Math.max(1, ...entries.map((e) => e.count));
   return (
     <View className="mb-3">
-      <Text className="text-[11px] font-semibold text-spaceCadet-900 mb-1.5">
-        {title}
-      </Text>
+      <Text className="text-[11px] font-semibold text-spaceCadet-900 mb-1.5">{title}</Text>
       {entries.slice(0, 5).map((e) => {
         const p = products?.[e.value];
         return (
-        <View key={e.value} className="mb-2">
-          <View className="flex-row justify-between items-center mb-1">
-            {products ? (
-              <View className="flex-row items-center flex-1 mr-2">
-                {p?.thumbnail_url ? (
-                  <Image
-                    source={{ uri: p.thumbnail_url }}
-                    className="w-10 h-10 rounded-lg bg-lavender-100"
-                    accessibilityLabel={p.name ?? 'Product'}
-                  />
-                ) : (
-                  <View className="w-10 h-10 rounded-lg bg-lavender-100" />
-                )}
-                <View className="flex-1 ml-2.5">
-                  <Text className="text-xs text-spaceCadet-900" numberOfLines={1}>
-                    {p?.name ?? 'Unnamed / removed product'}
-                  </Text>
-                  <Text className="text-[11px] text-heliotrope-500" numberOfLines={1}>
-                    {p?.sku ? `SKU ${p.sku}` : 'No SKU'}
-                  </Text>
+          <View key={e.value} className="mb-2">
+            <View className="flex-row justify-between items-center mb-1">
+              {products ? (
+                <View className="flex-row items-center flex-1 mr-2">
+                  {p?.thumbnail_url ? (
+                    <Image
+                      source={{ uri: p.thumbnail_url }}
+                      className="w-10 h-10 rounded-lg bg-lavender-100"
+                      accessibilityLabel={p.name ?? 'Product'}
+                    />
+                  ) : (
+                    <View className="w-10 h-10 rounded-lg bg-lavender-100" />
+                  )}
+                  <View className="flex-1 ml-2.5">
+                    <Text className="text-xs text-spaceCadet-900" numberOfLines={1}>
+                      {p?.name ?? 'Unnamed / removed product'}
+                    </Text>
+                    <Text className="text-[11px] text-heliotrope-500" numberOfLines={1}>
+                      {p?.sku ? `SKU ${p.sku}` : 'No SKU'}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            ) : (
-              <Text className="text-xs text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
-                {e.value}
-              </Text>
-            )}
-            <Text className="text-[11px] text-heliotrope-500 font-medium">{e.count}</Text>
+              ) : (
+                <Text className="text-xs text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                  {e.value}
+                </Text>
+              )}
+              <Text className="text-[11px] text-heliotrope-500 font-medium">{e.count}</Text>
+            </View>
+            <View className="h-1.5 bg-lavender-100 rounded-full overflow-hidden border border-lavender-200">
+              <View
+                className="h-full rounded-full bg-fuchsia-500"
+                style={{ width: `${Math.max(4, (e.count / max) * 100)}%` }}
+              />
+            </View>
           </View>
-          <View className="h-1.5 bg-lavender-100 rounded-full overflow-hidden border border-lavender-200">
-            <View
-              className="h-full rounded-full bg-fuchsia-500"
-              style={{ width: `${Math.max(4, (e.count / max) * 100)}%` }}
-            />
-          </View>
-        </View>
         );
       })}
     </View>
@@ -211,45 +205,45 @@ export default function GrowthEngagementScreen() {
               </View>
             ) : (
               <>
-            <Section icon={<TrendingUp size={16} color="#6B4773" />} title="Dwell time trend">
-              {view.dwell_trend.length === 0 ? (
-                <Text className="text-xs text-heliotrope-500">No data yet</Text>
-              ) : (
-                <View className="flex-row items-end gap-1" style={{ height: 96 }}>
-                  {view.dwell_trend.map((d) => (
-                    <View key={d.date} className="flex-1 items-center">
-                      <View
-                        className="w-full rounded-t bg-fuchsia-500"
-                        style={{
-                          height: `${Math.max(4, (Number(d.total_dwell_ms) / maxDwell) * 100)}%`,
-                        }}
-                      />
+                <Section icon={<TrendingUp size={16} color="#6B4773" />} title="Dwell time trend">
+                  {view.dwell_trend.length === 0 ? (
+                    <Text className="text-xs text-heliotrope-500">No data yet</Text>
+                  ) : (
+                    <View className="flex-row items-end gap-1" style={{ height: 96 }}>
+                      {view.dwell_trend.map((d) => (
+                        <View key={d.date} className="flex-1 items-center">
+                          <View
+                            className="w-full rounded-t bg-fuchsia-500"
+                            style={{
+                              height: `${Math.max(4, (Number(d.total_dwell_ms) / maxDwell) * 100)}%`,
+                            }}
+                          />
+                        </View>
+                      ))}
                     </View>
-                  ))}
-                </View>
-              )}
-            </Section>
+                  )}
+                </Section>
 
-            <Section icon={<TrendingUp size={16} color="#6B4773" />} title="Conversion funnel">
-              <Text className="text-xs text-spaceCadet-900">
-                {view.funnel.view_count} viewed → {view.funnel.view_to_favorite_pct}% favorited →{' '}
-                {view.funnel.view_to_enquiry_pct}% enquired
-              </Text>
-            </Section>
+                <Section icon={<TrendingUp size={16} color="#6B4773" />} title="Conversion funnel">
+                  <Text className="text-xs text-spaceCadet-900">
+                    {view.funnel.view_count} viewed → {view.funnel.view_to_favorite_pct}% favorited
+                    → {view.funnel.view_to_enquiry_pct}% enquired
+                  </Text>
+                </Section>
 
-            <Section icon={<TrendingUp size={16} color="#6B4773" />} title="What's working">
-              <TopList
-                title="Top viewed products"
-                entries={view.top_products}
-                products={view.products}
-              />
-              <TopList
-                title="Top favorited products"
-                entries={view.top_favorited_products}
-                products={view.products}
-              />
-              <TopList title="Top searches" entries={view.top_searches} />
-            </Section>
+                <Section icon={<TrendingUp size={16} color="#6B4773" />} title="What's working">
+                  <TopList
+                    title="Top viewed products"
+                    entries={view.top_products}
+                    products={view.products}
+                  />
+                  <TopList
+                    title="Top favorited products"
+                    entries={view.top_favorited_products}
+                    products={view.products}
+                  />
+                  <TopList title="Top searches" entries={view.top_searches} />
+                </Section>
               </>
             )}
           </View>

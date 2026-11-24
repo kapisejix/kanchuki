@@ -1,15 +1,15 @@
-import React from 'react'
-import { View, Text, ActivityIndicator } from 'react-native'
-import { RefreshCw } from 'lucide-react-native'
-import { AnimatedPressable } from '../AnimatedPressable'
-import type { ProductDetail } from '@kanchuki/shared'
+import type { ProductDetail } from '@kanchuki/shared';
+import { RefreshCw } from 'lucide-react-native';
+import React from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { AnimatedPressable } from '../AnimatedPressable';
 
 interface ProductAiReviewSectionProps {
-  product: ProductDetail
-  retagging: boolean
-  handleRetag: () => void
-  primaryColor: string
-  colors: any
+  product: ProductDetail;
+  retagging: boolean;
+  handleRetag: () => void;
+  primaryColor: string;
+  colors: any;
 }
 
 export function ProductAiReviewSection({
@@ -24,7 +24,9 @@ export function ProductAiReviewSection({
       {!product.ai_tagged && !product.ai_tag_error && (
         <View className="bg-lavender-100 border border-lavender-200 rounded-2xl px-4 py-3 flex-row items-center gap-2.5 shadow-sm">
           <ActivityIndicator size="small" color="#BB3F95" />
-          <Text className="text-spaceCadet-900 font-bold text-xs">AI auto-tagging in progress...</Text>
+          <Text className="text-spaceCadet-900 font-bold text-xs">
+            AI auto-tagging in progress...
+          </Text>
         </View>
       )}
 
@@ -51,6 +53,5 @@ export function ProductAiReviewSection({
         </View>
       )}
     </View>
-  )
+  );
 }
-

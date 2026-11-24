@@ -1,10 +1,7 @@
 module.exports = function (api) {
-  api.cache(true)
+  api.cache(true);
   return {
-    presets: [
-      ['babel-preset-expo', { jsxImportSource: 'nativewind' }],
-      'nativewind/babel',
-    ],
+    presets: [['babel-preset-expo', { jsxImportSource: 'nativewind' }], 'nativewind/babel'],
     plugins: ['react-native-reanimated/plugin'],
     // T3.6 c: release bundles drop console.log/warn/info/debug (nothing reaches logcat);
     // console.error stays, ErrorBoundary and Sentry rely on it.
@@ -13,5 +10,5 @@ module.exports = function (api) {
         plugins: [['transform-remove-console', { exclude: ['error'] }]],
       },
     },
-  }
-}
+  };
+};

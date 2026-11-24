@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { Flag } from 'lucide-react'
-import { useState } from 'react'
+import { Flag } from 'lucide-react';
+import { useState } from 'react';
 
 // Google Play AI-Generated Content policy: wherever the customer web shows AI output there
 // must be an in-app way to report it. One inline control, not a modal, so it is safe inside
@@ -15,39 +15,39 @@ export const AI_REPORT_FEATURES = [
   'My Style complete the look',
   'AI Stylist',
   'Virtual try-on',
-] as const
-export type AiReportFeature = (typeof AI_REPORT_FEATURES)[number]
+] as const;
+export type AiReportFeature = (typeof AI_REPORT_FEATURES)[number];
 
-type State = 'idle' | 'open' | 'sending' | 'sent'
+type State = 'idle' | 'open' | 'sending' | 'sent';
 
 export function ReportAiContent({
   feature,
   contentRef,
   className = '',
 }: {
-  feature: AiReportFeature
+  feature: AiReportFeature;
   /** Store slug or product id, when the screen has one. */
-  contentRef?: string
-  className?: string
+  contentRef?: string;
+  className?: string;
 }) {
-  const [state, setState] = useState<State>('idle')
-  const [text, setText] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [state, setState] = useState<State>('idle');
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   async function submit() {
-    setState('sending')
-    setError(null)
+    setState('sending');
+    setError(null);
     try {
       const res = await fetch('/api/passport/ai-report', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ feature, content_ref: contentRef, description: text.trim() }),
-      })
-      if (!res.ok) throw new Error(String(res.status))
-      setState('sent')
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      setState('sent');
     } catch {
-      setError('Could not send your report. Please try again.')
-      setState('open')
+      setError('Could not send your report. Please try again.');
+      setState('open');
     }
   }
 
@@ -56,7 +56,7 @@ export function ReportAiContent({
       <p role="status" className={`text-xs text-gray-500 text-center py-2 ${className}`}>
         Thanks. We will review this content.
       </p>
-    )
+    );
   }
 
   if (state === 'idle') {
@@ -69,10 +69,10 @@ export function ReportAiContent({
         <Flag aria-hidden className="h-3.5 w-3.5" />
         Report this AI content
       </button>
-    )
+    );
   }
 
-  const tooShort = text.trim().length < 10
+  const tooShort = text.trim().length < 10;
   return (
     <div className={`space-y-2 ${className}`}>
       <label className="block text-xs font-semibold text-gray-600" htmlFor={`ai-report-${feature}`}>
@@ -110,5 +110,5 @@ export function ReportAiContent({
         </button>
       </div>
     </div>
-  )
+  );
 }

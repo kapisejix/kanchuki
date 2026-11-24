@@ -1,11 +1,10 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import * as ImageManipulator from "expo-image-manipulator";
-import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
-import { router } from "expo-router";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { router } from 'expo-router';
 import {
   Bug,
-  LifeBuoy,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -13,9 +12,12 @@ import {
   FileText,
   FolderKanban,
   ImagePlus,
+  LifeBuoy,
   MapPin,
   MessageCircle,
+  Plug,
   QrCode,
+  Receipt,
   Share2,
   ShieldCheck,
   Smartphone,
@@ -24,11 +26,8 @@ import {
   User,
   Users,
   X,
-  Plug,
-  Receipt,
-} from "lucide-react-native";
-import { useEffect, useState } from "react";
-import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+} from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -39,35 +38,36 @@ import {
   Text,
   TextInput,
   View,
-} from "react-native";
-import { useScreenInsets } from "../../src/lib/safe-area";
-import { AnimatedPressable } from "../../src/components/AnimatedPressable";
-import { BuildInfoFooter } from "../../src/components/BuildInfoFooter";
-import { GooglePlaceField } from "../../src/components/GooglePlaceField";
-import { GradientButton } from "../../src/components/GradientButton";
-import { UsageCard } from "../../src/components/UsageCard";
-import { WhiteButton } from "../../src/components/WhiteButton";
-import { SettingsSkeleton } from "../../src/components/Skeleton";
+} from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { BuildInfoFooter } from '../../src/components/BuildInfoFooter';
+import { GooglePlaceField } from '../../src/components/GooglePlaceField';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { ReportProblem } from '../../src/components/ReportProblem';
+import { SettingsSkeleton } from '../../src/components/Skeleton';
+import { UsageCard } from '../../src/components/UsageCard';
+import { WhiteButton } from '../../src/components/WhiteButton';
 import {
+  prepareImageForUpload,
   readLocalImage,
   retailerApi,
   uploadImageToR2,
-  prepareImageForUpload,
-} from "../../src/lib/api";
-import { apiMessage, showError } from "../../src/lib/errors";
-import { clearPersistedCache } from "../../src/lib/offline-persister";
-import { useAuth } from "../../src/lib/auth-context";
-import { resolveMapsLink } from "../../src/lib/maps-link";
-import { showPinReview } from "../../src/lib/pin-alert";
-import { reviewPin } from "../../src/lib/pin-check";
-import { getItem } from "../../src/lib/storage";
-import { useTheme } from "../../src/lib/theme";
-import { WEB_URL } from "../../src/lib/web-url";
-import { ReportProblem } from "../../src/components/ReportProblem";
-import { CATALOG_UPLOAD_ENABLED } from "../../src/lib/catalog-upload-flag";
+} from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth-context';
+import { CATALOG_UPLOAD_ENABLED } from '../../src/lib/catalog-upload-flag';
+import { apiMessage, showError } from '../../src/lib/errors';
+import { resolveMapsLink } from '../../src/lib/maps-link';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
+import { clearPersistedCache } from '../../src/lib/offline-persister';
+import { showPinReview } from '../../src/lib/pin-alert';
+import { reviewPin } from '../../src/lib/pin-check';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { getItem } from '../../src/lib/storage';
+import { useTheme } from '../../src/lib/theme';
+import { WEB_URL } from '../../src/lib/web-url';
 
-type KycDocType = "gst" | "aadhar_front" | "aadhar_back";
+type KycDocType = 'gst' | 'aadhar_front' | 'aadhar_back';
 
 // ─── Profile Edit Modal ────────────────────────────────────────────
 
@@ -85,18 +85,18 @@ function ProfileEditModal({
   onStoreUrlChanged: (newSlug: string) => void;
 }) {
   const { primaryColor, colors } = useTheme();
-  const [shopName, setShopName] = useState("");
-  const [ownerName, setOwnerName] = useState("");
-  const [city, setCity] = useState("");
-  const [stateVal, setStateVal] = useState("");
-  const [addressLine1, setAddressLine1] = useState("");
+  const [shopName, setShopName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [city, setCity] = useState('');
+  const [stateVal, setStateVal] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
   // Shop map pin — customers get a Google Maps directions link from it.
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [locating, setLocating] = useState(false);
-  const [mapsLink, setMapsLink] = useState("");
+  const [mapsLink, setMapsLink] = useState('');
   const [resolvingLink, setResolvingLink] = useState(false);
-  const [gstin, setGstin] = useState("");
+  const [gstin, setGstin] = useState('');
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoR2Key, setLogoR2Key] = useState<string | null>(null);
@@ -107,14 +107,14 @@ function ProfileEditModal({
 
   useEffect(() => {
     if (retailer) {
-      setShopName(retailer.shop_name ?? "");
-      setOwnerName(retailer.owner_name ?? "");
-      setCity(retailer.city ?? "");
-      setStateVal(retailer.state ?? "");
-      setAddressLine1(retailer.address_line1 ?? "");
-      setLatitude(typeof retailer.latitude === "number" ? retailer.latitude : null);
-      setLongitude(typeof retailer.longitude === "number" ? retailer.longitude : null);
-      setGstin(retailer.gstin ?? "");
+      setShopName(retailer.shop_name ?? '');
+      setOwnerName(retailer.owner_name ?? '');
+      setCity(retailer.city ?? '');
+      setStateVal(retailer.state ?? '');
+      setAddressLine1(retailer.address_line1 ?? '');
+      setLatitude(typeof retailer.latitude === 'number' ? retailer.latitude : null);
+      setLongitude(typeof retailer.longitude === 'number' ? retailer.longitude : null);
+      setGstin(retailer.gstin ?? '');
       setLogoUrl(retailer.logo_url ?? null);
       setLogoR2Key(retailer.logo_r2_key ?? null);
       setBannerUrl(retailer.banner_url ?? null);
@@ -126,7 +126,7 @@ function ProfileEditModal({
 
   const handlePickLogo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ['images'],
       quality: 0.85,
       allowsEditing: false,
     });
@@ -141,17 +141,16 @@ function ProfileEditModal({
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
       const uri = manipulated.uri;
-      const prep = await prepareImageForUpload(uri, "image/jpeg");
-      const uploadResult = await retailerApi.getLogoUploadUrl(
-        "image/jpeg",
-        prep.size,
-      );
+      const prep = await prepareImageForUpload(uri, 'image/jpeg');
+      const uploadResult = await retailerApi.getLogoUploadUrl('image/jpeg', prep.size);
       const info = uploadResult.data;
-      await uploadImageToR2(prep.uri, info.upload_url, "image/jpeg", undefined, undefined, { compress: false });
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+        compress: false,
+      });
       setLogoUrl(info.public_url);
       setLogoR2Key(info.r2_key);
     } catch (err) {
-      showError(err, "Failed to upload logo");
+      showError(err, 'Failed to upload logo');
     } finally {
       setUploadingLogo(false);
     }
@@ -159,7 +158,7 @@ function ProfileEditModal({
 
   const handlePickBanner = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ['images'],
       quality: 0.85,
       allowsEditing: false,
     });
@@ -174,17 +173,16 @@ function ProfileEditModal({
         { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
       );
       const uri = manipulated.uri;
-      const prep = await prepareImageForUpload(uri, "image/jpeg");
-      const uploadResult = await retailerApi.getBannerUploadUrl(
-        "image/jpeg",
-        prep.size,
-      );
+      const prep = await prepareImageForUpload(uri, 'image/jpeg');
+      const uploadResult = await retailerApi.getBannerUploadUrl('image/jpeg', prep.size);
       const info = uploadResult.data;
-      await uploadImageToR2(prep.uri, info.upload_url, "image/jpeg", undefined, undefined, { compress: false });
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+        compress: false,
+      });
       setBannerUrl(info.public_url);
       setBannerR2Key(info.r2_key);
     } catch (err) {
-      showError(err, "Failed to upload banner");
+      showError(err, 'Failed to upload banner');
     } finally {
       setUploadingBanner(false);
     }
@@ -195,8 +193,7 @@ function ProfileEditModal({
   // onboarding (e.g. lowercase) can't round-trip: re-sending the stored value
   // on every save 422s the whole request, which makes an unrelated logo/
   // banner/profile save fail too. Unchanged → omit; cleared → send ''.
-  const gstinChanged =
-    (gstin.trim() || "") !== String(retailer?.gstin ?? "").trim();
+  const gstinChanged = (gstin.trim() || '') !== String(retailer?.gstin ?? '').trim();
 
   // After a pin is captured (GPS or pasted link): fill any EMPTY address fields from where it
   // landed (typed values are never overwritten), then show the nearby address with
@@ -213,7 +210,7 @@ function ProfileEditModal({
       if (!stateVal.trim() && place.region) setStateVal(place.region);
       if (!addressLine1.trim()) {
         const parts = [place.name, place.street, place.district].filter(Boolean);
-        if (parts.length > 0) setAddressLine1(parts.join(", "));
+        if (parts.length > 0) setAddressLine1(parts.join(', '));
       }
     }
     showPinReview(review, () => {
@@ -227,10 +224,10 @@ function ProfileEditModal({
     setLocating(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
+      if (status !== 'granted') {
         Alert.alert(
-          "Location Permission",
-          "Please enable location access in your device settings to set your shop location.",
+          'Location Permission',
+          'Please enable location access in your device settings to set your shop location.',
         );
         return;
       }
@@ -239,7 +236,7 @@ function ProfileEditModal({
       setLongitude(loc.coords.longitude);
       await warnIfPinOffAddress(loc.coords.latitude, loc.coords.longitude);
     } catch (err) {
-      showError(err, "Could not get your location. Please try again.");
+      showError(err, 'Could not get your location. Please try again.');
     } finally {
       setLocating(false);
     }
@@ -252,14 +249,14 @@ function ProfileEditModal({
       const point = await resolveMapsLink(mapsLink);
       if (!point) {
         Alert.alert(
-          "Link not recognised",
-          "Open your shop in Google Maps, tap Share, and paste that link here.",
+          'Link not recognised',
+          'Open your shop in Google Maps, tap Share, and paste that link here.',
         );
         return;
       }
       setLatitude(point.lat);
       setLongitude(point.lng);
-      setMapsLink("");
+      setMapsLink('');
       await warnIfPinOffAddress(point.lat, point.lng);
     } finally {
       setResolvingLink(false);
@@ -278,9 +275,7 @@ function ProfileEditModal({
         address_line1: addressLine1.trim() || undefined,
         latitude,
         longitude,
-        ...(gstinChanged
-          ? { gstin: gstin.trim() || "" }
-          : {}),
+        ...(gstinChanged ? { gstin: gstin.trim() || '' } : {}),
         ...(logoUrl
           ? { logo_url: logoUrl, logo_r2_key: logoR2Key }
           : { logo_url: null, logo_r2_key: null }),
@@ -290,33 +285,24 @@ function ProfileEditModal({
       // The backend regenerates the store URL (public_slug) whenever the shop
       // name changes AND a QR slug already exists — surface that here so old
       // links / printed QRs are never a surprise to the retailer.
-      const updatedSlug = (res as { data?: { public_slug?: string | null } })
-        .data?.public_slug;
+      const updatedSlug = (res as { data?: { public_slug?: string | null } }).data?.public_slug;
       const previousSlug = retailer?.public_slug as string | null | undefined;
-      if (updatedSlug && updatedSlug !== previousSlug)
-        onStoreUrlChanged(updatedSlug);
+      if (updatedSlug && updatedSlug !== previousSlug) onStoreUrlChanged(updatedSlug);
       onSaved();
       onClose();
     } catch (err) {
-      showError(err, "Failed to update profile");
+      showError(err, 'Failed to update profile');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[80%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-spaceCadet-900">
-              Edit Profile
-            </Text>
+            <Text className="text-lg font-semibold text-spaceCadet-900">Edit Profile</Text>
             <AnimatedPressable
               onPress={onClose}
               accessibilityLabel="Close"
@@ -347,7 +333,7 @@ function ProfileEditModal({
                 )}
               </AnimatedPressable>
               <Text className="text-[11px] text-heliotrope-500 mt-1.5">
-                {logoUrl ? "Tap to change logo" : "Add store logo (optional)"}
+                {logoUrl ? 'Tap to change logo' : 'Add store logo (optional)'}
               </Text>
             </View>
 
@@ -363,7 +349,7 @@ function ProfileEditModal({
                 ) : bannerUrl ? (
                   <Image
                     source={{ uri: bannerUrl }}
-                    style={{ width: "100%", height: 112 }}
+                    style={{ width: '100%', height: 112 }}
                     resizeMode="cover"
                   />
                 ) : (
@@ -383,23 +369,13 @@ function ProfileEditModal({
                   }}
                   className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
-                  <Text className="text-[11px] text-rust-500">
-                    Remove banner
-                  </Text>
+                  <Text className="text-[11px] text-rust-500">Remove banner</Text>
                 </AnimatedPressable>
               )}
             </View>
 
-            <Field
-              label="Shop Name *"
-              value={shopName}
-              onChange={setShopName}
-            />
-            <Field
-              label="Owner Name"
-              value={ownerName}
-              onChange={setOwnerName}
-            />
+            <Field label="Shop Name *" value={shopName} onChange={setShopName} />
+            <Field label="Owner Name" value={ownerName} onChange={setOwnerName} />
             <Field
               label="Address *"
               value={addressLine1}
@@ -422,12 +398,12 @@ function ProfileEditModal({
                 <MapPin size={18} color={latitude !== null ? primaryColor : colors.sand[500]} />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-spaceCadet-900">
-                    {latitude !== null ? "Location saved" : "Use my current location"}
+                    {latitude !== null ? 'Location saved' : 'Use my current location'}
                   </Text>
                   <Text className="text-[11px] text-heliotrope-500 mt-0.5">
                     {latitude !== null && longitude !== null
                       ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)} — tap to update (stand inside your shop)`
-                      : "Stand inside your shop and tap. Customers get a Directions button."}
+                      : 'Stand inside your shop and tap. Customers get a Directions button.'}
                   </Text>
                 </View>
                 {locating ? <ActivityIndicator size="small" color={primaryColor} /> : null}
@@ -471,12 +447,7 @@ function ProfileEditModal({
               ) : null}
             </View>
 
-            <Field
-              label="GSTIN"
-              value={gstin}
-              onChange={setGstin}
-              placeholder="22AAAAA0000A1Z5"
-            />
+            <Field label="GSTIN" value={gstin} onChange={setGstin} placeholder="22AAAAA0000A1Z5" />
 
             <Text className="text-[11px] text-heliotrope-500 mt-1">
               GSTIN format: 22AAAAA0000A1Z5 (15 characters)
@@ -520,14 +491,12 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  keyboardType?: "default" | "numeric";
+  keyboardType?: 'default' | 'numeric';
 }) {
   const { colors } = useTheme();
   return (
     <View>
-      <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
-        {label}
-      </Text>
+      <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChange}
@@ -554,24 +523,21 @@ function WhatsAppModal({
   onSaved: () => void;
 }) {
   const [number, setNumber] = useState(current);
-  const [otp, setOtp] = useState("");
+  const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setNumber(current);
-    setOtp("");
+    setOtp('');
     setOtpSent(false);
   }, [current, visible]);
 
   const handleSendOtp = async () => {
-    const digits = number.replace(/\D/g, "");
+    const digits = number.replace(/\D/g, '');
     if (digits.length !== 10) {
-      Alert.alert(
-        "Invalid Number",
-        "Please enter a valid 10-digit Indian mobile number",
-      );
+      Alert.alert('Invalid Number', 'Please enter a valid 10-digit Indian mobile number');
       return;
     }
     setSendingOtp(true);
@@ -579,23 +545,20 @@ function WhatsAppModal({
       await retailerApi.sendWhatsappNumberOtp(digits);
       setOtpSent(true);
     } catch (err) {
-      showError(err, "Failed to send OTP");
+      showError(err, 'Failed to send OTP');
     } finally {
       setSendingOtp(false);
     }
   };
 
   const handleSave = async () => {
-    const digits = number.replace(/\D/g, "");
+    const digits = number.replace(/\D/g, '');
     if (digits.length !== 10) {
-      Alert.alert(
-        "Invalid Number",
-        "Please enter a valid 10-digit Indian mobile number",
-      );
+      Alert.alert('Invalid Number', 'Please enter a valid 10-digit Indian mobile number');
       return;
     }
     if (otp.length !== 6) {
-      Alert.alert("Enter OTP", "Enter the 6-digit code sent to this number");
+      Alert.alert('Enter OTP', 'Enter the 6-digit code sent to this number');
       return;
     }
     setSaving(true);
@@ -604,28 +567,21 @@ function WhatsAppModal({
       onSaved();
       onClose();
     } catch (err) {
-      showError(err, "Failed to update");
+      showError(err, 'Failed to update');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4">
-          <Text className="text-lg font-semibold text-spaceCadet-900">
-            WhatsApp Number
-          </Text>
+          <Text className="text-lg font-semibold text-spaceCadet-900">WhatsApp Number</Text>
           <Text className="text-xs text-heliotrope-500">
-            Customer enquiries open WhatsApp on this number. Use the shop
-            WhatsApp Business number and link staff phones to it (WhatsApp →
-            Linked devices) so the whole team sees every chat.
+            Customer enquiries open WhatsApp on this number. Use the shop WhatsApp Business number
+            and link staff phones to it (WhatsApp → Linked devices) so the whole team sees every
+            chat.
           </Text>
           <Field
             label="WhatsApp Number"
@@ -633,7 +589,7 @@ function WhatsAppModal({
             onChange={(v) => {
               setNumber(v);
               setOtpSent(false);
-              setOtp("");
+              setOtp('');
             }}
             placeholder="9876543210"
             keyboardType="numeric"
@@ -649,11 +605,7 @@ function WhatsAppModal({
           )}
           <View className="flex-row gap-3 mt-2">
             <View className="flex-1">
-              <WhiteButton
-                label="Cancel"
-                onPress={onClose}
-                disabled={saving || sendingOtp}
-              />
+              <WhiteButton label="Cancel" onPress={onClose} disabled={saving || sendingOtp} />
             </View>
             <View className="flex-1">
               {otpSent ? (
@@ -683,19 +635,19 @@ function WhatsAppModal({
 
 const KYC_DOCS: { type: KycDocType; label: string; hint: string }[] = [
   {
-    type: "gst",
-    label: "GST Certificate",
-    hint: "Photo of your GST registration",
+    type: 'gst',
+    label: 'GST Certificate',
+    hint: 'Photo of your GST registration',
   },
   {
-    type: "aadhar_front",
-    label: "Aadhar Card (Front)",
-    hint: "Photo of the front side",
+    type: 'aadhar_front',
+    label: 'Aadhar Card (Front)',
+    hint: 'Photo of the front side',
   },
   {
-    type: "aadhar_back",
-    label: "Aadhar Card (Back)",
-    hint: "Photo of the back side",
+    type: 'aadhar_back',
+    label: 'Aadhar Card (Back)',
+    hint: 'Photo of the back side',
   },
 ];
 
@@ -717,7 +669,7 @@ function KycDocRow({
 
   const handlePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ['images'],
       quality: 0.85,
     });
     if (result.canceled || !result.assets[0]) return;
@@ -726,28 +678,17 @@ function KycDocRow({
     try {
       const uri = result.assets[0].uri;
       const blob = await readLocalImage(uri);
-      const uploadResult = await retailerApi.getKycUploadUrl(
-        type,
-        "image/jpeg",
-        blob.size,
-      );
+      const uploadResult = await retailerApi.getKycUploadUrl(type, 'image/jpeg', blob.size);
       const info = uploadResult.data;
       // compress:false — KYC document legibility first (same exclusion as the
       // server-side batch compressor, scripts/compress-r2-images.ts).
-      await uploadImageToR2(
-        uri,
-        info.upload_url,
-        "image/jpeg",
-        undefined,
-        undefined,
-        {
-          compress: false,
-        },
-      );
+      await uploadImageToR2(uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+        compress: false,
+      });
       await retailerApi.submitKycDoc(type, info.r2_key, info.public_url);
       onUploaded();
     } catch (err) {
-      showError(err, "Failed to upload document");
+      showError(err, 'Failed to upload document');
     } finally {
       setUploading(false);
     }
@@ -763,11 +704,7 @@ function KycDocRow({
         {uploading ? (
           <ActivityIndicator size="small" color={primaryColor} />
         ) : url ? (
-          <Image
-            source={{ uri: url }}
-            style={{ width: 44, height: 44 }}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: url }} style={{ width: 44, height: 44 }} resizeMode="cover" />
         ) : (
           <FileText size={18} color={colors.sand[400]} />
         )}
@@ -775,7 +712,7 @@ function KycDocRow({
       <View className="flex-1">
         <Text className="text-sm font-semibold text-spaceCadet-900">{label}</Text>
         <Text className="text-xs text-heliotrope-500 mt-0.5">
-          {url ? "Uploaded — tap to replace" : hint}
+          {url ? 'Uploaded — tap to replace' : hint}
         </Text>
       </View>
       {url && <Check size={16} color={colors.turmeric[500]} />}
@@ -786,39 +723,39 @@ function KycDocRow({
 // Label-only map at module scope (no colors — those come from useTheme() so
 // the status chip repaints when the admin palette changes).
 const KYC_STATUS_LABEL: Record<string, { label: string }> = {
-  NOT_SUBMITTED: { label: "Not Submitted" },
-  PENDING: { label: "Pending Review" },
-  VERIFIED: { label: "Verified" },
-  REJECTED: { label: "Rejected" },
+  NOT_SUBMITTED: { label: 'Not Submitted' },
+  PENDING: { label: 'Pending Review' },
+  VERIFIED: { label: 'Verified' },
+  REJECTED: { label: 'Rejected' },
 };
 
 function kycStatusInfo(
   status: string,
-  colors: ReturnType<typeof useTheme>["colors"],
+  colors: ReturnType<typeof useTheme>['colors'],
 ): { label: string; color: string; bg: string } {
   const map: Record<string, { label: string; color: string; bg: string }> = {
     NOT_SUBMITTED: {
-      label: "Not Submitted",
+      label: 'Not Submitted',
       color: colors.sand[600],
       bg: colors.sand[100],
     },
     PENDING: {
-      label: "Pending Review",
+      label: 'Pending Review',
       color: colors.turmeric[600],
       bg: colors.turmeric[100],
     },
     VERIFIED: {
-      label: "Verified",
+      label: 'Verified',
       color: colors.turmeric[600],
       bg: colors.turmeric[100],
     },
     REJECTED: {
-      label: "Rejected",
+      label: 'Rejected',
       color: colors.rust[600],
       bg: colors.rust[100],
     },
   };
-  return map[status] ?? map["NOT_SUBMITTED"]!;
+  return map[status] ?? map['NOT_SUBMITTED']!;
 }
 
 function KycModal({
@@ -833,22 +770,15 @@ function KycModal({
   onSaved: () => void;
 }) {
   const { colors } = useTheme();
-  const status = retailer?.kyc_status ?? "NOT_SUBMITTED";
+  const status = retailer?.kyc_status ?? 'NOT_SUBMITTED';
   const statusInfo = kycStatusInfo(status, colors);
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-spaceCadet-900">
-              Identity Verification
-            </Text>
+            <Text className="text-lg font-semibold text-spaceCadet-900">Identity Verification</Text>
             <AnimatedPressable
               onPress={onClose}
               accessibilityLabel="Close"
@@ -862,23 +792,18 @@ function KycModal({
             className="self-start px-3 py-1 rounded-full"
             style={{ backgroundColor: statusInfo.bg }}
           >
-            <Text
-              className="text-xs font-semibold"
-              style={{ color: statusInfo.color }}
-            >
+            <Text className="text-xs font-semibold" style={{ color: statusInfo.color }}>
               {statusInfo.label}
             </Text>
           </View>
 
-          {status === "REJECTED" && retailer?.kyc_rejection_reason && (
-            <Text className="text-xs text-rust-600">
-              {retailer.kyc_rejection_reason}
-            </Text>
+          {status === 'REJECTED' && retailer?.kyc_rejection_reason && (
+            <Text className="text-xs text-rust-600">{retailer.kyc_rejection_reason}</Text>
           )}
 
           <Text className="text-xs text-heliotrope-500">
-            Upload GST certificate and Aadhar card (front + back) for KYC.
-            Submitted for review once all three are uploaded.
+            Upload GST certificate and Aadhar card (front + back) for KYC. Submitted for review once
+            all three are uploaded.
           </Text>
 
           <ScrollView className="gap-2.5">
@@ -923,21 +848,12 @@ function GoogleListingModal({
   onSaved: () => void;
 }) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[85%]">
           <Text className="text-lg font-semibold text-spaceCadet-900">Google Listing</Text>
           <ScrollView keyboardShouldPersistTaps="handled">
-            <GooglePlaceField
-              defaultQuery={defaultQuery}
-              placeId={placeId}
-              onChange={onSaved}
-            />
+            <GooglePlaceField defaultQuery={defaultQuery} placeId={placeId} onChange={onSaved} />
           </ScrollView>
           <WhiteButton label="Close" onPress={onClose} />
         </View>
@@ -956,10 +872,10 @@ function WhatsAppApiModal({
   onSaved: () => void;
 }) {
   const { primaryColor, colors } = useTheme();
-  const [phoneNumberId, setPhoneNumberId] = useState("");
-  const [accessToken, setAccessToken] = useState("");
-  const [templateName, setTemplateName] = useState("");
-  const [templateLang, setTemplateLang] = useState("en_US");
+  const [phoneNumberId, setPhoneNumberId] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [templateName, setTemplateName] = useState('');
+  const [templateLang, setTemplateLang] = useState('en_US');
   const [configured, setConfigured] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -971,9 +887,9 @@ function WhatsAppApiModal({
       .getWhatsAppApiConfig()
       .then((res) => {
         setConfigured(res.data?.configured ?? false);
-        setPhoneNumberId(res.data?.whatsapp_api_phone_number_id ?? "");
-        setTemplateName(res.data?.whatsapp_api_template_name ?? "");
-        setTemplateLang(res.data?.whatsapp_api_template_lang ?? "en_US");
+        setPhoneNumberId(res.data?.whatsapp_api_phone_number_id ?? '');
+        setTemplateName(res.data?.whatsapp_api_template_name ?? '');
+        setTemplateLang(res.data?.whatsapp_api_template_lang ?? 'en_US');
       })
       .finally(() => setLoading(false));
   }, [visible]);
@@ -990,12 +906,12 @@ function WhatsAppApiModal({
         phone_number_id: phoneNumberId.trim(),
         ...(accessToken.trim() ? { access_token: accessToken.trim() } : {}),
         template_name: templateName.trim(),
-        template_lang: templateLang.trim() || "en_US",
+        template_lang: templateLang.trim() || 'en_US',
       });
       onSaved();
       onClose();
     } catch (err) {
-      showError(err, "Failed to save WhatsApp API config");
+      showError(err, 'Failed to save WhatsApp API config');
     } finally {
       setSaving(false);
     }
@@ -1003,13 +919,13 @@ function WhatsAppApiModal({
 
   const handleDisconnect = () => {
     Alert.alert(
-      "Disconnect WhatsApp Business API",
-      "Collections will fall back to one-by-one sharing.",
+      'Disconnect WhatsApp Business API',
+      'Collections will fall back to one-by-one sharing.',
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Disconnect",
-          style: "destructive",
+          text: 'Disconnect',
+          style: 'destructive',
           onPress: async () => {
             await retailerApi.disconnectWhatsAppApi();
             onSaved();
@@ -1021,18 +937,11 @@ function WhatsAppApiModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-spaceCadet-900">
-              WhatsApp Business API
-            </Text>
+            <Text className="text-lg font-semibold text-spaceCadet-900">WhatsApp Business API</Text>
             <AnimatedPressable
               onPress={onClose}
               accessibilityLabel="Close"
@@ -1047,10 +956,9 @@ function WhatsAppApiModal({
           ) : (
             <ScrollView className="gap-3">
               <Text className="text-xs text-heliotrope-500 mb-1">
-                Optional — connect your own Meta WhatsApp Business API to send
-                collection links to many customers in one tap. Without this,
-                sharing works one-by-one via WhatsApp. Requires a pre-approved
-                message template with a single body variable.
+                Optional — connect your own Meta WhatsApp Business API to send collection links to
+                many customers in one tap. Without this, sharing works one-by-one via WhatsApp.
+                Requires a pre-approved message template with a single body variable.
               </Text>
 
               <Field
@@ -1060,11 +968,7 @@ function WhatsAppApiModal({
                 placeholder="From Meta Business dashboard"
               />
               <Field
-                label={
-                  configured
-                    ? "Access Token (leave blank to keep current)"
-                    : "Access Token"
-                }
+                label={configured ? 'Access Token (leave blank to keep current)' : 'Access Token'}
                 value={accessToken}
                 onChange={setAccessToken}
                 placeholder="Permanent access token"
@@ -1084,11 +988,7 @@ function WhatsAppApiModal({
 
               <View className="flex-row gap-3 mt-2">
                 <View className="flex-1">
-                  <WhiteButton
-                    label="Cancel"
-                    onPress={onClose}
-                    disabled={saving}
-                  />
+                  <WhiteButton label="Cancel" onPress={onClose} disabled={saving} />
                 </View>
                 <View className="flex-1">
                   <GradientButton
@@ -1106,9 +1006,7 @@ function WhatsAppApiModal({
                   onPress={handleDisconnect}
                   className="items-center py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
                 >
-                  <Text className="text-rust-500 text-xs font-semibold">
-                    Disconnect
-                  </Text>
+                  <Text className="text-rust-500 text-xs font-semibold">Disconnect</Text>
                 </AnimatedPressable>
               )}
             </ScrollView>
@@ -1131,11 +1029,11 @@ function DeleteAccountModal({
   onDeleted: () => void;
 }) {
   const { colors } = useTheme();
-  const [confirm, setConfirm] = useState("");
+  const [confirm, setConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (confirm.trim().toUpperCase() !== "DELETE") return;
+    if (confirm.trim().toUpperCase() !== 'DELETE') return;
     setDeleting(true);
     try {
       await retailerApi.delete();
@@ -1154,26 +1052,19 @@ function DeleteAccountModal({
     onDeleted();
   };
 
-  const isConfirmed = confirm.trim().toUpperCase() === "DELETE";
+  const isConfirmed = confirm.trim().toUpperCase() === 'DELETE';
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4">
-          <Text className="text-lg font-semibold text-rust-600">
-            Delete Account
-          </Text>
+          <Text className="text-lg font-semibold text-rust-600">Delete Account</Text>
           <Text className="text-sm text-heliotrope-600 leading-relaxed">
-            This will permanently delete your account and ALL associated data —
-            products, customers, collections, orders, staff, and settings.
-            {"\n\n"}
-            This action cannot be undone. You can sign up again with the same
-            phone number after deletion.{"\n\n"}
+            This will permanently delete your account and ALL associated data — products, customers,
+            collections, orders, staff, and settings.
+            {'\n\n'}
+            This action cannot be undone. You can sign up again with the same phone number after
+            deletion.{'\n\n'}
             Type DELETE to confirm.
           </Text>
           <TextInput
@@ -1195,7 +1086,7 @@ function DeleteAccountModal({
             <AnimatedPressable
               onPress={() => void handleDelete()}
               disabled={!isConfirmed || deleting}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${isConfirmed ? "bg-rust-600" : "bg-rust-200"}`}
+              className={`flex-1 py-3.5 rounded-2xl items-center ${isConfirmed ? 'bg-rust-600' : 'bg-rust-200'}`}
             >
               {deleting ? (
                 <ActivityIndicator size="small" color="white" />
@@ -1230,12 +1121,10 @@ function SettingsRow({
       onPress={onPress}
       className="flex-row items-center bg-white rounded-2xl p-4 border border-lavender-200"
     >
-      <View className="w-6 items-center justify-center mr-3.5">
-        {icon}
-      </View>
+      <View className="w-6 items-center justify-center mr-3.5">{icon}</View>
       <View className="flex-1">
         <Text
-          className={`text-sm ${destructive ? " text-red-600" : "text-spaceCadet-900 font-extrabold font-marcellus"}`}
+          className={`text-sm ${destructive ? ' text-red-600' : 'text-spaceCadet-900 font-extrabold font-marcellus'}`}
         >
           {label}
         </Text>
@@ -1257,18 +1146,19 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
 
   const { data: meData, isLoading } = useQuery({
-    queryKey: ["retailer", "me"],
+    queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
   });
-  const retailer = (meData as { data: Record<string, any> } | undefined)
-    ?.data as Record<string, any> | undefined;
+  const retailer = (meData as { data: Record<string, any> } | undefined)?.data as
+    | Record<string, any>
+    | undefined;
 
   // Team members (Staff rows added by the owner) only get product/category/
   // collection/size-chart/QR access server-side (see apps/api plugins/auth.ts
   // staffCanAccess) — hide owner-only rows here so staff don't tap into a 403.
   const [isStaff, setIsStaff] = useState(false);
   useEffect(() => {
-    void getItem("staff_role").then((role) => setIsStaff(!!role));
+    void getItem('staff_role').then((role) => setIsStaff(!!role));
   }, []);
 
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -1286,11 +1176,11 @@ export default function SettingsScreen() {
   const [storeUrlNotice, setStoreUrlNotice] = useState<string | null>(null);
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: "Logout",
-        style: "destructive",
+        text: 'Logout',
+        style: 'destructive',
         onPress: async () => {
           queryClient.clear();
           await clearPersistedCache();
@@ -1304,10 +1194,10 @@ export default function SettingsScreen() {
   };
 
   const handleProfileSaved = () => {
-    void queryClient.invalidateQueries({ queryKey: ["retailer", "me"] });
+    void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
   };
 
-  const phone = retailer?.phone ?? "";
+  const phone = retailer?.phone ?? '';
   const whatsapp = retailer?.whatsapp_number ?? phone;
 
   if (isLoading) {
@@ -1338,7 +1228,7 @@ export default function SettingsScreen() {
           </View>
           <View className="px-2.5 py-1 rounded-full bg-lavender-100 border border-lavender-200">
             <Text className="text-tyrian-800 text-[11px] font-semibold">
-              {retailer?.plan ?? "PRO PLAN"}
+              {retailer?.plan ?? 'PRO PLAN'}
             </Text>
           </View>
         </View>
@@ -1353,7 +1243,7 @@ export default function SettingsScreen() {
           <View className="flex-row items-center gap-3 flex-1 mr-2">
             <View className="w-12 h-12 rounded-2xl bg-tyrian-800 border border-lavender-200 items-center justify-center">
               <Text className="text-lavender-200 text-base font-extrabold font-marcellus">
-                {(retailer?.shop_name ?? "RS").slice(0, 2).toUpperCase()}
+                {(retailer?.shop_name ?? 'RS').slice(0, 2).toUpperCase()}
               </Text>
             </View>
             <View className="flex-1">
@@ -1368,10 +1258,12 @@ export default function SettingsScreen() {
                 className="text-base leading-6 text-spaceCadet-900 font-extrabold font-marcellus"
                 numberOfLines={1}
               >
-                {retailer?.shop_name ?? "Radha Sarees"}
+                {retailer?.shop_name ?? 'Radha Sarees'}
               </Text>
               <Text className="text-[11px] text-heliotrope-500 font-medium" numberOfLines={1}>
-                {retailer?.slug ? `kanchuki.com/${retailer.slug}` : `${retailer?.city ?? ""} · ${retailer?.plan ?? "PRO"}`}
+                {retailer?.slug
+                  ? `kanchuki.com/${retailer.slug}`
+                  : `${retailer?.city ?? ''} · ${retailer?.plan ?? 'PRO'}`}
               </Text>
             </View>
           </View>
@@ -1411,9 +1303,7 @@ export default function SettingsScreen() {
                 Renaming your shop updated your store URL. Your new link is:
               </Text>
               <AnimatedPressable
-                onPress={() =>
-                  void Linking.openURL(`${WEB_URL}/${storeUrlNotice}`)
-                }
+                onPress={() => void Linking.openURL(`${WEB_URL}/${storeUrlNotice}`)}
                 hitSlop={6}
               >
                 <Text className="text-xs text-ink-700 underline mt-1">
@@ -1424,14 +1314,12 @@ export default function SettingsScreen() {
                 <AnimatedPressable
                   onPress={() => {
                     setStoreUrlNotice(null);
-                    router.push("/store-profile");
+                    router.push('/store-profile');
                   }}
                   accessibilityRole="button"
                   className="bg-ink-600 px-4 py-2.5 rounded-xl items-center"
                 >
-                  <Text className="text-white text-xs font-semibold">
-                    View QR Code
-                  </Text>
+                  <Text className="text-white text-xs font-semibold">View QR Code</Text>
                 </AnimatedPressable>
                 <AnimatedPressable
                   onPress={() => setStoreUrlNotice(null)}
@@ -1440,9 +1328,7 @@ export default function SettingsScreen() {
                   accessibilityRole="button"
                   className="py-1.5 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
-                  <Text className="text-heliotrope-500 text-xs font-semibold">
-                    Dismiss
-                  </Text>
+                  <Text className="text-heliotrope-500 text-xs font-semibold">Dismiss</Text>
                 </AnimatedPressable>
               </View>
             </View>
@@ -1476,8 +1362,8 @@ export default function SettingsScreen() {
                   </View>
                 </View>
                 <Text className="text-xs text-heliotrope-600 leading-4 mt-3">
-                  You skipped this during onboarding. Add your GSTIN now so
-                  every sale can be billed correctly — it takes a minute.
+                  You skipped this during onboarding. Add your GSTIN now so every sale can be billed
+                  correctly — it takes a minute.
                 </Text>
                 <View className="flex-row items-center gap-4 mt-3.5">
                   <AnimatedPressable
@@ -1485,9 +1371,7 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                     className="bg-ink-600 px-4 py-2.5 rounded-xl items-center"
                   >
-                    <Text className="text-white text-xs font-semibold">
-                      Add GSTIN
-                    </Text>
+                    <Text className="text-white text-xs font-semibold">Add GSTIN</Text>
                   </AnimatedPressable>
                   <AnimatedPressable
                     onPress={() => setGstReminderDismissed(true)}
@@ -1496,9 +1380,7 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                     className="py-1.5 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                   >
-                    <Text className="text-heliotrope-500 text-xs font-semibold">
-                      Not now
-                    </Text>
+                    <Text className="text-heliotrope-500 text-xs font-semibold">Not now</Text>
                   </AnimatedPressable>
                 </View>
               </View>
@@ -1506,37 +1388,37 @@ export default function SettingsScreen() {
           )}
 
         {/* F-010: Usage section — owner-only endpoint */}
-        {!isStaff && (<View className="mb-4"><UsageCard /></View>)}
+        {!isStaff && (
+          <View className="mb-4">
+            <UsageCard />
+          </View>
+        )}
 
         {/* Sections */}
         <View className="gap-2.5">
           {!isStaff && (
             <>
-              <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
-                Account
-              </Text>
+              <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">Account</Text>
 
               <SettingsRow
                 icon={<User size={18} color={colors.danger} />}
                 label="Edit Profile"
-                subtitle={retailer?.shop_name ?? ""}
+                subtitle={retailer?.shop_name ?? ''}
                 onPress={() => setShowProfileEdit(true)}
               />
 
               <SettingsRow
                 icon={<CreditCard size={18} color={colors.turmeric[500]} />}
                 label="Plans & Billing"
-                subtitle={`${retailer?.plan ?? "STARTER"} · ${retailer?.plan_status ?? "TRIAL"}`}
-                onPress={() => router.push("/billing")}
+                subtitle={`${retailer?.plan ?? 'STARTER'} · ${retailer?.plan_status ?? 'TRIAL'}`}
+                onPress={() => router.push('/billing')}
               />
 
               <SettingsRow
                 icon={<Smartphone size={18} color={colors.danger} />}
                 label="WhatsApp Number"
                 subtitle={
-                  retailer?.whatsapp_number
-                    ? whatsapp
-                    : `Not set — enquiries go to ${phone}`
+                  retailer?.whatsapp_number ? whatsapp : `Not set — enquiries go to ${phone}`
                 }
                 onPress={() => setShowWhatsApp(true)}
               />
@@ -1546,8 +1428,8 @@ export default function SettingsScreen() {
                 label="Google Listing"
                 subtitle={
                   retailer?.google_place_id
-                    ? "Linked — customers can review you on Google"
-                    : "Not linked — add it to collect Google reviews"
+                    ? 'Linked — customers can review you on Google'
+                    : 'Not linked — add it to collect Google reviews'
                 }
                 onPress={() => setShowGoogleListing(true)}
               />
@@ -1556,8 +1438,8 @@ export default function SettingsScreen() {
                 icon={<ShieldCheck size={18} color={primaryColor} />}
                 label="Identity Verification (KYC)"
                 subtitle={
-                  (KYC_STATUS_LABEL[retailer?.kyc_status ?? "NOT_SUBMITTED"] ??
-                    KYC_STATUS_LABEL["NOT_SUBMITTED"])!.label
+                  (KYC_STATUS_LABEL[retailer?.kyc_status ?? 'NOT_SUBMITTED'] ??
+                    KYC_STATUS_LABEL['NOT_SUBMITTED'])!.label
                 }
                 onPress={() => setShowKyc(true)}
               />
@@ -1567,8 +1449,8 @@ export default function SettingsScreen() {
                 label="WhatsApp Business API"
                 subtitle={
                   retailer?.whatsapp_api_configured
-                    ? "Connected — bulk send enabled"
-                    : "Not connected — one-by-one only"
+                    ? 'Connected — bulk send enabled'
+                    : 'Not connected — one-by-one only'
                 }
                 onPress={() => setShowWhatsAppApi(true)}
               />
@@ -1577,22 +1459,20 @@ export default function SettingsScreen() {
                 icon={<MessageCircle size={18} color={primaryColor} />}
                 label="WhatsApp Native Catalog"
                 subtitle="Sync products into WhatsApp Business"
-                onPress={() => router.push("/settings/whatsapp-catalog")}
+                onPress={() => router.push('/settings/whatsapp-catalog')}
               />
 
               <View className="h-2" />
             </>
           )}
 
-          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
-            Store
-          </Text>
+          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">Store</Text>
 
           <SettingsRow
             icon={<FolderKanban size={18} color={primaryColor} />}
             label="Product Categories"
             subtitle="Group products for customer browsing"
-            onPress={() => router.push("/category")}
+            onPress={() => router.push('/category')}
           />
 
           {!isStaff && (
@@ -1600,7 +1480,7 @@ export default function SettingsScreen() {
               icon={<Users size={18} color={colors.turmeric[500]} />}
               label="Team Members"
               subtitle="Manage shop staff"
-              onPress={() => router.push("/settings/staff")}
+              onPress={() => router.push('/settings/staff')}
             />
           )}
 
@@ -1609,7 +1489,7 @@ export default function SettingsScreen() {
               icon={<Share2 size={18} color={primaryColor} />}
               label="Social Media"
               subtitle="Post products to your Facebook Page"
-              onPress={() => router.push("/settings/social")}
+              onPress={() => router.push('/settings/social')}
             />
           )}
 
@@ -1618,7 +1498,7 @@ export default function SettingsScreen() {
               icon={<Plug size={18} color={primaryColor} />}
               label="Kanchuki support access"
               subtitle="Approve or end support sessions"
-              onPress={() => router.push("/settings/support-sessions")}
+              onPress={() => router.push('/settings/support-sessions')}
             />
           )}
 
@@ -1626,8 +1506,10 @@ export default function SettingsScreen() {
             <SettingsRow
               icon={<Plug size={18} color={primaryColor} />}
               label="Integrations"
-              subtitle={META_SOCIAL_ENABLED ? "Facebook, Instagram & WhatsApp" : "WhatsApp & Google"}
-              onPress={() => router.push("/growth/integrations")}
+              subtitle={
+                META_SOCIAL_ENABLED ? 'Facebook, Instagram & WhatsApp' : 'WhatsApp & Google'
+              }
+              onPress={() => router.push('/growth/integrations')}
             />
           )}
 
@@ -1636,7 +1518,7 @@ export default function SettingsScreen() {
               icon={<Receipt size={18} color={primaryColor} />}
               label="GST Report"
               subtitle="Tax summary & invoices"
-              onPress={() => router.push("/growth/gst")}
+              onPress={() => router.push('/growth/gst')}
             />
           )}
 
@@ -1644,7 +1526,7 @@ export default function SettingsScreen() {
             icon={<QrCode size={18} color={primaryColor} />}
             label="Store QR Code"
             subtitle="QR profile & storefront"
-            onPress={() => router.push("/store-profile")}
+            onPress={() => router.push('/store-profile')}
           />
 
           {CATALOG_UPLOAD_ENABLED && !isStaff && (
@@ -1652,7 +1534,7 @@ export default function SettingsScreen() {
               icon={<Truck size={18} color={primaryColor} />}
               label="Catalog Upload Help"
               subtitle="Get a team member to add your catalog for you"
-              onPress={() => router.push("/settings/catalog-upload")}
+              onPress={() => router.push('/settings/catalog-upload')}
             />
           )}
 
@@ -1661,15 +1543,13 @@ export default function SettingsScreen() {
               icon={<Trash2 size={18} color={colors.rust[600]} />}
               label="Recently Deleted"
               subtitle="Restore or permanently remove products"
-              onPress={() => router.push("/settings/deleted-products")}
+              onPress={() => router.push('/settings/deleted-products')}
             />
           )}
 
           <View className="h-2" />
 
-          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
-            Legal
-          </Text>
+          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">Legal</Text>
 
           <SettingsRow
             icon={<FileText size={18} color={colors.sand[600]} />}
@@ -1685,16 +1565,14 @@ export default function SettingsScreen() {
 
           <View className="h-2" />
 
-          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
-            Actions
-          </Text>
+          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">Actions</Text>
 
           {!isStaff && (
             <SettingsRow
               icon={<LifeBuoy size={18} color={primaryColor} />}
               label="Help & Support"
               subtitle="Raise a ticket and track its status"
-              onPress={() => router.push("/settings/help-support")}
+              onPress={() => router.push('/settings/help-support')}
             />
           )}
 
@@ -1716,11 +1594,7 @@ export default function SettingsScreen() {
 
           {/* Signature Sign Out Button (Point 8 Spec) */}
           <View className="mt-3">
-            <GradientButton
-              variant="web"
-              label="Sign Out of Account"
-              onPress={handleLogout}
-            />
+            <GradientButton variant="web" label="Sign Out of Account" onPress={handleLogout} />
           </View>
 
           {/* Commit + build time of the running binary — a screenshot of this
@@ -1740,7 +1614,7 @@ export default function SettingsScreen() {
       <GoogleListingModal
         visible={showGoogleListing}
         placeId={retailer?.google_place_id ?? null}
-        defaultQuery={[retailer?.shop_name, retailer?.city].filter(Boolean).join(" ")}
+        defaultQuery={[retailer?.shop_name, retailer?.city].filter(Boolean).join(' ')}
         onClose={() => setShowGoogleListing(false)}
         onSaved={handleProfileSaved}
       />

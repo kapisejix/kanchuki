@@ -1,40 +1,32 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronLeft, Languages, X } from 'lucide-react-native'
-import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Check, ChevronLeft, Languages, X } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { TemplatePicker } from '../../src/components/social';
+import { productApi, socialApi } from '../../src/lib/api';
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { TemplatePicker } from '../../src/components/social'
-import { productApi, socialApi } from '../../src/lib/api'
-import type { PostTemplateInfo } from '../../src/lib/api/social'
-import {
-  growthApi,
-  TRANSLATE_LANGUAGES,
   type AudienceSpec,
   type CampaignType,
   type CustomerLeadSource,
+  TRANSLATE_LANGUAGES,
   type TranslateLanguage,
-} from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
+  growthApi,
+} from '../../src/lib/api';
+import type { PostTemplateInfo } from '../../src/lib/api/social';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { useTheme } from '../../src/lib/theme';
 
 const TYPE_OPTIONS: { key: CampaignType; label: string; hint: string }[] = [
   { key: 'FESTIVAL', label: 'Festival', hint: 'Diwali, Navratri, Onam…' },
   { key: 'REACTIVATION', label: 'Reactivation', hint: 'Win back inactive customers' },
   { key: 'PROMOTION', label: 'Promotion', hint: 'Offer or discount blast' },
   { key: 'AB_TEST', label: 'A/B Test', hint: 'Compare two messages' },
-]
+];
 
 const LEAD_SOURCES: { key: CustomerLeadSource; label: string }[] = [
   { key: 'MANUAL', label: 'Manual' },
@@ -42,7 +34,7 @@ const LEAD_SOURCES: { key: CustomerLeadSource; label: string }[] = [
   { key: 'REFERRAL', label: 'Referral' },
   { key: 'CAMPAIGN', label: 'Campaign' },
   { key: 'STORE_SCAN', label: 'Store scan' },
-]
+];
 
 // Template placeholders the backend fills at send time.
 const PLACEHOLDERS: { token: string; hint: string }[] = [
@@ -51,7 +43,7 @@ const PLACEHOLDERS: { token: string; hint: string }[] = [
   { token: '{{link}}', hint: 'your storefront link' },
   { token: '{{festival}}', hint: 'festival name (festival campaigns)' },
   { token: '{{offer}}', hint: 'offer text' },
-]
+];
 
 // Pre-built message templates, picked by campaign type/occasion — retailer
 // taps one to populate the textarea, then edits from there.
@@ -85,7 +77,7 @@ const MESSAGE_TEMPLATES: Record<CampaignType, { label: string; text: string }[]>
     },
     {
       label: 'Welcome back offer',
-      text: '{{name}}, it\'s been a while! Come back to {{shop}} — {{offer}} waiting for you: {{link}}',
+      text: "{{name}}, it's been a while! Come back to {{shop}} — {{offer}} waiting for you: {{link}}",
     },
     {
       label: 'New arrivals',
@@ -103,7 +95,7 @@ const MESSAGE_TEMPLATES: Record<CampaignType, { label: string; text: string }[]>
     },
     {
       label: 'Limited time',
-      text: '{{name}}, don\'t miss out! {{offer}} at {{shop}} — for a limited time only. {{link}}',
+      text: "{{name}}, don't miss out! {{offer}} at {{shop}} — for a limited time only. {{link}}",
     },
     {
       label: 'Flat sale',
@@ -117,14 +109,14 @@ const MESSAGE_TEMPLATES: Record<CampaignType, { label: string; text: string }[]>
   AB_TEST: [
     { label: 'New arrivals', text: 'Hi {{name}}, new styles just arrived at {{shop}}: {{link}}' },
   ],
-}
+};
 
 function Section({
   title,
   children,
 }: {
-  title: string
-  children: React.ReactNode
+  title: string;
+  children: React.ReactNode;
 }) {
   return (
     <View className="bg-white rounded-2xl p-5 border border-lavender-200">
@@ -136,11 +128,11 @@ function Section({
       </Text>
       {children}
     </View>
-  )
+  );
 }
 
 function Label({ text }: { text: string }) {
-  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5 mt-3">{text}</Text>
+  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5 mt-3">{text}</Text>;
 }
 
 function Chip({
@@ -149,10 +141,10 @@ function Chip({
   onPress,
   color,
 }: {
-  label: string
-  active: boolean
-  onPress: () => void
-  color?: string
+  label: string;
+  active: boolean;
+  onPress: () => void;
+  color?: string;
 }) {
   return (
     <AnimatedPressable
@@ -168,7 +160,7 @@ function Chip({
         {label}
       </Text>
     </AnimatedPressable>
-  )
+  );
 }
 
 function InlineToggle({
@@ -177,10 +169,10 @@ function InlineToggle({
   value,
   onChange,
 }: {
-  label: string
-  hint: string
-  value: boolean
-  onChange: (v: boolean) => void
+  label: string;
+  hint: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
 }) {
   return (
     <AnimatedPressable
@@ -203,17 +195,17 @@ function InlineToggle({
         />
       </View>
     </AnimatedPressable>
-  )
+  );
 }
 
 export default function CampaignFormScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const params = useLocalSearchParams<{ id?: string; type?: string; inactive_days?: string }>()
-  const editingId = params.id
-  const isEdit = !!editingId
+  const { primaryColor, colors } = useTheme();
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ id?: string; type?: string; inactive_days?: string }>();
+  const editingId = params.id;
+  const isEdit = !!editingId;
 
   // ── Form state ──
   const [type, setType] = useState<CampaignType>(
@@ -222,94 +214,112 @@ export default function CampaignFormScreen() {
     )
       ? (params.type as CampaignType)
       : 'REACTIVATION',
-  )
-  const [name, setName] = useState('')
-  const [message, setMessage] = useState('')
+  );
+  const [name, setName] = useState('');
+  const [message, setMessage] = useState('');
   // Cursor tracking so placeholder taps insert at the cursor, not just append.
-  const messageSelectionRef = useRef({ start: 0, end: 0 })
+  const messageSelectionRef = useRef({ start: 0, end: 0 });
   // Admin campaign post template (T-9.7) — tracks which card is selected.
-  const [campaignTemplateId, setCampaignTemplateId] = useState<string | null>(null)
-  const [messageSelection, setMessageSelection] = useState<{ start: number; end: number } | undefined>(undefined)
+  const [campaignTemplateId, setCampaignTemplateId] = useState<string | null>(null);
+  const [messageSelection, setMessageSelection] = useState<
+    { start: number; end: number } | undefined
+  >(undefined);
   // Numeric auto-increment festival id (admin-managed calendar).
-  const [festivalId, setFestivalId] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [festivalId, setFestivalId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // Inline AI translate — replaces the old full-screen /growth/translate jump.
-  const [showTranslate, setShowTranslate] = useState(false)
-  const [translateLang, setTranslateLang] = useState<TranslateLanguage>('hindi')
+  const [showTranslate, setShowTranslate] = useState(false);
+  const [translateLang, setTranslateLang] = useState<TranslateLanguage>('hindi');
   const translateMut = useMutation({
     mutationFn: () => growthApi.translateMessage(message.trim(), translateLang),
     onError: (err) =>
       showError(err, 'Could not translate. Try another language or shorten the text.'),
-  })
-  const translated = translateMut.data?.data?.message ?? null
+  });
+  const translated = translateMut.data?.data?.message ?? null;
 
   // Audience
-  const [allAudience, setAllAudience] = useState(false)
-  const [colorsStr, setColorsStr] = useState('')
-  const [stylesStr, setStylesStr] = useState('')
-  const [fabricsStr, setFabricsStr] = useState('')
-  const [minSpent, setMinSpent] = useState('')
-  const [maxBudget, setMaxBudget] = useState('')
+  const [allAudience, setAllAudience] = useState(false);
+  const [colorsStr, setColorsStr] = useState('');
+  const [stylesStr, setStylesStr] = useState('');
+  const [fabricsStr, setFabricsStr] = useState('');
+  const [minSpent, setMinSpent] = useState('');
+  const [maxBudget, setMaxBudget] = useState('');
   const [inactiveDays, setInactiveDays] = useState(
     params.inactive_days ? String(params.inactive_days) : '60',
-  )
-  const [neverPurchased, setNeverPurchased] = useState(false)
-  const [sources, setSources] = useState<CustomerLeadSource[]>([])
+  );
+  const [neverPurchased, setNeverPurchased] = useState(false);
+  const [sources, setSources] = useState<CustomerLeadSource[]>([]);
 
   // A/B — variant collections (roadmap S) + stagger
-  const [abA, setAbA] = useState({ label: '', message: '', pct: '50', products: [] as string[], delay: '' })
-  const [abB, setAbB] = useState({ label: '', message: '', pct: '50', products: [] as string[], delay: '' })
-  const [variantPicker, setVariantPicker] = useState<'A' | 'B' | null>(null)
+  const [abA, setAbA] = useState({
+    label: '',
+    message: '',
+    pct: '50',
+    products: [] as string[],
+    delay: '',
+  });
+  const [abB, setAbB] = useState({
+    label: '',
+    message: '',
+    pct: '50',
+    products: [] as string[],
+    delay: '',
+  });
+  const [variantPicker, setVariantPicker] = useState<'A' | 'B' | null>(null);
 
   // Edit mode — prefill from the existing campaign.
   const { data: existingData, isLoading: existingLoading } = useQuery({
     queryKey: ['growth', 'campaign', editingId],
     queryFn: () => growthApi.campaign(editingId!),
     enabled: isEdit,
-  })
-  const existing = existingData?.data
+  });
+  const existing = existingData?.data;
 
   useEffect(() => {
-    if (!existing) return
-    setType(existing.type)
-    setName(existing.name)
-    setMessage(existing.message_template)
-    setFestivalId(existing.festival_id)
-    const a = existing.audience_json ?? {}
-    setAllAudience(!!a.all)
-    setColorsStr((a.colors ?? []).join(', '))
-    setStylesStr((a.styles ?? []).join(', '))
-    setFabricsStr((a.fabrics ?? []).join(', '))
-    setMinSpent(a.min_total_spent_paise ? String(a.min_total_spent_paise / 100) : '')
-    setMaxBudget(a.max_budget_paise ? String(a.max_budget_paise / 100) : '')
-    setInactiveDays(a.inactive_days ? String(a.inactive_days) : '60')
-    setNeverPurchased(!!a.never_purchased)
-    setSources(a.sources ?? [])
+    if (!existing) return;
+    setType(existing.type);
+    setName(existing.name);
+    setMessage(existing.message_template);
+    setFestivalId(existing.festival_id);
+    const a = existing.audience_json ?? {};
+    setAllAudience(!!a.all);
+    setColorsStr((a.colors ?? []).join(', '));
+    setStylesStr((a.styles ?? []).join(', '));
+    setFabricsStr((a.fabrics ?? []).join(', '));
+    setMinSpent(a.min_total_spent_paise ? String(a.min_total_spent_paise / 100) : '');
+    setMaxBudget(a.max_budget_paise ? String(a.max_budget_paise / 100) : '');
+    setInactiveDays(a.inactive_days ? String(a.inactive_days) : '60');
+    setNeverPurchased(!!a.never_purchased);
+    setSources(a.sources ?? []);
     if (existing.ab_variants?.length === 2) {
       setAbA({
         label: existing.ab_variants[0].label,
         message: existing.ab_variants[0].message_template,
         pct: String(existing.ab_variants[0].send_pct),
         products: existing.ab_variants[0].product_ids ?? [],
-        delay: existing.ab_variants[0].send_delay_min ? String(existing.ab_variants[0].send_delay_min) : '',
-      })
+        delay: existing.ab_variants[0].send_delay_min
+          ? String(existing.ab_variants[0].send_delay_min)
+          : '',
+      });
       setAbB({
         label: existing.ab_variants[1].label,
         message: existing.ab_variants[1].message_template,
         pct: String(existing.ab_variants[1].send_pct),
         products: existing.ab_variants[1].product_ids ?? [],
-        delay: existing.ab_variants[1].send_delay_min ? String(existing.ab_variants[1].send_delay_min) : '',
-      })
+        delay: existing.ab_variants[1].send_delay_min
+          ? String(existing.ab_variants[1].send_delay_min)
+          : '',
+      });
     }
-  }, [existing])
+  }, [existing]);
 
   const { data: festivalsData } = useQuery({
     queryKey: ['growth', 'festivals', 'upcoming'],
     queryFn: () => growthApi.festivals(true),
     enabled: type === 'FESTIVAL',
-  })
-  const festivals = festivalsData?.data ?? []
+  });
+  const festivals = festivalsData?.data ?? [];
 
   // Admin campaign post templates (T-9.7). The API's context filter is
   // CAMPAIGN-inclusive-of-BOTH, so a campaign template (or one marked for
@@ -318,111 +328,125 @@ export default function CampaignFormScreen() {
   const { data: campaignTemplatesData } = useQuery({
     queryKey: ['social', 'post-templates', 'campaign'],
     queryFn: () => socialApi.listPostTemplates('CAMPAIGN'),
-  })
-  const campaignTemplates = campaignTemplatesData?.data ?? []
+  });
+  const campaignTemplates = campaignTemplatesData?.data ?? [];
 
   // Post-template tokens are single-brace ({store_name}); campaign messages
   // fill {{...}} tokens at send time (fillTemplate). Convert the shared
   // placeholders so the prefilled draft resolves when the campaign sends.
   const applyCampaignTemplate = (t: PostTemplateInfo | null) => {
-    setCampaignTemplateId(t?.id ?? null)
-    if (!t) return
+    setCampaignTemplateId(t?.id ?? null);
+    if (!t) return;
     const text = t.caption_template
       .replace(/\{store_name\}/g, '{{shop}}')
       .replace(/\{link\}/g, '{{link}}')
-      .replace(/\{festival\}/g, '{{festival}}')
-    setMessage(text)
-    messageSelectionRef.current = { start: text.length, end: text.length }
-    setMessageSelection(undefined)
-  }
+      .replace(/\{festival\}/g, '{{festival}}');
+    setMessage(text);
+    messageSelectionRef.current = { start: text.length, end: text.length };
+    setMessageSelection(undefined);
+  };
 
   // Products for the A/B collection picker (roadmap S). The modal keeps a
   // working Set locally and only commits it to the variant on Done.
-  const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set())
+  const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
   const pickerProductsQuery = useQuery({
     queryKey: ['products', 'list', 'ab-picker'],
     queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 50 }),
     enabled: variantPicker !== null,
-  })
-  const pickerProducts = (pickerProductsQuery.data?.data ?? []) as { id: string; category: string | null; primary_photo_url: string | null }[]
-  const activeVariantState = variantPicker === 'A' ? abA : variantPicker === 'B' ? abB : null
-  const activeVariantSet = variantPicker === 'A' ? setAbA : variantPicker === 'B' ? setAbB : null
+  });
+  const pickerProducts = (pickerProductsQuery.data?.data ?? []) as {
+    id: string;
+    category: string | null;
+    primary_photo_url: string | null;
+  }[];
+  const activeVariantState = variantPicker === 'A' ? abA : variantPicker === 'B' ? abB : null;
+  const activeVariantSet = variantPicker === 'A' ? setAbA : variantPicker === 'B' ? setAbB : null;
 
   const openPicker = (key: 'A' | 'B') => {
-    const current = key === 'A' ? abA.products : abB.products
-    setPickerSelection(new Set(current))
-    setVariantPicker(key)
-  }
+    const current = key === 'A' ? abA.products : abB.products;
+    setPickerSelection(new Set(current));
+    setVariantPicker(key);
+  };
 
   const commitPicker = () => {
-    if (!variantPicker || !activeVariantSet || !activeVariantState) return
-    activeVariantSet({ ...activeVariantState, products: [...pickerSelection] })
-    setVariantPicker(null)
-  }
+    if (!variantPicker || !activeVariantSet || !activeVariantState) return;
+    activeVariantSet({ ...activeVariantState, products: [...pickerSelection] });
+    setVariantPicker(null);
+  };
 
   const splitList = (raw: string) =>
     raw
       .split(',')
       .map((s) => s.trim())
-      .filter(Boolean)
+      .filter(Boolean);
 
   const buildAudience = (): AudienceSpec => {
-    if (allAudience) return { all: true }
-    const audience: AudienceSpec = {}
-    const colorsList = splitList(colorsStr)
-    const stylesList = splitList(stylesStr)
-    const fabricsList = splitList(fabricsStr)
-    if (colorsList.length) audience.colors = colorsList
-    if (stylesList.length) audience.styles = stylesList
-    if (fabricsList.length) audience.fabrics = fabricsList
-    const min = Math.round((parseFloat(minSpent) || 0) * 100)
-    const max = Math.round((parseFloat(maxBudget) || 0) * 100)
-    if (min > 0) audience.min_total_spent_paise = min
-    if (max > 0) audience.max_budget_paise = max
+    if (allAudience) return { all: true };
+    const audience: AudienceSpec = {};
+    const colorsList = splitList(colorsStr);
+    const stylesList = splitList(stylesStr);
+    const fabricsList = splitList(fabricsStr);
+    if (colorsList.length) audience.colors = colorsList;
+    if (stylesList.length) audience.styles = stylesList;
+    if (fabricsList.length) audience.fabrics = fabricsList;
+    const min = Math.round((parseFloat(minSpent) || 0) * 100);
+    const max = Math.round((parseFloat(maxBudget) || 0) * 100);
+    if (min > 0) audience.min_total_spent_paise = min;
+    if (max > 0) audience.max_budget_paise = max;
     if (type === 'REACTIVATION' && inactiveDays) {
-      audience.inactive_days = Math.max(1, Math.min(3650, parseInt(inactiveDays, 10) || 60))
+      audience.inactive_days = Math.max(1, Math.min(3650, parseInt(inactiveDays, 10) || 60));
     }
-    if (neverPurchased) audience.never_purchased = true
-    if (sources.length) audience.sources = sources
-    return audience
-  }
+    if (neverPurchased) audience.never_purchased = true;
+    if (sources.length) audience.sources = sources;
+    return audience;
+  };
 
   const insertPlaceholder = (token: string) => {
-    const { start, end } = messageSelectionRef.current
-    setMessage((prev) => prev.slice(0, start) + token + prev.slice(end))
-    const pos = start + token.length
-    messageSelectionRef.current = { start: pos, end: pos }
-    setMessageSelection({ start: pos, end: pos })
-  }
+    const { start, end } = messageSelectionRef.current;
+    setMessage((prev) => prev.slice(0, start) + token + prev.slice(end));
+    const pos = start + token.length;
+    messageSelectionRef.current = { start: pos, end: pos };
+    setMessageSelection({ start: pos, end: pos });
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Missing info', 'Give the campaign a name.')
-      return
+      Alert.alert('Missing info', 'Give the campaign a name.');
+      return;
     }
     if (!message.trim() && type !== 'AB_TEST') {
-      Alert.alert('Missing info', 'Write a message template for the campaign.')
-      return
+      Alert.alert('Missing info', 'Write a message template for the campaign.');
+      return;
     }
     if (type === 'FESTIVAL' && !festivalId) {
-      Alert.alert('Missing info', 'Pick a festival for the campaign.')
-      return
+      Alert.alert('Missing info', 'Pick a festival for the campaign.');
+      return;
     }
     if (type === 'AB_TEST') {
-      const pctA = parseInt(abA.pct, 10) || 0
-      const pctB = parseInt(abB.pct, 10) || 0
+      const pctA = parseInt(abA.pct, 10) || 0;
+      const pctB = parseInt(abB.pct, 10) || 0;
       if (!abA.label.trim() || !abB.label.trim() || !abA.message.trim() || !abB.message.trim()) {
-        Alert.alert('Missing info', 'Both A/B variants need a label and a message.')
-        return
+        Alert.alert('Missing info', 'Both A/B variants need a label and a message.');
+        return;
       }
       if (pctA + pctB !== 100) {
-        Alert.alert('Invalid split', 'The A/B split must total 100%.')
-        return
+        Alert.alert('Invalid split', 'The A/B split must total 100%.');
+        return;
       }
     }
-    if (!allAudience && !sources.length && !splitList(colorsStr).length && !splitList(stylesStr).length && !splitList(fabricsStr).length && !minSpent && !maxBudget && !neverPurchased && type !== 'REACTIVATION') {
-      Alert.alert('Missing audience', 'Pick at least one audience filter, or send to everyone.')
-      return
+    if (
+      !allAudience &&
+      !sources.length &&
+      !splitList(colorsStr).length &&
+      !splitList(stylesStr).length &&
+      !splitList(fabricsStr).length &&
+      !minSpent &&
+      !maxBudget &&
+      !neverPurchased &&
+      type !== 'REACTIVATION'
+    ) {
+      Alert.alert('Missing audience', 'Pick at least one audience filter, or send to everyone.');
+      return;
     }
 
     const payload = {
@@ -451,28 +475,28 @@ export default function CampaignFormScreen() {
             ],
           }
         : {}),
-    }
+    };
 
-    setSaving(true)
+    setSaving(true);
     try {
       const res = isEdit
         ? await growthApi.updateCampaign(editingId, payload)
-        : await growthApi.createCampaign(payload)
-      await queryClient.invalidateQueries({ queryKey: ['growth'] })
-      const created = res.data
-      router.replace(`/growth/campaign/${created.id}`)
+        : await growthApi.createCampaign(payload);
+      await queryClient.invalidateQueries({ queryKey: ['growth'] });
+      const created = res.data;
+      router.replace(`/growth/campaign/${created.id}`);
     } catch (err) {
-      showError(err, isEdit ? 'Failed to update campaign' : 'Failed to create campaign')
-      setSaving(false)
+      showError(err, isEdit ? 'Failed to update campaign' : 'Failed to create campaign');
+      setSaving(false);
     }
-  }
+  };
 
   if (isEdit && existingLoading) {
     return (
       <View className="flex-1 bg-ink-50 items-center justify-center">
         <ActivityIndicator color={primaryColor} />
       </View>
-    )
+    );
   }
 
   return (
@@ -490,11 +514,7 @@ export default function CampaignFormScreen() {
             accessibilityLabel="Close"
             accessibilityRole="button"
           >
-            {isEdit ? (
-              <ChevronLeft size={20} color="#231F48" />
-            ) : (
-              <X size={18} color="#231F48" />
-            )}
+            {isEdit ? <ChevronLeft size={20} color="#231F48" /> : <X size={18} color="#231F48" />}
           </AnimatedPressable>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
@@ -503,14 +523,18 @@ export default function CampaignFormScreen() {
             {isEdit ? 'Edit Campaign' : 'New Campaign'}
           </Text>
         </View>
-        <GradientButton variant="web"
+        <GradientButton
+          variant="web"
           label={saving ? 'Saving…' : 'Save'}
           onPress={() => void handleSave()}
           loading={saving}
         />
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <View className="gap-4">
           {/* Type */}
           <Section title="Campaign Type">
@@ -521,8 +545,8 @@ export default function CampaignFormScreen() {
                   label={t.label}
                   active={type === t.key}
                   onPress={() => {
-                    setType(t.key)
-                    if (t.key === 'REACTIVATION') setInactiveDays('60')
+                    setType(t.key);
+                    if (t.key === 'REACTIVATION') setInactiveDays('60');
                   }}
                 />
               ))}
@@ -547,8 +571,8 @@ export default function CampaignFormScreen() {
                       label={`${f.name}${f.region !== 'PAN_INDIA' ? ` · ${f.region}` : ''}`}
                       active={festivalId === f.id}
                       onPress={() => {
-                        setFestivalId(f.id)
-                        setName(f.name)
+                        setFestivalId(f.id);
+                        setName(f.name);
                       }}
                     />
                   ))}
@@ -593,9 +617,9 @@ export default function CampaignFormScreen() {
                   <AnimatedPressable
                     key={t.label}
                     onPress={() => {
-                      setMessage(t.text)
-                      messageSelectionRef.current = { start: t.text.length, end: t.text.length }
-                      setMessageSelection(undefined)
+                      setMessage(t.text);
+                      messageSelectionRef.current = { start: t.text.length, end: t.text.length };
+                      setMessageSelection(undefined);
                     }}
                     accessibilityRole="button"
                     className="px-3.5 py-2 rounded-2xl border border-lavender-200 bg-lavender-50"
@@ -607,12 +631,12 @@ export default function CampaignFormScreen() {
               <TextInput
                 value={message}
                 onChangeText={(t) => {
-                  setMessage(t)
-                  setMessageSelection(undefined)
+                  setMessage(t);
+                  setMessageSelection(undefined);
                 }}
                 onSelectionChange={(e) => {
-                  messageSelectionRef.current = e.nativeEvent.selection
-                  setMessageSelection(undefined)
+                  messageSelectionRef.current = e.nativeEvent.selection;
+                  setMessageSelection(undefined);
                 }}
                 selection={messageSelection}
                 placeholder="Write the WhatsApp message…"
@@ -669,13 +693,13 @@ export default function CampaignFormScreen() {
                 <View className="mt-3 bg-lavender-50 rounded-2xl p-3.5 border border-lavender-200">
                   <View className="flex-row flex-wrap gap-2 mb-3">
                     {TRANSLATE_LANGUAGES.map((l) => {
-                      const active = translateLang === l.key
+                      const active = translateLang === l.key;
                       return (
                         <AnimatedPressable
                           key={l.key}
                           onPress={() => {
-                            setTranslateLang(l.key)
-                            translateMut.reset()
+                            setTranslateLang(l.key);
+                            translateMut.reset();
                           }}
                           accessibilityRole="button"
                           accessibilityState={{ selected: active }}
@@ -691,10 +715,11 @@ export default function CampaignFormScreen() {
                             {l.label}
                           </Text>
                         </AnimatedPressable>
-                      )
+                      );
                     })}
                   </View>
-                  <GradientButton variant="web"
+                  <GradientButton
+                    variant="web"
                     label={
                       translateMut.isPending
                         ? 'Translating…'
@@ -702,10 +727,10 @@ export default function CampaignFormScreen() {
                     }
                     onPress={() => {
                       if (!message.trim()) {
-                        Alert.alert('Nothing to translate', 'Write the message first.')
-                        return
+                        Alert.alert('Nothing to translate', 'Write the message first.');
+                        return;
                       }
-                      translateMut.mutate()
+                      translateMut.mutate();
                     }}
                     loading={translateMut.isPending}
                   />
@@ -716,16 +741,18 @@ export default function CampaignFormScreen() {
                       </Text>
                       <AnimatedPressable
                         onPress={() => {
-                          setMessage(translated)
-                          setMessageSelection(undefined)
-                          setShowTranslate(false)
-                          translateMut.reset()
+                          setMessage(translated);
+                          setMessageSelection(undefined);
+                          setShowTranslate(false);
+                          translateMut.reset();
                         }}
                         accessibilityRole="button"
                         className="flex-row items-center justify-center gap-1.5 mt-3 bg-spaceCadet-900 rounded-xl py-2.5"
                       >
                         <Check size={14} color="white" />
-                        <Text className="text-white text-xs font-semibold">Replace message with this</Text>
+                        <Text className="text-white text-xs font-semibold">
+                          Replace message with this
+                        </Text>
                       </AnimatedPressable>
                     </View>
                   )}
@@ -741,21 +768,18 @@ export default function CampaignFormScreen() {
           {type === 'AB_TEST' && (
             <Section title="A/B Split Test Configuration">
               <View className="gap-3.5">
-                {(
-                  [
-                    { key: 'A' as const, state: abA, set: setAbA },
-                    { key: 'B' as const, state: abB, set: setAbB },
-                  ]
-                ).map(({ key, state, set }) => (
-                  <View key={key} className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
+                {[
+                  { key: 'A' as const, state: abA, set: setAbA },
+                  { key: 'B' as const, state: abB, set: setAbB },
+                ].map(({ key, state, set }) => (
+                  <View
+                    key={key}
+                    className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200"
+                  >
                     <View className="flex-row items-center justify-between mb-2.5">
                       <View className="flex-row items-center gap-2 flex-1">
-                        <View
-                          className="w-7 h-7 rounded-full items-center justify-center bg-fuchsia-600"
-                        >
-                          <Text className="text-xs font-semibold text-white">
-                            {key}
-                          </Text>
+                        <View className="w-7 h-7 rounded-full items-center justify-center bg-fuchsia-600">
+                          <Text className="text-xs font-semibold text-white">{key}</Text>
                         </View>
                         <TextInput
                           value={state.label}
@@ -788,12 +812,16 @@ export default function CampaignFormScreen() {
                         maxLength={3}
                         className="text-xs font-semibold text-spaceCadet-900 bg-white rounded-xl px-3 py-1.5 border border-lavender-200 w-16 text-center"
                       />
-                      <Text className="text-xs font-semibold text-heliotrope-500">% of audience</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">
+                        % of audience
+                      </Text>
                     </View>
 
                     {/* Collection A/B — per-variant product set + stagger */}
                     <View className="flex-row items-center justify-between mt-3 pt-2.5 border-t border-lavender-200">
-                      <Text className="text-xs font-semibold text-spaceCadet-900">Collection Products</Text>
+                      <Text className="text-xs font-semibold text-spaceCadet-900">
+                        Collection Products
+                      </Text>
                       <AnimatedPressable
                         onPress={() => openPicker(key)}
                         accessibilityRole="button"
@@ -818,14 +846,18 @@ export default function CampaignFormScreen() {
                         maxLength={4}
                         className="text-xs font-semibold text-spaceCadet-900 bg-white rounded-xl px-3 py-1.5 border border-lavender-200 w-16 text-center"
                       />
-                      <Text className="text-xs font-semibold text-heliotrope-500">min (stagger delay)</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">
+                        min (stagger delay)
+                      </Text>
                     </View>
                   </View>
                 ))}
                 <View className="flex-row items-center justify-between px-1">
-                  <Text className="text-xs text-heliotrope-500 font-medium">Split must total 100%</Text>
+                  <Text className="text-xs text-heliotrope-500 font-medium">
+                    Split must total 100%
+                  </Text>
                   <Text className="text-xs font-semibold text-spaceCadet-900">
-                    {((parseInt(abA.pct, 10) || 0) + (parseInt(abB.pct, 10) || 0))}%
+                    {(parseInt(abA.pct, 10) || 0) + (parseInt(abB.pct, 10) || 0)}%
                   </Text>
                 </View>
               </View>
@@ -845,17 +877,25 @@ export default function CampaignFormScreen() {
                 style={{ paddingTop: headerPaddingTop }}
               >
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                  style={{
+                    fontFamily: 'Marcellus_400Regular',
+                    letterSpacing: 0.32,
+                    fontWeight: '800',
+                  }}
                   className="text-lg text-spaceCadet-900"
                 >
                   Variant {variantPicker} · Products
                 </Text>
-                <GradientButton variant="web"
+                <GradientButton
+                  variant="web"
                   label={`Done (${pickerSelection.size})`}
                   onPress={commitPicker}
                 />
               </View>
-              <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+              <ScrollView
+                className="flex-1 px-4 pt-4"
+                contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+              >
                 <Text className="text-xs text-heliotrope-500 mb-3.5 leading-relaxed font-medium">
                   Each variant can point customers at a different set of products. Tap to select.
                 </Text>
@@ -870,17 +910,17 @@ export default function CampaignFormScreen() {
                 ) : (
                   <View className="gap-2.5">
                     {pickerProducts.map((p) => {
-                      const selected = pickerSelection.has(p.id)
+                      const selected = pickerSelection.has(p.id);
                       return (
                         <AnimatedPressable
                           key={p.id}
                           onPress={() => {
                             setPickerSelection((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(p.id)) next.delete(p.id)
-                              else next.add(p.id)
-                              return next
-                            })
+                              const next = new Set(prev);
+                              if (next.has(p.id)) next.delete(p.id);
+                              else next.add(p.id);
+                              return next;
+                            });
                           }}
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
@@ -907,7 +947,7 @@ export default function CampaignFormScreen() {
                             </Text>
                           )}
                         </AnimatedPressable>
-                      )
+                      );
                     })}
                   </View>
                 )}
@@ -1018,7 +1058,7 @@ export default function CampaignFormScreen() {
                 <Label text="Lead source" />
                 <View className="flex-row flex-wrap gap-2">
                   {LEAD_SOURCES.map((s) => {
-                    const active = sources.includes(s.key)
+                    const active = sources.includes(s.key);
                     return (
                       <Chip
                         key={s.key}
@@ -1030,7 +1070,7 @@ export default function CampaignFormScreen() {
                           )
                         }
                       />
-                    )
+                    );
                   })}
                 </View>
                 <Text className="text-xs text-heliotrope-500 mt-1.5 font-medium">
@@ -1042,7 +1082,8 @@ export default function CampaignFormScreen() {
 
           {/* Save */}
           <View className="mt-2">
-            <GradientButton variant="web"
+            <GradientButton
+              variant="web"
               label={isEdit ? 'Save Changes' : 'Create Campaign'}
               onPress={() => void handleSave()}
               loading={saving}
@@ -1051,5 +1092,5 @@ export default function CampaignFormScreen() {
         </View>
       </ScrollView>
     </KeyboardScreen>
-  )
+  );
 }

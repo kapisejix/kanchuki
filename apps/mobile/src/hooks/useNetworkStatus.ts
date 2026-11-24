@@ -11,23 +11,23 @@
  *   if (!isOnline) { ... show offline UI }
  */
 
-import { useState, useEffect } from 'react'
-import { onlineManager } from '@tanstack/react-query'
+import { onlineManager } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 
 export interface NetworkStatus {
   /** true when react-query considers the device online */
-  isOnline: boolean
+  isOnline: boolean;
 }
 
 export function useNetworkStatus(): NetworkStatus {
-  const [isOnline, setIsOnline] = useState<boolean>(onlineManager.isOnline())
+  const [isOnline, setIsOnline] = useState<boolean>(onlineManager.isOnline());
 
   useEffect(() => {
     const unsubscribe = onlineManager.subscribe((online) => {
-      setIsOnline(online)
-    })
-    return () => unsubscribe()
-  }, [])
+      setIsOnline(online);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  return { isOnline }
+  return { isOnline };
 }

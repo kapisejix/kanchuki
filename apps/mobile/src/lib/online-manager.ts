@@ -1,11 +1,11 @@
-import { onlineManager } from '@tanstack/react-query'
-import * as Network from 'expo-network'
+import { onlineManager } from '@tanstack/react-query';
+import * as Network from 'expo-network';
 
-type NetState = Pick<Network.NetworkState, 'isConnected' | 'isInternetReachable'>
+type NetState = Pick<Network.NetworkState, 'isConnected' | 'isInternetReachable'>;
 
 // `undefined` means "not known yet" on both fields, so only an explicit `false` is offline.
 export function isNetworkOnline(state: NetState): boolean {
-  return state.isConnected !== false && state.isInternetReachable !== false
+  return state.isConnected !== false && state.isInternetReachable !== false;
 }
 
 /**
@@ -20,8 +20,8 @@ export function setupOnlineManager(): void {
     // The listener only fires on changes, so seed the state we booted into.
     void Network.getNetworkStateAsync()
       .then((state) => setOnline(isNetworkOnline(state)))
-      .catch(() => {})
-    const sub = Network.addNetworkStateListener((state) => setOnline(isNetworkOnline(state)))
-    return () => sub.remove()
-  })
+      .catch(() => {});
+    const sub = Network.addNetworkStateListener((state) => setOnline(isNetworkOnline(state)));
+    return () => sub.remove();
+  });
 }

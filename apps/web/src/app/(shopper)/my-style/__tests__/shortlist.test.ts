@@ -10,7 +10,11 @@ import {
   toShortItem,
 } from '../shortlist';
 
-const card = (id: string, slug: string | null = 'shree', over: Partial<FeedCard> = {}): FeedCard => ({
+const card = (
+  id: string,
+  slug: string | null = 'shree',
+  over: Partial<FeedCard> = {},
+): FeedCard => ({
   id,
   name: `Name ${id}`,
   price_min: 210000,

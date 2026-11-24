@@ -1,48 +1,48 @@
-import { useCallback } from 'react'
-import { View, Text, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native'
-import { useFocusEffect } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ShieldCheck } from 'lucide-react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect } from 'expo-router';
+import { ShieldCheck } from 'lucide-react-native';
+import { useCallback } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { DangerButton } from '../../src/components/DangerButton';
+import { GradientButton } from '../../src/components/GradientButton';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { WhiteButton } from '../../src/components/WhiteButton';
 import {
   SUPPORT_SCOPE_LABEL,
-  supportSessionApi,
   type SupportSessionRow,
-} from '../../src/lib/api/support-sessions'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { ScreenHeader } from '../../src/components/ScreenHeader'
-import { DangerButton } from '../../src/components/DangerButton'
-import { GradientButton } from '../../src/components/GradientButton'
-import { WhiteButton } from '../../src/components/WhiteButton'
+  supportSessionApi,
+} from '../../src/lib/api/support-sessions';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { useTheme } from '../../src/lib/theme';
 
 // Retailer view of Kanchuki support access: answer a pending request, or
 // Revoke a live session at any time (docs/tasks/pending/support-session-access.md §6).
 
 export default function SupportSessionsScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { screenPaddingBottom } = useScreenInsets()
-  const qc = useQueryClient()
+  const { primaryColor, colors } = useTheme();
+  const { screenPaddingBottom } = useScreenInsets();
+  const qc = useQueryClient();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['support-sessions'],
     queryFn: () => supportSessionApi.list(),
-  })
+  });
   useFocusEffect(
     useCallback(() => {
-      void refetch()
+      void refetch();
     }, [refetch]),
-  )
-  const rows = data?.data ?? []
+  );
+  const rows = data?.data ?? [];
 
   const act = async (fn: (id: string) => Promise<unknown>, id: string, failMsg: string) => {
     try {
-      await fn(id)
-      await qc.invalidateQueries({ queryKey: ['support-sessions'] })
+      await fn(id);
+      await qc.invalidateQueries({ queryKey: ['support-sessions'] });
     } catch (err) {
-      showError(err, failMsg)
+      showError(err, failMsg);
     }
-  }
+  };
 
   const confirmRevoke = (r: SupportSessionRow) =>
     Alert.alert(
@@ -56,7 +56,7 @@ export default function SupportSessionsScreen() {
           onPress: () => void act(supportSessionApi.revoke, r.id, 'Could not end the session'),
         },
       ],
-    )
+    );
 
   return (
     <View className="flex-1 bg-white">
@@ -132,5 +132,5 @@ export default function SupportSessionsScreen() {
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

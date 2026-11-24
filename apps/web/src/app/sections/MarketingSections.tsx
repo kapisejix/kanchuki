@@ -1,94 +1,191 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { motion, useInView, AnimatePresence } from 'framer-motion'
+import CategoryProductRows from '@/components/site/CategoryProductRows';
 import {
-  Camera,
-  Share2,
-  Search,
-  Heart,
-  Store,
+  ACCENT_BG,
+  ACCENT_SUBTLE,
+  ACCENT_TEXT,
+  AnimatedSection,
+  ColorCard,
+  Footer,
+  Marquee,
+  Section,
+  SectionHeader,
+  fadeUp,
+  stagger,
+} from '@/components/site/Chrome';
+import NearMeBar from '@/components/site/NearMeBar';
+import StoreCard from '@/components/site/StoreCard';
+import { type ColorAccent } from '@/components/site/accents';
+import { type StoreCardData, locationParams, useUserLocation } from '@/lib/nearby-stores';
+import { type PlanPrices, getPlanPricing, productsLabel } from '@/lib/plan-pricing';
+import { AnimatePresence, motion, useInView } from 'framer-motion';
+import {
   ArrowRight,
-  ChevronDown,
-  Check,
-  IndianRupee,
-  Smartphone,
-  MessageCircle,
-  Shirt,
   BarChart3,
+  Camera,
+  Check,
+  ChevronDown,
+  Heart,
+  IndianRupee,
+  MessageCircle,
   Package,
   QrCode,
+  Search,
+  Share2,
+  Shirt,
+  Smartphone,
+  Store,
   WifiOff,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import Link from 'next/link'
-import { getPlanPricing, productsLabel, type PlanPrices } from '@/lib/plan-pricing'
-import NearMeBar from '@/components/site/NearMeBar'
-import StoreCard from '@/components/site/StoreCard'
-import CategoryProductRows from '@/components/site/CategoryProductRows'
-import { locationParams, type StoreCardData, useUserLocation } from '@/lib/nearby-stores'
-import { Section, SectionHeader, ColorCard, AnimatedSection, Marquee, Footer, fadeUp, stagger, ACCENT_BG, ACCENT_TEXT, ACCENT_SUBTLE } from '@/components/site/Chrome'
-import { type ColorAccent } from '@/components/site/accents'
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
 // ── Types ─────────────────────────────────────────────────────────
 
-type PlanName = 'Starter' | 'Growth' | 'Pro'
+type PlanName = 'Starter' | 'Growth' | 'Pro';
 
 interface FaqItem {
-  q: string
-  a: string
+  q: string;
+  a: string;
 }
 
 const PLANS: {
-  name: PlanName; planKey: 'STARTER' | 'GROWTH' | 'PRO'; features: string[];
-  highlight: boolean; cta: string;
+  name: PlanName;
+  planKey: 'STARTER' | 'GROWTH' | 'PRO';
+  features: string[];
+  highlight: boolean;
+  cta: string;
 }[] = [
   {
-    name: 'Starter', planKey: 'STARTER',
-    features: ['Unlimited customers', '50 collection links/month', 'AI auto-tagging', 'Manual WhatsApp share'],
-    highlight: false, cta: 'Start Free Trial',
+    name: 'Starter',
+    planKey: 'STARTER',
+    features: [
+      'Unlimited customers',
+      '50 collection links/month',
+      'AI auto-tagging',
+      'Manual WhatsApp share',
+    ],
+    highlight: false,
+    cta: 'Start Free Trial',
   },
   {
-    name: 'Growth', planKey: 'GROWTH',
-    features: ['Unlimited customers', 'Unlimited collection links', 'Customer preferences', 'Priority support'],
-    highlight: true, cta: 'Start Free Trial',
+    name: 'Growth',
+    planKey: 'GROWTH',
+    features: [
+      'Unlimited customers',
+      'Unlimited collection links',
+      'Customer preferences',
+      'Priority support',
+    ],
+    highlight: true,
+    cta: 'Start Free Trial',
   },
   {
-    name: 'Pro', planKey: 'PRO',
-    features: ['Unlimited customers', 'Unlimited collection links', 'Multi-staff access', 'Campaign system', 'Dedicated support'],
-    highlight: false, cta: 'Start Free Trial',
+    name: 'Pro',
+    planKey: 'PRO',
+    features: [
+      'Unlimited customers',
+      'Unlimited collection links',
+      'Multi-staff access',
+      'Campaign system',
+      'Dedicated support',
+    ],
+    highlight: false,
+    cta: 'Start Free Trial',
   },
-]
+];
 
 const FAQS: FaqItem[] = [
-  { q: 'Do I need a website to use Kanchuki?', a: 'No. Kanchuki works entirely through WhatsApp links. Your customers browse collections on a mobile web page — no app, no website, no tech setup needed.' },
-  { q: 'How does the AI auto-tagging work?', a: 'Take one photo of any product. Our AI reads category, color, fabric, pattern, neck style, and sleeve type — all in about 8 seconds. You review and save. Built for Indian ethnic wear vocabulary.' },
-  { q: 'Can I try it free?', a: 'Yes. 14-day free trial on any plan. No credit card required. You only pay after the trial ends.' },
-  { q: 'What payment methods do you accept?', a: 'All major UPI apps (Google Pay, PhonePe, PayTM), credit/debit cards, and netbanking. Everything in INR — no hidden forex charges.' },
-  { q: 'Is my data safe?', a: 'Yes. Customer photos and data are encrypted at rest and in transit. We never share or sell customer data. You can delete any product or customer photo at any time.' },
-  { q: 'What if I need help setting up?', a: 'We offer WhatsApp-based onboarding support. Our team helps you upload your first 50 products and create your first collection link. Just tap the support chat in the app.' },
-]
+  {
+    q: 'Do I need a website to use Kanchuki?',
+    a: 'No. Kanchuki works entirely through WhatsApp links. Your customers browse collections on a mobile web page — no app, no website, no tech setup needed.',
+  },
+  {
+    q: 'How does the AI auto-tagging work?',
+    a: 'Take one photo of any product. Our AI reads category, color, fabric, pattern, neck style, and sleeve type — all in about 8 seconds. You review and save. Built for Indian ethnic wear vocabulary.',
+  },
+  {
+    q: 'Can I try it free?',
+    a: 'Yes. 14-day free trial on any plan. No credit card required. You only pay after the trial ends.',
+  },
+  {
+    q: 'What payment methods do you accept?',
+    a: 'All major UPI apps (Google Pay, PhonePe, PayTM), credit/debit cards, and netbanking. Everything in INR — no hidden forex charges.',
+  },
+  {
+    q: 'Is my data safe?',
+    a: 'Yes. Customer photos and data are encrypted at rest and in transit. We never share or sell customer data. You can delete any product or customer photo at any time.',
+  },
+  {
+    q: 'What if I need help setting up?',
+    a: 'We offer WhatsApp-based onboarding support. Our team helps you upload your first 50 products and create your first collection link. Just tap the support chat in the app.',
+  },
+];
 
 // ── Services marquee — the Colabs signature ────────────────────────
 // Infinite auto-scrolling row of solid color-chip cards, one per capability.
 
 interface Service {
-  icon: LucideIcon
-  title: string
-  desc: string
-  accent: ColorAccent
-  href: string
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+  accent: ColorAccent;
+  href: string;
 }
 
 const SERVICES: Service[] = [
-  { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI writes the catalog entry — name, category, colour, fabric, SKU.', accent: 'cobalt', href: '/for-retailers' },
-  { icon: Share2, title: 'WhatsApp Collections', desc: 'Pick products, get a link, share on WhatsApp. Customers browse and enquire.', accent: 'volt', href: '/for-customers' },
-  { icon: Heart, title: 'Customer Preferences', desc: 'Know each customer\'s colour, style and budget. Send them the right things.', accent: 'iris', href: '/for-retailers' },
-  { icon: Search, title: 'In-Store AI Search', desc: '"Pink cotton suit under ₹2000" — find any product in seconds.', accent: 'terracotta', href: '/for-retailers' },
-  { icon: Package, title: 'Bulk Onboarding', desc: '3,000 SKUs from a supplier PDF? Import, detect, done. No typing.', accent: 'moss', href: '/for-retailers' },
-  { icon: QrCode, title: 'Store Page & QR', desc: 'A free storefront at your own link, plus a QR code for the counter.', accent: 'mint', href: '/for-customers' },
-  { icon: WifiOff, title: 'Offline-First', desc: 'Built for patchy networks — updates queue up and sync when back online.', accent: 'sandal', href: '/how-it-works' },
-]
+  {
+    icon: Camera,
+    title: 'AI Catalog Builder',
+    desc: 'Snap a photo. AI writes the catalog entry — name, category, colour, fabric, SKU.',
+    accent: 'cobalt',
+    href: '/for-retailers',
+  },
+  {
+    icon: Share2,
+    title: 'WhatsApp Collections',
+    desc: 'Pick products, get a link, share on WhatsApp. Customers browse and enquire.',
+    accent: 'volt',
+    href: '/for-customers',
+  },
+  {
+    icon: Heart,
+    title: 'Customer Preferences',
+    desc: "Know each customer's colour, style and budget. Send them the right things.",
+    accent: 'iris',
+    href: '/for-retailers',
+  },
+  {
+    icon: Search,
+    title: 'In-Store AI Search',
+    desc: '"Pink cotton suit under ₹2000" — find any product in seconds.',
+    accent: 'terracotta',
+    href: '/for-retailers',
+  },
+  {
+    icon: Package,
+    title: 'Bulk Onboarding',
+    desc: '3,000 SKUs from a supplier PDF? Import, detect, done. No typing.',
+    accent: 'moss',
+    href: '/for-retailers',
+  },
+  {
+    icon: QrCode,
+    title: 'Store Page & QR',
+    desc: 'A free storefront at your own link, plus a QR code for the counter.',
+    accent: 'mint',
+    href: '/for-customers',
+  },
+  {
+    icon: WifiOff,
+    title: 'Offline-First',
+    desc: 'Built for patchy networks — updates queue up and sync when back online.',
+    accent: 'sandal',
+    href: '/how-it-works',
+  },
+];
 
 function ServicesMarquee() {
   return (
@@ -104,12 +201,24 @@ function ServicesMarquee() {
       </div>
       <Marquee>
         {SERVICES.map((service) => (
-          <Link key={service.title} href={service.href} className="group block w-[300px] sm:w-[360px] shrink-0 pr-5">
-            <div className={`rounded-3xl p-7 sm:p-8 h-[260px] flex flex-col ${ACCENT_BG[service.accent]} ${ACCENT_TEXT[service.accent]} transition-all duration-300 group-hover:-translate-y-1.5 group-hover:shadow-[0_20px_48px_-16px_rgba(6,6,6,0.5)]`}>
+          <Link
+            key={service.title}
+            href={service.href}
+            className="group block w-[300px] sm:w-[360px] shrink-0 pr-5"
+          >
+            <div
+              className={`rounded-3xl p-7 sm:p-8 h-[260px] flex flex-col ${ACCENT_BG[service.accent]} ${ACCENT_TEXT[service.accent]} transition-all duration-300 group-hover:-translate-y-1.5 group-hover:shadow-[0_20px_48px_-16px_rgba(6,6,6,0.5)]`}
+            >
               <service.icon size={28} strokeWidth={1.5} className="mb-auto" />
-              <h3 className="font-display text-2xl font-semibold leading-tight mb-2">{service.title}</h3>
-              <p className={`text-sm leading-relaxed mb-5 ${ACCENT_SUBTLE[service.accent]}`}>{service.desc}</p>
-              <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${ACCENT_TEXT[service.accent]} transition-transform duration-300 group-hover:translate-x-1`}>
+              <h3 className="font-display text-2xl font-semibold leading-tight mb-2">
+                {service.title}
+              </h3>
+              <p className={`text-sm leading-relaxed mb-5 ${ACCENT_SUBTLE[service.accent]}`}>
+                {service.desc}
+              </p>
+              <span
+                className={`inline-flex items-center gap-1.5 text-sm font-semibold ${ACCENT_TEXT[service.accent]} transition-transform duration-300 group-hover:translate-x-1`}
+              >
                 Learn more <ArrowRight size={16} strokeWidth={1.5} />
               </span>
             </div>
@@ -117,118 +226,234 @@ function ServicesMarquee() {
         ))}
       </Marquee>
     </div>
-  )
+  );
 }
 
 // ── Stats Bar ──────────────────────────────────────────────────────
 
 function StatsBar() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
-  const [liveStats, setLiveStats] = useState<{ total_products: number; total_collections: number; total_retailers: number; enquiries_this_month: number } | null>(null)
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
+  const [liveStats, setLiveStats] = useState<{
+    total_products: number;
+    total_collections: number;
+    total_retailers: number;
+    enquiries_this_month: number;
+  } | null>(null);
 
   useEffect(() => {
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
     fetch(`${apiUrl}/v1/public/stats`)
       .then((r) => r.json())
-      .then((res) => { if (res?.data?.total_retailers > 0) setLiveStats(res.data) })
-      .catch(() => {})
-  }, [])
+      .then((res) => {
+        if (res?.data?.total_retailers > 0) setLiveStats(res.data);
+      })
+      .catch(() => {});
+  }, []);
 
-  const hasData = liveStats && liveStats.total_retailers > 0
+  const hasData = liveStats && liveStats.total_retailers > 0;
   // Honesty gate (docs/PLAN.md (Content Style Guide)): live numbers
   // only. If the stats API is unreachable or empty, show the label with a
   // dash — never a fabricated count.
   const stats = [
-    { label: 'Products digitized', value: hasData ? liveStats!.total_products.toLocaleString('en-IN') : '—', icon: Shirt },
-    { label: 'Collection links shared', value: hasData ? liveStats!.total_collections.toLocaleString('en-IN') : '—', icon: Share2 },
-    { label: 'Retailers onboarded', value: hasData ? liveStats!.total_retailers.toLocaleString('en-IN') : '—', icon: Store },
-    { label: 'Customer enquiries this month', value: hasData ? liveStats!.enquiries_this_month.toLocaleString('en-IN') : '—', icon: MessageCircle },
-  ]
+    {
+      label: 'Products digitized',
+      value: hasData ? liveStats!.total_products.toLocaleString('en-IN') : '—',
+      icon: Shirt,
+    },
+    {
+      label: 'Collection links shared',
+      value: hasData ? liveStats!.total_collections.toLocaleString('en-IN') : '—',
+      icon: Share2,
+    },
+    {
+      label: 'Retailers onboarded',
+      value: hasData ? liveStats!.total_retailers.toLocaleString('en-IN') : '—',
+      icon: Store,
+    },
+    {
+      label: 'Customer enquiries this month',
+      value: hasData ? liveStats!.enquiries_this_month.toLocaleString('en-IN') : '—',
+      icon: MessageCircle,
+    },
+  ];
 
   return (
     <div className="bg-white border-y border-carbon/10" ref={ref}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-8"
+        >
           {stats.map((stat) => (
             <motion.div key={stat.label} variants={fadeUp} className="text-center">
               <stat.icon size={24} strokeWidth={1.5} className="mx-auto mb-2 text-cobalt-600" />
-              <div className="font-display text-2xl sm:text-3xl font-semibold text-carbon tabular-nums">{stat.value}</div>
+              <div className="font-display text-2xl sm:text-3xl font-semibold text-carbon tabular-nums">
+                {stat.value}
+              </div>
               <div className="text-sm text-carbon/50 mt-1">{stat.label}</div>
             </motion.div>
           ))}
         </motion.div>
       </div>
     </div>
-  )
+  );
 }
 
 // ── Features ───────────────────────────────────────────────────────
 // Solid color-chip grid — one saturated block per capability, like Colabs'
 // modular service modules.
 
-const FEATURES: { icon: LucideIcon; title: string; desc: string; accent: ColorAccent; span: string; comingSoon?: boolean }[] = [
-  { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI tags category, color, and fabric automatically. Your entire shop digitized in hours, not weeks.', accent: 'cobalt', span: 'sm:col-span-4 lg:col-span-7' },
-  { icon: Share2, title: 'WhatsApp Collections', desc: 'Select products, generate a link, share on WhatsApp. Customers browse, heart favorites, and enquire — no app download needed.', accent: 'volt', span: 'sm:col-span-2 lg:col-span-5' },
-  { icon: Heart, title: 'Customer Preferences', desc: 'Know what each customer loves. Capture colour, style, and budget preferences so every WhatsApp you send shows the right things.', accent: 'iris', span: 'sm:col-span-2 lg:col-span-4' },
-  { icon: Search, title: 'In-Store AI Search', desc: '"Pink cotton suit under ₹2000" — find any product in seconds. Natural language search understands Hindi-transliterated terms too.', accent: 'terracotta', span: 'sm:col-span-2 lg:col-span-4' },
-]
+const FEATURES: {
+  icon: LucideIcon;
+  title: string;
+  desc: string;
+  accent: ColorAccent;
+  span: string;
+  comingSoon?: boolean;
+}[] = [
+  {
+    icon: Camera,
+    title: 'AI Catalog Builder',
+    desc: 'Snap a photo. AI tags category, color, and fabric automatically. Your entire shop digitized in hours, not weeks.',
+    accent: 'cobalt',
+    span: 'sm:col-span-4 lg:col-span-7',
+  },
+  {
+    icon: Share2,
+    title: 'WhatsApp Collections',
+    desc: 'Select products, generate a link, share on WhatsApp. Customers browse, heart favorites, and enquire — no app download needed.',
+    accent: 'volt',
+    span: 'sm:col-span-2 lg:col-span-5',
+  },
+  {
+    icon: Heart,
+    title: 'Customer Preferences',
+    desc: 'Know what each customer loves. Capture colour, style, and budget preferences so every WhatsApp you send shows the right things.',
+    accent: 'iris',
+    span: 'sm:col-span-2 lg:col-span-4',
+  },
+  {
+    icon: Search,
+    title: 'In-Store AI Search',
+    desc: '"Pink cotton suit under ₹2000" — find any product in seconds. Natural language search understands Hindi-transliterated terms too.',
+    accent: 'terracotta',
+    span: 'sm:col-span-2 lg:col-span-4',
+  },
+];
 
 function FeaturesSection() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-60px' })
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px' });
 
   return (
     <Section id="features" className="bg-cream">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="How We Help" title="Everything you need to run your clothing store" subtitle="One platform. No stitching together WhatsApp, Excel, and a camera app." />
+          <SectionHeader
+            tag="How We Help"
+            title="Everything you need to run your clothing store"
+            subtitle="One platform. No stitching together WhatsApp, Excel, and a camera app."
+          />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-4 lg:grid-cols-12 gap-5 sm:gap-6">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="grid sm:grid-cols-4 lg:grid-cols-12 gap-5 sm:gap-6"
+        >
           {FEATURES.map((feature) => (
             <motion.div key={feature.title} variants={fadeUp} className={feature.span}>
               <ColorCard accent={feature.accent} className="group h-full p-6 sm:p-8">
-                <feature.icon size={26} strokeWidth={1.5} className={`mb-5 ${ACCENT_TEXT[feature.accent]}`} />
-                <h3 className={`font-display text-lg font-semibold mb-2 ${ACCENT_TEXT[feature.accent]}`}>
+                <feature.icon
+                  size={26}
+                  strokeWidth={1.5}
+                  className={`mb-5 ${ACCENT_TEXT[feature.accent]}`}
+                />
+                <h3
+                  className={`font-display text-lg font-semibold mb-2 ${ACCENT_TEXT[feature.accent]}`}
+                >
                   {feature.title}
-                  {feature.comingSoon && <span className={`ml-2 text-xs font-medium ${feature.accent === 'fern' ? 'bg-carbon/10 text-carbon/70' : 'bg-white/20 text-white/80'} px-2 py-0.5 rounded-full`}>Coming soon</span>}
+                  {feature.comingSoon && (
+                    <span
+                      className={`ml-2 text-xs font-medium ${feature.accent === 'fern' ? 'bg-carbon/10 text-carbon/70' : 'bg-white/20 text-white/80'} px-2 py-0.5 rounded-full`}
+                    >
+                      Coming soon
+                    </span>
+                  )}
                 </h3>
-                <p className={`text-sm leading-relaxed ${ACCENT_SUBTLE[feature.accent]}`}>{feature.desc}</p>
+                <p className={`text-sm leading-relaxed ${ACCENT_SUBTLE[feature.accent]}`}>
+                  {feature.desc}
+                </p>
               </ColorCard>
             </motion.div>
           ))}
         </motion.div>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── How It Works ───────────────────────────────────────────────────
 
 const HOW_IT_WORKS = [
-  { step: '01', title: 'Snap & Tag', desc: 'Take a photo of any product in your store. AI extracts category, color, and fabric in seconds. No manual data entry.', icon: Camera },
-  { step: '02', title: 'Select & Share', desc: 'Pick 10–20 products, add a title, and generate a WhatsApp link. Send it to customers in one tap or broadcast to everyone at once.', icon: Share2 },
-  { step: '03', title: 'Sell More', desc: 'Customers browse your collection, save favorites, and enquire via WhatsApp. Track views, enquiries, and conversion — all in your dashboard.', icon: BarChart3 },
-]
+  {
+    step: '01',
+    title: 'Snap & Tag',
+    desc: 'Take a photo of any product in your store. AI extracts category, color, and fabric in seconds. No manual data entry.',
+    icon: Camera,
+  },
+  {
+    step: '02',
+    title: 'Select & Share',
+    desc: 'Pick 10–20 products, add a title, and generate a WhatsApp link. Send it to customers in one tap or broadcast to everyone at once.',
+    icon: Share2,
+  },
+  {
+    step: '03',
+    title: 'Sell More',
+    desc: 'Customers browse your collection, save favorites, and enquire via WhatsApp. Track views, enquiries, and conversion — all in your dashboard.',
+    icon: BarChart3,
+  },
+];
 
 function HowItWorks() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-60px' })
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px' });
 
   return (
     <Section id="how-it-works" className="bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="How It Works" title="Three steps. No tech skills needed." subtitle="From photo to WhatsApp — faster than your customer can say 'yeh kitne ka hai?'" />
+          <SectionHeader
+            tag="How It Works"
+            title="Three steps. No tech skills needed."
+            subtitle="From photo to WhatsApp — faster than your customer can say 'yeh kitne ka hai?'"
+          />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-8 sm:gap-12 relative">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="grid sm:grid-cols-3 gap-8 sm:gap-12 relative"
+        >
           <div className="hidden sm:block absolute top-16 left-[calc(16.66%+2rem)] right-[calc(16.66%+2rem)] h-px bg-carbon/10" />
           {HOW_IT_WORKS.map((item, i) => (
             <motion.div key={item.step} variants={fadeUp} className="relative text-center">
-              <div className={`relative z-10 w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 overflow-hidden rounded-2xl flex items-center justify-center ${i === 0 ? 'bg-cobalt-600' : i === 1 ? 'bg-volt' : 'bg-iris'}`}>
-                <item.icon size={26} strokeWidth={1.5} className={i === 1 ? 'text-carbon' : 'text-white'} />
+              <div
+                className={`relative z-10 w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 overflow-hidden rounded-2xl flex items-center justify-center ${i === 0 ? 'bg-cobalt-600' : i === 1 ? 'bg-volt' : 'bg-iris'}`}
+              >
+                <item.icon
+                  size={26}
+                  strokeWidth={1.5}
+                  className={i === 1 ? 'text-carbon' : 'text-white'}
+                />
               </div>
-              <div className="font-display text-xs font-semibold text-cobalt-600 mb-2 tracking-[0.22em]">STEP {item.step}</div>
+              <div className="font-display text-xs font-semibold text-cobalt-600 mb-2 tracking-[0.22em]">
+                STEP {item.step}
+              </div>
               <h3 className="font-display text-lg font-semibold text-carbon mb-3">{item.title}</h3>
               <p className="text-sm text-carbon/60 leading-relaxed max-w-xs mx-auto">{item.desc}</p>
             </motion.div>
@@ -236,91 +461,127 @@ function HowItWorks() {
         </motion.div>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── Comparison Matrix ──────────────────────────────────────────────
 
 function ComparisonMatrix() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
   const rows = [
     { name: 'Interakt / Meon CRM', cols: [true, false, false] },
     { name: 'DigifyERP', cols: [false, false, false] },
     { name: 'WhatsApp + Google Sheets', cols: [false, false, true] },
-  ]
-  const headers = ['Customer Preferences', 'WhatsApp Commerce', 'No Website Needed']
+  ];
+  const headers = ['Customer Preferences', 'WhatsApp Commerce', 'No Website Needed'];
 
   return (
     <Section className="bg-cream">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="The Kanchuki Moat" title="The only platform that has it all" subtitle="Competitors have one piece. Kanchuki has them all." />
+          <SectionHeader
+            tag="The Kanchuki Moat"
+            title="The only platform that has it all"
+            subtitle="Competitors have one piece. Kanchuki has them all."
+          />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={fadeUp} className="overflow-x-auto rounded-2xl border border-carbon/10 bg-white">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={fadeUp}
+          className="overflow-x-auto rounded-2xl border border-carbon/10 bg-white"
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-carbon/10 bg-cream">
-                <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">Platform</th>
-                {headers.map((h) => <th key={h} className="px-4 py-4 text-center text-carbon/50 font-medium text-xs uppercase tracking-wider">{h}</th>)}
+                <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">
+                  Platform
+                </th>
+                {headers.map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-4 text-center text-carbon/50 font-medium text-xs uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.name} className="border-b border-carbon/10 hover:bg-cream/70 transition-colors">
+                <tr
+                  key={row.name}
+                  className="border-b border-carbon/10 hover:bg-cream/70 transition-colors"
+                >
                   <td className="px-5 py-4 text-carbon/70 font-medium">{row.name}</td>
-                  {row.cols.map((v, i) => <td key={i} className="px-4 py-4 text-center text-lg">{v ? <span className="text-cobalt-600">✓</span> : <span className="text-carbon/25">–</span>}</td>)}
+                  {row.cols.map((v, i) => (
+                    <td key={i} className="px-4 py-4 text-center text-lg">
+                      {v ? (
+                        <span className="text-cobalt-600">✓</span>
+                      ) : (
+                        <span className="text-carbon/25">–</span>
+                      )}
+                    </td>
+                  ))}
                 </tr>
               ))}
               <tr className="bg-volt/30">
                 <td className="px-5 py-4 font-semibold text-carbon">Kanchuki</td>
-                {[true, true, true].map((_, i) => <td key={i} className="px-4 py-4 text-center text-lg font-semibold text-cobalt-700">✓</td>)}
+                {[true, true, true].map((_, i) => (
+                  <td
+                    key={i}
+                    className="px-4 py-4 text-center text-lg font-semibold text-cobalt-700"
+                  >
+                    ✓
+                  </td>
+                ))}
               </tr>
             </tbody>
           </table>
         </motion.div>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── Store Directory Teaser ─────────────────────────────────────────
 
 function StoreTeaser() {
-  const [stores, setStores] = useState<StoreCardData[] | null>(null)
-  const [radiusKm, setRadiusKm] = useState<number | null>(null)
+  const [stores, setStores] = useState<StoreCardData[] | null>(null);
+  const [radiusKm, setRadiusKm] = useState<number | null>(null);
   // Nearby found nothing within 10 km → fall back to the full directory.
-  const [nearbyEmpty, setNearbyEmpty] = useState(false)
-  const loc = useUserLocation()
-  const coords = nearbyEmpty ? null : loc.coords
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-60px' })
+  const [nearbyEmpty, setNearbyEmpty] = useState(false);
+  const loc = useUserLocation();
+  const coords = nearbyEmpty ? null : loc.coords;
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px' });
 
   useEffect(() => {
-    let cancelled = false
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
-    const params = new URLSearchParams({ pageSize: '6', ...locationParams(coords) })
+    let cancelled = false;
+    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+    const params = new URLSearchParams({ pageSize: '6', ...locationParams(coords) });
     fetch(`${apiUrl}/v1/public/stores?${params}`)
       .then((r) => r.json())
       .then((res) => {
-        const d = res?.data
-        if (cancelled || !Array.isArray(d?.stores)) return
+        const d = res?.data;
+        if (cancelled || !Array.isArray(d?.stores)) return;
         if (d.nearby && d.stores.length === 0) {
-          setNearbyEmpty(true) // re-runs this effect without coordinates
-          return
+          setNearbyEmpty(true); // re-runs this effect without coordinates
+          return;
         }
-        setStores(d.stores)
-        setRadiusKm(d.nearby ? d.radius_km : null)
+        setStores(d.stores);
+        setRadiusKm(d.nearby ? d.radius_km : null);
       })
-      .catch(() => {})
+      .catch(() => {});
     return () => {
-      cancelled = true
-    }
-  }, [coords])
+      cancelled = true;
+    };
+  }, [coords]);
 
-  const count = stores?.length ?? 0
+  const count = stores?.length ?? 0;
   // A short NEARBY list is not "no stores yet" — only the plain directory is.
-  const showBeFirst = stores !== null && count < 3 && radiusKm === null
+  const showBeFirst = stores !== null && count < 3 && radiusKm === null;
 
   return (
     <Section id="store-directory" className="bg-white">
@@ -335,7 +596,12 @@ function StoreTeaser() {
 
         <NearMeBar loc={loc} radiusKm={radiusKm} empty={nearbyEmpty} />
 
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid md:grid-cols-2 gap-4 sm:gap-5">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="grid md:grid-cols-2 gap-4 sm:gap-5"
+        >
           {(stores ?? []).slice(0, 6).map((s) => (
             <motion.div key={s.public_slug} variants={fadeUp}>
               <StoreCard store={s} />
@@ -345,9 +611,12 @@ function StoreTeaser() {
 
         {showBeFirst && (
           <div className="text-center py-12">
-            <p className="font-display text-lg font-semibold text-carbon mb-2">Be the first store on Kanchuki</p>
+            <p className="font-display text-lg font-semibold text-carbon mb-2">
+              Be the first store on Kanchuki
+            </p>
             <p className="text-carbon/60 text-sm max-w-md mx-auto mb-6">
-              Stores appear here as they complete onboarding — every listing is a real shop with a real catalog.
+              Stores appear here as they complete onboarding — every listing is a real shop with a
+              real catalog.
             </p>
             <Link
               href="/pricing"
@@ -359,39 +628,68 @@ function StoreTeaser() {
         )}
 
         <div className="text-center mt-10">
-          <Link href="/stores" className="inline-flex items-center gap-2 text-sm font-semibold text-cobalt-600 hover:text-cobalt-700 transition-colors">
+          <Link
+            href="/stores"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-cobalt-600 hover:text-cobalt-700 transition-colors"
+          >
             Explore all stores
             <ArrowRight size={16} strokeWidth={1.5} />
           </Link>
         </div>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── Testimonials ───────────────────────────────────────────────────
 
 function TestimonialsSection() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
   const testimonials = [
-    { quote: "Waiting for pilot retailers to share their experience. This space will feature real stories from Indian clothing stores using Kanchuki.", name: '— Coming soon', role: '' },
-    { quote: "Our pilot program is running. If you're a retailer interested in early access and willing to share feedback, reach out to us.", name: '— Join the pilot', role: 'support@kanchuki.app' },
-    { quote: 'Real retailers. Real results. Real stories — coming after our first 10 pilot participants complete onboarding.', name: '— Pilot in progress', role: '' },
-  ]
+    {
+      quote:
+        'Waiting for pilot retailers to share their experience. This space will feature real stories from Indian clothing stores using Kanchuki.',
+      name: '— Coming soon',
+      role: '',
+    },
+    {
+      quote:
+        "Our pilot program is running. If you're a retailer interested in early access and willing to share feedback, reach out to us.",
+      name: '— Join the pilot',
+      role: 'support@kanchuki.app',
+    },
+    {
+      quote:
+        'Real retailers. Real results. Real stories — coming after our first 10 pilot participants complete onboarding.',
+      name: '— Pilot in progress',
+      role: '',
+    },
+  ];
 
   return (
     <Section className="bg-cream">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="Testimonials" title="What retailers say" subtitle="Real feedback from our pilot program." />
+          <SectionHeader
+            tag="Testimonials"
+            title="What retailers say"
+            subtitle="Real feedback from our pilot program."
+          />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-6">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="grid sm:grid-cols-3 gap-6"
+        >
           {testimonials.map((t, i) => (
             <motion.div key={i} variants={fadeUp}>
               {/* No star rating here — these are honest "coming soon"
                   placeholders, not real reviews. */}
-              <div className={`h-1.5 rounded-t-2xl ${i === 0 ? 'bg-cobalt-600' : i === 1 ? 'bg-volt' : 'bg-terracotta'}`} />
+              <div
+                className={`h-1.5 rounded-t-2xl ${i === 0 ? 'bg-cobalt-600' : i === 1 ? 'bg-volt' : 'bg-terracotta'}`}
+              />
               <div className="bg-white rounded-b-2xl rounded-tr-2xl border border-carbon/10 border-t-0 p-6 sm:p-8">
                 <p className="font-display text-4xl leading-none text-cobalt-600 mb-3">&ldquo;</p>
                 <p className="text-sm text-carbon/70 leading-relaxed mb-6">{t.quote}</p>
@@ -404,89 +702,180 @@ function TestimonialsSection() {
           ))}
         </motion.div>
         <div className="text-center mt-8">
-          <Link href="/testimonials" className="text-sm font-semibold text-cobalt-600 hover:text-cobalt-700 transition-colors">See how retailer stories get verified &rarr;</Link>
+          <Link
+            href="/testimonials"
+            className="text-sm font-semibold text-cobalt-600 hover:text-cobalt-700 transition-colors"
+          >
+            See how retailer stories get verified &rarr;
+          </Link>
         </div>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── Pricing ────────────────────────────────────────────────────────
 
 function PricingSection() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-60px' })
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-60px' });
   // null until loaded / if the API is down — cards render without a number.
-  const [pricing, setPricing] = useState<PlanPrices | null>(null)
+  const [pricing, setPricing] = useState<PlanPrices | null>(null);
 
   useEffect(() => {
-    void getPlanPricing().then(setPricing)
-  }, [])
+    void getPlanPricing().then(setPricing);
+  }, []);
 
   return (
     <Section id="pricing" className="bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="Pricing" title="Simple pricing in INR" subtitle="No hidden costs. Pay via UPI, cards, or netbanking. 14-day free trial on any plan." />
+          <SectionHeader
+            tag="Pricing"
+            title="Simple pricing in INR"
+            subtitle="No hidden costs. Pay via UPI, cards, or netbanking. 14-day free trial on any plan."
+          />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-6 lg:gap-8">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="grid sm:grid-cols-3 gap-6 lg:gap-8"
+        >
           {PLANS.map((plan) => {
-            const monthly = pricing?.[plan.planKey].monthly
+            const monthly = pricing?.[plan.planKey].monthly;
             return (
-              <motion.div key={plan.name} variants={fadeUp} className={`relative rounded-2xl p-6 sm:p-8 border transition-all duration-300 ${plan.highlight ? 'border-carbon bg-carbon text-cream shadow-[0_20px_48px_-16px_rgba(6,6,6,0.5)]' : 'border-carbon/10 bg-white hover:border-carbon/25 hover:-translate-y-0.5'}`}>
-                {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-volt text-carbon text-xs font-semibold px-4 py-1 rounded-full">MOST POPULAR</div>}
-                <h3 className={`font-display text-xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}>{plan.name}</h3>
-                <div className={`font-display text-3xl sm:text-4xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}>
-                  <span className="inline-flex items-center"><IndianRupee size={22} strokeWidth={1.5} className={plan.highlight ? 'text-cream/80' : 'text-carbon/40'} />{monthly != null ? (monthly / 100).toLocaleString('en-IN') : '—'}</span>
-                  <span className={`text-base font-normal ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}>/mo</span>
+              <motion.div
+                key={plan.name}
+                variants={fadeUp}
+                className={`relative rounded-2xl p-6 sm:p-8 border transition-all duration-300 ${plan.highlight ? 'border-carbon bg-carbon text-cream shadow-[0_20px_48px_-16px_rgba(6,6,6,0.5)]' : 'border-carbon/10 bg-white hover:border-carbon/25 hover:-translate-y-0.5'}`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-volt text-carbon text-xs font-semibold px-4 py-1 rounded-full">
+                    MOST POPULAR
+                  </div>
+                )}
+                <h3
+                  className={`font-display text-xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}
+                >
+                  {plan.name}
+                </h3>
+                <div
+                  className={`font-display text-3xl sm:text-4xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}
+                >
+                  <span className="inline-flex items-center">
+                    <IndianRupee
+                      size={22}
+                      strokeWidth={1.5}
+                      className={plan.highlight ? 'text-cream/80' : 'text-carbon/40'}
+                    />
+                    {monthly != null ? (monthly / 100).toLocaleString('en-IN') : '—'}
+                  </span>
+                  <span
+                    className={`text-base font-normal ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}
+                  >
+                    /mo
+                  </span>
                 </div>
-                <div className={`text-sm mb-6 ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}>
-                  {monthly != null ? `₹${(monthly / 100).toLocaleString('en-IN')}/mo billed monthly` : 'Billed monthly'}
+                <div
+                  className={`text-sm mb-6 ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}
+                >
+                  {monthly != null
+                    ? `₹${(monthly / 100).toLocaleString('en-IN')}/mo billed monthly`
+                    : 'Billed monthly'}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {/* RC-179: the product cap comes from the API (what the server enforces), never a hard-coded string. */}
-                  {(pricing ? [productsLabel(pricing[plan.planKey].max_products), ...plan.features] : plan.features).map((f) => (
+                  {(pricing
+                    ? [productsLabel(pricing[plan.planKey].max_products), ...plan.features]
+                    : plan.features
+                  ).map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm">
-                      <Check size={16} strokeWidth={1.5} className={`mt-0.5 shrink-0 ${plan.highlight ? 'text-volt' : 'text-cobalt-600'}`} />
-                      <span className={plan.highlight ? 'text-cream/90' : 'text-carbon/70'}>{f}</span>
+                      <Check
+                        size={16}
+                        strokeWidth={1.5}
+                        className={`mt-0.5 shrink-0 ${plan.highlight ? 'text-volt' : 'text-cobalt-600'}`}
+                      />
+                      <span className={plan.highlight ? 'text-cream/90' : 'text-carbon/70'}>
+                        {f}
+                      </span>
                     </li>
                   ))}
                 </ul>
-                <a href="#cta" className={`block text-center py-3.5 rounded-full font-semibold transition active:scale-[0.97] ${plan.highlight ? 'bg-volt text-carbon hover:bg-volt-600' : 'bg-carbon text-cream hover:bg-carbon-50'}`}>{plan.cta}</a>
+                <a
+                  href="#cta"
+                  className={`block text-center py-3.5 rounded-full font-semibold transition active:scale-[0.97] ${plan.highlight ? 'bg-volt text-carbon hover:bg-volt-600' : 'bg-carbon text-cream hover:bg-carbon-50'}`}
+                >
+                  {plan.cta}
+                </a>
               </motion.div>
-            )
+            );
           })}
         </motion.div>
-        <p className="text-center text-sm text-carbon/40 mt-8">All plans include a 14-day free trial. No credit card required. Prices include GST.</p>
+        <p className="text-center text-sm text-carbon/40 mt-8">
+          All plans include a 14-day free trial. No credit card required. Prices include GST.
+        </p>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── FAQ ────────────────────────────────────────────────────────────
 
 function FaqSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
 
   return (
     <Section id="faq" className="bg-cream">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="FAQ" title="Frequently asked questions" subtitle="Everything you need to know about Kanchuki." />
+          <SectionHeader
+            tag="FAQ"
+            title="Frequently asked questions"
+            subtitle="Everything you need to know about Kanchuki."
+          />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="space-y-3">
+        <motion.div
+          initial="hidden"
+          animate={isInView ? 'visible' : 'hidden'}
+          variants={stagger}
+          className="space-y-3"
+        >
           {FAQS.map((faq, i) => (
-            <motion.div key={i} variants={fadeUp} className={`bg-white rounded-2xl border transition-colors duration-300 ${openIndex === i ? 'border-cobalt-500' : 'border-carbon/10 hover:border-carbon/25'}`}>
-              <button onClick={() => setOpenIndex(openIndex === i ? null : i)} className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-500 focus-visible:ring-offset-2 rounded-2xl" aria-expanded={openIndex === i} aria-controls={`faq-panel-${i}`}>
+            <motion.div
+              key={i}
+              variants={fadeUp}
+              className={`bg-white rounded-2xl border transition-colors duration-300 ${openIndex === i ? 'border-cobalt-500' : 'border-carbon/10 hover:border-carbon/25'}`}
+            >
+              <button
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-500 focus-visible:ring-offset-2 rounded-2xl"
+                aria-expanded={openIndex === i}
+                aria-controls={`faq-panel-${i}`}
+              >
                 <span className="text-sm font-semibold text-carbon pr-4">{faq.q}</span>
-                <ChevronDown size={18} strokeWidth={1.5} className={`text-carbon/40 shrink-0 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  size={18}
+                  strokeWidth={1.5}
+                  className={`text-carbon/40 shrink-0 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`}
+                />
               </button>
               <AnimatePresence>
                 {openIndex === i && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden" id={`faq-panel-${i}`} role="region">
-                    <div className="px-6 pb-5 text-sm text-carbon/60 leading-relaxed border-t border-carbon/10 pt-4">{faq.a}</div>
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                    id={`faq-panel-${i}`}
+                    role="region"
+                  >
+                    <div className="px-6 pb-5 text-sm text-carbon/60 leading-relaxed border-t border-carbon/10 pt-4">
+                      {faq.a}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -495,25 +884,42 @@ function FaqSection() {
         </motion.div>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── Final CTA ──────────────────────────────────────────────────────
 
 function CtaSection() {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true })
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true });
 
   return (
     <Section id="cta" dark>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center" ref={ref}>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger}>
-          <motion.h2 variants={fadeUp} className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-balance">Ready to digitize your store?</motion.h2>
-          <motion.p variants={fadeUp} className="mt-5 text-lg sm:text-xl text-cream/60 max-w-2xl mx-auto">Join Indian clothing retailers already using Kanchuki. 14-day free trial. No credit card needed.</motion.p>
-          <motion.div variants={fadeUp} className="mt-8 sm:mt-10 flex flex-col items-center gap-3 justify-center">
+          <motion.h2
+            variants={fadeUp}
+            className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-balance"
+          >
+            Ready to digitize your store?
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            className="mt-5 text-lg sm:text-xl text-cream/60 max-w-2xl mx-auto"
+          >
+            Join Indian clothing retailers already using Kanchuki. 14-day free trial. No credit card
+            needed.
+          </motion.p>
+          <motion.div
+            variants={fadeUp}
+            className="mt-8 sm:mt-10 flex flex-col items-center gap-3 justify-center"
+          >
             {/* Only Android exists today (EAS-distributed APK) — Play Store
                 and App Store are not live, so we don't claim they are. */}
-            <Link href="/download" className="inline-flex items-center justify-center gap-3 bg-volt text-carbon px-6 sm:px-8 py-4 rounded-full hover:bg-volt-600 transition font-semibold active:scale-[0.97]">
+            <Link
+              href="/download"
+              className="inline-flex items-center justify-center gap-3 bg-volt text-carbon px-6 sm:px-8 py-4 rounded-full hover:bg-volt-600 transition font-semibold active:scale-[0.97]"
+            >
               <Smartphone size={22} strokeWidth={1.5} />
               <div className="text-left">
                 <div className="text-xs text-carbon/60 font-normal">Download for</div>
@@ -522,16 +928,27 @@ function CtaSection() {
             </Link>
             <p className="text-xs text-cream/40">Play Store &amp; iOS — coming soon</p>
           </motion.div>
-          <motion.div variants={fadeUp} className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-cream/50">
-            <Link href="#features" className="hover:text-volt transition-colors">Features</Link>
-            <Link href="#pricing" className="hover:text-volt transition-colors">Pricing</Link>
-            <Link href="#faq" className="hover:text-volt transition-colors">FAQ</Link>
-            <Link href="/contact" className="hover:text-volt transition-colors">Contact</Link>
+          <motion.div
+            variants={fadeUp}
+            className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-cream/50"
+          >
+            <Link href="#features" className="hover:text-volt transition-colors">
+              Features
+            </Link>
+            <Link href="#pricing" className="hover:text-volt transition-colors">
+              Pricing
+            </Link>
+            <Link href="#faq" className="hover:text-volt transition-colors">
+              FAQ
+            </Link>
+            <Link href="/contact" className="hover:text-volt transition-colors">
+              Contact
+            </Link>
           </motion.div>
         </motion.div>
       </div>
     </Section>
-  )
+  );
 }
 
 // ── All below-hero sections as a single export ────────────────────
@@ -552,5 +969,5 @@ export default function MarketingSections() {
       <CtaSection />
       <Footer />
     </>
-  )
+  );
 }

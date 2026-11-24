@@ -17,21 +17,21 @@
  * routeNames recompute). e.g. a brand-new retailer → '/onboarding'.
  */
 export type AuthChange = {
-  authed: boolean
+  authed: boolean;
   /** Optional destination to navigate to AFTER the guards flip. */
-  navigateTo?: string
-}
+  navigateTo?: string;
+};
 
-type Listener = (change: AuthChange) => void
+type Listener = (change: AuthChange) => void;
 
-let listener: Listener | null = null
+let listener: Listener | null = null;
 
 /** Register the single auth-state listener (the AuthProvider). */
 export function setAuthChangeListener(fn: Listener | null): void {
-  listener = fn
+  listener = fn;
 }
 
 /** Emit an auth-state change to the provider (no-op when not mounted). */
 export function emitAuthChange(change: AuthChange): void {
-  listener?.(change)
+  listener?.(change);
 }
