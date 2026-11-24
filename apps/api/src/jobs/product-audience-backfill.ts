@@ -52,7 +52,7 @@ export async function handleProductAudienceBackfill(opts: {
       select: { id: true, retailer_id: true, name: true, category: true, subtype: true },
     });
     if (rows.length === 0) break;
-    cursor = rows[rows.length - 1]!.id;
+    cursor = rows[rows.length - 1]?.id;
     res.scanned += rows.length;
 
     const byAudience = new Map<ProductAudienceValue, string[]>();

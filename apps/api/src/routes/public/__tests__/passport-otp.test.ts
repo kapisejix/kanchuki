@@ -502,7 +502,6 @@ describe('POST /v1/public/passport/recently-viewed', () => {
       headers: { cookie: `kanchuki_passport=${sessionId}` },
       payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
     });
-    // biome-ignore lint/suspicious/noExplicitAny: test cleanup
     delete (prisma as any).product;
 
     expect(res.statusCode).toBe(204);
@@ -601,7 +600,6 @@ describe('POST /v1/public/passport/wishlist', () => {
       headers: { cookie: `kanchuki_passport=${sessionId}` },
       payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
     });
-    // biome-ignore lint/suspicious/noExplicitAny: test cleanup
     delete (prisma as any).product;
 
     expect(res.statusCode).toBe(200);

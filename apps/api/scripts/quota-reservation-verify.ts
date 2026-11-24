@@ -35,8 +35,8 @@ import {
 } from '../src/lib/quota.js';
 import { AppError } from '../src/plugins/error-handler.js';
 
-const MARKER = process.env['QUOTA_VERIFY_DB_MARKER'] ?? 'ibstbjzuiypactbscdrw';
-const url = process.env['DATABASE_URL'] ?? '';
+const MARKER = process.env.QUOTA_VERIFY_DB_MARKER ?? 'ibstbjzuiypactbscdrw';
+const url = process.env.DATABASE_URL ?? '';
 if (!url.includes(MARKER)) {
   console.error(`Refusing to run: DATABASE_URL does not contain the scratch marker "${MARKER}".`);
   process.exit(2);
