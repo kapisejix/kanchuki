@@ -14,9 +14,8 @@ const MAX_BYTES = 25 * 1024 * 1024; // generous ceiling for a single photo/PDF
 function isPrivateOrReservedIp(ip: string): boolean {
   const version = isIP(ip);
   if (version === 4) {
-    const parts = ip.split('.').map(Number);
-    const a = parts[0]!;
-    const b = parts[1]!;
+    const [a, b] = ip.split('.').map(Number);
+    if (a === undefined || b === undefined) return true; // fail closed
     if (a === 127 || a === 10 || a === 0 || a >= 224) return true;
     if (a === 172 && b >= 16 && b <= 31) return true;
     if (a === 192 && b === 168) return true;

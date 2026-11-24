@@ -213,10 +213,10 @@ function legacyRowsOrdered(): AiProviderConfigRow[] {
   const order = (process.env.AI_PROVIDER_ORDER ?? 'claude,openai,gemini')
     .split(',')
     .map((s) => s.trim());
-  const byLegacyId: Record<string, AiProviderConfigRow> = {
-    claude: LEGACY_ROWS[0]!,
-    openai: LEGACY_ROWS[1]!,
-    gemini: LEGACY_ROWS[2]!,
+  const byLegacyId: Record<string, AiProviderConfigRow | undefined> = {
+    claude: LEGACY_ROWS[0],
+    openai: LEGACY_ROWS[1],
+    gemini: LEGACY_ROWS[2],
   };
   const rows = order.map((id) => byLegacyId[id]).filter((r): r is AiProviderConfigRow => !!r);
   return rows.length > 0 ? rows : LEGACY_ROWS;

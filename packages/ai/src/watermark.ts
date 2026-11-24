@@ -9,11 +9,12 @@
 
 // Lazy import — same reason as image-compress.ts/image-rotate.ts/detector.ts:
 // sharp's native dlopen can crash on Windows+pnpm when loaded eagerly.
-let _sharp: any = null;
+type Sharp = typeof import('sharp').default;
+let _sharp: Sharp | null = null;
 async function getSharp() {
   if (!_sharp) {
     const mod = await import('sharp');
-    _sharp = mod.default ?? mod;
+    _sharp = (mod.default ?? mod) as Sharp;
   }
   return _sharp;
 }

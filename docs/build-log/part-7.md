@@ -758,3 +758,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | seed | 9 unused template arrays removed. `!` replaced by a `entries()` loop and `undefined` checks, `as any` → `as ProductStatus`. Not run (writes a DB). |
 | Local runs | `packages/db`: Biome 0 errors, 0 warnings. db tsc 0, tests 25 passed + 4 skipped. api tsc 0. |
 | seed bug | `createRetailer` returned `{ id, sectionIds }` but `createCollections` reads `retailer.shop_name`, so collection slugs used `slugify(undefined)`. Now returns `shop_name` too. `seed.ts` checked alone with tsc: 0 errors (was 3). |
+
+## 2026-11-24 — Biome: packages/ai clean (this PR)
+
+| Area | Change |
+|---|---|
+| sharp | `watermark.ts`, `image-compress.ts`: lazy `_sharp` typed as sharp's default export instead of `any`. |
+| image-compress | `best!` replaced by an explicit throw if no encode was attempted. |
+| providers | Legacy-row map typed `AiProviderConfigRow \| undefined`; the existing filter already drops missing rows. |
+| safe-fetch | SSRF check destructures IPv4 octets and fails closed (treated as private) if one is missing. Unreachable after `isIP() === 4`, kept as a guard. |
+| Local runs | `packages/ai`: Biome 0 errors, 0 warnings (was 8 warnings). ai tsc 0, tests 209 passed. api tsc 0. |
