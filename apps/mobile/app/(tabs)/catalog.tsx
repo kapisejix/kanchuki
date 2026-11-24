@@ -1,50 +1,42 @@
-import { useState, useCallback, useEffect, useMemo, memo } from 'react'
-import { formatPriceRange } from '@kanchuki/shared'
+import { formatPriceRange } from '@kanchuki/shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  ScrollView,
-  Alert,
-  Image,
-} from 'react-native'
-import { router } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import {
+  Camera,
+  CheckSquare,
   MapPin,
+  Search,
+  Shirt,
   SlidersHorizontal,
   X,
-  Camera,
-  Search,
-  CheckSquare,
-  Shirt,
-} from 'lucide-react-native'
-import ProductCard from '../../src/components/ProductCard'
-import { useGridColumns } from '../../src/hooks/useIsTablet'
-import { ProductGridSkeleton } from '../../src/components/Skeleton'
-import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { prefetchProductImages } from '../../src/lib/image-prefetch'
-import { enqueueStatusMutation, isRetryable } from '../../src/lib/mutation-queue'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { DangerButton } from '../../src/components/DangerButton'
+} from 'lucide-react-native';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Image, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { DangerButton } from '../../src/components/DangerButton';
+import { GradientButton } from '../../src/components/GradientButton';
+import ProductCard from '../../src/components/ProductCard';
+import { ProductGridSkeleton } from '../../src/components/Skeleton';
+import { useGridColumns } from '../../src/hooks/useIsTablet';
+import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { prefetchProductImages } from '../../src/lib/image-prefetch';
+import { enqueueStatusMutation, isRetryable } from '../../src/lib/mutation-queue';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 type Product = {
-  id: string
-  category: string | null
-  primary_color: string | null
-  price_min: number | null
-  price_max: number | null
-  status: string
-  primary_photo_url: string | null
-  section: { name: string } | null
-  location_notes: string | null
-  ai_tagged: boolean
-  total_quantity?: number | null
-}
+  id: string;
+  category: string | null;
+  primary_color: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  status: string;
+  primary_photo_url: string | null;
+  section: { name: string } | null;
+  location_notes: string | null;
+  ai_tagged: boolean;
+  total_quantity?: number | null;
+};
 
 // ── Price buckets (paise, matches formatPriceRange units) ──────────
 const PRICE_BUCKETS = [
@@ -52,7 +44,7 @@ const PRICE_BUCKETS = [
   { label: '₹1000–2500', min: 100_000, max: 250_000 },
   { label: '₹2500–5000', min: 250_000, max: 500_000 },
   { label: 'Above ₹5000', min: 500_000 },
-] as const
+] as const;
 
 // ── Filter chip row ──────────────────────────────────────────────
 function ChipRow({
@@ -61,12 +53,12 @@ function ChipRow({
   selected,
   onSelect,
 }: {
-  label: string
-  options: string[]
-  selected: string | null
-  onSelect: (value: string | null) => void
+  label: string;
+  options: string[];
+  selected: string | null;
+  onSelect: (value: string | null) => void;
 }) {
-  if (options.length === 0) return null
+  if (options.length === 0) return null;
   return (
     <View className="mb-3">
       <Text className="text-[11px] font-semibold text-heliotrope-600 mb-1.5">{label}</Text>
@@ -74,10 +66,14 @@ function ChipRow({
         <AnimatedPressable
           onPress={() => onSelect(null)}
           className={`px-3.5 py-1.5 rounded-full border ${
-            selected === null ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
+            selected === null
+              ? 'bg-spaceCadet-900 border-spaceCadet-900'
+              : 'bg-white border-lavender-200'
           }`}
         >
-          <Text className={`text-xs font-semibold ${selected === null ? 'text-white' : 'text-spaceCadet-900'}`}>
+          <Text
+            className={`text-xs font-semibold ${selected === null ? 'text-white' : 'text-spaceCadet-900'}`}
+          >
             All
           </Text>
         </AnimatedPressable>
@@ -86,20 +82,24 @@ function ChipRow({
             key={opt}
             onPress={() => onSelect(selected === opt ? null : opt)}
             className={`px-3.5 py-1.5 rounded-full border ${
-              selected === opt ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
+              selected === opt
+                ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                : 'bg-white border-lavender-200'
             }`}
           >
-            <Text className={`text-xs font-semibold ${selected === opt ? 'text-white' : 'text-spaceCadet-900'}`}>
+            <Text
+              className={`text-xs font-semibold ${selected === opt ? 'text-white' : 'text-spaceCadet-900'}`}
+            >
               {opt}
             </Text>
           </AnimatedPressable>
         ))}
       </View>
     </View>
-  )
+  );
 }
 
-type ListResult = { data: Product[]; pagination: { cursor: string | null; has_more: boolean } }
+type ListResult = { data: Product[]; pagination: { cursor: string | null; has_more: boolean } };
 
 // ── Memoized Product Card Wrap ──────────────────────────────────────
 
@@ -111,12 +111,12 @@ const CatalogCard = memo(function CatalogCard({
   selected,
   catalogSyncStatus,
 }: {
-  product: Product
-  onPress: () => void
-  onLongPress: () => void
-  onMarkSold: () => void
-  selected: boolean
-  catalogSyncStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS' | null
+  product: Product;
+  onPress: () => void;
+  onLongPress: () => void;
+  onMarkSold: () => void;
+  selected: boolean;
+  catalogSyncStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS' | null;
 }) {
   return (
     <ProductCard
@@ -142,71 +142,84 @@ const CatalogCard = memo(function CatalogCard({
                 product.total_quantity <= 2 ? 'text-red-600' : 'text-heliotrope-500'
               }`}
             >
-              {product.total_quantity <= 2 ? `Low stock: ${product.total_quantity}` : `Stock: ${product.total_quantity}`}
+              {product.total_quantity <= 2
+                ? `Low stock: ${product.total_quantity}`
+                : `Stock: ${product.total_quantity}`}
             </Text>
           )}
           {product.section && (
             <View className="flex-row items-center gap-1">
               <MapPin size={10} color="#6B4773" />
-              <Text className="text-[11px] text-heliotrope-500" numberOfLines={1}>{product.section.name}</Text>
+              <Text className="text-[11px] text-heliotrope-500" numberOfLines={1}>
+                {product.section.name}
+              </Text>
             </View>
           )}
           {product.status === 'AVAILABLE' && (
-            <GradientButton variant="web" compact label="Mark Sold" onPress={onMarkSold} style={{ marginTop: 8 }} />
+            <GradientButton
+              variant="web"
+              compact
+              label="Mark Sold"
+              onPress={onMarkSold}
+              style={{ marginTop: 8 }}
+            />
           )}
         </View>
       }
     />
-  )
-})
+  );
+});
 
 // ── Catalog Screen ─────────────────────────────────────────────────
 
 export default function CatalogScreen() {
-  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
-  const columns = useGridColumns()
+  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets();
+  const columns = useGridColumns();
 
   // Fetch retailer profile for the header (logo, shop name, city)
   const { data: retailerData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
-  })
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as Record<string, any> | undefined
+  });
+  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as
+    | Record<string, any>
+    | undefined;
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Explicit toggle so retailers can enter tap-to-select without discovering
   // the long-press gesture (which still works too, unchanged).
-  const [selectModeOn, setSelectModeOn] = useState(false)
-  const selectionMode = selectModeOn || selectedIds.size > 0
-  const [deleting, setDeleting] = useState(false)
+  const [selectModeOn, setSelectModeOn] = useState(false);
+  const selectionMode = selectModeOn || selectedIds.size > 0;
+  const [deleting, setDeleting] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
-  const [filterCategory, setFilterCategory] = useState<string | null>(null)
-  const [filterPrice, setFilterPrice] = useState<string | null>(null)
-  const [filterColor, setFilterColor] = useState<string | null>(null)
-  const [filterNewArrival, setFilterNewArrival] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterPrice, setFilterPrice] = useState<string | null>(null);
+  const [filterColor, setFilterColor] = useState<string | null>(null);
+  const [filterNewArrival, setFilterNewArrival] = useState(false);
 
   const { data: listData, isLoading: listLoading } = useQuery({
     queryKey: ['products', 'list', { is_new_arrival: filterNewArrival }],
-    queryFn: () => productApi.list({ limit: 50, ...(filterNewArrival ? { is_new_arrival: true } : {}) }),
+    queryFn: () =>
+      productApi.list({ limit: 50, ...(filterNewArrival ? { is_new_arrival: true } : {}) }),
     // A-2: catalog is stable — favor offline browsing over refetch churn
     staleTime: 10 * 60_000,
     gcTime: 24 * 60 * 60_000,
-  })
+  });
 
   const unfilteredProducts = useMemo<Product[]>(
     () => (listData as ListResult | undefined)?.data ?? [],
     [listData],
-  )
+  );
 
   // A-4: warm expo-image's disk cache so photos render offline after first load
   useEffect(() => {
     if (unfilteredProducts.length) {
-      prefetchProductImages(unfilteredProducts).catch(() => {})
+      prefetchProductImages(unfilteredProducts).catch(() => {});
     }
-  }, [unfilteredProducts])
+  }, [unfilteredProducts]);
 
   // Phase II F7 — WhatsApp catalog sync badges. The status query returns
   // { data: null } when the plan feature is off; items only load once the
@@ -215,154 +228,156 @@ export default function CatalogScreen() {
     queryKey: ['whatsapp-catalog', 'status'],
     queryFn: () => whatsappCatalogApi.getStatus(),
     staleTime: 60_000,
-  })
-  const waConfigured = waStatusData?.data?.configured ?? false
+  });
+  const waConfigured = waStatusData?.data?.configured ?? false;
   const { data: waItemsData } = useQuery({
     queryKey: ['whatsapp-catalog', 'items'],
     queryFn: () => whatsappCatalogApi.getItems(),
     enabled: waConfigured,
     staleTime: 60_000,
-  })
+  });
   const waSyncStatusByProduct = useMemo(() => {
-    const map = new Map<string, 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS'>()
-    for (const item of waItemsData?.data ?? []) map.set(item.product_id, item.status)
-    return map
-  }, [waItemsData])
+    const map = new Map<string, 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS'>();
+    for (const item of waItemsData?.data ?? []) map.set(item.product_id, item.status);
+    return map;
+  }, [waItemsData]);
 
   const categoryOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.category).filter((c): c is string => !!c)),
-  )
+  );
   const colorOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.primary_color).filter((c): c is string => !!c)),
-  )
+  );
   const activeFilterCount = [
     filterCategory,
     filterPrice,
     filterColor,
     filterNewArrival ? 'New Arrivals' : null,
     searchQuery.trim() ? 'Search' : null,
-  ].filter(Boolean).length
+  ].filter(Boolean).length;
 
   // Category shortcut row — one circle per category, thumbnail borrowed from
   // that category's first photographed product (no separate icon asset needed).
   const categoryImages = categoryOptions.map((cat) => ({
     category: cat,
-    photoUrl: unfilteredProducts.find((p) => p.category === cat && p.primary_photo_url)?.primary_photo_url ?? null,
-  }))
+    photoUrl:
+      unfilteredProducts.find((p) => p.category === cat && p.primary_photo_url)
+        ?.primary_photo_url ?? null,
+  }));
 
   const products = unfilteredProducts.filter((p) => {
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
-      const matchCat = (p.category ?? '').toLowerCase().includes(q)
-      const matchColor = (p.primary_color ?? '').toLowerCase().includes(q)
-      const matchSection = (p.section?.name ?? '').toLowerCase().includes(q)
-      const matchNotes = (p.location_notes ?? '').toLowerCase().includes(q)
-      if (!matchCat && !matchColor && !matchSection && !matchNotes) return false
+      const q = searchQuery.toLowerCase().trim();
+      const matchCat = (p.category ?? '').toLowerCase().includes(q);
+      const matchColor = (p.primary_color ?? '').toLowerCase().includes(q);
+      const matchSection = (p.section?.name ?? '').toLowerCase().includes(q);
+      const matchNotes = (p.location_notes ?? '').toLowerCase().includes(q);
+      if (!matchCat && !matchColor && !matchSection && !matchNotes) return false;
     }
-    if (filterCategory && p.category !== filterCategory) return false
-    if (filterColor && p.primary_color !== filterColor) return false
+    if (filterCategory && p.category !== filterCategory) return false;
+    if (filterColor && p.primary_color !== filterColor) return false;
     if (filterPrice) {
-      const bucket = PRICE_BUCKETS.find((b) => b.label === filterPrice)
-      const price = p.price_min ?? 0
+      const bucket = PRICE_BUCKETS.find((b) => b.label === filterPrice);
+      const price = p.price_min ?? 0;
       if (bucket) {
-        if ('min' in bucket && price < bucket.min) return false
-        if ('max' in bucket && price >= bucket.max) return false
+        if ('min' in bucket && price < bucket.min) return false;
+        if ('max' in bucket && price >= bucket.max) return false;
       }
     }
-    return true
-  })
+    return true;
+  });
 
   const clearFilters = useCallback(() => {
-    setSearchQuery('')
-    setFilterCategory(null)
-    setFilterPrice(null)
-    setFilterColor(null)
-    setFilterNewArrival(false)
-  }, [])
+    setSearchQuery('');
+    setFilterCategory(null);
+    setFilterPrice(null);
+    setFilterColor(null);
+    setFilterNewArrival(false);
+  }, []);
 
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
-  const handleMarkSold = useCallback(async (productId: string) => {
-    try {
-      await productApi.updateStatus(productId, 'SOLD')
-      void queryClient.invalidateQueries({ queryKey: ['products'] })
-    } catch (err) {
-      // A 4xx will never succeed on replay: surface it instead of queueing it forever.
-      if (!isRetryable(err)) {
-        showError(err, 'Could not mark this product as sold. Please try again.')
-        void queryClient.invalidateQueries({ queryKey: ['products'] })
-        return
+  const handleMarkSold = useCallback(
+    async (productId: string) => {
+      try {
+        await productApi.updateStatus(productId, 'SOLD');
+        void queryClient.invalidateQueries({ queryKey: ['products'] });
+      } catch (err) {
+        // A 4xx will never succeed on replay: surface it instead of queueing it forever.
+        if (!isRetryable(err)) {
+          showError(err, 'Could not mark this product as sold. Please try again.');
+          void queryClient.invalidateQueries({ queryKey: ['products'] });
+          return;
+        }
+        // A-5: offline (or a transient failure) — queue for replay on reconnect
+        // and patch the cached list so the retailer sees the change now instead
+        // of a silent no-op.
+        await enqueueStatusMutation(productId, 'SOLD');
+        queryClient.setQueriesData<ListResult>({ queryKey: ['products', 'list'] }, (old) =>
+          old
+            ? {
+                ...old,
+                data: old.data.map((p) => (p.id === productId ? { ...p, status: 'SOLD' } : p)),
+              }
+            : old,
+        );
       }
-      // A-5: offline (or a transient failure) — queue for replay on reconnect
-      // and patch the cached list so the retailer sees the change now instead
-      // of a silent no-op.
-      await enqueueStatusMutation(productId, 'SOLD')
-      queryClient.setQueriesData<ListResult>({ queryKey: ['products', 'list'] }, (old) =>
-        old
-          ? { ...old, data: old.data.map((p) => (p.id === productId ? { ...p, status: 'SOLD' } : p)) }
-          : old,
-      )
-    }
-  }, [queryClient])
+    },
+    [queryClient],
+  );
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const clearSelection = useCallback(() => {
-    setSelectedIds(new Set())
-    setSelectModeOn(false)
-  }, [])
+    setSelectedIds(new Set());
+    setSelectModeOn(false);
+  }, []);
 
   const handleBulkDelete = useCallback(() => {
-    const count = selectedIds.size
-    Alert.alert(
-      `Delete ${count} product${count !== 1 ? 's' : ''}?`,
-      'This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true)
-            try {
-              await productApi.bulkDelete([...selectedIds])
-              clearSelection()
-              void queryClient.invalidateQueries({ queryKey: ['products'] })
-            } catch (err) {
-              showError(err, 'Try again.', 'Delete failed')
-            } finally {
-              setDeleting(false)
-            }
-          },
+    const count = selectedIds.size;
+    Alert.alert(`Delete ${count} product${count !== 1 ? 's' : ''}?`, 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await productApi.bulkDelete([...selectedIds]);
+            clearSelection();
+            void queryClient.invalidateQueries({ queryKey: ['products'] });
+          } catch (err) {
+            showError(err, 'Try again.', 'Delete failed');
+          } finally {
+            setDeleting(false);
+          }
         },
-      ],
-    )
-  }, [selectedIds, clearSelection, queryClient])
+      },
+    ]);
+  }, [selectedIds, clearSelection, queryClient]);
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (
       <CatalogCard
         product={item}
         selected={selectedIds.has(item.id)}
-        onPress={() =>
-          selectionMode ? toggleSelect(item.id) : router.push(`/product/${item.id}`)
-        }
+        onPress={() => (selectionMode ? toggleSelect(item.id) : router.push(`/product/${item.id}`))}
         onLongPress={() => toggleSelect(item.id)}
         onMarkSold={() => void handleMarkSold(item.id)}
         catalogSyncStatus={waSyncStatusByProduct.get(item.id) ?? null}
       />
     ),
     [handleMarkSold, selectionMode, selectedIds, toggleSelect, waSyncStatusByProduct],
-  )
+  );
 
-  const keyExtractor = useCallback((item: Product) => item.id, [])
+  const keyExtractor = useCallback((item: Product) => item.id, []);
 
   const listEmpty = useCallback(
     () => (
@@ -388,10 +403,12 @@ export default function CatalogScreen() {
               No products yet
             </Text>
             <Text className="text-heliotrope-500 text-xs text-center mt-1 leading-5">
-              Take a photo of any product — AI tags it{'\n'}with category, color, and fabric in seconds.
+              Take a photo of any product — AI tags it{'\n'}with category, color, and fabric in
+              seconds.
             </Text>
             <View className="mt-5 w-full max-w-xs">
-              <GradientButton variant="web"
+              <GradientButton
+                variant="web"
                 label="Add First Product"
                 onPress={() => router.push('/product/add')}
               />
@@ -401,7 +418,7 @@ export default function CatalogScreen() {
       </View>
     ),
     [activeFilterCount, clearFilters],
-  )
+  );
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -438,12 +455,18 @@ export default function CatalogScreen() {
           <AnimatedPressable
             onPress={() => (selectionMode ? clearSelection() : setSelectModeOn(true))}
             className={`w-10 h-10 rounded-2xl items-center justify-center border ${
-              selectionMode ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200 shadow-sm'
+              selectionMode
+                ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                : 'bg-white border-lavender-200 shadow-sm'
             }`}
             accessibilityLabel={selectionMode ? 'Cancel selection' : 'Select products to delete'}
             accessibilityRole="button"
           >
-            {selectionMode ? <X size={18} color="white" /> : <CheckSquare size={18} color="#231F48" />}
+            {selectionMode ? (
+              <X size={18} color="white" />
+            ) : (
+              <CheckSquare size={18} color="#231F48" />
+            )}
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => setShowFilters((v) => !v)}
@@ -476,7 +499,12 @@ export default function CatalogScreen() {
           renderItem={renderItem}
           numColumns={columns}
           columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1, paddingBottom: tabScrollPaddingBottom }}
+          contentContainerStyle={{
+            padding: 14,
+            gap: 12,
+            flexGrow: 1,
+            paddingBottom: tabScrollPaddingBottom,
+          }}
           ListEmptyComponent={listEmpty}
           ListHeaderComponent={
             <View className="gap-3 mb-1">
@@ -515,10 +543,14 @@ export default function CatalogScreen() {
                   )}
                   {/* Category shortcuts */}
                   {categoryImages.length > 0 && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      className="-mx-4 px-4"
+                    >
                       <View className="flex-row gap-3 py-1">
                         {categoryImages.map(({ category, photoUrl }) => {
-                          const isActive = filterCategory === category
+                          const isActive = filterCategory === category;
                           return (
                             <AnimatedPressable
                               key={category}
@@ -532,7 +564,11 @@ export default function CatalogScreen() {
                                 }`}
                               >
                                 {photoUrl ? (
-                                  <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                                  <Image
+                                    source={{ uri: photoUrl }}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode="cover"
+                                  />
                                 ) : (
                                   <View className="flex-1 items-center justify-center">
                                     <Shirt size={20} color="#928EB2" />
@@ -546,57 +582,89 @@ export default function CatalogScreen() {
                                 {category}
                               </Text>
                             </AnimatedPressable>
-                          )
+                          );
                         })}
                       </View>
                     </ScrollView>
                   )}
 
-                {/* Filter panel — Category, Price, Color */}
-                {showFilters && (
-                  <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-lavender-200' : ''}>
-                    <View className="flex-row items-center justify-between mb-2">
-                      <Text className="text-xs font-semibold text-heliotrope-600">Filters</Text>
-                      <View className="flex-row items-center gap-3">
-                        {activeFilterCount > 0 && (
-                          <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center" onPress={clearFilters}>
-                            <Text className="text-fuchsia-600 text-xs font-semibold">Clear all</Text>
+                  {/* Filter panel — Category, Price, Color */}
+                  {showFilters && (
+                    <View
+                      className={
+                        categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-lavender-200' : ''
+                      }
+                    >
+                      <View className="flex-row items-center justify-between mb-2">
+                        <Text className="text-xs font-semibold text-heliotrope-600">Filters</Text>
+                        <View className="flex-row items-center gap-3">
+                          {activeFilterCount > 0 && (
+                            <AnimatedPressable
+                              className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+                              onPress={clearFilters}
+                            >
+                              <Text className="text-fuchsia-600 text-xs font-semibold">
+                                Clear all
+                              </Text>
+                            </AnimatedPressable>
+                          )}
+                          <AnimatedPressable
+                            onPress={() => setShowFilters(false)}
+                            accessibilityLabel="Close filters"
+                            accessibilityRole="button"
+                          >
+                            <X size={16} color="#6B4773" />
                           </AnimatedPressable>
-                        )}
-                        <AnimatedPressable onPress={() => setShowFilters(false)} accessibilityLabel="Close filters" accessibilityRole="button">
-                          <X size={16} color="#6B4773" />
+                        </View>
+                      </View>
+                      <ChipRow
+                        label="Category"
+                        options={categoryOptions}
+                        selected={filterCategory}
+                        onSelect={setFilterCategory}
+                      />
+                      <ChipRow
+                        label="Price"
+                        options={PRICE_BUCKETS.map((b) => b.label)}
+                        selected={filterPrice}
+                        onSelect={setFilterPrice}
+                      />
+                      <ChipRow
+                        label="Color"
+                        options={colorOptions}
+                        selected={filterColor}
+                        onSelect={setFilterColor}
+                      />
+                      {/* New Arrivals — derived flag, auto-expires at 30 days */}
+                      <View className="mb-2.5">
+                        <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
+                          Age
+                        </Text>
+                        <AnimatedPressable
+                          onPress={() => setFilterNewArrival((v) => !v)}
+                          className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
+                            filterNewArrival
+                              ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                              : 'bg-white border-lavender-200'
+                          }`}
+                        >
+                          {filterNewArrival && (
+                            <Text className="text-white text-xs font-semibold">✓ </Text>
+                          )}
+                          <Text
+                            className={`text-xs font-semibold ${filterNewArrival ? 'text-white' : 'text-spaceCadet-900'}`}
+                          >
+                            New arrivals (30d)
+                          </Text>
                         </AnimatedPressable>
                       </View>
                     </View>
-                    <ChipRow label="Category" options={categoryOptions} selected={filterCategory} onSelect={setFilterCategory} />
-                    <ChipRow label="Price"
-                      options={PRICE_BUCKETS.map((b) => b.label)}
-                      selected={filterPrice}
-                      onSelect={setFilterPrice}
-                    />
-                    <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
-                    {/* New Arrivals — derived flag, auto-expires at 30 days */}
-                    <View className="mb-2.5">
-                      <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">Age</Text>
-                      <AnimatedPressable
-                        onPress={() => setFilterNewArrival((v) => !v)}
-                        className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
-                          filterNewArrival ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
-                        }`}
-                      >
-                        {filterNewArrival && <Text className="text-white text-xs font-semibold">✓ </Text>}
-                        <Text className={`text-xs font-semibold ${filterNewArrival ? 'text-white' : 'text-spaceCadet-900'}`}>
-                          New arrivals (30d)
-                        </Text>
-                      </AnimatedPressable>
-                    </View>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        }
-        // ── Performance props ──
+                  )}
+                </View>
+              )}
+            </View>
+          }
+          // ── Performance props ──
           windowSize={7}
           maxToRenderPerBatch={10}
           removeClippedSubviews={true}
@@ -616,7 +684,11 @@ export default function CatalogScreen() {
             zIndex: 50,
           }}
         >
-          <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center" onPress={clearSelection} disabled={deleting}>
+          <AnimatedPressable
+            className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+            onPress={clearSelection}
+            disabled={deleting}
+          >
             <Text className="text-lavender-200 text-xs font-semibold">Cancel</Text>
           </AnimatedPressable>
           <Text className="text-white text-sm font-extrabold font-marcellus">
@@ -632,15 +704,18 @@ export default function CatalogScreen() {
         </View>
       )}
     </View>
-  )
+  );
 }
 
 // ── F7 legend dot ─────────────────────────────────────────────────
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <View className="flex-row items-center gap-1">
-      <View className="w-2 h-2 rounded-full border border-white" style={{ backgroundColor: color }} />
+      <View
+        className="w-2 h-2 rounded-full border border-white"
+        style={{ backgroundColor: color }}
+      />
       <Text className="text-[11px] text-heliotrope-500">{label}</Text>
     </View>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 // Messages submitted through the public /contact form
 // (POST /v1/public/contact → AuditLog, resource_type ContactSubmission).
@@ -6,36 +6,42 @@
 // raw audit JSON. Read-only by design (no DB table to mutate; replies happen
 // on WhatsApp/email, off-platform).
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  Mail,
-  MessageSquare,
-  MapPin,
-  RefreshCw,
   ArrowLeft,
   ArrowRight,
-  Inbox,
   Clock,
+  Inbox,
+  Mail,
+  MapPin,
+  MessageSquare,
   Monitor,
-} from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+  RefreshCw,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // Same vocabulary as the public form (apps/web/src/app/contact/ContactForm.tsx)
 // and the API's CONTACT_TOPICS (apps/api/src/routes/public/public-misc.ts).
-const TOPICS = ['Getting started', 'Catalog help', 'Billing', 'Partnership', 'Something else'] as const
+const TOPICS = [
+  'Getting started',
+  'Catalog help',
+  'Billing',
+  'Partnership',
+  'Something else',
+] as const;
 
 type ContactSubmission = {
-  id: string
-  name: string
-  shop_city: string | null
-  topic: string
-  message: string
-  ip_address: string | null
-  created_at: string
-}
+  id: string;
+  name: string;
+  shop_city: string | null;
+  topic: string;
+  message: string;
+  ip_address: string | null;
+  created_at: string;
+};
 
 const TOPIC_COLORS: Record<string, string> = {
   'Getting started': 'bg-blue-50 text-blue-600 border-blue-200',
@@ -43,102 +49,112 @@ const TOPIC_COLORS: Record<string, string> = {
   Billing: 'bg-amber-50 text-amber-600 border-amber-200',
   Partnership: 'bg-purple-50 text-purple-600 border-purple-200',
   'Something else': 'bg-gray-50 text-gray-500 border-gray-200',
-}
+};
 
 function topicColor(topic: string): string {
-  return TOPIC_COLORS[topic] ?? TOPIC_COLORS['Something else']
+  return TOPIC_COLORS[topic] ?? TOPIC_COLORS['Something else'];
 }
 
 function initials(name: string): string {
-  const parts = name.trim().split(/\s+/)
-  return parts
-    .slice(0, 2)
-    .map((p) => p[0] ?? '')
-    .join('')
-    .toUpperCase() || '?'
+  const parts = name.trim().split(/\s+/);
+  return (
+    parts
+      .slice(0, 2)
+      .map((p) => p[0] ?? '')
+      .join('')
+      .toUpperCase() || '?'
+  );
 }
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 25 } },
-}
+};
 
 export default function ContactSubmissionsPage() {
-  const [messages, setMessages] = useState<ContactSubmission[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [topic, setTopic] = useState('')
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [total, setTotal] = useState(0)
-  const [cursorStack, setCursorStack] = useState<string[]>([])
+  const [messages, setMessages] = useState<ContactSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [topic, setTopic] = useState('');
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
 
   const load = useCallback(
     async (cursorVal?: string, pushStack = false) => {
-      setLoading(true)
-      setError('')
+      setLoading(true);
+      setError('');
       try {
-        const params = new URLSearchParams()
-        params.set('limit', '25')
-        if (topic) params.set('topic', topic)
-        if (cursorVal) params.set('cursor', cursorVal)
+        const params = new URLSearchParams();
+        params.set('limit', '25');
+        if (topic) params.set('topic', topic);
+        if (cursorVal) params.set('cursor', cursorVal);
 
-        const res = await fetch(`${API_URL}/v1/admin/contact-submissions?${params}`, adminGetOptions())
-        const json = await res.json()
+        const res = await fetch(
+          `${API_URL}/v1/admin/contact-submissions?${params}`,
+          adminGetOptions(),
+        );
+        const json = await res.json();
         // Guard: a 500 from the API returns { error } with no .data — keep the
         // last good list instead of crashing on `json.data` / pagination.
         if (!res.ok || !Array.isArray(json?.data)) {
-          setError(`Failed to load messages (${res.status})`)
-          setHasMore(false)
-          setCursor(null)
-          return
+          setError(`Failed to load messages (${res.status})`);
+          setHasMore(false);
+          setCursor(null);
+          return;
         }
-        setMessages(json.data)
-        setHasMore(json.pagination?.has_more ?? false)
-        setCursor(json.pagination?.cursor ?? null)
-        setTotal(json.pagination?.total ?? 0)
-        if (pushStack && cursorVal) setCursorStack((prev) => [...prev, cursorVal])
+        setMessages(json.data);
+        setHasMore(json.pagination?.has_more ?? false);
+        setCursor(json.pagination?.cursor ?? null);
+        setTotal(json.pagination?.total ?? 0);
+        if (pushStack && cursorVal) setCursorStack((prev) => [...prev, cursorVal]);
       } catch {
-        setError('Network error — could not load messages')
-        setHasMore(false)
-        setCursor(null)
+        setError('Network error — could not load messages');
+        setHasMore(false);
+        setCursor(null);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     },
     [topic],
-  )
+  );
 
   useEffect(() => {
-    load()
-  }, [load])
+    load();
+  }, [load]);
 
   const handleTopicChange = (value: string) => {
-    setTopic(value)
-    setCursorStack([])
-    setCursor(null)
-    setHasMore(false)
-  }
+    setTopic(value);
+    setCursorStack([]);
+    setCursor(null);
+    setHasMore(false);
+  };
 
   const handleNext = () => {
-    if (cursor) load(cursor, true)
-  }
+    if (cursor) load(cursor, true);
+  };
 
   const handlePrev = () => {
-    const prev = cursorStack[cursorStack.length - 1]
+    const prev = cursorStack[cursorStack.length - 1];
     if (prev) {
-      setCursorStack((stack) => stack.slice(0, -1))
-      load(prev)
+      setCursorStack((stack) => stack.slice(0, -1));
+      load(prev);
     }
-  }
+  };
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
       <motion.div variants={itemVariants}>
         <div className="flex items-center justify-between">
@@ -166,7 +182,10 @@ export default function ContactSubmissionsPage() {
       </motion.div>
 
       {/* Topic filter */}
-      <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-4">
+      <motion.div
+        variants={itemVariants}
+        className="bg-white rounded-2xl border border-gray-200/80 p-4"
+      >
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs font-semibold text-gray-500">Topic</span>
           <div className="flex flex-wrap gap-2">
@@ -234,7 +253,10 @@ export default function ContactSubmissionsPage() {
 
       {/* Empty state */}
       {!loading && messages.length === 0 && !error && (
-        <motion.div variants={itemVariants} className="text-center py-20 bg-white/80 rounded-2xl border border-gray-200/80">
+        <motion.div
+          variants={itemVariants}
+          className="text-center py-20 bg-white/80 rounded-2xl border border-gray-200/80"
+        >
           <Inbox size={44} className="mx-auto text-gray-300 mb-3" />
           <p className="text-sm font-medium text-gray-500">
             {topic ? `No "${topic}" messages yet` : 'No contact messages yet'}
@@ -267,8 +289,12 @@ export default function ContactSubmissionsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-900">{m.name || 'Anonymous'}</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${topicColor(m.topic)}`}>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {m.name || 'Anonymous'}
+                      </span>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${topicColor(m.topic)}`}
+                      >
                         {m.topic || 'Something else'}
                       </span>
                     </div>
@@ -345,5 +371,5 @@ export default function ContactSubmissionsPage() {
         </motion.div>
       )}
     </motion.div>
-  )
+  );
 }

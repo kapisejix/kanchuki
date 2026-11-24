@@ -4,8 +4,8 @@ import { AlertTriangle, ChevronRight } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 import { scheduleApi } from '../../lib/api/schedule';
 import { useAuth } from '../../lib/auth-context';
-import { staffCan } from '../../lib/staff-can';
 import { META_SOCIAL_ENABLED } from '../../lib/meta-social';
+import { staffCan } from '../../lib/staff-can';
 import { AnimatedPressable } from '../AnimatedPressable';
 
 /**

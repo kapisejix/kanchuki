@@ -1,44 +1,44 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { ShoppingCart, IndianRupee, TrendingUp, Users, Package, Loader2 } from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { IndianRupee, Loader2, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type Purchase = {
-  id: string
-  retailer_id: string
-  retailer: { id: string; shop_name: string; city: string; phone: string; plan: string } | null
-  resource_type: string
-  quantity: number
-  amount_inr: number
-  completed_at: string | null
-  created_at: string
-}
+  id: string;
+  retailer_id: string;
+  retailer: { id: string; shop_name: string; city: string; phone: string; plan: string } | null;
+  resource_type: string;
+  quantity: number;
+  amount_inr: number;
+  completed_at: string | null;
+  created_at: string;
+};
 
 type TopBuyer = {
-  retailer_id: string
-  retailer: { id: string; shop_name: string; city: string; phone: string; plan: string } | null
-  total_spent_inr: number
-  total_quantity: number
-  purchase_count: number
-}
+  retailer_id: string;
+  retailer: { id: string; shop_name: string; city: string; phone: string; plan: string } | null;
+  total_spent_inr: number;
+  total_quantity: number;
+  purchase_count: number;
+};
 
 type ResourceBreakdown = {
-  resource_type: string
-  total_revenue_inr: number
-  total_quantity: number
-  purchase_count: number
-}
+  resource_type: string;
+  total_revenue_inr: number;
+  total_quantity: number;
+  purchase_count: number;
+};
 
 type AddonData = {
-  recent_purchases: Purchase[]
-  summary: { total_revenue_inr: number; total_purchases: number }
-  top_buyers: TopBuyer[]
-  resource_breakdown: ResourceBreakdown[]
-}
+  recent_purchases: Purchase[];
+  summary: { total_revenue_inr: number; total_purchases: number };
+  top_buyers: TopBuyer[];
+  resource_breakdown: ResourceBreakdown[];
+};
 
 const RESOURCE_LABELS: Record<string, string> = {
   PRODUCT_UPLOAD: 'Product Uploads',
@@ -47,14 +47,20 @@ const RESOURCE_LABELS: Record<string, string> = {
   IMAGE_CROP: 'Image Crops',
   BG_REMOVAL: 'Background Removals',
   API_REQUEST: 'API Requests',
-}
+};
 
-function StatCard({ icon: Icon, label, value, sub, color }: {
-  icon: React.ElementType
-  label: string
-  value: string
-  sub?: string
-  color: string
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  sub?: string;
+  color: string;
 }) {
   return (
     <motion.div
@@ -71,52 +77,54 @@ function StatCard({ icon: Icon, label, value, sub, color }: {
       <p className="text-2xl font-bold text-gray-900">{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </motion.div>
-  )
+  );
 }
 
 function formatInr(paise: number): string {
-  return `₹${(paise / 100).toLocaleString('en-IN')}`
+  return `₹${(paise / 100).toLocaleString('en-IN')}`;
 }
 
 export default function AddonPurchasesPage() {
-  const [data, setData] = useState<AddonData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<AddonData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/v1/admin/addon-purchases`, adminGetOptions())
-        const json = await res.json()
-        setData(json.data)
+        const res = await fetch(`${API_URL}/v1/admin/addon-purchases`, adminGetOptions());
+        const json = await res.json();
+        setData(json.data);
       } catch {
         // generic loading fallback below handles this; no raw error to the browser console
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    load()
-  }, [])
+    load();
+  }, []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   if (!data) {
     return (
-      <div className="text-center py-16 text-gray-400">
-        Failed to load addon purchase data
-      </div>
-    )
+      <div className="text-center py-16 text-gray-400">Failed to load addon purchase data</div>
+    );
   }
 
-  const { summary, recent_purchases, top_buyers, resource_breakdown } = data
+  const { summary, recent_purchases, top_buyers, resource_breakdown } = data;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-6xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-6xl"
+    >
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-1">
@@ -175,17 +183,23 @@ export default function AddonPurchasesPage() {
                     <span className="text-xs font-medium text-gray-600">
                       {RESOURCE_LABELS[r.resource_type] ?? r.resource_type}
                     </span>
-                    <span className="text-xs font-bold text-gray-900">{formatInr(r.total_revenue_inr)}</span>
+                    <span className="text-xs font-bold text-gray-900">
+                      {formatInr(r.total_revenue_inr)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${(r.total_revenue_inr / Math.max(...resource_breakdown.map((x) => x.total_revenue_inr))) * 100}%` }}
+                        animate={{
+                          width: `${(r.total_revenue_inr / Math.max(...resource_breakdown.map((x) => x.total_revenue_inr))) * 100}%`,
+                        }}
                         className="bg-ink-600 h-full rounded-full"
                       />
                     </div>
-                    <span className="text-[10px] text-gray-400 w-12 text-right">{r.purchase_count}×</span>
+                    <span className="text-[10px] text-gray-400 w-12 text-right">
+                      {r.purchase_count}×
+                    </span>
                   </div>
                 </div>
               ))}
@@ -207,32 +221,57 @@ export default function AddonPurchasesPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100">
-                      <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">Shop</th>
-                      <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">City</th>
-                      <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">Plan</th>
-                      <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">Purchases</th>
-                      <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">Units</th>
-                      <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">Total Spent</th>
+                      <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">
+                        Shop
+                      </th>
+                      <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">
+                        City
+                      </th>
+                      <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">
+                        Plan
+                      </th>
+                      <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">
+                        Purchases
+                      </th>
+                      <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">
+                        Units
+                      </th>
+                      <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">
+                        Total Spent
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {top_buyers.map((buyer, i) => (
-                      <tr key={buyer.retailer_id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <tr
+                        key={buyer.retailer_id}
+                        className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                      >
                         <td className="px-2 py-2.5">
-                          <span className="font-medium text-gray-800">{buyer.retailer?.shop_name ?? 'Unknown'}</span>
+                          <span className="font-medium text-gray-800">
+                            {buyer.retailer?.shop_name ?? 'Unknown'}
+                          </span>
                         </td>
                         <td className="px-2 py-2.5 text-gray-500">{buyer.retailer?.city ?? '-'}</td>
                         <td className="px-2 py-2.5">
-                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                            buyer.retailer?.plan === 'PRO' ? 'bg-purple-100 text-purple-700' :
-                            buyer.retailer?.plan === 'GROWTH' ? 'bg-ink-100 text-ink-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              buyer.retailer?.plan === 'PRO'
+                                ? 'bg-purple-100 text-purple-700'
+                                : buyer.retailer?.plan === 'GROWTH'
+                                  ? 'bg-ink-100 text-ink-700'
+                                  : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
                             {buyer.retailer?.plan ?? '-'}
                           </span>
                         </td>
-                        <td className="px-2 py-2.5 text-right text-gray-700">{buyer.purchase_count}</td>
-                        <td className="px-2 py-2.5 text-right text-gray-700">{buyer.total_quantity.toLocaleString('en-IN')}</td>
+                        <td className="px-2 py-2.5 text-right text-gray-700">
+                          {buyer.purchase_count}
+                        </td>
+                        <td className="px-2 py-2.5 text-right text-gray-700">
+                          {buyer.total_quantity.toLocaleString('en-IN')}
+                        </td>
                         <td className="px-2 py-2.5 text-right font-semibold text-gray-900">
                           {formatInr(buyer.total_spent_inr)}
                         </td>
@@ -257,18 +296,31 @@ export default function AddonPurchasesPage() {
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">Date</th>
-                  <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">Retailer</th>
-                  <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">Resource</th>
-                  <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">Units</th>
-                  <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">Amount</th>
+                  <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">
+                    Retailer
+                  </th>
+                  <th className="text-left px-2 py-2 text-xs font-semibold text-gray-500">
+                    Resource
+                  </th>
+                  <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">
+                    Units
+                  </th>
+                  <th className="text-right px-2 py-2 text-xs font-semibold text-gray-500">
+                    Amount
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {recent_purchases.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                  <tr
+                    key={p.id}
+                    className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                  >
                     <td className="px-2 py-2.5 text-gray-500">
                       {new Date(p.created_at).toLocaleDateString('en-IN', {
-                        day: 'numeric', month: 'short', year: 'numeric',
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
                       })}
                     </td>
                     <td className="px-2 py-2.5 font-medium text-gray-800">
@@ -280,7 +332,9 @@ export default function AddonPurchasesPage() {
                         {RESOURCE_LABELS[p.resource_type] ?? p.resource_type}
                       </span>
                     </td>
-                    <td className="px-2 py-2.5 text-right text-gray-700">{p.quantity.toLocaleString('en-IN')}</td>
+                    <td className="px-2 py-2.5 text-right text-gray-700">
+                      {p.quantity.toLocaleString('en-IN')}
+                    </td>
                     <td className="px-2 py-2.5 text-right font-semibold text-gray-900">
                       {formatInr(p.amount_inr)}
                     </td>
@@ -292,5 +346,5 @@ export default function AddonPurchasesPage() {
         )}
       </div>
     </motion.div>
-  )
+  );
 }

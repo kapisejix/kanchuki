@@ -1,35 +1,36 @@
-import { Images, Link2, Square } from 'lucide-react-native'
-import { Text, View } from 'react-native'
-import type { SocialPostComposeType } from '../../lib/api/social'
-import { useTheme } from '../../lib/theme'
-import { AnimatedPressable } from '../AnimatedPressable'
+import { Images, Link2, Square } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import type { SocialPostComposeType } from '../../lib/api/social';
+import { useTheme } from '../../lib/theme';
+import { AnimatedPressable } from '../AnimatedPressable';
 
 interface PostTypeOption {
-  value: SocialPostComposeType
-  label: string
-  hint: string
+  value: SocialPostComposeType;
+  label: string;
+  hint: string;
 }
 
 const OPTIONS: PostTypeOption[] = [
   { value: 'SINGLE_PRODUCT', label: 'Single', hint: '1 product · photo or video' },
   { value: 'CAROUSEL', label: 'Carousel', hint: '2–10 products, one photo each' },
   { value: 'COLLECTION_LINK', label: 'Link', hint: 'Collection link, no media' },
-]
+];
 
 export function PostTypePicker({
   value,
   onChange,
 }: {
-  value: SocialPostComposeType
-  onChange: (v: SocialPostComposeType) => void
+  value: SocialPostComposeType;
+  onChange: (v: SocialPostComposeType) => void;
 }) {
-  const { colors } = useTheme()
+  const { colors } = useTheme();
 
   return (
     <View className="flex-row gap-2">
       {OPTIONS.map((opt) => {
-        const active = value === opt.value
-        const Icon = opt.value === 'SINGLE_PRODUCT' ? Square : opt.value === 'CAROUSEL' ? Images : Link2
+        const active = value === opt.value;
+        const Icon =
+          opt.value === 'SINGLE_PRODUCT' ? Square : opt.value === 'CAROUSEL' ? Images : Link2;
         return (
           <AnimatedPressable
             key={opt.value}
@@ -54,8 +55,8 @@ export function PostTypePicker({
               {opt.hint}
             </Text>
           </AnimatedPressable>
-        )
+        );
       })}
     </View>
-  )
+  );
 }

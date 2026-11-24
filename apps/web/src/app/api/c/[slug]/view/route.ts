@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { API_URL as apiUrl } from '@/lib/apiUrl'
+import { API_URL as apiUrl } from '@/lib/apiUrl';
+import { type NextRequest, NextResponse } from 'next/server';
 
 // POST /api/c/{slug}/view — the legacy-URL twin of ../[store]/[collection]/view.
 //
@@ -11,18 +11,18 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
-  const { slug } = await params
-  const body: unknown = await request.json().catch(() => ({}))
+  const { slug } = await params;
+  const body: unknown = await request.json().catch(() => ({}));
 
   try {
     await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}/view`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    })
+    });
   } catch {
     // Non-critical analytics — swallow error
   }
 
-  return new NextResponse(null, { status: 204 })
+  return new NextResponse(null, { status: 204 });
 }

@@ -32,13 +32,20 @@
  */
 
 import { spawn } from 'node:child_process';
-import { createWriteStream, createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { stat, unlink } from 'node:fs/promises';
-import { join, basename } from 'node:path';
-import { createGzip, createGunzip } from 'node:zlib';
 import { createHash } from 'node:crypto';
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
+import { stat, unlink } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { createGunzip, createGzip } from 'node:zlib';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -73,10 +80,11 @@ function parseConnectionUrl(url: string): DbConnectionInfo {
   // postgresql://user:password@host:port/dbname
   const pattern = /^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/;
   const match = url.match(pattern);
-  if (!match) throw new Error(
-    `Cannot parse DATABASE_URL. Expected format: postgresql://user:password@host:5432/dbname\n` +
-    `Got: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')} (password masked)`
-  );
+  if (!match)
+    throw new Error(
+      `Cannot parse DATABASE_URL. Expected format: postgresql://user:password@host:5432/dbname\n` +
+        `Got: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')} (password masked)`,
+    );
   return {
     user: decodeURIComponent(match[1]!),
     password: decodeURIComponent(match[2]!),
@@ -96,16 +104,20 @@ function getEnvVar(name: string): string | undefined {
 
 function requireEnvVar(name: string): string {
   const val = getEnvVar(name);
-  if (!val) throw new Error(
-    `${name} is not set. Set it in your environment or .env file.\n` +
-    `Example: ${name}="postgresql://user:password@host:5432/dbname"`
-  );
+  if (!val)
+    throw new Error(
+      `${name} is not set. Set it in your environment or .env file.\n` +
+        `Example: ${name}="postgresql://user:password@host:5432/dbname"`,
+    );
   return val;
 }
 
 /** Generate a timestamped R2 key for the backup. */
 function generateBackupKey(database: string, label: string): string {
-  const ts = new Date().toISOString().replace(/[:.]/g, '-').replace(/\.\d+Z$/, '');
+  const ts = new Date()
+    .toISOString()
+    .replace(/[:.]/g, '-')
+    .replace(/\.\d+Z$/, '');
   const labelPart = label ? `--${label.replace(/[^a-zA-Z0-9_-]/g, '_')}` : '';
   // .sql.gz — plain SQL format compressed with gzip
   return `backups/${ts}${labelPart}--${database}.sql.gz`;
@@ -139,33 +151,40 @@ async function ensureDockerRunning(): Promise<void> {
       stdio: ['ignore', 'ignore', 'pipe'],
       timeout: 15_000,
     });
-    proc.on('error', () => reject(new Error(
-      'Docker is not available. Install Docker Desktop from https://www.docker.com/products/docker-desktop/'
-    )));
+    proc.on('error', () =>
+      reject(
+        new Error(
+          'Docker is not available. Install Docker Desktop from https://www.docker.com/products/docker-desktop/',
+        ),
+      ),
+    );
     proc.on('exit', (code) => {
       if (code === 0) resolve();
-      else reject(new Error(
-        'Docker is installed but not running. Start Docker Desktop and try again.'
-      ));
+      else
+        reject(
+          new Error('Docker is installed but not running. Start Docker Desktop and try again.'),
+        );
     });
   });
 }
 
 /** Build docker run args for a psql/pg_dump command targeting a specific DB. */
-function dockerRunArgs(
-  db: DbConnectionInfo,
-  tool: string,
-  extraArgs: string[],
-): string[] {
+function dockerRunArgs(db: DbConnectionInfo, tool: string, extraArgs: string[]): string[] {
   return [
-    'run', '--rm',
-    '-e', `PGPASSWORD=${db.password}`,
+    'run',
+    '--rm',
+    '-e',
+    `PGPASSWORD=${db.password}`,
     DOCKER_IMAGE,
     tool,
-    '-h', db.host,
-    '-p', String(db.port),
-    '-U', db.user,
-    '-d', db.database,
+    '-h',
+    db.host,
+    '-p',
+    String(db.port),
+    '-U',
+    db.user,
+    '-d',
+    db.database,
     ...extraArgs,
   ];
 }
@@ -180,7 +199,9 @@ async function getPgDumpVersion(): Promise<string | null> {
       timeout: 15_000,
     });
     let output = '';
-    proc.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
+    proc.stdout?.on('data', (d: Buffer) => {
+      output += d.toString();
+    });
     proc.on('exit', () => resolve(output.trim() || null));
     proc.on('error', () => resolve(null));
   });
@@ -192,10 +213,7 @@ async function getPgDumpVersion(): Promise<string | null> {
  * Run pg_dump (plain SQL format) via Docker, compressing to gzip on-the-fly.
  * Plain SQL + gzip is cross-platform compatible and can be restored with psql.
  */
-async function runPgDump(
-  db: DbConnectionInfo,
-  outputPath: string,
-): Promise<void> {
+async function runPgDump(db: DbConnectionInfo, outputPath: string): Promise<void> {
   console.log(`  • Database: ${db.database} @ ${db.host}:${db.port}`);
   console.log(`  • Output: ${outputPath}`);
 
@@ -242,7 +260,9 @@ async function runPgDump(
       .then(() => {
         const exitCode = dockerProcess.exitCode ?? 0;
         if (exitCode !== 0) {
-          reject(new Error(`pg_dump exited with code ${exitCode}\nStderr: ${stderrBuf.slice(0, 800)}`));
+          reject(
+            new Error(`pg_dump exited with code ${exitCode}\nStderr: ${stderrBuf.slice(0, 800)}`),
+          );
           return;
         }
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -265,7 +285,7 @@ function createR2Client(): S3Client {
   if (!accessKeyId || !secretAccessKey) {
     throw new Error(
       'R2 credentials not configured. Set R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.\n' +
-      'These can be managed via Admin → Integrations (F-012) or set directly in .env.'
+        'These can be managed via Admin → Integrations (F-012) or set directly in .env.',
     );
   }
 
@@ -288,18 +308,20 @@ async function uploadToR2(
 
   const fileBuffer = readFileSync(filePath);
 
-  await r2.send(new PutObjectCommand({
-    Bucket: bucket,
-    Key: key,
-    Body: fileBuffer,
-    ContentType: 'application/gzip',
-    Metadata: {
-      'backup-timestamp': new Date().toISOString(),
-      'backup-label': label || 'unscheduled',
-      'backup-checksum': checksum,
-      'backup-source': 'kanchuki-backup-script',
-    },
-  }));
+  await r2.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: fileBuffer,
+      ContentType: 'application/gzip',
+      Metadata: {
+        'backup-timestamp': new Date().toISOString(),
+        'backup-label': label || 'unscheduled',
+        'backup-checksum': checksum,
+        'backup-source': 'kanchuki-backup-script',
+      },
+    }),
+  );
 
   console.log(`  • Uploaded ${formatBytes(fileBuffer.length)} to R2`);
 }
@@ -317,14 +339,20 @@ async function restoreToBackupDb(dumpPath: string, url: string): Promise<boolean
   console.log(`  • Restoring to backup DB: ${db.database} @ ${db.host}:${db.port}`);
 
   const args = [
-    'run', '--rm',
-    '-e', `PGPASSWORD=${db.password}`,
+    'run',
+    '--rm',
+    '-e',
+    `PGPASSWORD=${db.password}`,
     DOCKER_IMAGE,
     'psql',
-    '-h', db.host,
-    '-p', String(db.port),
-    '-U', db.user,
-    '-d', db.database,
+    '-h',
+    db.host,
+    '-p',
+    String(db.port),
+    '-U',
+    db.user,
+    '-d',
+    db.database,
     '--quiet',
   ];
 
@@ -345,21 +373,24 @@ async function restoreToBackupDb(dumpPath: string, url: string): Promise<boolean
     const gunzip = createGunzip();
 
     pipeline(readStream, gunzip, dockerProcess.stdin)
-      .then(() => new Promise<void>((resolvePipe) => {
-        dockerProcess.on('exit', (code) => {
-          const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-          if (code === 0) {
-            console.log(`  • Backup DB restore completed in ${duration}s`);
-            resolve(true);
-          } else {
-            console.error(`  • Backup DB restore failed (exit ${code}) in ${duration}s`);
-            const shortErr = stderr.slice(-300); // tail
-            console.error(`  • Stderr (tail): ${shortErr}`);
-            resolve(false);
-          }
-          resolvePipe();
-        });
-      }))
+      .then(
+        () =>
+          new Promise<void>((resolvePipe) => {
+            dockerProcess.on('exit', (code) => {
+              const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+              if (code === 0) {
+                console.log(`  • Backup DB restore completed in ${duration}s`);
+                resolve(true);
+              } else {
+                console.error(`  • Backup DB restore failed (exit ${code}) in ${duration}s`);
+                const shortErr = stderr.slice(-300); // tail
+                console.error(`  • Stderr (tail): ${shortErr}`);
+                resolve(false);
+              }
+              resolvePipe();
+            });
+          }),
+      )
       .catch((err) => {
         console.error(`  • Pipeline error: ${err.message}`);
         resolve(false);
@@ -373,7 +404,8 @@ async function countTables(db: DbConnectionInfo): Promise<number> {
   try {
     const args = dockerRunArgs(db, 'psql', [
       '-t',
-      '-c', "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'",
+      '-c',
+      "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'",
     ]);
 
     return new Promise((resolve) => {
@@ -382,7 +414,9 @@ async function countTables(db: DbConnectionInfo): Promise<number> {
         timeout: 30_000,
       });
       let out = '';
-      proc.stdout?.on('data', (d: Buffer) => { out += d.toString(); });
+      proc.stdout?.on('data', (d: Buffer) => {
+        out += d.toString();
+      });
       proc.on('exit', () => {
         resolve(Number.parseInt(out.trim(), 10) || 0);
       });
@@ -434,7 +468,9 @@ async function main() {
   console.log('');
   console.log(`  Started: ${new Date().toISOString()}`);
   console.log(`  Label:   ${options.label || '(unscheduled)'}`);
-  console.log(`  Mode:    ${options.localOnly ? 'Local only' : options.r2Only ? 'R2 only' : options.dbOnly ? 'Backup DB only' : 'Full (R2 + backup DB)'}`);
+  console.log(
+    `  Mode:    ${options.localOnly ? 'Local only' : options.r2Only ? 'R2 only' : options.dbOnly ? 'Backup DB only' : 'Full (R2 + backup DB)'}`,
+  );
   console.log('');
 
   // ── Validate prerequisites ──
@@ -512,7 +548,11 @@ async function main() {
 
   // ── Cleanup ──
   if (!options.localOnly && metadata.r2_key) {
-    try { await unlink(localPath); } catch { /* non-fatal */ }
+    try {
+      await unlink(localPath);
+    } catch {
+      /* non-fatal */
+    }
   }
 
   // ── Summary ──
@@ -527,7 +567,9 @@ async function main() {
   console.log(`  R2 Key:       ${metadata.r2_key}`);
   console.log(`  Tables:       ${metadata.table_count}`);
   if (metadata.backup_db_restore_attempted) {
-    console.log(`  Backup DB:    ${metadata.backup_db_restore_succeeded ? '✅ Restored' : '❌ Failed'}`);
+    console.log(
+      `  Backup DB:    ${metadata.backup_db_restore_succeeded ? '✅ Restored' : '❌ Failed'}`,
+    );
   }
   if (!options.localOnly) console.log('  Local file:   cleaned up (saved in R2)');
   else console.log(`  Local file:   ${localPath}`);

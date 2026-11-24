@@ -1,84 +1,89 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Tags, Save, Loader2, Plus, Trash2, Sparkles } from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { Loader2, Plus, Save, Sparkles, Tags, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type Kind = 'STYLE' | 'FABRIC'
+type Kind = 'STYLE' | 'FABRIC';
 const KINDS: { value: Kind; label: string }[] = [
   { value: 'STYLE', label: 'Style' },
   { value: 'FABRIC', label: 'Fabric' },
-]
+];
 
 type DefaultAttribute = {
-  id: string
-  kind: Kind
-  name: string
-  sort_order: number
-  is_active: boolean
-}
+  id: string;
+  kind: Kind;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+};
 
 export default function DefaultAttributesPage() {
-  const [kind, setKind] = useState<Kind>('STYLE')
-  const [attributes, setAttributes] = useState<DefaultAttribute[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [status, setStatus] = useState('')
-  const [newName, setNewName] = useState('')
-  const [newSort, setNewSort] = useState('')
+  const [kind, setKind] = useState<Kind>('STYLE');
+  const [attributes, setAttributes] = useState<DefaultAttribute[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [status, setStatus] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newSort, setNewSort] = useState('');
 
   const load = async (k: Kind) => {
-    setLoading(true)
-    const res = await fetch(`${API_URL}/v1/admin/default-attributes?kind=${k}`, adminGetOptions())
-    const json = await res.json()
-    setAttributes(json.data ?? [])
-    setLoading(false)
-  }
+    setLoading(true);
+    const res = await fetch(`${API_URL}/v1/admin/default-attributes?kind=${k}`, adminGetOptions());
+    const json = await res.json();
+    setAttributes(json.data ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    load(kind)
-  }, [kind])
+    load(kind);
+  }, [kind]);
 
   const update = (id: string, patch: Partial<DefaultAttribute>) => {
-    setAttributes((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)))
-  }
+    setAttributes((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  };
 
   const save = async (attr: DefaultAttribute) => {
-    setSaving(attr.id)
-    setStatus('')
+    setSaving(attr.id);
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/default-attributes/${attr.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
-        body: JSON.stringify({ name: attr.name, sort_order: attr.sort_order, is_active: attr.is_active }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      setStatus('✅ Template saved — new signups get this value')
+        body: JSON.stringify({
+          name: attr.name,
+          sort_order: attr.sort_order,
+          is_active: attr.is_active,
+        }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setStatus('✅ Template saved — new signups get this value');
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   const remove = async (id: string) => {
-    if (!confirm('Remove this value from the template? Existing retailers keep their copies.')) return
+    if (!confirm('Remove this value from the template? Existing retailers keep their copies.'))
+      return;
     await fetch(`${API_URL}/v1/admin/default-attributes/${id}`, {
       ...(await adminMutateOptions()),
       method: 'DELETE',
-    })
-    setAttributes((prev) => prev.filter((a) => a.id !== id))
-  }
+    });
+    setAttributes((prev) => prev.filter((a) => a.id !== id));
+  };
 
   const create = async () => {
     if (!newName.trim()) {
-      setStatus('❌ Name is required')
-      return
+      setStatus('❌ Name is required');
+      return;
     }
-    setSaving('new')
+    setSaving('new');
     try {
       const res = await fetch(`${API_URL}/v1/admin/default-attributes`, {
         ...(await adminMutateOptions()),
@@ -88,37 +93,41 @@ export default function DefaultAttributesPage() {
           name: newName.trim(),
           sort_order: newSort ? Number(newSort) : attributes.length,
         }),
-      })
+      });
       if (!res.ok) {
-        const json = await res.json()
-        throw new Error(json?.error?.message ?? 'Create failed')
+        const json = await res.json();
+        throw new Error(json?.error?.message ?? 'Create failed');
       }
-      const json = await res.json()
-      setAttributes((prev) => [...prev, json.data].sort((a, b) => a.sort_order - b.sort_order))
-      setNewName('')
-      setNewSort('')
-      setStatus('✅ Template value added')
+      const json = await res.json();
+      setAttributes((prev) => [...prev, json.data].sort((a, b) => a.sort_order - b.sort_order));
+      setNewName('');
+      setNewSort('');
+      setStatus('✅ Template value added');
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Create failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Create failed'}`);
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-4xl"
+    >
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Default Attributes</h1>
           <Tags size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          Global template for the Style/Fabric taxonomy, copied into every new retailer&apos;s own list at
-          signup (mirrors Default Categories). AI tagging soft-matches its per-photo guesses against the
-          retailer&apos;s own list (seeded defaults + custom) so the product-add/edit screens offer those as
-          select/multi-select options. Template edits are forward-only: existing retailers keep their
-          current copies. Ladies-only today — a `segment` column on this table is ready for Men/Kids later
-          with no schema change.
+          Global template for the Style/Fabric taxonomy, copied into every new retailer&apos;s own
+          list at signup (mirrors Default Categories). AI tagging soft-matches its per-photo guesses
+          against the retailer&apos;s own list (seeded defaults + custom) so the product-add/edit
+          screens offer those as select/multi-select options. Template edits are forward-only:
+          existing retailers keep their current copies. Ladies-only today — a `segment` column on
+          this table is ready for Men/Kids later with no schema change.
         </p>
       </div>
 
@@ -195,8 +204,8 @@ export default function DefaultAttributesPage() {
                   <td className="px-3 py-2">
                     <button
                       onClick={() => {
-                        update(attr.id, { is_active: !attr.is_active })
-                        void save({ ...attr, is_active: !attr.is_active })
+                        update(attr.id, { is_active: !attr.is_active });
+                        void save({ ...attr, is_active: !attr.is_active });
                       }}
                       className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition cursor-pointer ${
                         attr.is_active
@@ -204,7 +213,9 @@ export default function DefaultAttributesPage() {
                           : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                       }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${attr.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${attr.is_active ? 'bg-green-500' : 'bg-gray-300'}`}
+                      />
                       {attr.is_active ? 'Active' : 'Off'}
                     </button>
                   </td>
@@ -216,7 +227,11 @@ export default function DefaultAttributesPage() {
                         className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                         aria-label="Save attribute"
                       >
-                        {saving === attr.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        {saving === attr.id ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : (
+                          <Save size={14} />
+                        )}
                       </button>
                       <button
                         onClick={() => remove(attr.id)}
@@ -256,7 +271,11 @@ export default function DefaultAttributesPage() {
                     className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                     aria-label="Add attribute"
                   >
-                    {saving === 'new' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                    {saving === 'new' ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Plus size={14} />
+                    )}
                   </button>
                 </td>
               </tr>
@@ -265,5 +284,5 @@ export default function DefaultAttributesPage() {
         </div>
       )}
     </motion.div>
-  )
+  );
 }

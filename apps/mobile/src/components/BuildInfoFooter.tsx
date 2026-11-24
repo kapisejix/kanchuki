@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { Text, View } from 'react-native'
-import * as Clipboard from 'expo-clipboard'
-import { Check, Copy } from 'lucide-react-native'
-import { AnimatedPressable } from './AnimatedPressable'
-import { formatBuildInfo, formatBuildTime, getBuildInfo } from '../lib/build-info'
+import * as Clipboard from 'expo-clipboard';
+import { Check, Copy } from 'lucide-react-native';
+import { useState } from 'react';
+import { Text, View } from 'react-native';
+import { formatBuildInfo, formatBuildTime, getBuildInfo } from '../lib/build-info';
+import { AnimatedPressable } from './AnimatedPressable';
 
-const SAND_400 = '#B8B8B8'
+const SAND_400 = '#B8B8B8';
 
 /**
  * One-line build identity for the bottom of Settings.
@@ -19,16 +19,16 @@ const SAND_400 = '#B8B8B8'
  * Renders nothing if either half is missing rather than printing "undefined".
  */
 export function BuildInfoFooter() {
-  const [copied, setCopied] = useState(false)
-  const info = getBuildInfo()
-  const time = formatBuildTime(info.builtAt)
-  const detail = [info.channel, time].filter(Boolean).join(' · ')
+  const [copied, setCopied] = useState(false);
+  const info = getBuildInfo();
+  const time = formatBuildTime(info.builtAt);
+  const detail = [info.channel, time].filter(Boolean).join(' · ');
 
   const copy = async () => {
-    await Clipboard.setStringAsync(formatBuildInfo(info))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    await Clipboard.setStringAsync(formatBuildInfo(info));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <AnimatedPressable
@@ -48,5 +48,5 @@ export function BuildInfoFooter() {
         {copied ? 'Copied to clipboard' : 'Tap to copy build details'}
       </Text>
     </AnimatedPressable>
-  )
+  );
 }

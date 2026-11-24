@@ -2,17 +2,6 @@
 
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import {
-  BENCH_USD_TO_INR,
-  STUDIO_ENGINES,
-  STUDIO_ENGINE_INFO,
-  type StudioEngine,
-  studioEngineCost,
-} from '@kanchuki/shared';
-import { motion } from 'framer-motion';
-import { ArrowRight, Columns2, ImageOff, Loader2, Shirt, Upload, Video, Wand2 } from 'lucide-react';
-import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
-import {
   type Aud,
   BENCH_AGES,
   BENCH_GENDERS,
@@ -29,20 +18,31 @@ import {
   type Cls,
   FRAME,
   LIGHT,
-  PHOTO_STYLE,
-  type PhotoStyleId,
-  POSE,
   MODEL_STYLES,
   type ModelStyleId,
+  PHOTO_STYLE,
+  POSE,
   PRODUCT_STYLES,
+  type PhotoStyleId,
   type ProductStyleId,
-  resolveStylePrompt,
   type SceneId,
   audFor,
   benchPoseChoices,
   composeBenchPrompt,
   pickPose,
+  resolveStylePrompt,
 } from '@/lib/studio-effects';
+import {
+  BENCH_USD_TO_INR,
+  STUDIO_ENGINES,
+  STUDIO_ENGINE_INFO,
+  type StudioEngine,
+  studioEngineCost,
+} from '@kanchuki/shared';
+import { motion } from 'framer-motion';
+import { ArrowRight, Columns2, ImageOff, Loader2, Shirt, Upload, Video, Wand2 } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 import EffectsCatalog, { type UseEffectArgs } from './EffectsCatalog';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
@@ -195,7 +195,7 @@ const PROMO_PRESETS: {
     aspect: '9:16',
     seconds: 6,
     prompt:
-      "Camera starts close on the fabric detail and smoothly pulls back to reveal the full garment, one continuous move, no cut. Gentle ambient cloth motion. " +
+      'Camera starts close on the fabric detail and smoothly pulls back to reveal the full garment, one continuous move, no cut. Gentle ambient cloth motion. ' +
       PROMO_HOLD,
   },
   {
@@ -246,7 +246,11 @@ async function uploadToR2(file: File): Promise<string> {
   const presign = await fetch(`${API_URL}/v1/admin/background-images/upload-url`, {
     ...(await adminMutateOptions()),
     method: 'POST',
-    body: JSON.stringify({ content_type: file.type, filename: file.name, content_length: file.size }),
+    body: JSON.stringify({
+      content_type: file.type,
+      filename: file.name,
+      content_length: file.size,
+    }),
   });
   if (!presign.ok) throw new Error('Failed to get upload URL');
   const { data } = await presign.json();
@@ -299,7 +303,8 @@ export default function PhotoCleanupTestPage() {
 
   // On-model (V-Tone) generation state
   const [modelFile, setModelFile] = useState<File | null>(null);
-  const [tryOnCategory, setTryOnCategory] = useState<(typeof VTONE_CATEGORIES)[number]['value']>('one-pieces');
+  const [tryOnCategory, setTryOnCategory] =
+    useState<(typeof VTONE_CATEGORIES)[number]['value']>('one-pieces');
   const [tryOnBusy, setTryOnBusy] = useState(false);
   const [tryOnResults, setTryOnResults] = useState<TryOnResult[]>([]);
   // Uploaded model photo URL — reused across runs so the model photo is only
@@ -360,9 +365,9 @@ export default function PhotoCleanupTestPage() {
     'vton_kontext',
   );
   const [studioAbBusy, setStudioAbBusy] = useState(false);
-  const [studioAb, setStudioAb] = useState<
-    (StudioAbResponse & { productUrl: string }) | null
-  >(null);
+  const [studioAb, setStudioAb] = useState<(StudioAbResponse & { productUrl: string }) | null>(
+    null,
+  );
   const [benchBusy, setBenchBusy] = useState(false);
   const [benchResults, setBenchResults] = useState<BenchRow[]>([]);
 
@@ -448,7 +453,9 @@ export default function PhotoCleanupTestPage() {
     const pose = resolveBenchPose();
     const prompt = buildBenchPrompt(pose);
     if (rawProduct && !prompt.trim()) {
-      setError('Product Only needs a prompt — pick a PS style or type one in the custom prompt box.');
+      setError(
+        'Product Only needs a prompt — pick a PS style or type one in the custom prompt box.',
+      );
       setBenchBusy(false);
       return;
     }
@@ -717,7 +724,10 @@ export default function PhotoCleanupTestPage() {
           try {
             attempts += 1; // count only successful feed fetches — a flaky
             // network must not burn the whole window without polling.
-            const feed = await fetch(`${API_URL}/v1/admin/photo-cleanup/tryon-results`, adminGetOptions());
+            const feed = await fetch(
+              `${API_URL}/v1/admin/photo-cleanup/tryon-results`,
+              adminGetOptions(),
+            );
             const feedJson = await feed.json();
             const rows: TryOnResult[] = feedJson?.data ?? [];
             const mine = rows.find((r) => r.job_id === jobId);
@@ -731,7 +741,19 @@ export default function PhotoCleanupTestPage() {
               // 3 min cap — V-Tone cold-start (service autosleep) can exceed
               // this; leave the row visible as "running" via a synthetic entry.
               setTryOnResults((prev) => [
-                { id: jobId, job_id: jobId, status: 'failed', result_url: null, error: 'Timed out waiting for the result — it may still be running or the V-Tone service may be cold-starting. Check the API logs.', model_url: null, product_url: garmentUrl, category: tryOnCategory, duration_ms: null, ran_at: new Date().toISOString() },
+                {
+                  id: jobId,
+                  job_id: jobId,
+                  status: 'failed',
+                  result_url: null,
+                  error:
+                    'Timed out waiting for the result — it may still be running or the V-Tone service may be cold-starting. Check the API logs.',
+                  model_url: null,
+                  product_url: garmentUrl,
+                  category: tryOnCategory,
+                  duration_ms: null,
+                  ran_at: new Date().toISOString(),
+                },
                 ...prev,
               ]);
               tryOnPollRef.current = null;
@@ -759,7 +781,7 @@ export default function PhotoCleanupTestPage() {
 
   // Clear the poll timer on unmount
   useEffect(
-    () =>    () => {
+    () => () => {
       if (tryOnPollRef.current) clearTimeout(tryOnPollRef.current);
     },
     [],
@@ -928,7 +950,9 @@ export default function PhotoCleanupTestPage() {
             <select
               id="tryon-category"
               value={tryOnCategory}
-              onChange={(e) => setTryOnCategory(e.target.value as (typeof VTONE_CATEGORIES)[number]['value'])}
+              onChange={(e) =>
+                setTryOnCategory(e.target.value as (typeof VTONE_CATEGORIES)[number]['value'])
+              }
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
               {VTONE_CATEGORIES.map((c) => (
@@ -947,16 +971,19 @@ export default function PhotoCleanupTestPage() {
       <EffectsCatalog onUse={(a) => void applyEffectToBench(a)} />
 
       {/* AI Studio Shoot — FLUX Kontext / Gemini / two-step VTON (F-032) */}
-      <div id="studio-card" className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
+      <div
+        id="studio-card"
+        className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3"
+      >
         <div className="flex items-center gap-3">
           <Wand2 size={18} className="text-fuchsia-500" />
           <div>
             <p className="text-sm font-medium text-gray-800">AI Studio Shoot</p>
             <p className="text-xs text-gray-400">
-              Uses the “Product photo” above. Pick a scene, gender and age (the pose is chosen
-              for you), tick the models to compare, then Run batch — each runs the same{' '}
-              <code className="text-[10px]">generateStudioImage()</code> the retailer app runs, ~10–60s
-              per model. Cost figures are estimates.
+              Uses the “Product photo” above. Pick a scene, gender and age (the pose is chosen for
+              you), tick the models to compare, then Run batch — each runs the same{' '}
+              <code className="text-[10px]">generateStudioImage()</code> the retailer app runs,
+              ~10–60s per model. Cost figures are estimates.
             </p>
           </div>
         </div>
@@ -991,8 +1018,8 @@ export default function PhotoCleanupTestPage() {
           </div>
           <div className="flex flex-col gap-1 sm:col-span-4">
             <label htmlFor="bench-model-style" className="text-xs text-gray-500">
-              Model Only style (Indoor MI / Outdoor MO — fills the custom prompt box with the
-              style prompt; paste the prompt there while it is empty)
+              Model Only style (Indoor MI / Outdoor MO — fills the custom prompt box with the style
+              prompt; paste the prompt there while it is empty)
             </label>
             <select
               id="bench-model-style"
@@ -1127,7 +1154,14 @@ export default function PhotoCleanupTestPage() {
             >
               {BENCH_AGES.map((a) => (
                 <option key={a} value={a}>
-                  {{ kid: 'Kid (~4)', teen: 'Teen (~16)', adult: 'Adult (30s)', senior: 'Senior (60s+)' }[a]}
+                  {
+                    {
+                      kid: 'Kid (~4)',
+                      teen: 'Teen (~16)',
+                      adult: 'Adult (30s)',
+                      senior: 'Senior (60s+)',
+                    }[a]
+                  }
                 </option>
               ))}
             </select>
@@ -1219,9 +1253,9 @@ export default function PhotoCleanupTestPage() {
           </div>
           {!rawProduct && (
             <p className="text-[10px] text-gray-400">
-              Estimates from the price sheet in <code>docs/ai-studio/AI Cost Comparison.html</code> at ₹
-              {BENCH_USD_TO_INR}/USD. Real spend is billed by Fal / Google, and a two-step model is
-              several calls.
+              Estimates from the price sheet in <code>docs/ai-studio/AI Cost Comparison.html</code>{' '}
+              at ₹{BENCH_USD_TO_INR}/USD. Real spend is billed by Fal / Google, and a two-step model
+              is several calls.
             </p>
           )}
         </div>
@@ -1239,88 +1273,92 @@ export default function PhotoCleanupTestPage() {
             />
           </div>
         )}
-        {!rawProduct && (<>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {(
-            [
-              ['category', 'Category', 'Kurta'],
-              ['subtype', 'Subtype', 'Kurta Set'],
-              ['name', 'Product name', 'Georgette Anarkali Suit'],
-              ['primary_color', 'Primary colour', 'Maroon'],
-              ['fabric', 'Fabric', 'Georgette'],
-              ['pattern', 'Pattern', 'Floral'],
-            ] as const
-          ).map(([key, fieldLabel, placeholder]) => (
-            <div key={key} className="flex flex-col gap-1">
-              <label htmlFor={`studio-${key}`} className="text-xs text-gray-500">
-                {fieldLabel}
-              </label>
-              {key === 'category' ? (
-                // A dropdown, not free text: the garment class decides which
-                // poses are allowed (auto pose) and the half-body framing.
-                <select
-                  id="studio-category"
-                  value={studioGarment.category}
-                  onChange={(e) => setStudioGarment((g) => ({ ...g, category: e.target.value }))}
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
-                >
-                  <option value="">— pick garment type —</option>
-                  {(Object.keys(CLS) as Cls[])
-                    .filter((k) => k !== 'unstitched')
-                    .map((k) => (
-                      <option key={k} value={CLS[k]}>
-                        {CLS[k]}
-                      </option>
-                    ))}
-                </select>
-              ) : (
-                <input
-                  id={`studio-${key}`}
-                  value={studioGarment[key]}
-                  onChange={(e) => setStudioGarment((g) => ({ ...g, [key]: e.target.value }))}
-                  placeholder={placeholder}
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
-                />
-              )}
+        {!rawProduct && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {(
+                [
+                  ['category', 'Category', 'Kurta'],
+                  ['subtype', 'Subtype', 'Kurta Set'],
+                  ['name', 'Product name', 'Georgette Anarkali Suit'],
+                  ['primary_color', 'Primary colour', 'Maroon'],
+                  ['fabric', 'Fabric', 'Georgette'],
+                  ['pattern', 'Pattern', 'Floral'],
+                ] as const
+              ).map(([key, fieldLabel, placeholder]) => (
+                <div key={key} className="flex flex-col gap-1">
+                  <label htmlFor={`studio-${key}`} className="text-xs text-gray-500">
+                    {fieldLabel}
+                  </label>
+                  {key === 'category' ? (
+                    // A dropdown, not free text: the garment class decides which
+                    // poses are allowed (auto pose) and the half-body framing.
+                    <select
+                      id="studio-category"
+                      value={studioGarment.category}
+                      onChange={(e) =>
+                        setStudioGarment((g) => ({ ...g, category: e.target.value }))
+                      }
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+                    >
+                      <option value="">— pick garment type —</option>
+                      {(Object.keys(CLS) as Cls[])
+                        .filter((k) => k !== 'unstitched')
+                        .map((k) => (
+                          <option key={k} value={CLS[k]}>
+                            {CLS[k]}
+                          </option>
+                        ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`studio-${key}`}
+                      value={studioGarment[key]}
+                      onChange={(e) => setStudioGarment((g) => ({ ...g, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <p className="text-[10px] text-gray-400">
-          Garment identity — how the product row is described to the model. Leave blank and the
-          garment type is never named, which is how a salwar gets rendered as a dhoti. Real
-          products fill these from the AI tagger, so fill them to test what production sends.
-        </p>
-        </>)}
+            <p className="text-[10px] text-gray-400">
+              Garment identity — how the product row is described to the model. Leave blank and the
+              garment type is never named, which is how a salwar gets rendered as a dhoti. Real
+              products fill these from the AI tagger, so fill them to test what production sends.
+            </p>
+          </>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {!rawProduct && (
-          <div className="flex flex-col gap-1">
-            <label htmlFor="studio-length" className="text-xs text-gray-500">
-              Garment length, shoulder→hem (cm)
-            </label>
-            <input
-              id="studio-length"
-              type="number"
-              min={20}
-              max={200}
-              value={studioLengthCm}
-              onChange={(e) => setStudioLengthCm(e.target.value)}
-              placeholder="105"
-              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
-            />
-            <label htmlFor="studio-model-height" className="text-xs text-gray-500 mt-1">
-              Model height (cm) — blank = default for demographic
-            </label>
-            <input
-              id="studio-model-height"
-              type="number"
-              min={90}
-              max={210}
-              value={studioModelHeightCm}
-              onChange={(e) => setStudioModelHeightCm(e.target.value)}
-              placeholder="165"
-              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
-            />
-          </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="studio-length" className="text-xs text-gray-500">
+                Garment length, shoulder→hem (cm)
+              </label>
+              <input
+                id="studio-length"
+                type="number"
+                min={20}
+                max={200}
+                value={studioLengthCm}
+                onChange={(e) => setStudioLengthCm(e.target.value)}
+                placeholder="105"
+                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+              />
+              <label htmlFor="studio-model-height" className="text-xs text-gray-500 mt-1">
+                Model height (cm) — blank = default for demographic
+              </label>
+              <input
+                id="studio-model-height"
+                type="number"
+                min={90}
+                max={210}
+                value={studioModelHeightCm}
+                onChange={(e) => setStudioModelHeightCm(e.target.value)}
+                placeholder="165"
+                className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+              />
+            </div>
           )}
           <label className="flex items-start gap-2 text-xs text-gray-600 sm:col-span-1">
             <input
@@ -1348,14 +1386,14 @@ export default function PhotoCleanupTestPage() {
             className="mt-0.5"
           />
           <span>
-            Product Only — send the custom prompt below exactly as typed (no person, no guard
-            text). Picking a PS style fills the box so you can edit it. Single-shot engines only.
+            Product Only — send the custom prompt below exactly as typed (no person, no guard text).
+            Picking a PS style fills the box so you can edit it. Single-shot engines only.
           </span>
         </label>
         <div className="flex flex-col gap-1">
           <label htmlFor="studio-prompt" className="text-xs text-gray-500">
-            Custom prompt (optional — replaces the scene / gender / age / pose prompt; paste a formula from{' '}
-            <code className="text-[10px]">AI Models and Scenes.html</code>)
+            Custom prompt (optional — replaces the scene / gender / age / pose prompt; paste a
+            formula from <code className="text-[10px]">AI Models and Scenes.html</code>)
           </label>
           <textarea
             id="studio-prompt"
@@ -1474,7 +1512,9 @@ export default function PhotoCleanupTestPage() {
                               alt={s.label}
                               className="w-20 h-24 object-cover rounded-lg bg-gray-100 hover:opacity-90 transition-opacity"
                             />
-                            <span className="text-[9px] leading-tight text-gray-400">{s.label}</span>
+                            <span className="text-[9px] leading-tight text-gray-400">
+                              {s.label}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -1748,7 +1788,11 @@ export default function PhotoCleanupTestPage() {
                     onClick={() => setLightbox({ url: r.productUrl, label: 'Input' })}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element -- R2 result URLs render reliably as a plain img; next/image was showing broken tiles here */}
-                    <img src={r.productUrl} alt="input" className="absolute inset-0 w-full h-full object-cover" />
+                    <img
+                      src={r.productUrl}
+                      alt="input"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
                   </button>
                   <ArrowRight size={14} className="text-gray-400 shrink-0" />
                   <div className="flex-1 h-40 rounded-lg overflow-hidden bg-black">
@@ -1886,9 +1930,17 @@ export default function PhotoCleanupTestPage() {
                       onClick={() => generateOnModel(r.resultUrl)}
                       disabled={tryOnBusy || !modelFile}
                       className="flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-medium disabled:opacity-40 transition-colors"
-                      title={modelFile ? 'Drape this result onto the model photo' : 'Pick a model photo first'}
+                      title={
+                        modelFile
+                          ? 'Drape this result onto the model photo'
+                          : 'Pick a model photo first'
+                      }
                     >
-                      {tryOnBusy ? <Loader2 size={11} className="animate-spin" /> : <Shirt size={11} />}
+                      {tryOnBusy ? (
+                        <Loader2 size={11} className="animate-spin" />
+                      ) : (
+                        <Shirt size={11} />
+                      )}
                       On model
                     </button>
                   </span>
@@ -1919,13 +1971,23 @@ export default function PhotoCleanupTestPage() {
                     type="button"
                     className="aspect-square relative w-full bg-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity"
                     title="Click to enlarge"
-                    onClick={() => setLightbox({ url: r.result_url as string, label: 'On-model result' })}
+                    onClick={() =>
+                      setLightbox({ url: r.result_url as string, label: 'On-model result' })
+                    }
                   >
-                    <Image src={r.result_url} alt="on-model result" fill className="object-cover" unoptimized />
+                    <Image
+                      src={r.result_url}
+                      alt="on-model result"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
                   </button>
                 ) : (
                   <div className="aspect-square flex items-center justify-center bg-red-50/60 p-4">
-                    <p className="text-xs text-red-600 text-center">{r.error ?? 'On-model generation failed'}</p>
+                    <p className="text-xs text-red-600 text-center">
+                      {r.error ?? 'On-model generation failed'}
+                    </p>
                   </div>
                 )}
                 <div className="px-3 py-2 flex items-center justify-between text-xs text-gray-500">
@@ -2005,7 +2067,9 @@ function CropPicker({
   const imgRef = useRef<HTMLImageElement>(null);
   const [previewUrl] = useState(() => URL.createObjectURL(file));
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
-  const [dragRect, setDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [dragRect, setDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(
+    null,
+  );
 
   const toNatural = (clientX: number, clientY: number) => {
     const el = imgRef.current;
@@ -2038,14 +2102,21 @@ function CropPicker({
   };
   const onUp = () => {
     if (dragRect && dragRect.w > 4 && dragRect.h > 4) {
-      onChange({ x1: dragRect.x, y1: dragRect.y, x2: dragRect.x + dragRect.w, y2: dragRect.y + dragRect.h });
+      onChange({
+        x1: dragRect.x,
+        y1: dragRect.y,
+        x2: dragRect.x + dragRect.w,
+        y2: dragRect.y + dragRect.h,
+      });
     }
     setDragStart(null);
     setDragRect(null);
   };
 
   const el = imgRef.current;
-  const overlayRect = dragRect ?? (crop ? { x: crop.x1, y: crop.y1, w: crop.x2 - crop.x1, h: crop.y2 - crop.y1 } : null);
+  const overlayRect =
+    dragRect ??
+    (crop ? { x: crop.x1, y: crop.y1, w: crop.x2 - crop.x1, h: crop.y2 - crop.y1 } : null);
   const overlayStyle =
     overlayRect && el && el.naturalWidth > 0
       ? {
@@ -2060,8 +2131,8 @@ function CropPicker({
     <div className="space-y-2">
       <p className="text-sm font-medium text-gray-800">Crop before background removal (optional)</p>
       <p className="text-xs text-gray-400">
-        Drag on the photo to isolate the subject — fixes a second garment/prop or busy backdrop getting
-        kept as “foreground” by mistake.
+        Drag on the photo to isolate the subject — fixes a second garment/prop or busy backdrop
+        getting kept as “foreground” by mistake.
       </p>
       <div
         className="relative inline-block max-w-full cursor-crosshair select-none"
@@ -2079,7 +2150,10 @@ function CropPicker({
           className="max-w-full max-h-64 block rounded-lg border border-gray-200"
         />
         {overlayStyle && (
-          <div className="absolute border-2 border-cyan-400 bg-cyan-400/20 pointer-events-none" style={overlayStyle} />
+          <div
+            className="absolute border-2 border-cyan-400 bg-cyan-400/20 pointer-events-none"
+            style={overlayStyle}
+          />
         )}
       </div>
       {crop && (

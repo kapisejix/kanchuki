@@ -1,3 +1,4 @@
+import * as LegacyFileSystem from 'expo-file-system/legacy';
 /**
  * In-store try-on session orchestrator (F-044 R2 T3). Plain async module — no
  * React — so it is testable like mutation-queue.ts.
@@ -6,7 +7,6 @@
  * photo URI is ever logged.
  */
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { productApi } from './api/products';
 import { compressImageForUpload } from './compress-image';
 import { pollWithBackoff } from './polling';

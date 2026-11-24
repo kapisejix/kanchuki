@@ -15,7 +15,10 @@ type WindowLike = {
   navigator?: { standalone?: boolean };
 };
 
-type StorageLike = { getItem: (k: string) => string | null; setItem: (k: string, v: string) => void };
+type StorageLike = {
+  getItem: (k: string) => string | null;
+  setItem: (k: string, v: string) => void;
+};
 
 function fakeStorage(seed: Record<string, string> = {}): StorageLike {
   const map = new Map(Object.entries(seed));
@@ -30,9 +33,7 @@ describe('shouldOfferInstall', () => {
 
   it('offers install when a prompt was captured and nothing else blocks it', async () => {
     const { shouldOfferInstall } = await import('../install-prompt');
-    expect(
-      shouldOfferInstall({ event, standalone: false, dismissed: false }),
-    ).toBe(true);
+    expect(shouldOfferInstall({ event, standalone: false, dismissed: false })).toBe(true);
   });
 
   it('never offers when no beforeinstallprompt was captured', async () => {
@@ -147,9 +148,7 @@ describe('beforeinstallprompt capture', () => {
   }
 
   it('prevents the default mini-infobar and holds the event for later', async () => {
-    const { captureInstallPrompt, getDeferredInstallPrompt } = await import(
-      '../install-prompt'
-    );
+    const { captureInstallPrompt, getDeferredInstallPrompt } = await import('../install-prompt');
     const { event, preventDefault } = fakePromptEvent();
 
     expect(getDeferredInstallPrompt()).toBeNull();
@@ -162,9 +161,7 @@ describe('beforeinstallprompt capture', () => {
   });
 
   it('notifies subscribers and stops after unsubscribe', async () => {
-    const { captureInstallPrompt, subscribeInstallPrompt } = await import(
-      '../install-prompt'
-    );
+    const { captureInstallPrompt, subscribeInstallPrompt } = await import('../install-prompt');
     const listener = vi.fn();
     const unsubscribe = subscribeInstallPrompt(listener);
 
@@ -179,9 +176,7 @@ describe('beforeinstallprompt capture', () => {
   });
 
   it('keeps the most recent event when the browser fires it more than once', async () => {
-    const { captureInstallPrompt, getDeferredInstallPrompt } = await import(
-      '../install-prompt'
-    );
+    const { captureInstallPrompt, getDeferredInstallPrompt } = await import('../install-prompt');
     const first = fakePromptEvent();
     const second = fakePromptEvent();
 

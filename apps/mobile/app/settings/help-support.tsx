@@ -2,7 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ChevronLeft, LifeBuoy } from 'lucide-react-native';
 import { useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { KeyboardScreen } from '../../src/components/KeyboardScreen';
@@ -30,7 +38,11 @@ const STATUS_STYLE: Record<SupportTicket['status'], { label: string; bg: string;
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 function TicketRow({ t }: { t: SupportTicket }) {
@@ -45,9 +57,7 @@ function TicketRow({ t }: { t: SupportTicket }) {
           <Text className={`text-[11px] font-semibold ${s.text}`}>{s.label}</Text>
         </View>
       </View>
-      {t.note ? (
-        <Text className="text-xs text-spaceCadet-900 mt-2 leading-5">{t.note}</Text>
-      ) : null}
+      {t.note ? <Text className="text-xs text-spaceCadet-900 mt-2 leading-5">{t.note}</Text> : null}
       <Text className="text-[11px] text-heliotrope-500 mt-2">
         {formatDate(t.created_at)}
         {t.requires_visit ? ' · visit requested' : ''}
@@ -79,7 +89,8 @@ export default function HelpSupportScreen() {
   const tickets = data?.data ?? [];
 
   const create = useMutation({
-    mutationFn: () => ticketApi.create({ ticket_type: type, note: note.trim(), requires_visit: needsVisit }),
+    mutationFn: () =>
+      ticketApi.create({ ticket_type: type, note: note.trim(), requires_visit: needsVisit }),
     onSuccess: () => {
       setNote('');
       setNeedsVisit(false);
@@ -119,7 +130,9 @@ export default function HelpSupportScreen() {
           className="flex-1 px-4 pt-4"
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: screenPaddingBottom, gap: 16 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           <View className="bg-white rounded-2xl p-5 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-1">
@@ -127,8 +140,8 @@ export default function HelpSupportScreen() {
               <Text className="text-base font-semibold text-spaceCadet-900">Raise a ticket</Text>
             </View>
             <Text className="text-xs text-heliotrope-500 mb-3 leading-5">
-              Tell us what you need. A Kanchuki team member will pick it up. Raising a ticket does not
-              give anyone access to your account — you approve that separately.
+              Tell us what you need. A Kanchuki team member will pick it up. Raising a ticket does
+              not give anyone access to your account — you approve that separately.
             </Text>
 
             <View className="flex-row flex-wrap gap-2 mb-3">
@@ -141,10 +154,14 @@ export default function HelpSupportScreen() {
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     className={`px-3.5 py-2 rounded-full border ${
-                      active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
+                      active
+                        ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                        : 'bg-lavender-50 border-lavender-200'
                     }`}
                   >
-                    <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
+                    <Text
+                      className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                    >
                       {t.label}
                     </Text>
                   </AnimatedPressable>
@@ -192,9 +209,7 @@ export default function HelpSupportScreen() {
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2">
-              My tickets
-            </Text>
+            <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2">My tickets</Text>
             {isLoading ? (
               <ActivityIndicator color="#6B4773" className="py-6" />
             ) : tickets.length === 0 ? (

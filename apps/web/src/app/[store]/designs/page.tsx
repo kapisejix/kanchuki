@@ -2,7 +2,7 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { DesignsBrowse } from './DesignsBrowse';
-import { fetchStoreProfile, type StoreProfile } from './lib';
+import { type StoreProfile, fetchStoreProfile } from './lib';
 import type { BrowseResponse } from './types';
 
 interface Props {
@@ -17,10 +17,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
 // Store-scoped feed: global rows + the store's own, filtered by an optional
 // ?category= slug. `ref` (a product id) is provenance only — the feed itself
 // is store-scoped, not product-scoped.
-async function fetchBrowse(
-  store: string,
-  category?: string,
-): Promise<BrowseResponse | null> {
+async function fetchBrowse(store: string, category?: string): Promise<BrowseResponse | null> {
   const qs = new URLSearchParams({ store });
   if (category) qs.set('category', category);
   try {
@@ -70,5 +67,12 @@ export default async function DesignsBrowsePage({ params, searchParams }: Props)
   ]);
   if (!profile || !browse) notFound();
 
-  return <DesignsBrowse store={store} profile={profile} initialData={browse} initialCategory={category ?? null} />;
+  return (
+    <DesignsBrowse
+      store={store}
+      profile={profile}
+      initialData={browse}
+      initialCategory={category ?? null}
+    />
+  );
 }

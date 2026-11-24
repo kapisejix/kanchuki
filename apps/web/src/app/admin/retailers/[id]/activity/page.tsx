@@ -1,37 +1,37 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  ArrowLeft,
   Activity,
-  Store,
-  Shield,
-  User,
-  Settings,
-  CreditCard,
-  Cpu,
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Cpu,
+  CreditCard,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+  Settings,
+  Shield,
+  Store,
+  User,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type LogEntry = {
-  id: string
-  actor_id: string | null
-  actor_type: string | null
-  action: string
-  resource_type: string
-  resource_id: string | null
-  metadata: Record<string, unknown> | null
-  ip_address: string | null
-  created_at: string
-}
+  id: string;
+  actor_id: string | null;
+  actor_type: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  metadata: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+};
 
 const ACTION_ICONS: Record<string, LucideIcon> = {
   CREATE: User,
@@ -42,110 +42,114 @@ const ACTION_ICONS: Record<string, LucideIcon> = {
   CHANGE_PLAN: CreditCard,
   LOGIN: Shield,
   QUERY: Cpu,
-}
+};
 
 function actionColor(action: string): string {
-  if (action.includes('DELETE') || action.includes('BULK')) return 'text-red-600 bg-red-50 border-red-200'
-  if (action.includes('CREATE')) return 'text-green-600 bg-green-50 border-green-200'
-  if (action.includes('UPDATE') || action.includes('CHANGE') || action.includes('EXTEND')) return 'text-amber-600 bg-amber-50 border-amber-200'
-  if (action === 'LOGIN') return 'text-blue-600 bg-blue-50 border-blue-200'
-  return 'text-gray-600 bg-gray-50 border-gray-200'
+  if (action.includes('DELETE') || action.includes('BULK'))
+    return 'text-red-600 bg-red-50 border-red-200';
+  if (action.includes('CREATE')) return 'text-green-600 bg-green-50 border-green-200';
+  if (action.includes('UPDATE') || action.includes('CHANGE') || action.includes('EXTEND'))
+    return 'text-amber-600 bg-amber-50 border-amber-200';
+  if (action === 'LOGIN') return 'text-blue-600 bg-blue-50 border-blue-200';
+  return 'text-gray-600 bg-gray-50 border-gray-200';
 }
 
 function formatAction(action: string) {
-  return action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return action.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export default function RetailerActivityPage() {
-  const params = useParams()
-  const id = params.id as string
-  const [logs, setLogs] = useState<LogEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [total, setTotal] = useState(0)
-  const [retailerName, setRetailerName] = useState('')
-  const [cursorHistory, setCursorHistory] = useState<string[]>([])
+  const params = useParams();
+  const id = params.id as string;
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [retailerName, setRetailerName] = useState('');
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
 
   useEffect(() => {
     async function load() {
       try {
         // Load retailer name
-        const retailerRes = await fetch(`${API_URL}/v1/admin/retailers/${id}`, adminGetOptions())
+        const retailerRes = await fetch(`${API_URL}/v1/admin/retailers/${id}`, adminGetOptions());
         if (retailerRes.ok) {
-          const retailerJson = await retailerRes.json()
-          setRetailerName(retailerJson.data.shop_name)
+          const retailerJson = await retailerRes.json();
+          setRetailerName(retailerJson.data.shop_name);
         }
 
         // Load activity
-        const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?limit=30`, adminGetOptions())
-        const json = await res.json()
+        const res = await fetch(
+          `${API_URL}/v1/admin/retailers/${id}/activity?limit=30`,
+          adminGetOptions(),
+        );
+        const json = await res.json();
         // Guard: a 500 from the API returns { error: {...} } with no .data /
         // .pagination. Writing undefined into logs used to crash the render
         // on `logs.length` — keep the last successful list instead.
         if (!res.ok || !Array.isArray(json?.data)) {
-          setHasMore(false)
-          setCursor(null)
-          return
+          setHasMore(false);
+          setCursor(null);
+          return;
         }
-        setLogs(json.data)
-        setHasMore(json.pagination?.has_more ?? false)
-        setCursor(json.pagination?.cursor ?? null)
-        setTotal(json.pagination?.total ?? 0)
+        setLogs(json.data);
+        setHasMore(json.pagination?.has_more ?? false);
+        setCursor(json.pagination?.cursor ?? null);
+        setTotal(json.pagination?.total ?? 0);
       } catch {
         // ignore
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    load()
-  }, [id])
+    load();
+  }, [id]);
 
   const loadMore = async (cursorVal?: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const params = new URLSearchParams()
-      params.set('limit', '30')
-      if (cursorVal) params.set('cursor', cursorVal)
-      const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?${params}`, adminGetOptions())
-      const json = await res.json()
+      const params = new URLSearchParams();
+      params.set('limit', '30');
+      if (cursorVal) params.set('cursor', cursorVal);
+      const res = await fetch(
+        `${API_URL}/v1/admin/retailers/${id}/activity?${params}`,
+        adminGetOptions(),
+      );
+      const json = await res.json();
       // Guard: same 500-with-no-data shape as the initial load — stop paginating.
       if (!res.ok || !Array.isArray(json?.data)) {
-        setHasMore(false)
-        return
+        setHasMore(false);
+        return;
       }
-      setLogs(json.data)
-      setHasMore(json.pagination?.has_more ?? false)
-      setCursor(json.pagination?.cursor ?? null)
+      setLogs(json.data);
+      setHasMore(json.pagination?.has_more ?? false);
+      setCursor(json.pagination?.cursor ?? null);
     } catch {
       // Network/parse failure (DB down) — keep the current list, stop paginating.
-      setHasMore(false)
+      setHasMore(false);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleNext = () => {
     if (cursor) {
-      setCursorHistory((prev) => [...prev, cursor])
-      loadMore(cursor)
+      setCursorHistory((prev) => [...prev, cursor]);
+      loadMore(cursor);
     }
-  }
+  };
 
   const handlePrev = () => {
-    const prev = cursorHistory[cursorHistory.length - 1]
+    const prev = cursorHistory[cursorHistory.length - 1];
     if (prev) {
-      setCursorHistory((prevHistory) => prevHistory.slice(0, -1))
-      loadMore(prev)
+      setCursorHistory((prevHistory) => prevHistory.slice(0, -1));
+      loadMore(prev);
     }
-  }
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6 max-w-4xl"
-    >
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 max-w-4xl">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link
@@ -162,7 +166,10 @@ export default function RetailerActivityPage() {
             <h1 className="text-xl font-bold text-gray-900">Activity Timeline</h1>
             <span className="text-xs text-gray-400 font-mono">#{total} entries</span>
           </div>
-          <Link href={`/admin/retailers/${id}`} className="text-sm text-ink-600 hover:text-ink-700 font-medium">
+          <Link
+            href={`/admin/retailers/${id}`}
+            className="text-sm text-ink-600 hover:text-ink-700 font-medium"
+          >
             {retailerName || 'Retailer'} →
           </Link>
         </div>
@@ -186,12 +193,14 @@ export default function RetailerActivityPage() {
           <div className="text-center py-16">
             <Activity size={40} className="mx-auto mb-3 text-gray-300" />
             <p className="text-sm font-medium text-gray-500">No activity logged yet</p>
-            <p className="text-xs text-gray-400 mt-1">Activities will appear here as the retailer uses the platform</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Activities will appear here as the retailer uses the platform
+            </p>
           </div>
         ) : (
           <div>
             {logs.map((log, i) => {
-              const Icon = ACTION_ICONS[log.action] ?? Activity
+              const Icon = ACTION_ICONS[log.action] ?? Activity;
               return (
                 <motion.div
                   key={log.id}
@@ -205,27 +214,37 @@ export default function RetailerActivityPage() {
                     <div className={`p-1.5 rounded-lg border ${actionColor(log.action)}`}>
                       <Icon size={12} />
                     </div>
-                    {i < logs.length - 1 && <div className="w-px h-full bg-gray-100 min-h-[24px]" />}
+                    {i < logs.length - 1 && (
+                      <div className="w-px h-full bg-gray-100 min-h-[24px]" />
+                    )}
                   </div>
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-md border ${actionColor(log.action)}`}>
+                      <span
+                        className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-md border ${actionColor(log.action)}`}
+                      >
                         {formatAction(log.action)}
                       </span>
                       <span className="text-xs text-gray-400">{log.resource_type}</span>
                       {log.resource_id && (
-                        <span className="text-[10px] text-gray-300 font-mono">#{log.resource_id.slice(0, 8)}</span>
+                        <span className="text-[10px] text-gray-300 font-mono">
+                          #{log.resource_id.slice(0, 8)}
+                        </span>
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {log.actor_id ? `by ${log.actor_id.slice(0, 8)}` : 'by system'}
                       {log.actor_type ? ` (${log.actor_type})` : ''}
-                      {log.ip_address && <span className="ml-2 text-gray-300">· {log.ip_address}</span>}
+                      {log.ip_address && (
+                        <span className="ml-2 text-gray-300">· {log.ip_address}</span>
+                      )}
                     </p>
                     {log.metadata && (
                       <details className="mt-1">
-                        <summary className="text-[10px] text-gray-400 cursor-pointer hover:text-gray-600">Details</summary>
+                        <summary className="text-[10px] text-gray-400 cursor-pointer hover:text-gray-600">
+                          Details
+                        </summary>
                         <pre className="mt-1 text-[10px] text-gray-500 bg-gray-50 rounded-lg p-2 overflow-x-auto">
                           {JSON.stringify(log.metadata, null, 2)}
                         </pre>
@@ -235,17 +254,19 @@ export default function RetailerActivityPage() {
                   <div className="text-right shrink-0">
                     <div className="text-xs text-gray-400 whitespace-nowrap">
                       {new Date(log.created_at).toLocaleDateString('en-IN', {
-                        day: '2-digit', month: 'short',
+                        day: '2-digit',
+                        month: 'short',
                       })}
                     </div>
                     <div className="text-[10px] text-gray-300">
                       {new Date(log.created_at).toLocaleTimeString('en-IN', {
-                        hour: '2-digit', minute: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
                       })}
                     </div>
                   </div>
                 </motion.div>
-              )
+              );
             })}
           </div>
         )}
@@ -262,7 +283,9 @@ export default function RetailerActivityPage() {
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="text-xs text-gray-400 font-mono">Page {cursorHistory.length + 1}</span>
+              <span className="text-xs text-gray-400 font-mono">
+                Page {cursorHistory.length + 1}
+              </span>
               <button
                 onClick={handleNext}
                 disabled={!hasMore}
@@ -275,5 +298,5 @@ export default function RetailerActivityPage() {
         )}
       </div>
     </motion.div>
-  )
+  );
 }

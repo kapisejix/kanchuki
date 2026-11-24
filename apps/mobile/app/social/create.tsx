@@ -10,7 +10,6 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import {
   ActivityIndicator,
   Image,
@@ -22,10 +21,11 @@ import {
   View,
 } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
-import { ScreenHeader } from '../../src/components/ScreenHeader';
-import { ReportAiContent } from '../../src/components/ReportAiContent';
 import { BrandIcon } from '../../src/components/BrandIcon';
 import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { ReportAiContent } from '../../src/components/ReportAiContent';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import {
   CAROUSEL_CAP,
   ItemMediaStrip,
@@ -40,8 +40,8 @@ import {
   collectionProductsToCarouselItems,
   firstCollectionProductPhotoUrl,
 } from '../../src/components/social/collection-carousel';
-import type { ComposeMedia, ComposeProduct } from '../../src/components/social/types';
 import { previewTargets } from '../../src/components/social/post-preview';
+import type { ComposeMedia, ComposeProduct } from '../../src/components/social/types';
 import {
   collectionApi,
   productApi,

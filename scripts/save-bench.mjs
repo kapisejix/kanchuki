@@ -103,7 +103,9 @@ for (const row of rows) {
   });
   seen.add(key);
   added += 1;
-  console.log(`${image ? 'saved ' : 'no image'} ${row.engine} → ${image ?? row.error ?? imageError}`);
+  console.log(
+    `${image ? 'saved ' : 'no image'} ${row.engine} → ${image ?? row.error ?? imageError}`,
+  );
 }
 
 writeFileSync(dataJson, `${JSON.stringify(saved, null, 2)}\n`);

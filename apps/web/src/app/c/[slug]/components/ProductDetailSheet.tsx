@@ -1,27 +1,45 @@
-'use client'
+'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, Play, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star, Eye } from 'lucide-react'
-import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
-import { formatPriceRange, resolveFashionColor } from '@kanchuki/shared'
-import { productToCartItem, saveCart, loadCart } from '../lib/cart'
-import { type SocialProof, socialProofChip } from '../lib/socialProof'
-import { Product360Viewer } from './Product360Viewer'
-import { ReviewList } from './ReviewList'
-import { FabricGlossary } from './FabricGlossary'
-import { trackRecentlyViewed } from '../lib/recentlyViewed'
-import { recordInterest } from '@/lib/interests'
-import { recordCurrentVisitProduct } from '../lib/currentVisit'
-import { trackPassportEvent } from '@/lib/passport-client'
-import { NotifyWhenAvailable } from './NotifyWhenAvailable'
-import { SavedSize } from './SavedSize'
-import { DesignGallery } from './DesignGallery'
-import { ShowcaseDesigns } from './ShowcaseDesigns'
-import { FamilyProfiles } from './FamilyProfiles'
-import { CustomerConsentModal } from './CustomerConsentModal'
-import { TryOnSheet } from './TryOnSheet'
+import { recordInterest } from '@/lib/interests';
+import { trackPassportEvent } from '@/lib/passport-client';
+import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanchuki/shared';
+import { formatPriceRange, resolveFashionColor } from '@kanchuki/shared';
+import {
+  ArrowLeft,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Heart,
+  Info,
+  MapPin,
+  MessageCircle,
+  Palette,
+  Play,
+  RotateCw,
+  Share2,
+  ShoppingCart,
+  Sparkles,
+  Star,
+  X,
+} from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { loadCart, productToCartItem, saveCart } from '../lib/cart';
+import { recordCurrentVisitProduct } from '../lib/currentVisit';
+import { trackRecentlyViewed } from '../lib/recentlyViewed';
+import { type SocialProof, socialProofChip } from '../lib/socialProof';
+import { CustomerConsentModal } from './CustomerConsentModal';
+import { DesignGallery } from './DesignGallery';
+import { FabricGlossary } from './FabricGlossary';
+import { FamilyProfiles } from './FamilyProfiles';
+import { NotifyWhenAvailable } from './NotifyWhenAvailable';
+import { Product360Viewer } from './Product360Viewer';
+import { ReviewList } from './ReviewList';
+import { SavedSize } from './SavedSize';
+import { ShowcaseDesigns } from './ShowcaseDesigns';
+import { TryOnSheet } from './TryOnSheet';
 
 // F-040: the Try-On button is driven by the product payload's
 // `try_on_enabled` (derived server-side from the store's plan), not a client
@@ -29,40 +47,40 @@ import { TryOnSheet } from './TryOnSheet'
 // in the Plan Feature Matrix, so nothing shows on launch day.
 
 // Family-sizing card is parked, not deleted — flip to re-enable.
-const SHOW_FAMILY_SIZING = false
+const SHOW_FAMILY_SIZING = false;
 
 // Alias map lookup (shared with mobile) first; anything unmapped is checked
 // against the browser's own color parser before falling back to neutral grey.
 function swatchColor(name: string): string {
-  const aliased = resolveFashionColor(name)
-  if (aliased !== '#d1d5db') return aliased
+  const aliased = resolveFashionColor(name);
+  if (aliased !== '#d1d5db') return aliased;
   if (typeof window !== 'undefined') {
-    const key = name.trim().toLowerCase()
-    const probe = new Option().style
-    probe.color = key
-    if (probe.color !== '') return key
+    const key = name.trim().toLowerCase();
+    const probe = new Option().style;
+    probe.color = key;
+    if (probe.color !== '') return key;
   }
-  return '#d1d5db' // unresolvable color name — neutral grey rather than black
+  return '#d1d5db'; // unresolvable color name — neutral grey rather than black
 }
 
 interface Props {
-  product: PublicProduct
-  retailer: PublicCollection['retailer']
-  collectionTitle: string
-  isFavorited: boolean
-  slug: string
+  product: PublicProduct;
+  retailer: PublicCollection['retailer'];
+  collectionTitle: string;
+  isFavorited: boolean;
+  slug: string;
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
-  store?: string | null
+  store?: string | null;
   // F-037 §2 row 5 social-proof chip counts, already fetched by the parent grid.
   // Passed down rather than refetched: the map is store-wide, so the entry for
   // whichever product is open is already in memory — opening a product costs no
   // extra request.
-  socialProof?: SocialProof | null
-  onFavorite: (id: string) => void
-  onClose: () => void
+  socialProof?: SocialProof | null;
+  onFavorite: (id: string) => void;
+  onClose: () => void;
   // Open another product in this same sheet (used by the Related Products
   // strip — in-place swap, same as AIStylist's onProductTap).
-  onSelectProduct?: (product: PublicProduct) => void
+  onSelectProduct?: (product: PublicProduct) => void;
 }
 
 export function ProductDetailSheet({
@@ -77,50 +95,50 @@ export function ProductDetailSheet({
   onClose,
   onSelectProduct,
 }: Props) {
-  const router = useRouter()
+  const router = useRouter();
   // Real social proof for this product, if the store has a real count for it.
-  const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null)
-  const [photoIndex, setPhotoIndex] = useState(0)
-  const [variantPhotoUrl, setVariantPhotoUrl] = useState<string | null>(null)
-  const [variantColor, setVariantColor] = useState<string | null>(null)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-  const [showSpinModal, setShowSpinModal] = useState(false)
-  const [showConsentModal, setShowConsentModal] = useState(false)
-  const [showTryOn, setShowTryOn] = useState(false)
+  const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [variantPhotoUrl, setVariantPhotoUrl] = useState<string | null>(null);
+  const [variantColor, setVariantColor] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showSpinModal, setShowSpinModal] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showTryOn, setShowTryOn] = useState(false);
 
   // Related products — same category, same retailer, excluding current
-  const [relatedProducts, setRelatedProducts] = useState<PublicProduct[]>([])
+  const [relatedProducts, setRelatedProducts] = useState<PublicProduct[]>([]);
 
   // Grid/card view only has the thin summary — photos, spin frames, variants,
   // fabric, and tags are fetched here on open instead of shipping with every
   // product in the list response.
-  const [detail, setDetail] = useState<PublicProductDetail | null>(null)
+  const [detail, setDetail] = useState<PublicProductDetail | null>(null);
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     fetch(`/api/products/${product.id}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { data: PublicProductDetail } | null) => {
-        if (!cancelled && json) setDetail(json.data)
+        if (!cancelled && json) setDetail(json.data);
       })
-      .catch(() => undefined)
+      .catch(() => undefined);
     // Fetch related products in parallel
     fetch(`/api/products/${product.id}/related`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { data: PublicProduct[] } | null) => {
-        if (!cancelled && json?.data) setRelatedProducts(json.data)
+        if (!cancelled && json?.data) setRelatedProducts(json.data);
       })
-      .catch(() => undefined)
+      .catch(() => undefined);
     return () => {
-      cancelled = true
-    }
-  }, [product.id])
-  const touchStartX = useRef<number | null>(null)
-  const prevIndexRef = useRef(photoIndex)
+      cancelled = true;
+    };
+  }, [product.id]);
+  const touchStartX = useRef<number | null>(null);
+  const prevIndexRef = useRef(photoIndex);
 
   // Track this product as recently viewed
   useEffect(() => {
-    recordCurrentVisitProduct(store ?? retailer.public_slug ?? '', product.id)
-    recordInterest([product.category, product.subtype, product.primary_color])
+    recordCurrentVisitProduct(store ?? retailer.public_slug ?? '', product.id);
+    recordInterest([product.category, product.subtype, product.primary_color]);
     trackRecentlyViewed(slug, {
       id: product.id,
       name: product.name,
@@ -130,37 +148,37 @@ export function ProductDetailSheet({
       price_min: product.price_min,
       price_max: product.price_max,
       primary_photo_url: product.primary_photo_url,
-    })
-  }, [product, slug, store, retailer.public_slug])
+    });
+  }, [product, slug, store, retailer.public_slug]);
 
   // F-037 Phase 1 — dwell-time view event. Fires on unmount/product-swap so
   // dwell_ms reflects real time-on-product, not just page load (§3.1). Silently
   // dropped server-side if there is no passport session or profiling is off.
   useEffect(() => {
-    const startedAt = Date.now()
+    const startedAt = Date.now();
     return () => {
       trackPassportEvent({
         type: 'view',
         product_id: product.id,
         retailer_id: retailer.id,
         metadata: { dwell_ms: Date.now() - startedAt },
-      })
-    }
-  }, [product.id, retailer.id])
+      });
+    };
+  }, [product.id, retailer.id]);
 
   // ── Pinch/Zoom state ─────────────────────────────────────────────
-  const [isZoomed, setIsZoomed] = useState(false)
-  const [scaleAnim, setScaleAnim] = useState(1)
-  const [panX, setPanX] = useState(0)
-  const [panY, setPanY] = useState(0)
-  const lastTapRef = useRef(0)
-  const lastPinchDistRef = useRef(0)
-  const lastPinchCenterRef = useRef({ x: 50, y: 50 })
-  const isPinchingRef = useRef(false)
-  const isPanningRef = useRef(false)
-  const panStartRef = useRef({ x: 0, y: 0 })
-  const panStartOffsetRef = useRef({ x: 0, y: 0 })
-  const currentScaleRef = useRef(1)
+  const [isZoomed, setIsZoomed] = useState(false);
+  const [scaleAnim, setScaleAnim] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const lastTapRef = useRef(0);
+  const lastPinchDistRef = useRef(0);
+  const lastPinchCenterRef = useRef({ x: 50, y: 50 });
+  const isPinchingRef = useRef(false);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const panStartOffsetRef = useRef({ x: 0, y: 0 });
+  const currentScaleRef = useRef(1);
 
   // Related-strip / AIStylist swaps the product in place (sheet stays
   // mounted) — reset per-product view state so the new product doesn't
@@ -168,29 +186,29 @@ export function ProductDetailSheet({
   // (Placed after the zoom state declarations so the setters/ref are in
   // scope above this callback.)
   useEffect(() => {
-    setPhotoIndex(0)
-    setVariantPhotoUrl(null)
-    setVariantColor(null)
-    setDetail(null)
-    setIsZoomed(false)
-    setScaleAnim(1)
-    setPanX(0)
-    setPanY(0)
-    currentScaleRef.current = 1
-  }, [product.id])
+    setPhotoIndex(0);
+    setVariantPhotoUrl(null);
+    setVariantColor(null);
+    setDetail(null);
+    setIsZoomed(false);
+    setScaleAnim(1);
+    setPanX(0);
+    setPanY(0);
+    currentScaleRef.current = 1;
+  }, [product.id]);
 
   // ── Fullscreen image viewer ─────────────────────────────────────
-  const [fullscreenOpen, setFullscreenOpen] = useState(false)
-  const fsTouchStartX = useRef<number | null>(null)
-  const recentTouchRef = useRef(0)
-  const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const fsTouchStartX = useRef<number | null>(null);
+  const recentTouchRef = useRef(0);
+  const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
-      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
-      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current)
-    }
-  }, [])
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current);
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
+    };
+  }, []);
 
   // Opening this sheet is pure component state, not a route change — with no
   // history entry pushed, the phone/browser Back button skipped straight past
@@ -199,230 +217,249 @@ export function ProductDetailSheet({
   // close on popstate; the sheet's own close buttons trigger history.back()
   // so Back is always the single source of truth for closing.
   useEffect(() => {
-    let poppedByUser = false
-    window.history.pushState({ kanchukiProductSheet: true }, '')
+    let poppedByUser = false;
+    window.history.pushState({ kanchukiProductSheet: true }, '');
     const handlePopState = () => {
-      poppedByUser = true
-      onClose()
-    }
-    window.addEventListener('popstate', handlePopState)
+      poppedByUser = true;
+      onClose();
+    };
+    window.addEventListener('popstate', handlePopState);
     return () => {
-      window.removeEventListener('popstate', handlePopState)
+      window.removeEventListener('popstate', handlePopState);
       // Only roll back our own pushed entry while it is still the top-most
       // one. Clicking an in-sheet Link (e.g. a Suits Designs permalink or a
       // related-product swap) pushes a NEW history entry and unmounts this
       // sheet — an unconditional history.back() here would instantly undo
       // that navigation, making the link appear to "go nowhere".
       if (!poppedByUser && window.history.state?.kanchukiProductSheet === true) {
-        window.history.back()
+        window.history.back();
       }
-    }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
-  const closeSheet = useCallback(() => window.history.back(), [])
+  const closeSheet = useCallback(() => window.history.back(), []);
 
-  const isSold = product.status === 'SOLD'
-  const isReserved = product.status === 'RESERVED'
+  const isSold = product.status === 'SOLD';
+  const isReserved = product.status === 'RESERVED';
 
-  const spinFrames = detail?.spin_frames ?? []
-  const variants = detail?.variants ?? []
-  const fabricEstimate = detail?.fabric_estimate ?? null
-  const sizes = detail?.sizes ?? []
+  const spinFrames = detail?.spin_frames ?? [];
+  const variants = detail?.variants ?? [];
+  const fabricEstimate = detail?.fabric_estimate ?? null;
+  const sizes = detail?.sizes ?? [];
   // Roadmap Q / F-033 — the detail API has always returned `videos`, but
   // `PublicProductDetail` never declared the field, so every consumer dropped
   // it silently. Clips with no URL are dropped rather than left as a slide that
   // renders nothing.
-  const videos = (detail?.videos ?? []).filter((v) => !!v.url)
+  const videos = (detail?.videos ?? []).filter((v) => !!v.url);
 
   // Build photos array: detail photos (once loaded) + optionally a variant
   // photo — falls back to just the grid thumbnail until detail arrives.
-  const basePhotos = detail?.photos.length ? detail.photos : product.primary_photo_url ? [product.primary_photo_url] : []
-  const photos = variantPhotoUrl && !basePhotos.includes(variantPhotoUrl)
-    ? [...basePhotos, variantPhotoUrl]
-    : basePhotos
+  const basePhotos = detail?.photos.length
+    ? detail.photos
+    : product.primary_photo_url
+      ? [product.primary_photo_url]
+      : [];
+  const photos =
+    variantPhotoUrl && !basePhotos.includes(variantPhotoUrl)
+      ? [...basePhotos, variantPhotoUrl]
+      : basePhotos;
 
-  const currentPhoto = photos[photoIndex] ?? product.primary_photo_url
-  const totalPhotos = photos.length
+  const currentPhoto = photos[photoIndex] ?? product.primary_photo_url;
+  const totalPhotos = photos.length;
   // Before detail loads, trust the grid's has_360 flag so the slide dot/icon
   // don't pop in late; once loaded, the real frame count is authoritative.
-  const has360 = detail ? spinFrames.length > 0 : product.has_360
+  const has360 = detail ? spinFrames.length > 0 : product.has_360;
   // Video clips sit between the photos and the 360 slide. Photos stay first on
   // purpose: the crossfade/zoom layer below is indexed by photo, and the first
   // thing a shopper should see on a garment is the photograph of it rather than
   // an animated pass over those same frames. What was actually missing is that
   // nothing rendered the clips at all — they are now one swipe, or one
   // thumbnail tap, away.
-  const videoSlides = videos.length
-  const firstVideoSlide = totalPhotos
+  const videoSlides = videos.length;
+  const firstVideoSlide = totalPhotos;
   // 360 view is appended as one more slide after all the media, not a separate mode.
-  const totalSlides = totalPhotos + videoSlides + (has360 ? 1 : 0)
-  const isSpinSlide = has360 && photoIndex === totalPhotos + videoSlides
-  const videoIndex = photoIndex - firstVideoSlide
-  const isVideoSlide = videoIndex >= 0 && videoIndex < videoSlides
-  const currentVideo = isVideoSlide ? videos[videoIndex] : undefined
+  const totalSlides = totalPhotos + videoSlides + (has360 ? 1 : 0);
+  const isSpinSlide = has360 && photoIndex === totalPhotos + videoSlides;
+  const videoIndex = photoIndex - firstVideoSlide;
+  const isVideoSlide = videoIndex >= 0 && videoIndex < videoSlides;
+  const currentVideo = isVideoSlide ? videos[videoIndex] : undefined;
   // Swipe / pinch-zoom / tap-to-expand belong to photos only — on a clip they
   // fight the player's own scrubber.
-  const isMediaSlide = isSpinSlide || isVideoSlide
+  const isMediaSlide = isSpinSlide || isVideoSlide;
 
-  const goTo = useCallback((i: number) => {
-    if (isTransitioning) return
-    // Reset zoom when navigating to a different photo
-    setScaleAnim(1)
-    setPanX(0)
-    setPanY(0)
-    setIsZoomed(false)
-    currentScaleRef.current = 1
-    setIsTransitioning(true)
-    const clamped = Math.max(0, Math.min(i, totalSlides - 1))
-    prevIndexRef.current = photoIndex // store previous before updating
-    setPhotoIndex(clamped)
-    transitionTimeoutRef.current = setTimeout(() => setIsTransitioning(false), 300)
-  }, [totalSlides, isTransitioning, photoIndex])
+  const goTo = useCallback(
+    (i: number) => {
+      if (isTransitioning) return;
+      // Reset zoom when navigating to a different photo
+      setScaleAnim(1);
+      setPanX(0);
+      setPanY(0);
+      setIsZoomed(false);
+      currentScaleRef.current = 1;
+      setIsTransitioning(true);
+      const clamped = Math.max(0, Math.min(i, totalSlides - 1));
+      prevIndexRef.current = photoIndex; // store previous before updating
+      setPhotoIndex(clamped);
+      transitionTimeoutRef.current = setTimeout(() => setIsTransitioning(false), 300);
+    },
+    [totalSlides, isTransitioning, photoIndex],
+  );
 
   // ── Touch handlers for swipe + pinch/zoom + double-tap ──────────
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // Nav arrows/dots/counter live inside this same touch zone — don't let
-    // their taps feed the swipe/double-tap-zoom detector below (two quick
-    // arrow taps were being misread as a double-tap, zooming in and hiding
-    // the arrows).
-    if ((e.target as HTMLElement).closest('button')) return
-    recentTouchRef.current = Date.now()
-    if (e.touches.length === 2) {
-      // Pinch start — store initial distance and center
-      const dx = e.touches[0].clientX - e.touches[1].clientX
-      const dy = e.touches[0].clientY - e.touches[1].clientY
-      lastPinchDistRef.current = Math.sqrt(dx * dx + dy * dy)
-      const rect = e.currentTarget.getBoundingClientRect()
-      lastPinchCenterRef.current = {
-        x: ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) / rect.width * 100,
-        y: ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) / rect.height * 100,
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      // Nav arrows/dots/counter live inside this same touch zone — don't let
+      // their taps feed the swipe/double-tap-zoom detector below (two quick
+      // arrow taps were being misread as a double-tap, zooming in and hiding
+      // the arrows).
+      if ((e.target as HTMLElement).closest('button')) return;
+      recentTouchRef.current = Date.now();
+      if (e.touches.length === 2) {
+        // Pinch start — store initial distance and center
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastPinchDistRef.current = Math.sqrt(dx * dx + dy * dy);
+        const rect = e.currentTarget.getBoundingClientRect();
+        lastPinchCenterRef.current = {
+          x: (((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) / rect.width) * 100,
+          y: (((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) / rect.height) * 100,
+        };
+        isPinchingRef.current = true;
+        setIsZoomed(true);
+        touchStartX.current = null; // prevent swipe
+        return;
       }
-      isPinchingRef.current = true
-      setIsZoomed(true)
-      touchStartX.current = null // prevent swipe
-      return
-    }
-    if (e.touches.length === 1 && isZoomed && currentScaleRef.current > 1) {
-      // Pan when zoomed — store start position
-      isPanningRef.current = true
-      panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-      panStartOffsetRef.current = { x: panX, y: panY }
-      touchStartX.current = null // prevent swipe
-      return
-    }
-    // Normal swipe start (not zoomed, not pinching)
-    touchStartX.current = e.touches[0]?.clientX ?? null
-  }, [isZoomed, panX, panY])
+      if (e.touches.length === 1 && isZoomed && currentScaleRef.current > 1) {
+        // Pan when zoomed — store start position
+        isPanningRef.current = true;
+        panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        panStartOffsetRef.current = { x: panX, y: panY };
+        touchStartX.current = null; // prevent swipe
+        return;
+      }
+      // Normal swipe start (not zoomed, not pinching)
+      touchStartX.current = e.touches[0]?.clientX ?? null;
+    },
+    [isZoomed, panX, panY],
+  );
 
   // Handle touch move for pinch and pan
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (isPinchingRef.current && e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX
-      const dy = e.touches[0].clientY - e.touches[1].clientY
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      const ratio = dist / lastPinchDistRef.current
-      const newScale = Math.max(1, Math.min(currentScaleRef.current * ratio, 6))
-      currentScaleRef.current = newScale
-      lastPinchDistRef.current = dist
-      setScaleAnim(newScale)
-      return
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const ratio = dist / lastPinchDistRef.current;
+      const newScale = Math.max(1, Math.min(currentScaleRef.current * ratio, 6));
+      currentScaleRef.current = newScale;
+      lastPinchDistRef.current = dist;
+      setScaleAnim(newScale);
+      return;
     }
     if (isPanningRef.current && e.touches.length === 1) {
-      const dx = e.touches[0].clientX - panStartRef.current.x
-      const dy = e.touches[0].clientY - panStartRef.current.y
-      setPanX(panStartOffsetRef.current.x + dx)
-      setPanY(panStartOffsetRef.current.y + dy)
+      const dx = e.touches[0].clientX - panStartRef.current.x;
+      const dy = e.touches[0].clientY - panStartRef.current.y;
+      setPanX(panStartOffsetRef.current.x + dx);
+      setPanY(panStartOffsetRef.current.y + dy);
     }
-  }, [])
+  }, []);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return
-    // End pinch
-    if (isPinchingRef.current) {
-      isPinchingRef.current = false
-      // If scale is very close to 1, snap back
-      if (currentScaleRef.current < 1.15) {
-        setScaleAnim(1)
-        setIsZoomed(false)
-        currentScaleRef.current = 1
-      }
-      touchStartX.current = null
-      return
-    }
-    // End pan
-    if (isPanningRef.current) {
-      isPanningRef.current = false
-      touchStartX.current = null
-      return
-    }
-    // Quick tap — detect double-tap
-    if (touchStartX.current !== null) {
-      const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current
-      if (Math.abs(delta) < 10) {
-        const now = Date.now()
-        if (now - lastTapRef.current < 300) {
-          // Double-tap detected — cancel the pending single-tap fullscreen open
-          if (singleTapTimeoutRef.current) {
-            clearTimeout(singleTapTimeoutRef.current)
-            singleTapTimeoutRef.current = null
-          }
-          lastTapRef.current = 0
-          if (currentScaleRef.current > 1) {
-            // Zoom out
-            setScaleAnim(1)
-            setPanX(0)
-            setPanY(0)
-            setIsZoomed(false)
-            currentScaleRef.current = 1
-          } else {
-            // Zoom in to 2.5x at tap point
-            const rect = e.currentTarget.getBoundingClientRect()
-            const cx = ((e.changedTouches[0]?.clientX ?? rect.left) - rect.left) / rect.width * 100
-            const cy = ((e.changedTouches[0]?.clientY ?? rect.top) - rect.top) / rect.height * 100
-            lastPinchCenterRef.current = { x: cx, y: cy }
-            setScaleAnim(2.5)
-            setIsZoomed(true)
-            currentScaleRef.current = 2.5
-          }
-          touchStartX.current = null
-          return
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if ((e.target as HTMLElement).closest('button')) return;
+      // End pinch
+      if (isPinchingRef.current) {
+        isPinchingRef.current = false;
+        // If scale is very close to 1, snap back
+        if (currentScaleRef.current < 1.15) {
+          setScaleAnim(1);
+          setIsZoomed(false);
+          currentScaleRef.current = 1;
         }
-        lastTapRef.current = now
-        // Single tap — wait to see if a second tap turns this into a
-        // double-tap zoom before opening the fullscreen viewer.
-        singleTapTimeoutRef.current = setTimeout(() => {
-          singleTapTimeoutRef.current = null
-          // A pending single-tap timeout can still fire after a swipe moved us
-          // onto a clip — don't open the photo viewer over a playing video.
-          if (currentScaleRef.current <= 1 && !isMediaSlide) setFullscreenOpen(true)
-        }, 300)
+        touchStartX.current = null;
+        return;
       }
-    }
-    // Regular swipe detection
-    if (touchStartX.current === null) return
-    const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current
-    const SWIPE_THRESHOLD = 50
-    if (Math.abs(delta) > SWIPE_THRESHOLD) {
-      if (delta < 0 && photoIndex < totalSlides - 1) {
-        goTo(photoIndex + 1)
-      } else if (delta > 0 && photoIndex > 0) {
-        goTo(photoIndex - 1)
+      // End pan
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
+        touchStartX.current = null;
+        return;
       }
-    }
-    touchStartX.current = null
-  }, [photoIndex, totalSlides, goTo, isMediaSlide])
+      // Quick tap — detect double-tap
+      if (touchStartX.current !== null) {
+        const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+        if (Math.abs(delta) < 10) {
+          const now = Date.now();
+          if (now - lastTapRef.current < 300) {
+            // Double-tap detected — cancel the pending single-tap fullscreen open
+            if (singleTapTimeoutRef.current) {
+              clearTimeout(singleTapTimeoutRef.current);
+              singleTapTimeoutRef.current = null;
+            }
+            lastTapRef.current = 0;
+            if (currentScaleRef.current > 1) {
+              // Zoom out
+              setScaleAnim(1);
+              setPanX(0);
+              setPanY(0);
+              setIsZoomed(false);
+              currentScaleRef.current = 1;
+            } else {
+              // Zoom in to 2.5x at tap point
+              const rect = e.currentTarget.getBoundingClientRect();
+              const cx =
+                (((e.changedTouches[0]?.clientX ?? rect.left) - rect.left) / rect.width) * 100;
+              const cy =
+                (((e.changedTouches[0]?.clientY ?? rect.top) - rect.top) / rect.height) * 100;
+              lastPinchCenterRef.current = { x: cx, y: cy };
+              setScaleAnim(2.5);
+              setIsZoomed(true);
+              currentScaleRef.current = 2.5;
+            }
+            touchStartX.current = null;
+            return;
+          }
+          lastTapRef.current = now;
+          // Single tap — wait to see if a second tap turns this into a
+          // double-tap zoom before opening the fullscreen viewer.
+          singleTapTimeoutRef.current = setTimeout(() => {
+            singleTapTimeoutRef.current = null;
+            // A pending single-tap timeout can still fire after a swipe moved us
+            // onto a clip — don't open the photo viewer over a playing video.
+            if (currentScaleRef.current <= 1 && !isMediaSlide) setFullscreenOpen(true);
+          }, 300);
+        }
+      }
+      // Regular swipe detection
+      if (touchStartX.current === null) return;
+      const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+      const SWIPE_THRESHOLD = 50;
+      if (Math.abs(delta) > SWIPE_THRESHOLD) {
+        if (delta < 0 && photoIndex < totalSlides - 1) {
+          goTo(photoIndex + 1);
+        } else if (delta > 0 && photoIndex > 0) {
+          goTo(photoIndex - 1);
+        }
+      }
+      touchStartX.current = null;
+    },
+    [photoIndex, totalSlides, goTo, isMediaSlide],
+  );
 
   // Variant click handler: show variant photo in carousel
-  const handleVariantClick = useCallback((color: string, photoUrl: string | null) => {
-    if (photoUrl) {
-      setVariantPhotoUrl(photoUrl)
-      setVariantColor(color)
-      // Scroll to variant photo (last position)
-      const targetIdx = basePhotos.length // variant is appended after product photos
-      goTo(targetIdx)
-    }
-  }, [basePhotos.length, goTo])
+  const handleVariantClick = useCallback(
+    (color: string, photoUrl: string | null) => {
+      if (photoUrl) {
+        setVariantPhotoUrl(photoUrl);
+        setVariantColor(color);
+        // Scroll to variant photo (last position)
+        const targetIdx = basePhotos.length; // variant is appended after product photos
+        goTo(targetIdx);
+      }
+    },
+    [basePhotos.length, goTo],
+  );
 
   // Canonical product deep link (/{store}/{collection}/product/{id}, legacy
   // /c/{collection}/product/{id}) — the dedicated shared-product page whose OG
@@ -430,11 +467,11 @@ export function ProductDetailSheet({
   // message, and the consent modal so the retailer always gets a tappable URL.
   const productUrlFor = useCallback(
     (productId: string) => {
-      const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
-      return `${window.location.origin}${basePath}/product/${productId}`
+      const basePath = store ? `/${store}/${slug}` : `/c/${slug}`;
+      return `${window.location.origin}${basePath}/product/${productId}`;
     },
     [store, slug],
-  )
+  );
 
   // Share THIS product, not the whole collection — the link lands on the
   // dedicated shared-product page (/{store}/{collection}/product/{id}) whose
@@ -442,23 +479,31 @@ export function ProductDetailSheet({
   // product instead of a bare URL. Recipients get a "View Full Catalog" CTA
   // from that page back into the collection.
   const handleShare = useCallback(async () => {
-    const url = productUrlFor(product.id)
-    const title = product.name ?? product.category ?? 'Product'
-    const text = `Check out ${title} — ${formatPriceRange(product.price_min, product.price_max)} from ${retailer.shop_name}`
+    const url = productUrlFor(product.id);
+    const title = product.name ?? product.category ?? 'Product';
+    const text = `Check out ${title} — ${formatPriceRange(product.price_min, product.price_max)} from ${retailer.shop_name}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title, text, url })
+        await navigator.share({ title, text, url });
       } else {
-        await navigator.clipboard.writeText(url)
+        await navigator.clipboard.writeText(url);
       }
     } catch (err) {
       // User dismissed the native share sheet — not an error.
-      if (err instanceof Error && err.name === 'AbortError') return
+      if (err instanceof Error && err.name === 'AbortError') return;
       // Share failed for another reason — copy the link so there's always an
       // outcome. Guard the fallback too so it can't reject unhandled.
-      await navigator.clipboard.writeText(url).catch(() => {})
+      await navigator.clipboard.writeText(url).catch(() => {});
     }
-  }, [product.id, product.name, product.category, product.price_min, product.price_max, productUrlFor, retailer.shop_name])
+  }, [
+    product.id,
+    product.name,
+    product.category,
+    product.price_min,
+    product.price_max,
+    productUrlFor,
+    retailer.shop_name,
+  ]);
 
   return (
     <div
@@ -498,99 +543,99 @@ export function ProductDetailSheet({
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto">
-
-        {/* Photo carousel with crossfade transition + pinch-to-zoom, or 360 viewer */}
-        <div
-          className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
-          onTouchStart={isMediaSlide ? undefined : handleTouchStart}
-          onTouchMove={isMediaSlide ? undefined : handleTouchMove}
-          onTouchEnd={isMediaSlide ? undefined : handleTouchEnd}
-          onClick={(e) => {
-            if (isMediaSlide) return
-            if ((e.target as HTMLElement).closest('button')) return
-            // Touch taps are already handled by the single/double-tap timer
-            // above — only act here for a genuine mouse click.
-            if (Date.now() - recentTouchRef.current < 500) return
-            if (!isZoomed) setFullscreenOpen(true)
-          }}
-        >
-          {isSpinSlide ? (
-            <Product360Viewer
-              frames={spinFrames}
-              alt={product.name ?? product.category ?? 'Product'}
-            />
-          ) : isVideoSlide && currentVideo ? (
-            // `key` on the clip id so React remounts the element per slide —
-            // without it the previous clip keeps playing while the src swaps.
-            <video
-              key={currentVideo.id}
-              src={currentVideo.url}
-              className="w-full h-full object-cover bg-black"
-              autoPlay
-              muted
-              loop
-              playsInline
-              controls
-              preload="metadata"
-              poster={photos[0] ?? product.primary_photo_url ?? undefined}
-              aria-label={`${product.name ?? product.category ?? 'Product'} video`}
-            />
-          ) : (
-          /* Zoom container — wraps crossfade layers, transforms for zoom/pan */
+          {/* Photo carousel with crossfade transition + pinch-to-zoom, or 360 viewer */}
           <div
-            className="relative w-full h-full"
-            style={{
-              transform: isZoomed
-                ? `scale(${scaleAnim}) translate(${panX}px, ${panY}px)`
-                : 'scale(1) translate(0px, 0px)',
-              transformOrigin: `${lastPinchCenterRef.current.x}% ${lastPinchCenterRef.current.y}%`,
-              transition: isPinchingRef.current || isPanningRef.current
-                ? 'none'
-                : 'transform 0.2s ease-out',
-              cursor: isZoomed ? (isPanningRef.current ? 'grabbing' : 'grab') : 'default',
-              touchAction: isZoomed ? 'none' : 'pan-y',
+            className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
+            onTouchStart={isMediaSlide ? undefined : handleTouchStart}
+            onTouchMove={isMediaSlide ? undefined : handleTouchMove}
+            onTouchEnd={isMediaSlide ? undefined : handleTouchEnd}
+            onClick={(e) => {
+              if (isMediaSlide) return;
+              if ((e.target as HTMLElement).closest('button')) return;
+              // Touch taps are already handled by the single/double-tap timer
+              // above — only act here for a genuine mouse click.
+              if (Date.now() - recentTouchRef.current < 500) return;
+              if (!isZoomed) setFullscreenOpen(true);
             }}
           >
-            {/* Previous photo fading out — uses ref-tracked previous index */}
-            {prevIndexRef.current !== photoIndex && photos[prevIndexRef.current] && (
+            {isSpinSlide ? (
+              <Product360Viewer
+                frames={spinFrames}
+                alt={product.name ?? product.category ?? 'Product'}
+              />
+            ) : isVideoSlide && currentVideo ? (
+              // `key` on the clip id so React remounts the element per slide —
+              // without it the previous clip keeps playing while the src swaps.
+              <video
+                key={currentVideo.id}
+                src={currentVideo.url}
+                className="w-full h-full object-cover bg-black"
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+                preload="metadata"
+                poster={photos[0] ?? product.primary_photo_url ?? undefined}
+                aria-label={`${product.name ?? product.category ?? 'Product'} video`}
+              />
+            ) : (
+              /* Zoom container — wraps crossfade layers, transforms for zoom/pan */
               <div
-                key={`prev-${photoIndex}`}
-                className="absolute inset-0 opacity-0 animate-fade-out pointer-events-none"
-                style={{ animation: 'fadeOut 0.25s ease-in-out forwards' }}
+                className="relative w-full h-full"
+                style={{
+                  transform: isZoomed
+                    ? `scale(${scaleAnim}) translate(${panX}px, ${panY}px)`
+                    : 'scale(1) translate(0px, 0px)',
+                  transformOrigin: `${lastPinchCenterRef.current.x}% ${lastPinchCenterRef.current.y}%`,
+                  transition:
+                    isPinchingRef.current || isPanningRef.current
+                      ? 'none'
+                      : 'transform 0.2s ease-out',
+                  cursor: isZoomed ? (isPanningRef.current ? 'grabbing' : 'grab') : 'default',
+                  touchAction: isZoomed ? 'none' : 'pan-y',
+                }}
               >
-                <Image
-                  src={photos[prevIndexRef.current]!}
-                  alt=""
-                  fill
-                  sizes="100vw"
-                  className="object-cover"
-                />
+                {/* Previous photo fading out — uses ref-tracked previous index */}
+                {prevIndexRef.current !== photoIndex && photos[prevIndexRef.current] && (
+                  <div
+                    key={`prev-${photoIndex}`}
+                    className="absolute inset-0 opacity-0 animate-fade-out pointer-events-none"
+                    style={{ animation: 'fadeOut 0.25s ease-in-out forwards' }}
+                  >
+                    <Image
+                      src={photos[prevIndexRef.current]!}
+                      alt=""
+                      fill
+                      sizes="100vw"
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                {/* Current photo fading in */}
+                <div
+                  key={`curr-${photoIndex}`}
+                  className="absolute inset-0 opacity-0"
+                  style={{ animation: 'fadeIn 0.25s ease-in-out forwards' }}
+                >
+                  {currentPhoto && (
+                    <Image
+                      src={currentPhoto}
+                      alt={product.name ?? product.category ?? 'Product'}
+                      fill
+                      sizes="100vw"
+                      className="object-cover"
+                      priority
+                    />
+                  )}
+                </div>
               </div>
             )}
-            {/* Current photo fading in */}
-            <div
-              key={`curr-${photoIndex}`}
-              className="absolute inset-0 opacity-0"
-              style={{ animation: 'fadeIn 0.25s ease-in-out forwards' }}
-            >
-              {currentPhoto && (
-                <Image
-                  src={currentPhoto}
-                  alt={product.name ?? product.category ?? 'Product'}
-                  fill
-                  sizes="100vw"
-                  className="object-cover"
-                  priority
-                />
-              )}
-            </div>
-          </div>
-          )}
 
-          {/* Keyframes + photo-only chrome — hidden on the 360 and video slides */}
-          {!isMediaSlide && (
-            <>
-              <style jsx>{`
+            {/* Keyframes + photo-only chrome — hidden on the 360 and video slides */}
+            {!isMediaSlide && (
+              <>
+                <style jsx>{`
                 @keyframes fadeIn {
                   from { opacity: 0; }
                   to { opacity: 1; }
@@ -601,441 +646,455 @@ export function ProductDetailSheet({
                 }
               `}</style>
 
-              {/* Variant photo badge — bottom-left so it can't collide with the
+                {/* Variant photo badge — bottom-left so it can't collide with the
                   floating Back button (top-4 left-4) the way a top-left pill does */}
-              {variantColor && variantPhotoUrl && photos[photoIndex] === variantPhotoUrl && (
-                <div className="absolute bottom-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
-                  <Palette size={12} />
-                  {variantColor}
-                </div>
-              )}
+                {variantColor && variantPhotoUrl && photos[photoIndex] === variantPhotoUrl && (
+                  <div className="absolute bottom-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+                    <Palette size={12} />
+                    {variantColor}
+                  </div>
+                )}
 
-              {/* Zoom hint — shows briefly on first zoom */}
-              {isZoomed && (
-                <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none animate-fadeIn">
-                  Pinch to zoom · Double-tap to reset
-                </div>
-              )}
-            </>
-          )}
+                {/* Zoom hint — shows briefly on first zoom */}
+                {isZoomed && (
+                  <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none animate-fadeIn">
+                    Pinch to zoom · Double-tap to reset
+                  </div>
+                )}
+              </>
+            )}
 
-          {/* 360 slide badge — bottom-left, mirroring the variant badge */}
-          {isSpinSlide && (
-            <div className="absolute bottom-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
-              <RotateCw size={12} />
-              Drag to rotate
-            </div>
-          )}
+            {/* 360 slide badge — bottom-left, mirroring the variant badge */}
+            {isSpinSlide && (
+              <div className="absolute bottom-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+                <RotateCw size={12} />
+                Drag to rotate
+              </div>
+            )}
 
-          {/* Video slide badge — same corner, and it names the clip order so a
+            {/* Video slide badge — same corner, and it names the clip order so a
               shopper knows whether this is the retailer's own footage or an
               F-033 auto-generated one (those land last). */}
-          {isVideoSlide && (
-            <div className="absolute bottom-3 left-3 z-10 bg-[#231F48]/85 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
-              <Play size={12} />
-              {videoSlides > 1 ? `Video ${videoIndex + 1} of ${videoSlides}` : 'Video'}
-            </div>
-          )}
+            {isVideoSlide && (
+              <div className="absolute bottom-3 left-3 z-10 bg-[#231F48]/85 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+                <Play size={12} />
+                {videoSlides > 1 ? `Video ${videoIndex + 1} of ${videoSlides}` : 'Video'}
+              </div>
+            )}
 
-          {/* Floating Left-side Thumbnail Strip Container (matches Spec #10 / #12 in HTML) */}
-          {(totalPhotos > 1 || videoSlides > 0) && !isMediaSlide && (
-            <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 bg-white/85 backdrop-blur-md rounded-[20px] p-1.5 flex flex-col gap-2 shadow-lg border border-white/80">
-              {photos.slice(0, 4).map((photoUrl, i) => (
-                <button
-                  key={photoUrl}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    goTo(i)
-                  }}
-                  className={`relative w-9 h-11 rounded-[12px] overflow-hidden border-2 transition-all duration-200 ${
-                    i === photoIndex
-                      ? 'border-[#BB3F95] scale-105 shadow-sm'
-                      : 'border-transparent opacity-80 hover:opacity-100'
-                  }`}
-                >
-                  <Image
-                    src={photoUrl}
-                    alt=""
-                    fill
-                    sizes="44px"
-                    className="object-cover"
-                  />
-                </button>
-              ))}
-              {/* Clips get a thumbnail too, otherwise the only way to learn they
+            {/* Floating Left-side Thumbnail Strip Container (matches Spec #10 / #12 in HTML) */}
+            {(totalPhotos > 1 || videoSlides > 0) && !isMediaSlide && (
+              <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 bg-white/85 backdrop-blur-md rounded-[20px] p-1.5 flex flex-col gap-2 shadow-lg border border-white/80">
+                {photos.slice(0, 4).map((photoUrl, i) => (
+                  <button
+                    key={photoUrl}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(i);
+                    }}
+                    className={`relative w-9 h-11 rounded-[12px] overflow-hidden border-2 transition-all duration-200 ${
+                      i === photoIndex
+                        ? 'border-[#BB3F95] scale-105 shadow-sm'
+                        : 'border-transparent opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <Image src={photoUrl} alt="" fill sizes="44px" className="object-cover" />
+                  </button>
+                ))}
+                {/* Clips get a thumbnail too, otherwise the only way to learn they
                   exist is to swipe to the end of the photos. */}
-              {videos.map((video, j) => (
-                <button
-                  key={video.id}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    goTo(firstVideoSlide + j)
-                  }}
-                  className="relative w-9 h-11 rounded-[12px] overflow-hidden border-2 bg-[#231F48] flex items-center justify-center transition-all duration-200 border-transparent opacity-80 hover:opacity-100"
-                  aria-label={`Play video ${j + 1}`}
-                >
-                  <Play size={14} className="text-white" />
-                </button>
-              ))}
+                {videos.map((video, j) => (
+                  <button
+                    key={video.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(firstVideoSlide + j);
+                    }}
+                    className="relative w-9 h-11 rounded-[12px] overflow-hidden border-2 bg-[#231F48] flex items-center justify-center transition-all duration-200 border-transparent opacity-80 hover:opacity-100"
+                    aria-label={`Play video ${j + 1}`}
+                  >
+                    <Play size={14} className="text-white" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Navigation arrows — spans photos + the 360 slide */}
+            {totalSlides > 1 && !isZoomed && (
+              <button
+                onClick={() => goTo(photoIndex < totalSlides - 1 ? photoIndex + 1 : 0)}
+                className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40 hover:scale-105 transition"
+                aria-label="Next"
+              >
+                <ChevronRight size={16} />
+              </button>
+            )}
+
+            {/* Dots — last dot is the 360 slide when present */}
+            {totalSlides > 1 && (
+              <div className="absolute bottom-3.5 left-20 flex gap-1.5 items-center z-10">
+                {Array.from({ length: totalSlides }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`transition-all duration-200 ${
+                      i === photoIndex
+                        ? 'w-4 h-1.5 rounded-full bg-[#BB3F95]'
+                        : 'w-1.5 h-1.5 rounded-full bg-white/80'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Counter — bottom-right */}
+            <div className="absolute bottom-3.5 right-3.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm z-10">
+              {isSpinSlide ? '360°' : isVideoSlide ? 'Video' : `${totalPhotos} Photos`}
             </div>
-          )}
-
-          {/* Navigation arrows — spans photos + the 360 slide */}
-          {totalSlides > 1 && !isZoomed && (
-            <button
-              onClick={() => goTo(photoIndex < totalSlides - 1 ? photoIndex + 1 : 0)}
-              className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40 hover:scale-105 transition"
-              aria-label="Next"
-            >
-              <ChevronRight size={16} />
-            </button>
-          )}
-
-          {/* Dots — last dot is the 360 slide when present */}
-          {totalSlides > 1 && (
-            <div className="absolute bottom-3.5 left-20 flex gap-1.5 items-center z-10">
-              {Array.from({ length: totalSlides }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`transition-all duration-200 ${
-                    i === photoIndex
-                      ? 'w-4 h-1.5 rounded-full bg-[#BB3F95]'
-                      : 'w-1.5 h-1.5 rounded-full bg-white/80'
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Counter — bottom-right */}
-          <div className="absolute bottom-3.5 right-3.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm z-10">
-            {isSpinSlide ? '360°' : isVideoSlide ? 'Video' : `${totalPhotos} Photos`}
           </div>
-        </div>
 
-        {/* 360 spin icon — opens the same viewer fullscreen */}
-        {has360 && (
-          <div className="px-4 pt-3">
-            <button
-              onClick={() => setShowSpinModal(true)}
-              className="w-full flex items-center justify-center gap-2 bg-[#FAF9FE] hover:bg-[#F2F1FA] text-[#231F48] border border-[#E0E1F6]
+          {/* 360 spin icon — opens the same viewer fullscreen */}
+          {has360 && (
+            <div className="px-4 pt-3">
+              <button
+                onClick={() => setShowSpinModal(true)}
+                className="w-full flex items-center justify-center gap-2 bg-[#FAF9FE] hover:bg-[#F2F1FA] text-[#231F48] border border-[#E0E1F6]
                          text-xs font-bold py-2.5 rounded-2xl transition-colors shadow-sm"
-              aria-label="View 360° spin fullscreen"
-            >
-              <RotateCw size={14} className="text-[#BB3F95]" />
-              View 360° Interactive Spin
-            </button>
-          </div>
-        )}
-
-        {/* Details Section (Spec #12) */}
-        <div className="p-4 space-y-4">
-          {/* Status badge */}
-          {product.status !== 'AVAILABLE' && (
-            <div className={`px-3 py-2 rounded-2xl text-xs font-bold ${
-              isSold ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-            }`}>
-              {isSold ? '🛑 This item has been sold' : '⏳ This item is reserved'}
+                aria-label="View 360° spin fullscreen"
+              >
+                <RotateCw size={14} className="text-[#BB3F95]" />
+                View 360° Interactive Spin
+              </button>
             </div>
           )}
 
-          {/* Price + Actions Section */}
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-extrabold text-[#231F48] font-sans">
-                {formatPriceRange(product.price_min, product.price_max)}
-              </h2>
-              <p className="text-xs text-[#6B4773] font-bold mt-0.5">
-                {product.category ?? 'Salwar Suits'} • Festive Collection
-              </p>
-              {/* Real social proof — real counts only, never fabricated. The
+          {/* Details Section (Spec #12) */}
+          <div className="p-4 space-y-4">
+            {/* Status badge */}
+            {product.status !== 'AVAILABLE' && (
+              <div
+                className={`px-3 py-2 rounded-2xl text-xs font-bold ${
+                  isSold
+                    ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}
+              >
+                {isSold ? '🛑 This item has been sold' : '⏳ This item is reserved'}
+              </div>
+            )}
+
+            {/* Price + Actions Section */}
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-extrabold text-[#231F48] font-sans">
+                  {formatPriceRange(product.price_min, product.price_max)}
+                </h2>
+                <p className="text-xs text-[#6B4773] font-bold mt-0.5">
+                  {product.category ?? 'Salwar Suits'} • Festive Collection
+                </p>
+                {/* Real social proof — real counts only, never fabricated. The
                   label is derived from the window the counts cover (the nightly
                   rollup summarizes completed days, so it is normally
                   "yesterday"). */}
-              {proofChip && (
-                <span className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-full bg-[#F4F2FB] px-2 py-0.5 text-[10px] font-bold text-[#6B4773]">
-                  {proofChip.kind === 'favorited' ? (
-                    <Heart size={10} className="flex-shrink-0 text-[#BB3F95] fill-[#BB3F95]" />
-                  ) : (
-                    <Eye size={10} className="flex-shrink-0 text-[#6B4773]" />
-                  )}
-                  <span className="truncate">{proofChip.label}</span>
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => void handleShare()}
-                className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-sm border border-[#E0E1F6] hover:border-[#BB3F95] transition"
-                aria-label="Share product"
-              >
-                <Share2 size={16} />
-              </button>
-              <button
-                onClick={() => !isSold && onFavorite(product.id)}
-                disabled={isSold}
-                className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition shadow-sm ${
-                  isFavorited ? 'bg-[#BB3F95]/15 border-[#BB3F95]/40 text-[#BB3F95]' : 'bg-white border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
-                }`}
-                aria-label="Favorite"
-              >
-                <Heart size={16} className={isFavorited ? 'fill-current text-[#BB3F95]' : 'text-[#231F48]'} />
-              </button>
-            </div>
-          </div>
-
-          {/* AI Summary Card */}
-          {detail?.description && (
-            <div className="p-4 bg-gradient-to-br from-[#FAF9FE] to-[#F2F1FA] border border-[#E0E1F6] rounded-[24px] shadow-sm">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Sparkles size={14} className="text-[#BB3F95]" />
-                <span className="text-xs font-bold text-[#BB3F95] uppercase tracking-wider">AI Summary</span>
+                {proofChip && (
+                  <span className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-full bg-[#F4F2FB] px-2 py-0.5 text-[10px] font-bold text-[#6B4773]">
+                    {proofChip.kind === 'favorited' ? (
+                      <Heart size={10} className="flex-shrink-0 text-[#BB3F95] fill-[#BB3F95]" />
+                    ) : (
+                      <Eye size={10} className="flex-shrink-0 text-[#6B4773]" />
+                    )}
+                    <span className="truncate">{proofChip.label}</span>
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-[#231F48] leading-relaxed font-medium">
-                {detail.description}
-              </p>
-            </div>
-          )}
-
-          {/* Product Specifications Card */}
-          <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-2.5">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Info size={14} className="text-[#6B4773]" />
-              <span className="text-xs font-bold text-[#231F48] uppercase tracking-wider">Product Info</span>
-            </div>
-            {product.name && (
-              <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
-                <span className="text-[#6B4773] font-medium">Name</span>
-                <span className="font-bold text-[#231F48]">{product.name}</span>
-              </div>
-            )}
-            {fabricEstimate && (
-              <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
-                <span className="text-[#6B4773] font-medium">Fabric</span>
-                <span className="font-bold text-[#231F48]">{fabricEstimate}</span>
-              </div>
-            )}
-            {product.subtype && (
-              <div className="flex justify-between text-xs py-1">
-                <span className="text-[#6B4773] font-medium">Type</span>
-                <span className="font-bold text-[#231F48]">{product.subtype}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Family Sizing Selector Card */}
-          {SHOW_FAMILY_SIZING && (
-          <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm">👥</span>
-                <h4 className="text-xs font-bold text-[#231F48]">Shopping for Family?</h4>
-              </div>
-              <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
-            </div>
-            <p className="text-[10px] text-[#6B4773]">Save family sizes to find the right fit when gifting</p>
-
-            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
-              </div>
-              <span className="text-xs font-extrabold text-emerald-700">✓</span>
-            </div>
-          </div>
-          )}
-
-          {/* CTAs — Enquire full-width, then like + share side by side (#3) */}
-          {!isSold && (
-            <div className="space-y-3 pt-2">
-              <button
-                onClick={() => setShowConsentModal(true)}
-                className="w-full py-3.5 px-3 rounded-2xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
-              >
-                <MessageCircle size={16} className="fill-current text-emerald-400 shrink-0" />
-                <span className="text-xs font-extrabold uppercase tracking-wider">Enquire Now</span>
-              </button>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => onFavorite(product.id)}
-                  className={`w-full py-3.5 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
-                    isFavorited
-                      ? 'border-[#BB3F95] text-[#BB3F95] bg-[#BB3F95]/5'
-                      : 'border-[#E0E1F6] text-[#231F48] bg-white hover:border-[#BB3F95]'
-                  }`}
-                >
-                  <Heart size={16} className={isFavorited ? 'fill-current text-[#BB3F95]' : 'text-[#231F48]'} />
-                  <span className="uppercase tracking-wider">{isFavorited ? 'Liked' : 'I like this'}</span>
-                </button>
                 <button
                   onClick={() => void handleShare()}
-                  className="w-full py-3.5 rounded-2xl border border-[#E0E1F6] bg-white text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition-all active:scale-[0.98]"
+                  className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-sm border border-[#E0E1F6] hover:border-[#BB3F95] transition"
+                  aria-label="Share product"
                 >
-                  <Share2 size={16} className="shrink-0" />
-                  <span className="uppercase tracking-wider">Share Product</span>
+                  <Share2 size={16} />
+                </button>
+                <button
+                  onClick={() => !isSold && onFavorite(product.id)}
+                  disabled={isSold}
+                  className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition shadow-sm ${
+                    isFavorited
+                      ? 'bg-[#BB3F95]/15 border-[#BB3F95]/40 text-[#BB3F95]'
+                      : 'bg-white border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
+                  }`}
+                  aria-label="Favorite"
+                >
+                  <Heart
+                    size={16}
+                    className={isFavorited ? 'fill-current text-[#BB3F95]' : 'text-[#231F48]'}
+                  />
                 </button>
               </div>
-              {/* F-045 PR-10b: pieces from nearby stores that go with this one. */}
-              <a
-                href={`/my-style?look=${encodeURIComponent(product.id)}`}
-                className="block w-full py-3 rounded-2xl border border-[#E0E1F6] bg-white text-center text-xs font-bold uppercase tracking-wider text-[#231F48] hover:border-[#BB3F95]"
-              >
-                Complete the look
-              </a>
             </div>
-          )}
 
-          {/* Color variants — clickable to show in carousel */}
-          {variants.length > 0 && (
-            <div className="pt-2">
-              <p className="text-xs text-[#6B4773] font-bold mb-2 flex items-center gap-1.5">
-                <Palette size={12} />
-                Available Colors
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {variants.map((v) => {
-                  const isActive = variantColor === v.color && variantPhotoUrl === v.photo_url
-                  return (
-                    <button
-                      key={v.color}
-                      onClick={() => v.photo_url ? handleVariantClick(v.color, v.photo_url) : undefined}
-                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
-                        isActive
-                          ? 'bg-[#231F48] text-white'
-                          : v.photo_url
-                            ? 'bg-[#FAF9FE] border border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
-                            : 'bg-[#FAF9FE] text-[#6B4773]'
-                      }`}
-                    >
-                      <span
-                        className="w-3 h-3 rounded-full border border-[#E0E1F6] flex-shrink-0"
-                        style={{ backgroundColor: swatchColor(v.color) }}
-                      />
-                      <span className="text-xs font-semibold">{v.color}</span>
-                    </button>
-                  )
-                })}
+            {/* AI Summary Card */}
+            {detail?.description && (
+              <div className="p-4 bg-gradient-to-br from-[#FAF9FE] to-[#F2F1FA] border border-[#E0E1F6] rounded-[24px] shadow-sm">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Sparkles size={14} className="text-[#BB3F95]" />
+                  <span className="text-xs font-bold text-[#BB3F95] uppercase tracking-wider">
+                    AI Summary
+                  </span>
+                </div>
+                <p className="text-xs text-[#231F48] leading-relaxed font-medium">
+                  {detail.description}
+                </p>
               </div>
+            )}
+
+            {/* Product Specifications Card */}
+            <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-2.5">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Info size={14} className="text-[#6B4773]" />
+                <span className="text-xs font-bold text-[#231F48] uppercase tracking-wider">
+                  Product Info
+                </span>
+              </div>
+              {product.name && (
+                <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+                  <span className="text-[#6B4773] font-medium">Name</span>
+                  <span className="font-bold text-[#231F48]">{product.name}</span>
+                </div>
+              )}
+              {fabricEstimate && (
+                <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+                  <span className="text-[#6B4773] font-medium">Fabric</span>
+                  <span className="font-bold text-[#231F48]">{fabricEstimate}</span>
+                </div>
+              )}
+              {product.subtype && (
+                <div className="flex justify-between text-xs py-1">
+                  <span className="text-[#6B4773] font-medium">Type</span>
+                  <span className="font-bold text-[#231F48]">{product.subtype}</span>
+                </div>
+              )}
             </div>
-          )}
 
-        </div>
+            {/* Family Sizing Selector Card */}
+            {SHOW_FAMILY_SIZING && (
+              <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm">👥</span>
+                    <h4 className="text-xs font-bold text-[#231F48]">Shopping for Family?</h4>
+                  </div>
+                  <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
+                </div>
+                <p className="text-[10px] text-[#6B4773]">
+                  Save family sizes to find the right fit when gifting
+                </p>
 
-        {/* Try-On CTA — disabled for SOLD. Shown only when this store's plan
-            carries VIRTUAL_TRY_ON_V2 (`try_on_enabled` on the product payload). */}
-        {detail?.try_on_enabled && !isSold && (
-          <div className="px-4 pt-2">
-            <button
-              onClick={() => setShowTryOn(true)}
-              className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                isReserved
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 focus-visible:ring-cyan-500'
-              }`}
-              disabled={isReserved}
-            >
-              <Camera size={18} />
-              {isReserved ? 'Try On Unavailable' : 'Try This On'}
-            </button>
-            {isReserved && (
-              <p className="text-center text-xs text-amber-500 mt-1.5">
-                Reserved items cannot be tried on
-              </p>
+                <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
+                  </div>
+                  <span className="text-xs font-extrabold text-emerald-700">✓</span>
+                </div>
+              </div>
+            )}
+
+            {/* CTAs — Enquire full-width, then like + share side by side (#3) */}
+            {!isSold && (
+              <div className="space-y-3 pt-2">
+                <button
+                  onClick={() => setShowConsentModal(true)}
+                  className="w-full py-3.5 px-3 rounded-2xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
+                >
+                  <MessageCircle size={16} className="fill-current text-emerald-400 shrink-0" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider">
+                    Enquire Now
+                  </span>
+                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => onFavorite(product.id)}
+                    className={`w-full py-3.5 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
+                      isFavorited
+                        ? 'border-[#BB3F95] text-[#BB3F95] bg-[#BB3F95]/5'
+                        : 'border-[#E0E1F6] text-[#231F48] bg-white hover:border-[#BB3F95]'
+                    }`}
+                  >
+                    <Heart
+                      size={16}
+                      className={isFavorited ? 'fill-current text-[#BB3F95]' : 'text-[#231F48]'}
+                    />
+                    <span className="uppercase tracking-wider">
+                      {isFavorited ? 'Liked' : 'I like this'}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => void handleShare()}
+                    className="w-full py-3.5 rounded-2xl border border-[#E0E1F6] bg-white text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition-all active:scale-[0.98]"
+                  >
+                    <Share2 size={16} className="shrink-0" />
+                    <span className="uppercase tracking-wider">Share Product</span>
+                  </button>
+                </div>
+                {/* F-045 PR-10b: pieces from nearby stores that go with this one. */}
+                <a
+                  href={`/my-style?look=${encodeURIComponent(product.id)}`}
+                  className="block w-full py-3 rounded-2xl border border-[#E0E1F6] bg-white text-center text-xs font-bold uppercase tracking-wider text-[#231F48] hover:border-[#BB3F95]"
+                >
+                  Complete the look
+                </a>
+              </div>
+            )}
+
+            {/* Color variants — clickable to show in carousel */}
+            {variants.length > 0 && (
+              <div className="pt-2">
+                <p className="text-xs text-[#6B4773] font-bold mb-2 flex items-center gap-1.5">
+                  <Palette size={12} />
+                  Available Colors
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {variants.map((v) => {
+                    const isActive = variantColor === v.color && variantPhotoUrl === v.photo_url;
+                    return (
+                      <button
+                        key={v.color}
+                        onClick={() =>
+                          v.photo_url ? handleVariantClick(v.color, v.photo_url) : undefined
+                        }
+                        className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
+                          isActive
+                            ? 'bg-[#231F48] text-white'
+                            : v.photo_url
+                              ? 'bg-[#FAF9FE] border border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
+                              : 'bg-[#FAF9FE] text-[#6B4773]'
+                        }`}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full border border-[#E0E1F6] flex-shrink-0"
+                          style={{ backgroundColor: swatchColor(v.color) }}
+                        />
+                        <span className="text-xs font-semibold">{v.color}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
-        )}
 
-        {/* Notify When Available — only for SOLD items */}
-        {isSold && (
-          <div className="px-4 pt-2">
-            <NotifyWhenAvailable
-              productId={product.id}
-              storeSlug={store ?? slug}
-              productName={product.name ?? product.category ?? 'this product'}
-            />
-          </div>
-        )}
+          {/* Try-On CTA — disabled for SOLD. Shown only when this store's plan
+            carries VIRTUAL_TRY_ON_V2 (`try_on_enabled` on the product payload). */}
+          {detail?.try_on_enabled && !isSold && (
+            <div className="px-4 pt-2">
+              <button
+                onClick={() => setShowTryOn(true)}
+                className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                  isReserved
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 focus-visible:ring-cyan-500'
+                }`}
+                disabled={isReserved}
+              >
+                <Camera size={18} />
+                {isReserved ? 'Try On Unavailable' : 'Try This On'}
+              </button>
+              {isReserved && (
+                <p className="text-center text-xs text-amber-500 mt-1.5">
+                  Reserved items cannot be tried on
+                </p>
+              )}
+            </div>
+          )}
 
-        {/* Design Gallery — only for unstitched products */}
-        {detail?.is_unstitched && (
-          <div className="px-4 pt-2">
-            <DesignGallery
-              retailerPhone={retailer.phone}
-              retailerName={retailer.shop_name}
-            />
-          </div>
-        )}
+          {/* Notify When Available — only for SOLD items */}
+          {isSold && (
+            <div className="px-4 pt-2">
+              <NotifyWhenAvailable
+                productId={product.id}
+                storeSlug={store ?? slug}
+                productName={product.name ?? product.category ?? 'this product'}
+              />
+            </div>
+          )}
 
-        {/* Reviews — social proof only. The submit form lives on the shared
+          {/* Design Gallery — only for unstitched products */}
+          {detail?.is_unstitched && (
+            <div className="px-4 pt-2">
+              <DesignGallery retailerPhone={retailer.phone} retailerName={retailer.shop_name} />
+            </div>
+          )}
+
+          {/* Reviews — social proof only. The submit form lives on the shared
             product link the retailer sends after a sale (SharedProductPage,
             ?review=1), not in the in-catalog sheet. */}
-        <div className="px-4 pt-2 space-y-3">
-          <ReviewList
-            productId={product.id}
-            avgRating={product.avg_rating}
-            ratingCount={product.rating_count}
-          />
-        </div>
-
-        {/* Related Products — same category from same retailer */}
-        {relatedProducts.length > 0 && (
-          <div className="px-4 pb-2">
-            <div className="border-t border-gray-100 pt-4 mb-3">
-              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <ShoppingCart size={14} className="text-cyan-600" />
-                Related Products
-              </h3>
-            </div>
-            <div className="flex gap-3 overflow-x-auto -mx-4 px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
-              {relatedProducts.map((rp) => (
-                <button
-                  key={rp.id}
-                  onClick={() => onSelectProduct?.(rp)}
-                  className="flex-shrink-0 w-28 snap-start group"
-                >
-                  <div className="relative w-28 h-36 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-cyan-200 group-hover:shadow-soft transition-all">
-                    {rp.primary_photo_url ? (
-                      <Image
-                        src={rp.primary_photo_url}
-                        alt={rp.name ?? rp.category ?? 'Product'}
-                        fill
-                        sizes="112px"
-                        className="object-cover group-hover:scale-[1.05] transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ShoppingCart size={20} className="text-gray-300" />
-                      </div>
-                    )}
-                    {rp.status === 'SOLD' && (
-                      <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full">
-                        Sold
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs font-medium text-gray-900 mt-1.5 truncate">
-                    {formatPriceRange(rp.price_min, rp.price_max)}
-                  </p>
-                  {rp.primary_color && (
-                    <p className="text-[10px] text-gray-500 truncate">{rp.primary_color}</p>
-                  )}
-                </button>
-              ))}
-            </div>
+          <div className="px-4 pt-2 space-y-3">
+            <ReviewList
+              productId={product.id}
+              avgRating={product.avg_rating}
+              ratingCount={product.rating_count}
+            />
           </div>
-        )}
 
-        {/* Suits Designs — the <Category> Designs strip (admin-configured) —
+          {/* Related Products — same category from same retailer */}
+          {relatedProducts.length > 0 && (
+            <div className="px-4 pb-2">
+              <div className="border-t border-gray-100 pt-4 mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <ShoppingCart size={14} className="text-cyan-600" />
+                  Related Products
+                </h3>
+              </div>
+              <div className="flex gap-3 overflow-x-auto -mx-4 px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
+                {relatedProducts.map((rp) => (
+                  <button
+                    key={rp.id}
+                    onClick={() => onSelectProduct?.(rp)}
+                    className="flex-shrink-0 w-28 snap-start group"
+                  >
+                    <div className="relative w-28 h-36 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-cyan-200 group-hover:shadow-soft transition-all">
+                      {rp.primary_photo_url ? (
+                        <Image
+                          src={rp.primary_photo_url}
+                          alt={rp.name ?? rp.category ?? 'Product'}
+                          fill
+                          sizes="112px"
+                          className="object-cover group-hover:scale-[1.05] transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingCart size={20} className="text-gray-300" />
+                        </div>
+                      )}
+                      {rp.status === 'SOLD' && (
+                        <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full">
+                          Sold
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium text-gray-900 mt-1.5 truncate">
+                      {formatPriceRange(rp.price_min, rp.price_max)}
+                    </p>
+                    {rp.primary_color && (
+                      <p className="text-[10px] text-gray-500 truncate">{rp.primary_color}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suits Designs — the <Category> Designs strip (admin-configured) —
             rendered under Related products, store-scoped (hidden when the
             retailer has no public_slug / this is a legacy /c/ URL). */}
-        {/* Only unstitched suits (suit designs) and sarees (blouse designs) get the strip. */}
-        {(/\bsar[ie]e?s?\b/i.test(product.category ?? '') ||
-          (/\bsuits?\b/i.test(product.category ?? '') && detail?.is_unstitched)) && (
-          <ShowcaseDesigns productId={product.id} storeSlug={store ?? null} />
-        )}
+          {/* Only unstitched suits (suit designs) and sarees (blouse designs) get the strip. */}
+          {(/\bsar[ie]e?s?\b/i.test(product.category ?? '') ||
+            (/\bsuits?\b/i.test(product.category ?? '') && detail?.is_unstitched)) && (
+            <ShowcaseDesigns productId={product.id} storeSlug={store ?? null} />
+          )}
 
-        <div className="pb-6" />
+          <div className="pb-6" />
         </div>
       </div>
 
@@ -1074,8 +1133,8 @@ export function ProductDetailSheet({
         >
           <button
             onClick={(e) => {
-              e.stopPropagation()
-              setFullscreenOpen(false)
+              e.stopPropagation();
+              setFullscreenOpen(false);
             }}
             className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center z-10
                        transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
@@ -1087,17 +1146,18 @@ export function ProductDetailSheet({
             className="relative w-full h-full"
             onClick={(e) => e.stopPropagation()}
             onTouchStart={(e) => {
-              fsTouchStartX.current = e.touches[0]?.clientX ?? null
+              fsTouchStartX.current = e.touches[0]?.clientX ?? null;
             }}
             onTouchEnd={(e) => {
-              if (fsTouchStartX.current === null) return
-              const delta = (e.changedTouches[0]?.clientX ?? fsTouchStartX.current) - fsTouchStartX.current
-              const SWIPE_THRESHOLD = 50
+              if (fsTouchStartX.current === null) return;
+              const delta =
+                (e.changedTouches[0]?.clientX ?? fsTouchStartX.current) - fsTouchStartX.current;
+              const SWIPE_THRESHOLD = 50;
               if (Math.abs(delta) > SWIPE_THRESHOLD) {
-                if (delta < 0 && photoIndex < totalPhotos - 1) goTo(photoIndex + 1)
-                else if (delta > 0 && photoIndex > 0) goTo(photoIndex - 1)
+                if (delta < 0 && photoIndex < totalPhotos - 1) goTo(photoIndex + 1);
+                else if (delta > 0 && photoIndex > 0) goTo(photoIndex - 1);
               }
-              fsTouchStartX.current = null
+              fsTouchStartX.current = null;
             }}
           >
             {currentPhoto && (
@@ -1146,7 +1206,7 @@ export function ProductDetailSheet({
         />
       )}
     </div>
-  )
+  );
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
@@ -1155,5 +1215,5 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-gray-400 w-16 flex-shrink-0">{label}</span>
       <span className="text-gray-800 font-medium">{value}</span>
     </div>
-  )
+  );
 }

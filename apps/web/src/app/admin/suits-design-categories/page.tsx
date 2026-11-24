@@ -1,156 +1,160 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Tags, Save, Loader2, Plus, Trash2, Link2 } from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { Link2, Loader2, Plus, Save, Tags, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type RelatedRef = { id: string; name: string; slug: string }
+type RelatedRef = { id: string; name: string; slug: string };
 
 type CategoryRow = {
-  id: string
-  name: string
-  slug: string
-  sort_order: number
-  is_active: boolean
-  design_count: number
-  related: RelatedRef[]
-}
+  id: string;
+  name: string;
+  slug: string;
+  sort_order: number;
+  is_active: boolean;
+  design_count: number;
+  related: RelatedRef[];
+};
 
 type CategoryPatch = {
-  id: string
-  name: string
-  sort_order: number
-  is_active: boolean
-}
+  id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+};
 
 export default function SuitsDesignCategoriesPage() {
-  const [rows, setRows] = useState<CategoryRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [status, setStatus] = useState('')
-  const [newName, setNewName] = useState('')
-  const [newSort, setNewSort] = useState('')
-  const [drafts, setDrafts] = useState<Record<string, CategoryPatch>>({})
+  const [rows, setRows] = useState<CategoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newSort, setNewSort] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, CategoryPatch>>({});
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories`, adminGetOptions())
-    const json = await res.json()
-    setRows(json.data ?? [])
-    setLoading(false)
-  }
+    const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories`, adminGetOptions());
+    const json = await res.json();
+    setRows(json.data ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   // Silent refetch after any successful write keeps chips + counts in sync
   // without flashing the whole-page loader.
   const quietReload = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories`, adminGetOptions())
-    const json = await res.json()
-    setRows(json.data ?? [])
-    setDrafts({})
-  }
+    const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories`, adminGetOptions());
+    const json = await res.json();
+    setRows(json.data ?? []);
+    setDrafts({});
+  };
 
-  const draft = (row: CategoryRow): CategoryPatch => drafts[row.id] ?? { ...row }
+  const draft = (row: CategoryRow): CategoryPatch => drafts[row.id] ?? { ...row };
 
   const patchDraft = (id: string, patch: Partial<CategoryPatch>) =>
     setDrafts((prev) => ({
       ...prev,
       [id]: { ...(prev[id] ?? rows.find((r) => r.id === id)!), ...patch },
-    }))
+    }));
 
   const save = async (id: string) => {
-    const d = drafts[id]
-    if (!d) return // untouched row — nothing to persist
-    setStatus('')
+    const d = drafts[id];
+    if (!d) return; // untouched row — nothing to persist
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories/${id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
-        body: JSON.stringify({ name: d.name.trim(), sort_order: d.sort_order, is_active: d.is_active }),
-      })
+        body: JSON.stringify({
+          name: d.name.trim(),
+          sort_order: d.sort_order,
+          is_active: d.is_active,
+        }),
+      });
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? `Save failed (HTTP ${res.status})`)
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? `Save failed (HTTP ${res.status})`);
       }
-      await quietReload()
-      setStatus(`✅ "${d.name.trim()}" saved`)
+      await quietReload();
+      setStatus(`✅ "${d.name.trim()}" saved`);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     }
-  }
+  };
 
   const toggleActive = async (row: CategoryRow) => {
     // Flip optimistically, then persist + let the server truth reload.
-    patchDraft(row.id, { is_active: !row.is_active })
-    setStatus('')
+    patchDraft(row.id, { is_active: !row.is_active });
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories/${row.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify({ is_active: !row.is_active }),
-      })
+      });
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? `Update failed (HTTP ${res.status})`)
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? `Update failed (HTTP ${res.status})`);
       }
-      await quietReload()
+      await quietReload();
     } catch (err) {
-      patchDraft(row.id, { is_active: row.is_active })
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Update failed'}`)
+      patchDraft(row.id, { is_active: row.is_active });
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Update failed'}`);
     }
-  }
+  };
 
   const saveRelated = async (id: string, relatedIds: string[]) => {
-    setStatus('')
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories/${id}/related`, {
         ...(await adminMutateOptions()),
         method: 'PUT',
         body: JSON.stringify({ related_ids: relatedIds }),
-      })
+      });
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? `Save failed (HTTP ${res.status})`)
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? `Save failed (HTTP ${res.status})`);
       }
-      await quietReload()
-      const name = rows.find((r) => r.id === id)?.name ?? 'Category'
-      setStatus(`✅ "${name}" related set saved`)
+      await quietReload();
+      const name = rows.find((r) => r.id === id)?.name ?? 'Category';
+      setStatus(`✅ "${name}" related set saved`);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     }
-  }
+  };
 
   const remove = async (row: CategoryRow) => {
     // The API refuses while designs sit in the category (FK RESTRICT) — the
     // UI disables the button then, so this confirm only fires when it can go.
-    if (!confirm(`Delete "${row.name}"? This cannot be undone.`)) return
+    if (!confirm(`Delete "${row.name}"? This cannot be undone.`)) return;
     const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories/${row.id}`, {
       ...(await adminMutateOptions()),
       method: 'DELETE',
       // adminMutateOptions() sets Content-Type: application/json — Fastify then
       // 500s on an empty body ("body must be object"). Send an empty object.
       body: '{}',
-    })
+    });
     if (!res.ok) {
-      const json = await res.json().catch(() => null)
-      setStatus(`❌ ${json?.error?.message ?? `Delete failed (HTTP ${res.status})`}`)
-      return
+      const json = await res.json().catch(() => null);
+      setStatus(`❌ ${json?.error?.message ?? `Delete failed (HTTP ${res.status})`}`);
+      return;
     }
-    setRows((prev) => prev.filter((c) => c.id !== row.id))
-    setStatus(`✅ "${row.name}" deleted`)
-  }
+    setRows((prev) => prev.filter((c) => c.id !== row.id));
+    setStatus(`✅ "${row.name}" deleted`);
+  };
 
   const create = async () => {
-    const name = newName.trim()
+    const name = newName.trim();
     if (!name) {
-      setStatus('❌ Name is required')
-      return
+      setStatus('❌ Name is required');
+      return;
     }
-    setStatus('')
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories`, {
         ...(await adminMutateOptions()),
@@ -159,41 +163,45 @@ export default function SuitsDesignCategoriesPage() {
           name,
           ...(newSort ? { sort_order: Number(newSort) } : {}),
         }),
-      })
+      });
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? 'Create failed')
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.error?.message ?? 'Create failed');
       }
-      setNewName('')
-      setNewSort('')
-      await quietReload()
-      setStatus(`✅ "${name}" added — pick its related categories below`)
+      setNewName('');
+      setNewSort('');
+      await quietReload();
+      setStatus(`✅ "${name}" added — pick its related categories below`);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Create failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Create failed'}`);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-5xl"
+    >
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Suits Design Categories</h1>
           <Tags size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          The category list behind the Suits Designs strips — and the rows that make
-          &ldquo;browse Sarees → also see Blouse designs&rdquo; work. A product whose category is{' '}
+          The category list behind the Suits Designs strips — and the rows that make &ldquo;browse
+          Sarees → also see Blouse designs&rdquo; work. A product whose category is{' '}
           <span className="font-medium">Saree</span> shows designs from every category ticked as its{' '}
-          <span className="font-medium">related</span> set (Saree itself is always included). Links are
-          stored as DB rows, not code — a new relation ships the moment you save it here.
+          <span className="font-medium">related</span> set (Saree itself is always included). Links
+          are stored as DB rows, not code — a new relation ships the moment you save it here.
         </p>
       </div>
 
@@ -249,10 +257,18 @@ export default function SuitsDesignCategoriesPage() {
       {/* ─── Category rows ────────────────────────────────────────── */}
       <div className="space-y-3">
         {rows.map((row) => {
-          const d = draft(row)
-          const slugDirty = d.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') !== row.slug
+          const d = draft(row);
+          const slugDirty =
+            d.name
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-+|-+$/g, '') !== row.slug;
           return (
-            <div key={row.id} className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
+            <div
+              key={row.id}
+              className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
+            >
               <div className="flex flex-wrap items-center gap-3 p-4">
                 <input
                   type="number"
@@ -271,7 +287,10 @@ export default function SuitsDesignCategoriesPage() {
                 <code className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5">
                   /{row.slug}
                   {slugDirty && (
-                    <span className="text-amber-500 ml-1" title="Slug re-derives from the name on save">
+                    <span
+                      className="text-amber-500 ml-1"
+                      title="Slug re-derives from the name on save"
+                    >
                       *
                     </span>
                   )}
@@ -284,7 +303,9 @@ export default function SuitsDesignCategoriesPage() {
                       : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${row.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${row.is_active ? 'bg-green-500' : 'bg-gray-300'}`}
+                  />
                   {row.is_active ? 'Active' : 'Off'}
                 </button>
                 <span className="text-[11px] text-gray-400 tabular-nums">
@@ -333,7 +354,7 @@ export default function SuitsDesignCategoriesPage() {
                 />
               </div>
             </div>
-          )
+          );
         })}
 
         {rows.length === 0 && (
@@ -343,7 +364,7 @@ export default function SuitsDesignCategoriesPage() {
         )}
       </div>
     </motion.div>
-  )
+  );
 }
 
 /** Chip multi-select for one category's related set. Self is always implied
@@ -354,19 +375,20 @@ function RelatedPicker({
   all,
   onSave,
 }: {
-  row: CategoryRow
-  all: CategoryRow[]
-  onSave: (id: string, relatedIds: string[]) => Promise<void>
+  row: CategoryRow;
+  all: CategoryRow[];
+  onSave: (id: string, relatedIds: string[]) => Promise<void>;
 }) {
   // Local copy of the related ids; the parent reloads server truth after save.
-  const [ids, setIds] = useState<string[]>(row.related.map((r) => r.id))
-  const [saving, setSaving] = useState(false)
-  const dirty = JSON.stringify([...ids].sort()) !== JSON.stringify(row.related.map((r) => r.id).sort())
+  const [ids, setIds] = useState<string[]>(row.related.map((r) => r.id));
+  const [saving, setSaving] = useState(false);
+  const dirty =
+    JSON.stringify([...ids].sort()) !== JSON.stringify(row.related.map((r) => r.id).sort());
 
-  const others = all.filter((c) => c.id !== row.id).sort((a, b) => a.sort_order - b.sort_order)
+  const others = all.filter((c) => c.id !== row.id).sort((a, b) => a.sort_order - b.sort_order);
 
   const toggle = (id: string) =>
-    setIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    setIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   return (
     <>
@@ -375,7 +397,7 @@ function RelatedPicker({
         {row.name} (always)
       </span>
       {others.map((c) => {
-        const on = ids.includes(c.id)
+        const on = ids.includes(c.id);
         return (
           <button
             key={c.id}
@@ -394,14 +416,14 @@ function RelatedPicker({
             />
             {c.name}
           </button>
-        )
+        );
       })}
       {dirty && (
         <button
           onClick={async () => {
-            setSaving(true)
-            await onSave(row.id, ids)
-            setSaving(false)
+            setSaving(true);
+            await onSave(row.id, ids);
+            setSaving(false);
           }}
           disabled={saving}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-ink-600 hover:bg-ink-500 rounded-full transition-colors disabled:opacity-60"
@@ -411,5 +433,5 @@ function RelatedPicker({
         </button>
       )}
     </>
-  )
+  );
 }

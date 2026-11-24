@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import { router } from 'expo-router';
 import {
   Building2,
   CheckCircle2,
@@ -14,7 +14,6 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { KeyboardScreen } from '../src/components/KeyboardScreen';
 import {
   ActivityIndicator,
   Alert,
@@ -29,17 +28,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GooglePlaceField } from '../src/components/GooglePlaceField';
 import { GradientButton } from '../src/components/GradientButton';
+import { KeyboardScreen } from '../src/components/KeyboardScreen';
 import { retailerApi } from '../src/lib/api';
+import { CATALOG_UPLOAD_ENABLED } from '../src/lib/catalog-upload-flag';
 import { showError } from '../src/lib/errors';
 import { resolveMapsLink } from '../src/lib/maps-link';
 import { showPinReview } from '../src/lib/pin-alert';
 import { reviewPin } from '../src/lib/pin-check';
-import {
-  clearCapturedReferralCode,
-  getCapturedReferralCode,
-} from '../src/lib/referral-capture';
+import { clearCapturedReferralCode, getCapturedReferralCode } from '../src/lib/referral-capture';
 import { WEB_URL } from '../src/lib/web-url';
-import { CATALOG_UPLOAD_ENABLED } from '../src/lib/catalog-upload-flag';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 const TOTAL_STEPS = 5;
@@ -191,7 +188,7 @@ export default function OnboardingScreen() {
 
   const toggleSpec = (spec: string) => {
     setSelectedSpecs((prev) =>
-      prev.includes(spec) ? prev.filter((s) => s !== spec) : [...prev, spec]
+      prev.includes(spec) ? prev.filter((s) => s !== spec) : [...prev, spec],
     );
   };
 
@@ -465,42 +462,42 @@ export default function OnboardingScreen() {
 
             {/* Field 3: Primary Clothing Category — hidden from onboarding for now */}
             {false && (
-            <View className="mt-3">
-              <Text className="text-[11px] text-heliotrope-600 font-semibold mb-2">
-                Primary Specialization
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {SPECIALIZATIONS.map((spec) => {
-                  const isSelected = selectedSpecs.includes(spec);
-                  return (
-                    <AnimatedPressable
-                      key={spec}
-                      onPress={() => toggleSpec(spec)}
-                      accessibilityLabel={spec}
-                      accessibilityState={{ selected: isSelected }}
-                      style={{
-                        paddingHorizontal: 14,
-                        paddingVertical: 8,
-                        borderRadius: 16,
-                        borderWidth: 1.5,
-                        backgroundColor: isSelected ? '#231F48' : 'transparent',
-                        borderColor: isSelected ? '#231F48' : '#928EB2',
-                      }}
-                    >
-                      <Text
+              <View className="mt-3">
+                <Text className="text-[11px] text-heliotrope-600 font-semibold mb-2">
+                  Primary Specialization
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {SPECIALIZATIONS.map((spec) => {
+                    const isSelected = selectedSpecs.includes(spec);
+                    return (
+                      <AnimatedPressable
+                        key={spec}
+                        onPress={() => toggleSpec(spec)}
+                        accessibilityLabel={spec}
+                        accessibilityState={{ selected: isSelected }}
                         style={{
-                          fontSize: 12,
-                          fontWeight: '700',
-                          color: isSelected ? '#FFFFFF' : '#231F48',
+                          paddingHorizontal: 14,
+                          paddingVertical: 8,
+                          borderRadius: 16,
+                          borderWidth: 1.5,
+                          backgroundColor: isSelected ? '#231F48' : 'transparent',
+                          borderColor: isSelected ? '#231F48' : '#928EB2',
                         }}
                       >
-                        {spec}
-                      </Text>
-                    </AnimatedPressable>
-                  );
-                })}
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: '700',
+                            color: isSelected ? '#FFFFFF' : '#231F48',
+                          }}
+                        >
+                          {spec}
+                        </Text>
+                      </AnimatedPressable>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
             )}
 
             {/* Field 4: Storefront Subdomain URL */}
@@ -541,12 +538,12 @@ export default function OnboardingScreen() {
             <View className="mt-4 bg-lavender-50 border border-lavender-200 rounded-2xl p-4">
               <Text className="text-[11px] text-heliotrope-600 leading-relaxed font-medium mb-3">
                 By creating retailer profile, I provide consent to be contacted by Customer,
-                Kanchuki&apos;s sales agents and customer support via WhatsApp, SMS, Phone Calls
-                and email.
+                Kanchuki&apos;s sales agents and customer support via WhatsApp, SMS, Phone Calls and
+                email.
               </Text>
               <Text className="text-[11px] text-heliotrope-600 leading-relaxed font-medium mb-3">
-                I understand that KYC verification is required and acknowledge the updated
-                refund and privacy policies linked below.
+                I understand that KYC verification is required and acknowledge the updated refund
+                and privacy policies linked below.
               </Text>
               <AnimatedPressable
                 onPress={() => setConsentGiven(!consentGiven)}
@@ -643,9 +640,7 @@ export default function OnboardingScreen() {
               </View>
 
               <View className="flex-1">
-                <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">
-                  State
-                </Text>
+                <Text className="text-[11px] text-heliotrope-600 font-semibold mb-1.5">State</Text>
                 <View className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5">
                   <TextInput
                     value={state}
@@ -734,14 +729,17 @@ export default function OnboardingScreen() {
 
             {/* Optional: link the shop's Google listing (saved immediately on pick) */}
             <View className="mt-3">
-              <GooglePlaceField defaultQuery={[shopName.trim(), city.trim()].filter(Boolean).join(' ')} />
+              <GooglePlaceField
+                defaultQuery={[shopName.trim(), city.trim()].filter(Boolean).join(' ')}
+              />
             </View>
 
             {/* Store Tip Box */}
             <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5 mt-2 flex-row items-start gap-2.5">
               <MapPin size={16} color="#5A3962" />
               <Text className="flex-1 text-[11px] text-heliotrope-600 leading-relaxed font-medium">
-                Your shop location will appear on your customer store links so visitors can get directions.
+                Your shop location will appear on your customer store links so visitors can get
+                directions.
               </Text>
             </View>
           </View>
@@ -812,7 +810,7 @@ export default function OnboardingScreen() {
                 borderColor: selectedPlan === 'DEMO' ? '#231F48' : '#E0E1F6',
               }}
             >
-                            <View className="flex-row items-center gap-3">
+              <View className="flex-row items-center gap-3">
                 <View
                   className="w-12 h-12 rounded-xl items-center justify-center"
                   style={{
@@ -842,7 +840,6 @@ export default function OnboardingScreen() {
                 )}
               </View>
             </AnimatedPressable>
-
           </View>
         );
 
@@ -867,20 +864,23 @@ export default function OnboardingScreen() {
             </LinearGradient>
 
             <View className="w-full gap-3">
-            <GradientButton variant="web"
-              label="Go to Dashboard →"
-              onPress={() => void handleNext()}
-              loading={saving}
-            />
+              <GradientButton
+                variant="web"
+                label="Go to Dashboard →"
+                onPress={() => void handleNext()}
+                loading={saving}
+              />
 
-            {/* Show selected plan badge */}
-            {selectedPlan && (
-              <View className="items-center mt-2 mb-1">
-                <Text className="text-[11px] text-heliotrope-500 font-medium">
-                  {selectedPlan === 'DEMO' ? 'Demo Pro' : `${selectedPlan.charAt(0) + selectedPlan.slice(1).toLowerCase()} plan`}
-                </Text>
-              </View>
-            )}
+              {/* Show selected plan badge */}
+              {selectedPlan && (
+                <View className="items-center mt-2 mb-1">
+                  <Text className="text-[11px] text-heliotrope-500 font-medium">
+                    {selectedPlan === 'DEMO'
+                      ? 'Demo Pro'
+                      : `${selectedPlan.charAt(0) + selectedPlan.slice(1).toLowerCase()} plan`}
+                  </Text>
+                </View>
+              )}
 
               <AnimatedPressable
                 onPress={() => void handleCreateStoreQr()}
@@ -901,23 +901,23 @@ export default function OnboardingScreen() {
               </AnimatedPressable>
 
               {CATALOG_UPLOAD_ENABLED && (
-              <AnimatedPressable
-                onPress={() => void handleGetCatalogHelp()}
-                className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-2xl p-4 shadow-sm"
-              >
-                <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center border border-lavender-200">
-                  <Truck size={20} color="#231F48" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-spaceCadet-900 text-xs font-semibold">
-                    Catalog Upload Help
-                  </Text>
-                  <Text className="text-heliotrope-500 text-[11px] mt-0.5 font-medium">
-                    A team member adds your inventory for you
-                  </Text>
-                </View>
-                <Text className="text-heliotrope-500 text-base font-semibold">→</Text>
-              </AnimatedPressable>
+                <AnimatedPressable
+                  onPress={() => void handleGetCatalogHelp()}
+                  className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-2xl p-4 shadow-sm"
+                >
+                  <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center border border-lavender-200">
+                    <Truck size={20} color="#231F48" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-spaceCadet-900 text-xs font-semibold">
+                      Catalog Upload Help
+                    </Text>
+                    <Text className="text-heliotrope-500 text-[11px] mt-0.5 font-medium">
+                      A team member adds your inventory for you
+                    </Text>
+                  </View>
+                  <Text className="text-heliotrope-500 text-base font-semibold">→</Text>
+                </AnimatedPressable>
               )}
             </View>
           </View>
@@ -995,7 +995,8 @@ export default function OnboardingScreen() {
           }}
         >
           <View className="max-w-[540px] w-full self-center">
-            <GradientButton variant="web"
+            <GradientButton
+              variant="web"
               label={
                 showConfetti
                   ? "You're in"
@@ -1011,8 +1012,6 @@ export default function OnboardingScreen() {
               disabled={!canProceed() || showConfetti || saving}
               loading={saving}
             />
-
-
           </View>
         </View>
       )}

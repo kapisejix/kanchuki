@@ -20,7 +20,9 @@ const { Client } = pg;
 async function main() {
   const migrationDir = process.argv[2];
   if (!migrationDir) {
-    console.error('[apply-commission-migration] pass the migration directory name, e.g. 054_admin_commission_soft_delete');
+    console.error(
+      '[apply-commission-migration] pass the migration directory name, e.g. 054_admin_commission_soft_delete',
+    );
     process.exitCode = 1;
     return;
   }

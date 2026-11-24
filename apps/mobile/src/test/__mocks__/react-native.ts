@@ -6,37 +6,35 @@
  * `react-native/Libraries/...` used by @testing-library/react-native.
  */
 
-import React from 'react'
+import React from 'react';
 
 // ── Helpers ────────────────────────────────────────────────────────
 
 function createComponent(displayName: string) {
-  const C = React.forwardRef<unknown, Record<string, unknown>>(
-    (props, ref) => {
-      const { children, ...rest } = props
-      return React.createElement(displayName as never, { ...rest, ref }, children as React.ReactNode)
-    },
-  )
-  C.displayName = displayName
-  return C
+  const C = React.forwardRef<unknown, Record<string, unknown>>((props, ref) => {
+    const { children, ...rest } = props;
+    return React.createElement(displayName as never, { ...rest, ref }, children as React.ReactNode);
+  });
+  C.displayName = displayName;
+  return C;
 }
 
 // ── Core Components ────────────────────────────────────────────────
 
-export const View = createComponent('View')
-export const Text = createComponent('Text')
-export const TouchableOpacity = createComponent('TouchableOpacity')
-export const ScrollView = createComponent('ScrollView')
+export const View = createComponent('View');
+export const Text = createComponent('Text');
+export const TouchableOpacity = createComponent('TouchableOpacity');
+export const ScrollView = createComponent('ScrollView');
 // Renders rows via renderItem (or ListEmptyComponent) so screen tests can see list content.
 type ListProps = {
-  data?: unknown[]
-  renderItem?: (info: { item: unknown; index: number }) => React.ReactNode
-  keyExtractor?: (item: unknown, index: number) => string
-  ListEmptyComponent?: React.ReactNode
-}
+  data?: unknown[];
+  renderItem?: (info: { item: unknown; index: number }) => React.ReactNode;
+  keyExtractor?: (item: unknown, index: number) => string;
+  ListEmptyComponent?: React.ReactNode;
+};
 export const FlatList = Object.assign(
   ({ data, renderItem, keyExtractor, ListEmptyComponent }: ListProps) => {
-    if (!data?.length) return React.createElement('FlatList', null, ListEmptyComponent)
+    if (!data?.length) return React.createElement('FlatList', null, ListEmptyComponent);
     return React.createElement(
       'FlatList',
       null,
@@ -47,25 +45,25 @@ export const FlatList = Object.assign(
           renderItem?.({ item, index }),
         ),
       ),
-    )
+    );
   },
   { displayName: 'FlatList' },
-)
-export const TextInput = createComponent('TextInput')
-export const Image = createComponent('Image')
-export const Modal = createComponent('Modal')
-export const Pressable = createComponent('Pressable')
-export const ActivityIndicator = createComponent('ActivityIndicator')
-export const StatusBar = createComponent('StatusBar')
-export const KeyboardAvoidingView = createComponent('KeyboardAvoidingView')
-export const RefreshControl = createComponent('RefreshControl')
-export const Switch = createComponent('Switch')
-export const SafeAreaView = createComponent('SafeAreaView')
-export const SectionList = createComponent('SectionList')
-export const TouchableHighlight = createComponent('TouchableHighlight')
-export const TouchableWithoutFeedback = createComponent('TouchableWithoutFeedback')
-export const Keyboard = createComponent('Keyboard')
-export const AnimatedSectionList = createComponent('AnimatedSectionList')
+);
+export const TextInput = createComponent('TextInput');
+export const Image = createComponent('Image');
+export const Modal = createComponent('Modal');
+export const Pressable = createComponent('Pressable');
+export const ActivityIndicator = createComponent('ActivityIndicator');
+export const StatusBar = createComponent('StatusBar');
+export const KeyboardAvoidingView = createComponent('KeyboardAvoidingView');
+export const RefreshControl = createComponent('RefreshControl');
+export const Switch = createComponent('Switch');
+export const SafeAreaView = createComponent('SafeAreaView');
+export const SectionList = createComponent('SectionList');
+export const TouchableHighlight = createComponent('TouchableHighlight');
+export const TouchableWithoutFeedback = createComponent('TouchableWithoutFeedback');
+export const Keyboard = createComponent('Keyboard');
+export const AnimatedSectionList = createComponent('AnimatedSectionList');
 
 // ── APIs ───────────────────────────────────────────────────────────
 
@@ -75,7 +73,7 @@ export const StyleSheet = {
   absoluteFill: {},
   absoluteFillObject: {},
   flatten: (s: unknown) => s,
-}
+};
 
 export const Platform = {
   OS: 'ios' as const,
@@ -84,22 +82,22 @@ export const Platform = {
   isPad: false,
   isTV: false,
   isTesting: true,
-}
+};
 
 export const Dimensions = {
   get: () => ({ width: 390, height: 844 }),
   set: () => {},
   addEventListener: () => ({ remove: () => {} }),
-}
+};
 
-export const useWindowDimensions = () => ({ width: 390, height: 844, scale: 2, fontScale: 1 })
+export const useWindowDimensions = () => ({ width: 390, height: 844, scale: 2, fontScale: 1 });
 
 export const PixelRatio = {
   get: () => 2,
   getFontScale: () => 1,
   getPixelSizeForLayoutSize: (n: number) => n * 2,
   roundToNearestPixel: (n: number) => Math.round(n * 2) / 2,
-}
+};
 
 export const Animated = {
   View: createComponent('Animated.View'),
@@ -108,8 +106,12 @@ export const Animated = {
   ScrollView: createComponent('Animated.ScrollView'),
   Value: class {
     constructor(public value: number) {}
-    setValue(v: number) { this.value = v }
-    interpolate() { return { value: this.value } }
+    setValue(v: number) {
+      this.value = v;
+    }
+    interpolate() {
+      return { value: this.value };
+    }
   },
   timing: () => ({ start: (cb?: () => void) => cb?.() }),
   spring: () => ({ start: (cb?: () => void) => cb?.() }),
@@ -119,7 +121,7 @@ export const Animated = {
   delay: () => ({ start: (cb?: () => void) => cb?.() }),
   event: () => () => {},
   createAnimatedComponent: (comp: unknown) => comp,
-}
+};
 
 export const Linking = {
   canOpenURL: async () => true,
@@ -128,27 +130,27 @@ export const Linking = {
   removeEventListener: () => {},
   openSettings: async () => {},
   sendIntent: async () => {},
-}
+};
 
 export const BackHandler = {
   addEventListener: () => ({ remove: () => {} }),
   removeEventListener: () => {},
   exitApp: () => {},
-}
+};
 
 export const Alert = {
   alert: () => {},
   prompt: () => {},
-}
+};
 
 export const Vibration = {
   vibrate: () => {},
   cancel: () => {},
-}
+};
 
 // Controllable reduce-motion state so tests can exercise the app's Reduce
 // Motion handling (useReduceMotion hook, Skeleton/NetworkBanner dimming, etc.).
-let reduceMotionEnabled = false
+let reduceMotionEnabled = false;
 
 export const AccessibilityInfo = {
   isReduceMotionEnabled: async () => reduceMotionEnabled,
@@ -157,7 +159,7 @@ export const AccessibilityInfo = {
   isGrayscaleEnabled: async () => false,
   addEventListener: () => ({ remove: () => {} }),
   removeEventListener: () => {},
-}
+};
 
 /**
  * Controllable AccessibilityInfo handle for tests.
@@ -168,28 +170,28 @@ export const AccessibilityInfo = {
  * (via the react-native alias) see the change — no vi.mock needed.
  */
 export function createControllableAccessibility(initialReduceMotion = false) {
-  reduceMotionEnabled = initialReduceMotion
+  reduceMotionEnabled = initialReduceMotion;
   return {
     setReduceMotion: (enabled: boolean) => {
-      reduceMotionEnabled = enabled
+      reduceMotionEnabled = enabled;
     },
     reset: () => {
-      reduceMotionEnabled = initialReduceMotion
+      reduceMotionEnabled = initialReduceMotion;
     },
-  }
+  };
 }
 
 export const AppState = {
   currentState: 'active',
   addEventListener: () => ({ remove: () => {} }),
   removeEventListener: () => {},
-}
+};
 
 export const Appearance = {
   getColorScheme: () => 'light' as const,
   addChangeListener: () => ({ remove: () => {} }),
   removeChangeListener: () => {},
-}
+};
 
 export const I18nManager = {
   isRTL: false,
@@ -197,34 +199,34 @@ export const I18nManager = {
   forceRTL: () => {},
   swapLeftAndRightInRTL: () => {},
   getConstants: () => ({ isRTL: false, doLeftAndRightSwapInRTL: true, localeIdentifier: 'en_US' }),
-}
+};
 
 export const YellowBox = {
   ignoreWarnings: () => {},
-}
+};
 
-export const NativeModules = {}
-export const UIManager = {}
-export const findNodeHandle = () => null
-export const processColor = (c: unknown) => c
+export const NativeModules = {};
+export const UIManager = {};
+export const findNodeHandle = () => null;
+export const processColor = (c: unknown) => c;
 
 // ── TurboModuleRegistry (needed by some internal react-native paths) ──
 
 export const TurboModuleRegistry = {
   get: () => null,
   getEnforcing: () => {
-    throw new Error('TurboModuleRegistry.getEnforcing: module not found')
+    throw new Error('TurboModuleRegistry.getEnforcing: module not found');
   },
-}
+};
 
 // ── NativeEventEmitter ─────────────────────────────────────────────
 
 export class NativeEventEmitter {
-  addListener = () => ({ remove: () => {} })
-  removeAllListeners = () => {}
-  removeSubscription = () => {}
-  emit = () => {}
-  listeners = () => 0
+  addListener = () => ({ remove: () => {} });
+  removeAllListeners = () => {};
+  removeSubscription = () => {};
+  emit = () => {};
+  listeners = () => 0;
 }
 
 // ── LayoutAnimation ────────────────────────────────────────────────
@@ -254,7 +256,7 @@ export const LayoutAnimation = {
     scaleY: {},
     xy: {},
   },
-}
+};
 
 // ── LogBox ─────────────────────────────────────────────────────────
 
@@ -262,7 +264,7 @@ export const LogBox = {
   ignoreLogs: () => {},
   ignoreAllLogs: () => {},
   uninstall: () => {},
-}
+};
 
 // ── PanResponder ───────────────────────────────────────────────────
 
@@ -270,7 +272,7 @@ export const PanResponder = {
   create: () => ({
     panHandlers: {},
   }),
-}
+};
 
 // ── Default export ─────────────────────────────────────────────────
 
@@ -318,4 +320,4 @@ export default {
   LogBox,
   PanResponder,
   Keyboard,
-}
+};

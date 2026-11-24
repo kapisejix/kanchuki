@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from 'react'
-import { View, Text, ScrollView, ActivityIndicator, Alert } from 'react-native'
-import { router } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { Store, ShieldCheck } from 'lucide-react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { teamApi, type TerritoryRetailer } from '../../src/lib/team-api'
-import { enterSupportSession, type SupportScope } from '../../src/lib/catalog-delegate'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { ScreenHeader } from '../../src/components/ScreenHeader'
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ShieldCheck, Store } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { type SupportScope, enterSupportSession } from '../../src/lib/catalog-delegate';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { type TerritoryRetailer, teamApi } from '../../src/lib/team-api';
+import { useTheme } from '../../src/lib/theme';
 
 // Kanchuki manager → asks the retailer for in-app consent → on approval, enters
 // a scoped, ≤24h session in the retailer's account. No OTP, no extension: a new
@@ -19,42 +19,42 @@ const SCOPES: { key: SupportScope; label: string; blurb: string }[] = [
   { key: 'DEMO', label: 'Demo', blurb: 'Read-only walkthrough of their shop' },
   { key: 'GROWTH', label: 'Growth', blurb: 'Campaigns, promotions, social posts' },
   { key: 'MAINTENANCE', label: 'Maintenance', blurb: 'Catalog fixes and profile settings' },
-]
+];
 
-const POLL_MS = 3000
+const POLL_MS = 3000;
 
-type Waiting = { grantId: string; shop: string; scope: SupportScope; deadline: number }
+type Waiting = { grantId: string; shop: string; scope: SupportScope; deadline: number };
 
 export default function SupportSessionScreen() {
-  const { primaryColor } = useTheme()
-  const { screenPaddingBottom } = useScreenInsets()
-  const [scope, setScope] = useState<SupportScope>('GROWTH')
-  const [starting, setStarting] = useState<string | null>(null)
-  const [waiting, setWaiting] = useState<Waiting | null>(null)
-  const busy = useRef(false)
+  const { primaryColor } = useTheme();
+  const { screenPaddingBottom } = useScreenInsets();
+  const [scope, setScope] = useState<SupportScope>('GROWTH');
+  const [starting, setStarting] = useState<string | null>(null);
+  const [waiting, setWaiting] = useState<Waiting | null>(null);
+  const busy = useRef(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['staff', 'retailers'],
     queryFn: () => teamApi.getRetailers(),
-  })
-  const retailers = (data as { data: TerritoryRetailer[] } | undefined)?.data ?? []
+  });
+  const retailers = (data as { data: TerritoryRetailer[] } | undefined)?.data ?? [];
 
   useEffect(() => {
-    if (!waiting) return
+    if (!waiting) return;
     // Cleared by the effect cleanup (cancel, approval, unmount): a poll already awaiting
     // the server must not act on a request the manager has since cancelled.
-    let live = true
+    let live = true;
     const id = setInterval(async () => {
-      if (busy.current) return
-      busy.current = true
+      if (busy.current) return;
+      busy.current = true;
       try {
-        const res = await teamApi.getSupportSession(waiting.grantId)
-        if (!live) return
-        const status = res.data.status
+        const res = await teamApi.getSupportSession(waiting.grantId);
+        if (!live) return;
+        const status = res.data.status;
         if (status === 'APPROVED') {
-          clearInterval(id)
-          const t = await teamApi.getSupportSessionToken(waiting.grantId)
-          if (!live) return
+          clearInterval(id);
+          const t = await teamApi.getSupportSessionToken(waiting.grantId);
+          if (!live) return;
           await enterSupportSession({
             token: t.data.token,
             shop_name: waiting.shop,
@@ -64,66 +64,66 @@ export default function SupportSessionScreen() {
               scope: waiting.scope,
               expires_at: t.data.expires_at,
             },
-          })
-          setWaiting(null)
+          });
+          setWaiting(null);
           // Let the root layout's route guard open the retailer screens first.
-          setTimeout(() => router.replace('/(tabs)'), 50)
+          setTimeout(() => router.replace('/(tabs)'), 50);
         } else if (status !== 'PENDING') {
-          clearInterval(id)
-          setWaiting(null)
-          Alert.alert('Not approved', `${waiting.shop} did not approve this session.`)
+          clearInterval(id);
+          setWaiting(null);
+          Alert.alert('Not approved', `${waiting.shop} did not approve this session.`);
         } else if (Date.now() > waiting.deadline) {
-          clearInterval(id)
-          setWaiting(null)
-          Alert.alert('No answer', `${waiting.shop} has not answered. Ask them to open Kanchuki.`)
+          clearInterval(id);
+          setWaiting(null);
+          Alert.alert('No answer', `${waiting.shop} has not answered. Ask them to open Kanchuki.`);
         }
       } catch (err) {
-        clearInterval(id)
-        setWaiting(null)
-        showError(err, 'Could not check the session')
+        clearInterval(id);
+        setWaiting(null);
+        showError(err, 'Could not check the session');
       } finally {
-        busy.current = false
+        busy.current = false;
       }
-    }, POLL_MS)
+    }, POLL_MS);
     return () => {
-      live = false
-      clearInterval(id)
-    }
-  }, [waiting])
+      live = false;
+      clearInterval(id);
+    };
+  }, [waiting]);
 
   // Sync guard: `starting` state disables the cards only after a render, so two taps in one
   // tick would each create a grant.
-  const startingRef = useRef(false)
+  const startingRef = useRef(false);
   const handleStart = async (r: TerritoryRetailer) => {
-    if (startingRef.current) return
-    startingRef.current = true
-    setStarting(r.id)
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(r.id);
     try {
-      const res = await teamApi.startSupportSession({ retailer_id: r.id, scope })
+      const res = await teamApi.startSupportSession({ retailer_id: r.id, scope });
       setWaiting({
         grantId: res.data.grant_id,
         shop: r.shop_name,
         scope,
         deadline: Date.now() + res.data.answer_within_seconds * 1000,
-      })
+      });
     } catch (err) {
-      showError(err, 'Could not request the session')
+      showError(err, 'Could not request the session');
     } finally {
-      startingRef.current = false
-      setStarting(null)
+      startingRef.current = false;
+      setStarting(null);
     }
-  }
+  };
 
   const handleCancel = async () => {
-    if (!waiting) return
-    const { grantId } = waiting
-    setWaiting(null)
+    if (!waiting) return;
+    const { grantId } = waiting;
+    setWaiting(null);
     try {
-      await teamApi.endSupportSession(grantId)
+      await teamApi.endSupportSession(grantId);
     } catch (err) {
-      showError(err, 'Could not cancel the request. It expires on its own.')
+      showError(err, 'Could not cancel the request. It expires on its own.');
     }
-  }
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -173,9 +173,7 @@ export default function SupportSessionScreen() {
             ))}
           </View>
 
-          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">
-            Retailer
-          </Text>
+          <Text className="text-xs font-semibold text-heliotrope-500 mb-2">Retailer</Text>
           {isLoading ? (
             <ActivityIndicator color={primaryColor} className="mt-6" />
           ) : retailers.length === 0 ? (
@@ -208,5 +206,5 @@ export default function SupportSessionScreen() {
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

@@ -1,9 +1,9 @@
-import type { PublicCollection } from '@kanchuki/shared'
-import { API_URL as apiUrl } from '@/lib/apiUrl'
+import { API_URL as apiUrl } from '@/lib/apiUrl';
+import type { PublicCollection } from '@kanchuki/shared';
 
 export interface FetchCollectionParams {
-  page?: number
-  pageSize?: number
+  page?: number;
+  pageSize?: number;
 }
 
 // No params (e.g. the wishlist page, which needs every product to match
@@ -18,21 +18,21 @@ export async function fetchCollection(
           .filter(([, v]) => v !== undefined)
           .map(([k, v]) => [k, String(v)]),
       )}`
-    : ''
+    : '';
   try {
     const res = await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}${qs}`, {
       next: { revalidate: 15 }, // ISR — short window so retailer edits show fast
-    })
+    });
     if (!res.ok) {
       // 404 = unknown slug (usually bot scanners hitting /install.php etc.) — expected, not an error.
-      const log = res.status === 404 ? console.warn : console.error
-      log(`fetchCollection(${slug}): API returned ${res.status} from ${apiUrl}`)
-      return null
+      const log = res.status === 404 ? console.warn : console.error;
+      log(`fetchCollection(${slug}): API returned ${res.status} from ${apiUrl}`);
+      return null;
     }
-    const json = (await res.json()) as { data: PublicCollection }
-    return json.data
+    const json = (await res.json()) as { data: PublicCollection };
+    return json.data;
   } catch (err) {
-    console.error(`fetchCollection(${slug}): request to ${apiUrl} failed —`, err)
-    return null
+    console.error(`fetchCollection(${slug}): request to ${apiUrl} failed —`, err);
+    return null;
   }
 }

@@ -303,7 +303,11 @@ function ShareModal({
           {bulkResult ? (
             <View className="items-center py-6 gap-3">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-base text-spaceCadet-900"
               >
                 Sent via WhatsApp Business API
@@ -324,7 +328,11 @@ function ShareModal({
           ) : queue ? (
             <View className="items-center py-6 gap-3">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-base text-spaceCadet-900"
               >
                 Message {queueIndex + 1} of {queue.length}
@@ -344,14 +352,21 @@ function ShareModal({
                   {queueIndex + 1 >= queue.length ? 'Done' : 'Next Customer'}
                 </Text>
               </AnimatedPressable>
-              <AnimatedPressable onPress={handleClose} className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center">
+              <AnimatedPressable
+                onPress={handleClose}
+                className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+              >
                 <Text className="text-heliotrope-500 text-xs">Cancel</Text>
               </AnimatedPressable>
             </View>
           ) : (
             <>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-lg text-spaceCadet-900 mb-3"
               >
                 Share with Customers
@@ -444,7 +459,10 @@ function ShareModal({
                   {apiConfigured ? 'Or send one-by-one' : 'Share via WhatsApp'} ({selected.size})
                 </Text>
               </AnimatedPressable>
-              <AnimatedPressable onPress={handleClose} className="items-center py-3 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center">
+              <AnimatedPressable
+                onPress={handleClose}
+                className="items-center py-3 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
+              >
                 <Text className="text-heliotrope-500 text-xs font-semibold">Cancel</Text>
               </AnimatedPressable>
             </>

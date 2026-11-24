@@ -15,11 +15,11 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  type KeyboardSource,
   computeKeyboardInset,
   readKeyboardInset,
   subscribeKeyboardInset,
   useKeyboardInset,
-  type KeyboardSource,
 } from '../keyboard-inset';
 
 type Listener = () => void;
@@ -29,9 +29,9 @@ const IPHONE_14_KEYBOARD = 336;
 
 describe('computeKeyboardInset', () => {
   it('reports 0 while the keyboard is closed', () => {
-    expect(
-      computeKeyboardInset(IPHONE_14_HEIGHT, { height: IPHONE_14_HEIGHT, offsetTop: 0 }),
-    ).toBe(0);
+    expect(computeKeyboardInset(IPHONE_14_HEIGHT, { height: IPHONE_14_HEIGHT, offsetTop: 0 })).toBe(
+      0,
+    );
   });
 
   it('measures the keyboard as the part of the layout viewport it hides', () => {
@@ -74,9 +74,9 @@ describe('computeKeyboardInset', () => {
   it('reports 0 rather than NaN on a non-numeric measurement', () => {
     expect(computeKeyboardInset(Number.NaN, { height: 500, offsetTop: 0 })).toBe(0);
     expect(computeKeyboardInset(IPHONE_14_HEIGHT, { height: Number.NaN, offsetTop: 0 })).toBe(0);
-    expect(computeKeyboardInset(undefined as unknown as number, { height: 500, offsetTop: 0 })).toBe(
-      0,
-    );
+    expect(
+      computeKeyboardInset(undefined as unknown as number, { height: 500, offsetTop: 0 }),
+    ).toBe(0);
   });
 
   it('clamps the mid-animation value that comes out negative', () => {

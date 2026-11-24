@@ -2,9 +2,9 @@ import { Footer, Navbar, Section } from '@/components/site/Chrome';
 import { API_URL as apiUrl } from '@/lib/apiUrl';
 import { androidIntentUrl, appLink } from '@/lib/deep-links';
 import { Smartphone } from 'lucide-react';
-import { AutoOpenApp } from './AutoOpenApp';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { AutoOpenApp } from './AutoOpenApp';
 
 // docs/tasks/done/staff-invite-tokens.md §7 — web /join bridge. The invite link a
 // retailer shares is kanchuki://join?token=… (custom scheme, D6). When the

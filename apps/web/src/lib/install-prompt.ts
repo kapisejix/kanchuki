@@ -54,9 +54,7 @@ export function getDeferredInstallPrompt(): InstallPromptEvent | null {
 }
 
 /** Subscribe to capture events. Returns an unsubscribe function. */
-export function subscribeInstallPrompt(
-  listener: (event: InstallPromptEvent) => void,
-): () => void {
+export function subscribeInstallPrompt(listener: (event: InstallPromptEvent) => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

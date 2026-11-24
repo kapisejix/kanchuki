@@ -1,50 +1,47 @@
-import { router, type Href } from 'expo-router'
+import { type Href, router } from 'expo-router';
 import {
+  type ReactNode,
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
-} from 'react'
+} from 'react';
 
-import {
-  emitAuthChange,
-  setAuthChangeListener,
-} from './auth-events'
-import { clearRequestCache, getToken } from './api'
-import { clearPersistedCache } from './offline-persister'
-import { unregisterPush } from './push-notifications'
-import { deleteItem, getItem } from './storage'
+import { clearRequestCache, getToken } from './api';
+import { emitAuthChange, setAuthChangeListener } from './auth-events';
+import { clearPersistedCache } from './offline-persister';
+import { unregisterPush } from './push-notifications';
+import { deleteItem, getItem } from './storage';
 
-export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 export interface AuthContextValue {
   /** Session state — 'loading' until the stored token has been hydrated. */
-  status: AuthStatus
+  status: AuthStatus;
   /** True once a token is present AND hydrated (guards for authed routes). */
-  isAuthenticated: boolean
+  isAuthenticated: boolean;
   /**
    * True when the current session is one of Kanchuki's OWN internal agents
    * (TeamMember — email+phone OTP, team JWT, /team/* routes → app/staff).
    * NOT the retailer's shop employees: those are `isShopStaff` and use the
    * same retailer tab UI as the owner, gated by role.
    */
-  isTeamMember: boolean
+  isTeamMember: boolean;
   /**
    * True when the current session is the retailer's own shop employee
    * (Staff row — Supabase session, scoped by staffCanAccess to the owner's
    * catalog). Rendered inside the retailer (tabs) with role-based gating.
    */
-  isShopStaff: boolean
+  isShopStaff: boolean;
   /** The Staff/TeamMember role string ('manager' | 'salesperson' | TeamRole), null for the owner. */
-  staffRole: string | null
+  staffRole: string | null;
   /** Clear every auth-related key and flip the guards to logged-out. */
-  signOut: () => Promise<void>
+  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 const AUTH_KEYS = [
   'auth_token',
@@ -55,7 +52,7 @@ const AUTH_KEYS = [
   'staff_retailer_id',
   'staff_kind',
   'admin_key',
-] as const
+] as const;
 
 /**
  * Derive the shop-staff vs internal-agent split from storage. `staff_kind`
@@ -64,68 +61,66 @@ const AUTH_KEYS = [
  * back to: staff_retailer_id present → shop staff, absent → internal agent.
  */
 async function readStaffContext(): Promise<{
-  staffRole: string | null
-  isTeamMember: boolean
-  isShopStaff: boolean
+  staffRole: string | null;
+  isTeamMember: boolean;
+  isShopStaff: boolean;
 }> {
   const [role, kind, staffRetailerId] = await Promise.all([
     getItem('staff_role').catch(() => null),
     getItem('staff_kind').catch(() => null),
     getItem('staff_retailer_id').catch(() => null),
-  ])
+  ]);
   const isShopStaff =
-    Boolean(role) && (kind === 'shop' || (kind === null && Boolean(staffRetailerId)))
+    Boolean(role) && (kind === 'shop' || (kind === null && Boolean(staffRetailerId)));
   return {
     staffRole: role,
     isTeamMember: Boolean(role) && !isShopStaff,
     isShopStaff,
-  }
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>('loading')
-  const [isTeamMember, setIsTeamMember] = useState(false)
-  const [isShopStaff, setIsShopStaff] = useState(false)
-  const [staffRole, setStaffRole] = useState<string | null>(null)
+  const [status, setStatus] = useState<AuthStatus>('loading');
+  const [isTeamMember, setIsTeamMember] = useState(false);
+  const [isShopStaff, setIsShopStaff] = useState(false);
+  const [staffRole, setStaffRole] = useState<string | null>(null);
   // State (not a ref) so setting it re-renders and the navigation effect
   // below re-evaluates even when `status` was already 'authenticated'.
-  const [pendingNav, setPendingNav] = useState<string | null>(null)
+  const [pendingNav, setPendingNav] = useState<string | null>(null);
 
   // Hydrate the session from storage once on mount. Bounded by a timeout —
   // SecureStore.getItemAsync can hang on some Android Keystore states, and
   // the Stack must never mount with an unresolved auth state (an all-guards-
   // false navigator has zero routeNames and crashes on getInitialState).
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     const hydrate = (async () => {
-      const token = await getToken().catch(() => null)
-      if (cancelled) return
+      const token = await getToken().catch(() => null);
+      if (cancelled) return;
       if (!token) {
-        setStatus('unauthenticated')
-        return
+        setStatus('unauthenticated');
+        return;
       }
-      const staff = await readStaffContext()
-      if (cancelled) return
-      setStaffRole(staff.staffRole)
-      setIsTeamMember(staff.isTeamMember)
-      setIsShopStaff(staff.isShopStaff)
-      setStatus('authenticated')
-    })()
+      const staff = await readStaffContext();
+      if (cancelled) return;
+      setStaffRole(staff.staffRole);
+      setIsTeamMember(staff.isTeamMember);
+      setIsShopStaff(staff.isShopStaff);
+      setStatus('authenticated');
+    })();
     // If the SecureStore read never settles, treat it as logged-out (matches
     // the old imperative redirect's catch → /auth/phone fallback). The hydrate
     // promise is still racing underneath and will flip to authenticated if the
     // token read eventually resolves — eventual truth wins.
-    const timeout = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), 3000),
-    )
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
     void Promise.race([hydrate, timeout]).then(() => {
-      if (cancelled) return
-      setStatus((prev) => (prev === 'loading' ? 'unauthenticated' : prev))
-    })
+      if (cancelled) return;
+      setStatus((prev) => (prev === 'loading' ? 'unauthenticated' : prev));
+    });
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   // React to auth changes emitted by the non-React layers (completeLogin,
   // signOut, redirectToAuth). On authed:true the storage writes have ALREADY
@@ -136,50 +131,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (change.authed === false) {
         // RC-107: one cleanup for every path to logged-out (button, 401 refresh failure, team
         // 401). Idempotent with signOut's own key deletion.
-        void Promise.all(AUTH_KEYS.map((key) => deleteItem(key))).catch(() => {})
-        void clearPersistedCache()
-        setPendingNav(null)
-        setIsTeamMember(false)
-        setIsShopStaff(false)
-        setStaffRole(null)
-        setStatus('unauthenticated')
-        return
+        void Promise.all(AUTH_KEYS.map((key) => deleteItem(key))).catch(() => {});
+        void clearPersistedCache();
+        setPendingNav(null);
+        setIsTeamMember(false);
+        setIsShopStaff(false);
+        setStaffRole(null);
+        setStatus('unauthenticated');
+        return;
       }
-      setPendingNav(change.navigateTo ?? null)
+      setPendingNav(change.navigateTo ?? null);
       void (async () => {
-        const token = await getToken().catch(() => null)
-        const staff = await readStaffContext()
-        setStaffRole(staff.staffRole)
-        setIsTeamMember(staff.isTeamMember)
-        setIsShopStaff(staff.isShopStaff)
-        setStatus(token ? 'authenticated' : 'unauthenticated')
-      })()
-    })
-    return () => setAuthChangeListener(null)
-  }, [])
+        const token = await getToken().catch(() => null);
+        const staff = await readStaffContext();
+        setStaffRole(staff.staffRole);
+        setIsTeamMember(staff.isTeamMember);
+        setIsShopStaff(staff.isShopStaff);
+        setStatus(token ? 'authenticated' : 'unauthenticated');
+      })();
+    });
+    return () => setAuthChangeListener(null);
+  }, []);
 
   // A pending destination (e.g. '/onboarding' for a new retailer) can only be
   // navigated once the guards have flipped — before that the route is not in
   // routeNames and the NAVIGATE action is ignored.
   useEffect(() => {
-    if (status !== 'authenticated' || !pendingNav) return
-    const dest = pendingNav
-    setPendingNav(null)
-    router.navigate(dest as Href)
-  }, [status, pendingNav])
+    if (status !== 'authenticated' || !pendingNav) return;
+    const dest = pendingNav;
+    setPendingNav(null);
+    router.navigate(dest as Href);
+  }, [status, pendingNav]);
 
   const signOut = useCallback(async () => {
     // F-046: stop pings to this device. Needs the token, so it runs before the keys go;
     // capped at 2 s so a dead network never delays logout (best-effort — the server also
     // stops pinging a removed staff member, and a stale owner token is disabled on its
     // first DeviceNotRegistered).
-    await Promise.race([unregisterPush(), new Promise((r) => setTimeout(r, 2000))]).catch(
-      () => {},
-    )
-    await Promise.all(AUTH_KEYS.map((key) => deleteItem(key)))
-    clearRequestCache()
-    emitAuthChange({ authed: false })
-  }, [])
+    await Promise.race([unregisterPush(), new Promise((r) => setTimeout(r, 2000))]).catch(() => {});
+    await Promise.all(AUTH_KEYS.map((key) => deleteItem(key)));
+    clearRequestCache();
+    emitAuthChange({ authed: false });
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -191,15 +184,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
     }),
     [status, isTeamMember, isShopStaff, staffRole, signOut],
-  )
+  );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext)
+  const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return ctx
+  return ctx;
 }

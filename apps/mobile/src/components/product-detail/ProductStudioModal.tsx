@@ -1,54 +1,48 @@
-import React, { useState, useEffect } from 'react'
-import {
-  View,
-  Text,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native'
-import { Image } from 'expo-image'
-import { useQuery } from '@tanstack/react-query'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, Sparkles, Wand2, CheckCircle2, AlertTriangle, Send } from 'lucide-react-native'
-import { STUDIO_CREDITS_PER_IMAGE, demographicForCategory } from '@kanchuki/shared'
-import { productApi } from '../../lib/api'
-import { AnimatedPressable } from '../AnimatedPressable'
-import { GradientButton } from '../GradientButton'
-import { ReportAiContent } from '../ReportAiContent'
+import { STUDIO_CREDITS_PER_IMAGE, demographicForCategory } from '@kanchuki/shared';
+import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { AlertTriangle, CheckCircle2, Send, Sparkles, Wand2, X } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, Modal, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { productApi } from '../../lib/api';
 import { META_SOCIAL_ENABLED } from '../../lib/meta-social';
+import { AnimatedPressable } from '../AnimatedPressable';
+import { GradientButton } from '../GradientButton';
+import { ReportAiContent } from '../ReportAiContent';
 
-type StudioStatus = 'processing' | 'ready' | 'failed' | null
+type StudioStatus = 'processing' | 'ready' | 'failed' | null;
 
 interface ProductStudioModalProps {
-  visible: boolean
-  onClose: () => void
-  onStartShoot: (slug: string) => void
-  starting: boolean
-  quota: { unlimited?: boolean; remaining?: number } | undefined
-  primaryColor: string
-  colors: any
+  visible: boolean;
+  onClose: () => void;
+  onStartShoot: (slug: string) => void;
+  starting: boolean;
+  quota: { unlimited?: boolean; remaining?: number } | undefined;
+  primaryColor: string;
+  colors: any;
   // Progress / result / error state (from useProductAiStudio)
-  status: StudioStatus
-  progress: number
-  etaMs: number
-  error: string | null
-  upgradeRequired: boolean
-  result: { photoId: string; url: string } | null
-  onRetry: () => void
-  onUseResult: (setAsMain: boolean) => void
-  onPostToSocial: () => void
+  status: StudioStatus;
+  progress: number;
+  etaMs: number;
+  error: string | null;
+  upgradeRequired: boolean;
+  result: { photoId: string; url: string } | null;
+  onRetry: () => void;
+  onUseResult: (setAsMain: boolean) => void;
+  onPostToSocial: () => void;
   // Product context for demographic filter on MODEL tab
-  productCategory?: string
-  productName?: string
+  productCategory?: string;
+  productName?: string;
   /** Lets the server drop styles this product may not use (kids, unstitched, bottoms...). */
-  productId?: string
+  productId?: string;
 }
 
 /** Model styles seeded from the option matrix carry mi-/mo- slugs (Indoor / Outdoor). */
 function sceneGroup(slug: string): 'Indoor' | 'Outdoor' | null {
-  if (slug.startsWith('mi-')) return 'Indoor'
-  if (slug.startsWith('mo-')) return 'Outdoor'
-  return null
+  if (slug.startsWith('mi-')) return 'Indoor';
+  if (slug.startsWith('mo-')) return 'Outdoor';
+  return null;
 }
 
 export function ProductStudioModal({
@@ -74,29 +68,29 @@ export function ProductStudioModal({
 }: ProductStudioModalProps) {
   // #7: bottom safe-area inset so the GENERATE button never sits under the
   // Android system nav bar (gesture bar / 3-button nav).
-  const insets = useSafeAreaInsets()
-  const [tab, setTab] = useState<'product' | 'models'>('product')
+  const insets = useSafeAreaInsets();
+  const [tab, setTab] = useState<'product' | 'models'>('product');
 
   // Fetch DB-backed styles — plan-filtered by the API
   const { data: stylesData, isLoading: stylesLoading } = useQuery({
     queryKey: ['studio-styles', productId ?? null],
     queryFn: () => productApi.getStudioStyles(productId),
     staleTime: 60_000,
-  })
-  const styles = stylesData?.data ?? []
+  });
+  const styles = stylesData?.data ?? [];
   // Hard gating (kids / unstitched / bottoms-only): no model shoots for this
   // product. Default true so an older API or a missing meta changes nothing.
-  const modelAvailable = stylesData?.meta?.model_available ?? true
-  const modelReason = stylesData?.meta?.model_unavailable_reason ?? null
+  const modelAvailable = stylesData?.meta?.model_available ?? true;
+  const modelReason = stylesData?.meta?.model_unavailable_reason ?? null;
 
   // Filter by tab + demographic
-  const demo = demographicForCategory(productCategory, productName)
-  const productStyles = styles.filter((s) => s.tab === 'PRODUCT')
+  const demo = demographicForCategory(productCategory, productName);
+  const productStyles = styles.filter((s) => s.tab === 'PRODUCT');
   const modelStyles = styles.filter(
     (s) => s.tab === 'MODEL' && (s.audience.length === 0 || s.audience.includes(demo)),
-  )
-  const activeTab = modelAvailable ? tab : 'product'
-  const activeList = activeTab === 'product' ? productStyles : modelStyles
+  );
+  const activeTab = modelAvailable ? tab : 'product';
+  const activeList = activeTab === 'product' ? productStyles : modelStyles;
 
   // The retailer's explicit style pick, or null while they haven't picked one.
   //
@@ -109,33 +103,33 @@ export function ProductStudioModal({
   // both of which are intentional resets (effect below). If the picked style
   // disappears from the list (plan/demographic change), the fallback picks
   // itself up again with no stale slug left behind.
-  const [pickedSlug, setPickedSlug] = useState<string | null>(null)
+  const [pickedSlug, setPickedSlug] = useState<string | null>(null);
   const selectedSlug =
     pickedSlug && activeList.some((s) => s.slug === pickedSlug)
       ? pickedSlug
-      : (activeList[0]?.slug ?? '')
+      : (activeList[0]?.slug ?? '');
 
   // Reset the pick when the tab changes or the modal is reopened, so a fresh
   // open starts on the first style of the active tab. Depends on primitives
   // only — never on `activeList`, which is a new array on every render.
   useEffect(() => {
-    setPickedSlug(null)
-  }, [activeTab, visible])
+    setPickedSlug(null);
+  }, [activeTab, visible]);
 
   const handleStart = () => {
-    if (selectedSlug) onStartShoot(selectedSlug)
-  }
+    if (selectedSlug) onStartShoot(selectedSlug);
+  };
 
   const creditsLeft = quota?.unlimited
     ? Infinity
-    : (quota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE
-  const limitReached = !quota?.unlimited && creditsLeft < STUDIO_CREDITS_PER_IMAGE
+    : (quota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE;
+  const limitReached = !quota?.unlimited && creditsLeft < STUDIO_CREDITS_PER_IMAGE;
   const runningLow =
-    !quota?.unlimited && !limitReached && creditsLeft <= STUDIO_CREDITS_PER_IMAGE * 2
-  const imagesLeft = Math.floor(creditsLeft / STUDIO_CREDITS_PER_IMAGE)
+    !quota?.unlimited && !limitReached && creditsLeft <= STUDIO_CREDITS_PER_IMAGE * 2;
+  const imagesLeft = Math.floor(creditsLeft / STUDIO_CREDITS_PER_IMAGE);
 
-  const etaSeconds = Math.max(1, Math.round(etaMs / 1000))
-  const pct = Math.min(100, Math.max(0, Math.round(progress)))
+  const etaSeconds = Math.max(1, Math.round(etaMs / 1000));
+  const pct = Math.min(100, Math.max(0, Math.round(progress)));
 
   const renderBody = () => {
     // ── Generating ──────────────────────────────────────────────────
@@ -157,7 +151,7 @@ export function ProductStudioModal({
             You can close this — the photo appears in the gallery when it&apos;s ready.
           </Text>
         </View>
-      )
+      );
     }
 
     // ── Failed ─────────────────────────────────────────────────────
@@ -189,7 +183,7 @@ export function ProductStudioModal({
             </AnimatedPressable>
           </View>
         </View>
-      )
+      );
     }
 
     // ── Ready ──────────────────────────────────────────────────────
@@ -213,17 +207,17 @@ export function ProductStudioModal({
             />
             {/* R-7: post the studio shot straight to the social composer — the
                 photo row already exists, so this is a plain navigation. */}
-{META_SOCIAL_ENABLED && (
-            <AnimatedPressable
-              onPress={onPostToSocial}
-              className="py-3 items-center rounded-xl border border-sand-200 flex-row justify-center gap-2"
-              accessibilityLabel="Post to social media"
-              accessibilityRole="button"
-            >
-              <Send size={15} color={colors.ink[800]} />
-              <Text className="text-xs font-bold text-sand-600">Post to social</Text>
-            </AnimatedPressable>
-)}
+            {META_SOCIAL_ENABLED && (
+              <AnimatedPressable
+                onPress={onPostToSocial}
+                className="py-3 items-center rounded-xl border border-sand-200 flex-row justify-center gap-2"
+                accessibilityLabel="Post to social media"
+                accessibilityRole="button"
+              >
+                <Send size={15} color={colors.ink[800]} />
+                <Text className="text-xs font-bold text-sand-600">Post to social</Text>
+              </AnimatedPressable>
+            )}
             <AnimatedPressable
               onPress={() => onUseResult(false)}
               className="py-3 items-center rounded-xl border border-sand-200"
@@ -233,7 +227,7 @@ export function ProductStudioModal({
             <ReportAiContent feature="AI Studio Shoot" contentRef={productId} />
           </View>
         </View>
-      )
+      );
     }
 
     // ── Picker (default) ───────────────────────────────────────────
@@ -241,7 +235,9 @@ export function ProductStudioModal({
       <>
         {/* Subtitle & Quota */}
         <View className="mt-3 mb-2 flex-row items-center justify-between">
-          <Text className="text-xs text-sand-500">Transform raw photo into high-fashion catalog</Text>
+          <Text className="text-xs text-sand-500">
+            Transform raw photo into high-fashion catalog
+          </Text>
           {quota && (
             <View
               className="px-2.5 py-1 rounded-full border"
@@ -271,7 +267,7 @@ export function ProductStudioModal({
               style={{ color: limitReached ? '#991B1B' : '#92400E' }}
             >
               {limitReached
-                ? 'AI Studio limit reached. Recharge credits, wait for next month\'s billing cycle, or contact the billing team.'
+                ? "AI Studio limit reached. Recharge credits, wait for next month's billing cycle, or contact the billing team."
                 : `Low on AI Studio credits — ${creditsLeft} left (about ${imagesLeft} image${imagesLeft === 1 ? '' : 's'}). Recharge soon.`}
             </Text>
           </View>
@@ -329,11 +325,11 @@ export function ProductStudioModal({
           {!stylesLoading && activeList.length > 0 && (
             <View className="gap-3">
               {activeList.map((s, i) => {
-                const isSelected = selectedSlug === s.slug
+                const isSelected = selectedSlug === s.slug;
                 // Indoor / Outdoor header above the first row of each scene group.
-                const group = activeTab === 'models' ? sceneGroup(s.slug) : null
-                const prev = i > 0 ? activeList[i - 1] : undefined
-                const showHeader = group !== null && (!prev || sceneGroup(prev.slug) !== group)
+                const group = activeTab === 'models' ? sceneGroup(s.slug) : null;
+                const prev = i > 0 ? activeList[i - 1] : undefined;
+                const showHeader = group !== null && (!prev || sceneGroup(prev.slug) !== group);
                 return (
                   <React.Fragment key={s.slug}>
                     {showHeader && (
@@ -341,41 +337,43 @@ export function ProductStudioModal({
                         {group}
                       </Text>
                     )}
-                  <AnimatedPressable
-                    onPress={() => setPickedSlug(s.slug)}
-                    className={`flex-row items-center p-3 rounded-2xl border-2 gap-3.5 ${
-                      isSelected ? 'border-fuchsia-600 bg-fuchsia-50/50' : 'border-sand-100 bg-white'
-                    }`}
-                  >
-                    <View className="w-14 h-14 rounded-xl overflow-hidden bg-sand-100 border border-sand-200 items-center justify-center">
-                      {s.thumbnail_url ? (
-                        <Image
-                          source={{ uri: s.thumbnail_url }}
-                          style={{ width: '100%', height: '100%' }}
-                          contentFit="cover"
-                          transition={200}
-                        />
-                      ) : (
-                        <Wand2 size={22} color={colors.sand[400]} />
-                      )}
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-sm font-bold text-sand-900">
-                        {s.label}{' '}
-                        <Text className="text-[11px] font-normal text-sand-400">(/{s.slug})</Text>
-                      </Text>
-                      <Text className="text-xs text-sand-500 mt-0.5 leading-4" numberOfLines={2}>
-                        {s.description}
-                      </Text>
-                    </View>
-                    {isSelected && (
-                      <View className="w-5 h-5 rounded-full bg-fuchsia-600 items-center justify-center">
-                        <CheckCircle2 size={16} color="white" />
+                    <AnimatedPressable
+                      onPress={() => setPickedSlug(s.slug)}
+                      className={`flex-row items-center p-3 rounded-2xl border-2 gap-3.5 ${
+                        isSelected
+                          ? 'border-fuchsia-600 bg-fuchsia-50/50'
+                          : 'border-sand-100 bg-white'
+                      }`}
+                    >
+                      <View className="w-14 h-14 rounded-xl overflow-hidden bg-sand-100 border border-sand-200 items-center justify-center">
+                        {s.thumbnail_url ? (
+                          <Image
+                            source={{ uri: s.thumbnail_url }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                            transition={200}
+                          />
+                        ) : (
+                          <Wand2 size={22} color={colors.sand[400]} />
+                        )}
                       </View>
-                    )}
-                  </AnimatedPressable>
+                      <View className="flex-1">
+                        <Text className="text-sm font-bold text-sand-900">
+                          {s.label}{' '}
+                          <Text className="text-[11px] font-normal text-sand-400">(/{s.slug})</Text>
+                        </Text>
+                        <Text className="text-xs text-sand-500 mt-0.5 leading-4" numberOfLines={2}>
+                          {s.description}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View className="w-5 h-5 rounded-full bg-fuchsia-600 items-center justify-center">
+                          <CheckCircle2 size={16} color="white" />
+                        </View>
+                      )}
+                    </AnimatedPressable>
                   </React.Fragment>
-                )
+                );
               })}
             </View>
           )}
@@ -394,8 +392,8 @@ export function ProductStudioModal({
           colors={[primaryColor, colors.ink[800]]}
         />
       </>
-    )
-  }
+    );
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -419,5 +417,5 @@ export function ProductStudioModal({
         </View>
       </View>
     </Modal>
-  )
+  );
 }

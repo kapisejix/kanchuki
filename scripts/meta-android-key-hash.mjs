@@ -25,9 +25,9 @@
 // Output is safe to paste into a bug report — it prints no secrets, and never
 // reads (or needs) a keystore password.
 
-import { createHash, X509Certificate } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { X509Certificate, createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 
 const JKS_MAGIC = 0xfeedfeed;
 const PRIVATE_KEY_TAG = 1;
@@ -37,11 +37,15 @@ const TRUSTED_CERT_TAG = 2;
 const metaKeyHash = (der) => createHash('sha1').update(der).digest('base64');
 
 /** Play Console / keytool format, for cross-checking against what they display. */
-const hexSha1 = (der) => createHash('sha1').update(der).digest('hex').toUpperCase().match(/../g).join(':');
+const hexSha1 = (der) =>
+  createHash('sha1').update(der).digest('hex').toUpperCase().match(/../g).join(':');
 
 function readUtf(buf, offset) {
   const length = buf.readUInt16BE(offset);
-  return { value: buf.toString('utf8', offset + 2, offset + 2 + length), next: offset + 2 + length };
+  return {
+    value: buf.toString('utf8', offset + 2, offset + 2 + length),
+    next: offset + 2 + length,
+  };
 }
 
 /**
@@ -54,7 +58,9 @@ function readUtf(buf, offset) {
  */
 function parseJks(buf) {
   if (buf.length < 12 || buf.readUInt32BE(0) !== JKS_MAGIC) {
-    throw new Error('not a JKS file (bad magic) — use --sha1 with a SHA-1 from Play Console or `eas credentials`');
+    throw new Error(
+      'not a JKS file (bad magic) — use --sha1 with a SHA-1 from Play Console or `eas credentials`',
+    );
   }
   const version = buf.readUInt32BE(4);
   if (version !== 1 && version !== 2) throw new Error(`unsupported JKS version ${version}`);
@@ -127,7 +133,10 @@ function hexToMetaHash(raw) {
   if (hex.length !== 40) {
     throw new Error(`expected a 40-character SHA-1 hex string, got ${hex.length} hex digits`);
   }
-  return { hex: hex.toUpperCase().match(/../g).join(':'), meta: Buffer.from(hex, 'hex').toString('base64') };
+  return {
+    hex: hex.toUpperCase().match(/../g).join(':'),
+    meta: Buffer.from(hex, 'hex').toString('base64'),
+  };
 }
 
 function parseArgs(argv) {
@@ -147,7 +156,11 @@ function reportCert(der, label) {
 
   // Cross-check 1: Node's own X.509 fingerprint must agree with hashing the DER
   // we extracted. If these disagree we misread the container and the value is junk.
-  const fromNode = cert.fingerprint.replace(/[^0-9a-fA-F]/g, '').toUpperCase().match(/../g).join(':');
+  const fromNode = cert.fingerprint
+    .replace(/[^0-9a-fA-F]/g, '')
+    .toUpperCase()
+    .match(/../g)
+    .join(':');
   const consistent = fromNode === hex;
 
   // Cross-check 2 (the strong one): a signing key's certificate is self-signed,
@@ -165,11 +178,17 @@ function reportCert(der, label) {
   console.log(`${label}`);
   console.log(`  subject:        ${subject}`);
   console.log(`  valid:          ${cert.validFrom} → ${cert.validTo}`);
-  console.log(`  key:            ${cert.publicKey.asymmetricKeyType} ${cert.publicKey.asymmetricKeyDetails?.modulusLength ?? ''}`.trimEnd());
+  console.log(
+    `  key:            ${cert.publicKey.asymmetricKeyType} ${cert.publicKey.asymmetricKeyDetails?.modulusLength ?? ''}`.trimEnd(),
+  );
   console.log(`  SHA-1 (hex):    ${hex}`);
   console.log(`  META KEY HASH:  ${meta}`);
-  console.log(`  integrity:      ${consistent ? 'ok (fingerprint matches Node X.509)' : 'MISMATCH — do not use'}`);
-  console.log(`  self-signed:    ${selfSigned ? 'verified against its own public key' : 'NOT verified — do not use'}`);
+  console.log(
+    `  integrity:      ${consistent ? 'ok (fingerprint matches Node X.509)' : 'MISMATCH — do not use'}`,
+  );
+  console.log(
+    `  self-signed:    ${selfSigned ? 'verified against its own public key' : 'NOT verified — do not use'}`,
+  );
   console.log('');
   return { hex, meta, consistent, selfSigned };
 }
@@ -182,20 +201,28 @@ if (args.keystore) {
   const isJks = buf.length >= 4 && buf.readUInt32BE(0) === JKS_MAGIC;
 
   console.log(`\nkeystore: ${args.keystore}`);
-  console.log(`container: ${isJks ? 'JKS (certificate read natively — no password needed)' : 'not JKS'}\n`);
+  console.log(
+    `container: ${isJks ? 'JKS (certificate read natively — no password needed)' : 'not JKS'}\n`,
+  );
 
   if (!isJks) {
     console.log('This is a PKCS#12 container: the certificate is inside the encrypted');
     console.log('blob, so the password *is* required and this script cannot skip it.');
     console.log('Run one of these instead, then feed the hex back in with --sha1:\n');
-    console.log(`  keytool -list -v -keystore "${args.keystore}" -alias <alias>   # then copy the SHA1 line`);
-    console.log(`  npx eas credentials -p android                                  # SHA-1 fingerprint\n`);
+    console.log(
+      `  keytool -list -v -keystore "${args.keystore}" -alias <alias>   # then copy the SHA1 line`,
+    );
+    console.log(
+      `  npx eas credentials -p android                                  # SHA-1 fingerprint\n`,
+    );
     process.exit(1);
   }
 
   const { version, entries, bytesConsumed } = parseJks(buf);
   const trailing = buf.length - bytesConsumed;
-  console.log(`JKS version ${version}, ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`);
+  console.log(
+    `JKS version ${version}, ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`,
+  );
   console.log(
     `structure: parsed ${bytesConsumed}/${buf.length} bytes, ${trailing} trailing — ${trailing === 20 ? 'ok (the 20-byte JKS integrity digest)' : 'UNEXPECTED, treat the value below with suspicion'}\n`,
   );
@@ -204,7 +231,10 @@ if (args.keystore) {
   for (const entry of entries) {
     entry.certs.forEach((der, index) => {
       results.push(
-        reportCert(der, `alias "${entry.alias}" (${entry.tag})${index === 0 ? '' : ` — chain cert ${index}`}`),
+        reportCert(
+          der,
+          `alias "${entry.alias}" (${entry.tag})${index === 0 ? '' : ` — chain cert ${index}`}`,
+        ),
       );
     });
   }
@@ -225,7 +255,9 @@ if (args.keystore) {
       `\ncheck a shipped artifact: a build signed by alias "${entry.alias}" carries META-INF/${entry.alias.slice(0, 8).toUpperCase()}.RSA`,
     );
   }
-  console.log('\nPaste those into: Meta app → Settings → Basic → Android → Key hashes → Save changes.');
+  console.log(
+    '\nPaste those into: Meta app → Settings → Basic → Android → Key hashes → Save changes.',
+  );
   console.log('Do NOT paste the hex form — Meta rejects it.\n');
 } else if (args.sha1) {
   const { hex, meta } = hexToMetaHash(args.sha1);
@@ -239,7 +271,9 @@ if (args.keystore) {
   try {
     hex = sha1FromApk(args.apk);
   } catch (err) {
-    console.log('\napksigner is unavailable (it ships with the Android SDK build-tools and needs a JDK).');
+    console.log(
+      '\napksigner is unavailable (it ships with the Android SDK build-tools and needs a JDK).',
+    );
     console.log('Either install a JDK, or read the SHA-1 from Play Console → App signing,');
     console.log('then re-run with: --sha1 "<the hex you copied>"\n');
     throw err;

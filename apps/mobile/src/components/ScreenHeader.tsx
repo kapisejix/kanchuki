@@ -1,27 +1,27 @@
-import { router } from 'expo-router'
-import { ChevronLeft } from 'lucide-react-native'
-import type { ReactNode } from 'react'
-import { Text, View } from 'react-native'
-import { useScreenInsets } from '../lib/safe-area'
-import { AnimatedPressable } from './AnimatedPressable'
+import { router } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import type { ReactNode } from 'react';
+import { Text, View } from 'react-native';
+import { useScreenInsets } from '../lib/safe-area';
+import { AnimatedPressable } from './AnimatedPressable';
 
 type ScreenHeaderProps = {
-  title: string
-  subtitle?: string
+  title: string;
+  subtitle?: string;
   /** Action pill / button on the right (e.g. Save). */
-  right?: ReactNode
+  right?: ReactNode;
   /** Defaults to router.back(). */
-  onBack?: () => void
+  onBack?: () => void;
   /** Extra content under the title row (e.g. filter chips). */
-  children?: ReactNode
-}
+  children?: ReactNode;
+};
 
 /**
  * The one header style (audit C-02): circled back chip, left-aligned
  * Marcellus title, optional subtitle and right action.
  */
 export function ScreenHeader({ title, subtitle, right, onBack, children }: ScreenHeaderProps) {
-  const { headerPaddingTop } = useScreenInsets()
+  const { headerPaddingTop } = useScreenInsets();
   return (
     <View
       className="bg-white border-b border-lavender-200 px-5 pb-4"
@@ -52,7 +52,7 @@ export function ScreenHeader({ title, subtitle, right, onBack, children }: Scree
       </View>
       {children}
     </View>
-  )
+  );
 }
 
-export default ScreenHeader
+export default ScreenHeader;

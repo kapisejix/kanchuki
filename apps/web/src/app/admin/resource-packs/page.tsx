@@ -1,13 +1,13 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Layers, Plus, Pencil, Trash2, Power, Save, X, Loader2 } from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { Layers, Loader2, Pencil, Plus, Power, Save, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type Plan = 'STARTER' | 'GROWTH' | 'PRO'
+type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 type ResourceType =
   | 'PRODUCT_UPLOAD'
   | 'AI_TAGGING_CALL'
@@ -16,21 +16,21 @@ type ResourceType =
   | 'API_REQUEST'
   | 'STUDIO_SHOOT'
   | 'TRY_ON_GENERATION'
-  | 'AI_VIDEO'
+  | 'AI_VIDEO';
 
 type ResourcePack = {
-  id: string
-  resource_type: ResourceType
-  label: string
-  unit_label: string
-  pack_size: number
-  price_paise: number
-  plans: Plan[]
-  is_active: boolean
-  sort_order: number
-}
+  id: string;
+  resource_type: ResourceType;
+  label: string;
+  unit_label: string;
+  pack_size: number;
+  price_paise: number;
+  plans: Plan[];
+  is_active: boolean;
+  sort_order: number;
+};
 
-const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO']
+const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO'];
 const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
   { value: 'PRODUCT_UPLOAD', label: 'Product Upload' },
   { value: 'AI_TAGGING_CALL', label: 'AI Tagging' },
@@ -40,24 +40,24 @@ const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
   { value: 'STUDIO_SHOOT', label: 'Studio Shoot' },
   { value: 'TRY_ON_GENERATION', label: 'In-store Try-on (GST-inclusive price)' },
   { value: 'AI_VIDEO', label: 'AI Video (promo clips)' },
-]
-const resourceLabel = (r: ResourceType) => RESOURCE_TYPES.find((x) => x.value === r)?.label ?? r
+];
+const resourceLabel = (r: ResourceType) => RESOURCE_TYPES.find((x) => x.value === r)?.label ?? r;
 
 // Rupees as strings while editing — paise only at the API boundary.
-const paiseToRupees = (paise: number) => String(paise / 100)
-const rupeesToPaise = (rupees: string) => Math.round(Number(rupees) * 100)
-const formatINR = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
+const paiseToRupees = (paise: number) => String(paise / 100);
+const rupeesToPaise = (rupees: string) => Math.round(Number(rupees) * 100);
+const formatINR = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`;
 
 type FormState = {
-  resource_type: ResourceType
-  label: string
-  unit_label: string
-  pack_size: string
-  price: string // rupees string
-  plans: Plan[]
-  is_active: boolean
-  sort_order: string
-}
+  resource_type: ResourceType;
+  label: string;
+  unit_label: string;
+  pack_size: string;
+  price: string; // rupees string
+  plans: Plan[];
+  is_active: boolean;
+  sort_order: string;
+};
 
 const emptyForm: FormState = {
   resource_type: 'AI_VIDEO',
@@ -68,7 +68,7 @@ const emptyForm: FormState = {
   plans: [],
   is_active: true,
   sort_order: '0',
-}
+};
 
 const formToPayload = (f: FormState) => ({
   resource_type: f.resource_type,
@@ -79,31 +79,31 @@ const formToPayload = (f: FormState) => ({
   plans: f.plans,
   is_active: f.is_active,
   sort_order: Number(f.sort_order || 0),
-})
+});
 
 export default function ResourcePacksPage() {
-  const [rows, setRows] = useState<ResourcePack[]>([])
-  const [form, setForm] = useState<FormState>(emptyForm)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [status, setStatus] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState<ResourcePack[]>([]);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/resource-packs`, adminGetOptions())
-    const json = await res.json()
-    setRows(json.data ?? [])
-    setLoading(false)
-  }
+    const res = await fetch(`${API_URL}/v1/admin/resource-packs`, adminGetOptions());
+    const json = await res.json();
+    setRows(json.data ?? []);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
-  const patch = (p: Partial<FormState>) => setForm((prev) => ({ ...prev, ...p }))
+  const patch = (p: Partial<FormState>) => setForm((prev) => ({ ...prev, ...p }));
 
   const startEdit = (row: ResourcePack) => {
-    setEditingId(row.id)
+    setEditingId(row.id);
     setForm({
       resource_type: row.resource_type,
       label: row.label,
@@ -113,35 +113,35 @@ export default function ResourcePacksPage() {
       plans: row.plans,
       is_active: row.is_active,
       sort_order: String(row.sort_order),
-    })
-    setStatus('')
-  }
+    });
+    setStatus('');
+  };
 
   const cancelEdit = () => {
-    setEditingId(null)
-    setForm(emptyForm)
-    setStatus('')
-  }
+    setEditingId(null);
+    setForm(emptyForm);
+    setStatus('');
+  };
 
   const validate = (): string | null => {
-    if (!form.label.trim()) return 'Enter a label (e.g. "20 promo videos")'
-    if (!form.unit_label.trim()) return 'Enter a unit label (e.g. "videos")'
-    if (!form.pack_size || Number(form.pack_size) < 1) return 'Enter a pack size ≥ 1'
+    if (!form.label.trim()) return 'Enter a label (e.g. "20 promo videos")';
+    if (!form.unit_label.trim()) return 'Enter a unit label (e.g. "videos")';
+    if (!form.pack_size || Number(form.pack_size) < 1) return 'Enter a pack size ≥ 1';
     if (form.price === '' || Number.isNaN(Number(form.price)) || Number(form.price) < 0)
-      return 'Enter a price in ₹'
-    return null
-  }
+      return 'Enter a price in ₹';
+    return null;
+  };
 
   const save = async () => {
-    const err = validate()
+    const err = validate();
     if (err) {
-      setStatus(`❌ ${err}`)
-      return
+      setStatus(`❌ ${err}`);
+      return;
     }
-    setSaving(true)
-    setStatus('')
+    setSaving(true);
+    setStatus('');
     try {
-      const payload = formToPayload(form)
+      const payload = formToPayload(form);
       const res = editingId
         ? await fetch(`${API_URL}/v1/admin/resource-packs/${editingId}`, {
             ...(await adminMutateOptions()),
@@ -152,17 +152,17 @@ export default function ResourcePacksPage() {
             ...(await adminMutateOptions()),
             method: 'POST',
             body: JSON.stringify(payload),
-          })
-      if (!res.ok) throw new Error('Save failed')
-      await load()
-      setStatus(editingId ? `✅ Pack updated` : `✅ Pack added — live on the dashboard config`)
-      cancelEdit()
+          });
+      if (!res.ok) throw new Error('Save failed');
+      await load();
+      setStatus(editingId ? `✅ Pack updated` : `✅ Pack added — live on the dashboard config`);
+      cancelEdit();
     } catch (e) {
-      setStatus(`❌ ${e instanceof Error ? e.message : 'Save failed'}`)
+      setStatus(`❌ ${e instanceof Error ? e.message : 'Save failed'}`);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const toggleActive = async (row: ResourcePack) => {
     try {
@@ -170,49 +170,53 @@ export default function ResourcePacksPage() {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify({ is_active: !row.is_active }),
-      })
-      if (!res.ok) throw new Error('Toggle failed')
-      setStatus(`✅ Pack ${row.is_active ? 'deactivated' : 'activated'}`)
-      await load()
+      });
+      if (!res.ok) throw new Error('Toggle failed');
+      setStatus(`✅ Pack ${row.is_active ? 'deactivated' : 'activated'}`);
+      await load();
     } catch (e) {
-      setStatus(`❌ ${e instanceof Error ? e.message : 'Toggle failed'}`)
+      setStatus(`❌ ${e instanceof Error ? e.message : 'Toggle failed'}`);
     }
-  }
+  };
 
   const remove = async (row: ResourcePack) => {
-    if (!window.confirm(`Delete pack "${row.label}"? Past purchases are unaffected.`)) return
+    if (!window.confirm(`Delete pack "${row.label}"? Past purchases are unaffected.`)) return;
     try {
       const res = await fetch(`${API_URL}/v1/admin/resource-packs/${row.id}`, {
         ...(await adminMutateOptions()),
         method: 'DELETE',
-      })
-      if (!res.ok) throw new Error('Delete failed')
-      setStatus(`✅ Pack deleted`)
-      if (editingId === row.id) cancelEdit()
-      await load()
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      setStatus(`✅ Pack deleted`);
+      if (editingId === row.id) cancelEdit();
+      await load();
     } catch (e) {
-      setStatus(`❌ ${e instanceof Error ? e.message : 'Delete failed'}`)
+      setStatus(`❌ ${e instanceof Error ? e.message : 'Delete failed'}`);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-6xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-6xl"
+    >
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Addon Packs</h1>
           <Layers size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          Admin-managed overage packs (F-034). You add, approve, price and assign packs per plan — nothing is
-          hardcoded. Retailers buy what you publish here.
+          Admin-managed overage packs (F-034). You add, approve, price and assign packs per plan —
+          nothing is hardcoded. Retailers buy what you publish here.
         </p>
       </div>
 
@@ -232,11 +236,20 @@ export default function ResourcePacksPage() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            {editingId ? <Pencil size={16} className="text-ink-500" /> : <Plus size={16} className="text-ink-500" />}
-            <h2 className="text-sm font-semibold text-gray-900">{editingId ? 'Edit pack' : 'Add a pack'}</h2>
+            {editingId ? (
+              <Pencil size={16} className="text-ink-500" />
+            ) : (
+              <Plus size={16} className="text-ink-500" />
+            )}
+            <h2 className="text-sm font-semibold text-gray-900">
+              {editingId ? 'Edit pack' : 'Add a pack'}
+            </h2>
           </div>
           {editingId && (
-            <button onClick={cancelEdit} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+            <button
+              onClick={cancelEdit}
+              className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+            >
               <X size={12} /> Cancel
             </button>
           )}
@@ -258,7 +271,9 @@ export default function ResourcePacksPage() {
             </select>
           </div>
           <div className="col-span-2">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Label (shown at checkout)</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">
+              Label (shown at checkout)
+            </label>
             <input
               value={form.label}
               onChange={(e) => patch({ label: e.target.value })}
@@ -318,7 +333,10 @@ export default function ResourcePacksPage() {
             <p className="text-[11px] text-gray-400 mb-1">None checked = every plan can buy</p>
             <div className="flex gap-4">
               {PLANS.map((p) => (
-                <label key={p} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                <label
+                  key={p}
+                  className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={form.plans.includes(p)}
@@ -375,7 +393,8 @@ export default function ResourcePacksPage() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center text-sm text-gray-400">
-                  No packs configured yet — add one above. Packs appear at retailer checkout once active.
+                  No packs configured yet — add one above. Packs appear at retailer checkout once
+                  active.
                 </td>
               </tr>
             )}
@@ -386,16 +405,23 @@ export default function ResourcePacksPage() {
                 </td>
                 <td className="px-3 py-3">
                   <div className="text-gray-800 font-medium">{row.label}</div>
-                  <div className="text-xs text-gray-400">{row.pack_size} {row.unit_label}</div>
+                  <div className="text-xs text-gray-400">
+                    {row.pack_size} {row.unit_label}
+                  </div>
                 </td>
-                <td className="px-3 py-3 whitespace-nowrap text-gray-700">{formatINR(row.price_paise)}</td>
+                <td className="px-3 py-3 whitespace-nowrap text-gray-700">
+                  {formatINR(row.price_paise)}
+                </td>
                 <td className="px-3 py-3">
                   {row.plans.length === 0 ? (
                     <span className="text-xs text-gray-400">All plans</span>
                   ) : (
                     <span className="flex gap-1">
                       {row.plans.map((p) => (
-                        <span key={p} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-ink-50 text-ink-700">
+                        <span
+                          key={p}
+                          className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-ink-50 text-ink-700"
+                        >
                           {p}
                         </span>
                       ))}
@@ -439,5 +465,5 @@ export default function ResourcePacksPage() {
         </table>
       </div>
     </motion.div>
-  )
+  );
 }

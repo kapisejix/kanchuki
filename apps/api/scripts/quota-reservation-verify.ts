@@ -23,7 +23,7 @@
 import { randomUUID } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { QuotaResourceType } from '@kanchuki/db';
-import { AppError } from '../src/plugins/error-handler.js';
+import { handleQuotaReservationSweep } from '../src/jobs/quota-reservation-sweep.js';
 import {
   markCustomerJobQuotaSpent,
   markJobQuotaSpent,
@@ -33,7 +33,7 @@ import {
   reserveCustomerJobQuota,
   reserveJobQuota,
 } from '../src/lib/quota.js';
-import { handleQuotaReservationSweep } from '../src/jobs/quota-reservation-sweep.js';
+import { AppError } from '../src/plugins/error-handler.js';
 
 const MARKER = process.env['QUOTA_VERIFY_DB_MARKER'] ?? 'ibstbjzuiypactbscdrw';
 const url = process.env['DATABASE_URL'] ?? '';
@@ -67,12 +67,16 @@ async function step(name: string, fn: () => Promise<void>): Promise<void> {
 let retailerId = '';
 let customerId = '';
 const photoIds: string[] = [];
-let priorCustomerLimit: { limit_per_period: number; period: 'DAY' | 'MONTH' | 'LIFETIME' } | null = null;
+let priorCustomerLimit: { limit_per_period: number; period: 'DAY' | 'MONTH' | 'LIFETIME' } | null =
+  null;
 
 const MONTH = periodStart('MONTH');
 const retailerCount = async (r: QuotaResourceType): Promise<number> =>
-  (await prisma.usageCounter.findFirst({ where: { retailer_id: retailerId, resource_type: r, period_start: MONTH } }))
-    ?.count ?? 0;
+  (
+    await prisma.usageCounter.findFirst({
+      where: { retailer_id: retailerId, resource_type: r, period_start: MONTH },
+    })
+  )?.count ?? 0;
 const customerCount = async (r: QuotaResourceType): Promise<number> =>
   (
     await prisma.customerUsageCounter.findFirst({
@@ -84,20 +88,32 @@ const resv = (jobId: string, r: QuotaResourceType, scope: 'retailer' | 'customer
     where: {
       job_id: jobId,
       resource_type: r,
-      ...(scope === 'retailer' ? { retailer_id: { not: null } } : { customer_account_id: { not: null } }),
+      ...(scope === 'retailer'
+        ? { retailer_id: { not: null } }
+        : { customer_account_id: { not: null } }),
     },
   });
-const stateOf = async (jobId: string, r: QuotaResourceType, scope: 'retailer' | 'customer'): Promise<string> =>
-  (await resv(jobId, r, scope))[0]?.state ?? 'MISSING';
+const stateOf = async (
+  jobId: string,
+  r: QuotaResourceType,
+  scope: 'retailer' | 'customer',
+): Promise<string> => (await resv(jobId, r, scope))[0]?.state ?? 'MISSING';
 const ageRow = (jobId: string, r: QuotaResourceType, hours: number) =>
   prisma.$executeRaw`
     UPDATE quota_reservations SET created_at = now() - make_interval(hours => ${hours})
     WHERE job_id = ${jobId} AND resource_type = ${r}::"QuotaResourceType"`;
 
 async function preflight(): Promise<void> {
-  const tables = await prisma.$queryRaw<{ t: string | null }[]>`SELECT to_regclass('public.quota_reservations')::text AS t`;
-  if (!tables[0]?.t) throw new Error('quota_reservations missing: apply migration 144 to the scratch DB first');
-  const names = ['quota_reservations_retailer_job_key', 'quota_reservations_customer_job_key', 'product_photos_studio_job_id_idx'];
+  const tables = await prisma.$queryRaw<
+    { t: string | null }[]
+  >`SELECT to_regclass('public.quota_reservations')::text AS t`;
+  if (!tables[0]?.t)
+    throw new Error('quota_reservations missing: apply migration 144 to the scratch DB first');
+  const names = [
+    'quota_reservations_retailer_job_key',
+    'quota_reservations_customer_job_key',
+    'product_photos_studio_job_id_idx',
+  ];
   const idx = await prisma.$queryRaw<{ indexname: string }[]>`
     SELECT indexname FROM pg_indexes WHERE indexname = ANY(${names})`;
   const have = new Set(idx.map((i) => i.indexname));
@@ -127,13 +143,20 @@ async function seed(): Promise<void> {
 
   await prisma.retailerLimitOverride.createMany({
     data: [
-      { retailer_id: retailerId, resource_type: STUDIO, limit_per_period: STUDIO_LIMIT, period: 'MONTH' },
+      {
+        retailer_id: retailerId,
+        resource_type: STUDIO,
+        limit_per_period: STUDIO_LIMIT,
+        period: 'MONTH',
+      },
       { retailer_id: retailerId, resource_type: TRYON, limit_per_period: 50, period: 'MONTH' },
       { retailer_id: retailerId, resource_type: CROP, limit_per_period: -1, period: 'MONTH' },
     ],
   });
   const prior = await prisma.customerResourceLimit.findUnique({ where: { resource_type: TRYON } });
-  priorCustomerLimit = prior ? { limit_per_period: prior.limit_per_period, period: prior.period } : null;
+  priorCustomerLimit = prior
+    ? { limit_per_period: prior.limit_per_period, period: prior.period }
+    : null;
   await prisma.customerResourceLimit.upsert({
     where: { resource_type: TRYON },
     create: { resource_type: TRYON, limit_per_period: CUSTOMER_LIMIT, period: 'MONTH' },
@@ -150,24 +173,47 @@ async function cleanup(): Promise<void> {
       errs.push(`${label}: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
-  if (photoIds.length) await attempt('product_photos', () => prisma.$executeRaw`DELETE FROM product_photos WHERE id = ANY(${photoIds})`);
+  if (photoIds.length)
+    await attempt(
+      'product_photos',
+      () => prisma.$executeRaw`DELETE FROM product_photos WHERE id = ANY(${photoIds})`,
+    );
   if (retailerId) {
-    await attempt('try_on_jobs', () => prisma.$executeRaw`DELETE FROM try_on_jobs WHERE retailer_id = ${retailerId}`);
-    await attempt('retailer (cascades counters, reservations, overrides)', () => prisma.$executeRaw`DELETE FROM retailers WHERE id = ${retailerId}`);
+    await attempt(
+      'try_on_jobs',
+      () => prisma.$executeRaw`DELETE FROM try_on_jobs WHERE retailer_id = ${retailerId}`,
+    );
+    await attempt(
+      'retailer (cascades counters, reservations, overrides)',
+      () => prisma.$executeRaw`DELETE FROM retailers WHERE id = ${retailerId}`,
+    );
   }
-  if (customerId) await attempt('customer_account (cascades)', () => prisma.customerAccount.delete({ where: { id: customerId } }));
+  if (customerId)
+    await attempt('customer_account (cascades)', () =>
+      prisma.customerAccount.delete({ where: { id: customerId } }),
+    );
   await attempt('customer_resource_limits restore', async () => {
     if (priorCustomerLimit) {
-      await prisma.customerResourceLimit.update({ where: { resource_type: TRYON }, data: priorCustomerLimit });
+      await prisma.customerResourceLimit.update({
+        where: { resource_type: TRYON },
+        data: priorCustomerLimit,
+      });
     } else {
       await prisma.$executeRaw`DELETE FROM customer_resource_limits WHERE resource_type = ${TRYON}::"QuotaResourceType"`;
     }
   });
-  console.log(errs.length ? `CLEANUP INCOMPLETE (scratch rows left, run id ${RUN}):\n  ${errs.join('\n  ')}` : 'cleanup ok');
+  console.log(
+    errs.length
+      ? `CLEANUP INCOMPLETE (scratch rows left, run id ${RUN}):\n  ${errs.join('\n  ')}`
+      : 'cleanup ok',
+  );
 }
 
 /** Rows that point at a product that does not exist; the tx skips FK triggers (scratch only). */
-async function seedSweepTraces(photoJobId: string, tryOns: { id: string; status: string; gpuMs: number | null }[]): Promise<void> {
+async function seedSweepTraces(
+  photoJobId: string,
+  tryOns: { id: string; status: string; gpuMs: number | null }[],
+): Promise<void> {
   await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SET LOCAL session_replication_role = replica`;
     const photoId = `${RUN}-photo`;
@@ -193,11 +239,17 @@ async function main(): Promise<void> {
   await step('reserve basics', async () => {
     await reserveJobQuota(retailerId, STUDIO, `${RUN}-j1`);
     check('reserveJobQuota resolves ($executeRaw cast + CTE row count)', true);
-    check('counter = 1 after one reserve', (await retailerCount(STUDIO)) === 1, `got ${await retailerCount(STUDIO)}`);
+    check(
+      'counter = 1 after one reserve',
+      (await retailerCount(STUDIO)) === 1,
+      `got ${await retailerCount(STUDIO)}`,
+    );
     const [row] = await resv(`${RUN}-j1`, STUDIO, 'retailer');
     check(
       'reservation row: RESERVED, amount 1, period_start = start of month',
-      row?.state === 'RESERVED' && row.amount === 1 && row.period_start.getTime() === MONTH.getTime(),
+      row?.state === 'RESERVED' &&
+        row.amount === 1 &&
+        row.period_start.getTime() === MONTH.getTime(),
       row ? `${row.state}/${row.amount}/${row.period_start.toISOString()}` : 'no row',
     );
   });
@@ -211,7 +263,11 @@ async function main(): Promise<void> {
       threw = true;
     }
     check('second reserve of same (job, resource) throws', threw);
-    check('counter still 1 (bump rolled back with the failed insert)', (await retailerCount(STUDIO)) === 1, `got ${await retailerCount(STUDIO)}`);
+    check(
+      'counter still 1 (bump rolled back with the failed insert)',
+      (await retailerCount(STUDIO)) === 1,
+      `got ${await retailerCount(STUDIO)}`,
+    );
   });
 
   // 3. amount over limit and scope CHECK
@@ -222,7 +278,11 @@ async function main(): Promise<void> {
     } catch (e) {
       code = e instanceof AppError ? e.code : String(e);
     }
-    check('amount > limit throws a limit AppError, writes nothing', code.includes('LIMIT') && (await resv(`${RUN}-big`, STUDIO, 'retailer')).length === 0, code);
+    check(
+      'amount > limit throws a limit AppError, writes nothing',
+      code.includes('LIMIT') && (await resv(`${RUN}-big`, STUDIO, 'retailer')).length === 0,
+      code,
+    );
     let checkFired = false;
     try {
       await prisma.$executeRaw`
@@ -243,56 +303,103 @@ async function main(): Promise<void> {
     );
     const ok = settled.filter((s) => s.status === 'fulfilled').length;
     const limitErrs = settled.filter(
-      (s) => s.status === 'rejected' && s.reason instanceof AppError && s.reason.code.includes('LIMIT'),
+      (s) =>
+        s.status === 'rejected' && s.reason instanceof AppError && s.reason.code.includes('LIMIT'),
     ).length;
     check(`exactly ${room} of ${N} concurrent reserves win`, ok === room, `won ${ok}`);
     check('every loser is a limit AppError', limitErrs === N - room, `limit errors ${limitErrs}`);
-    check(`counter = limit (${STUDIO_LIMIT}), never above`, (await retailerCount(STUDIO)) === STUDIO_LIMIT, `got ${await retailerCount(STUDIO)}`);
-    const held = await prisma.quotaReservation.count({ where: { retailer_id: retailerId, resource_type: STUDIO, state: 'RESERVED' } });
-    check('RESERVED rows = counter (no orphan rows, no uncounted slot)', held === STUDIO_LIMIT, `rows ${held}`);
+    check(
+      `counter = limit (${STUDIO_LIMIT}), never above`,
+      (await retailerCount(STUDIO)) === STUDIO_LIMIT,
+      `got ${await retailerCount(STUDIO)}`,
+    );
+    const held = await prisma.quotaReservation.count({
+      where: { retailer_id: retailerId, resource_type: STUDIO, state: 'RESERVED' },
+    });
+    check(
+      'RESERVED rows = counter (no orphan rows, no uncounted slot)',
+      held === STUDIO_LIMIT,
+      `rows ${held}`,
+    );
   });
 
   // 5. refund: idempotent, concurrent double refund drops the counter once
   await step('refund + mark-spent', async () => {
     await refundJobQuota(`${RUN}-j1`, STUDIO);
-    check('refund drops counter by 1', (await retailerCount(STUDIO)) === STUDIO_LIMIT - 1, `got ${await retailerCount(STUDIO)}`);
+    check(
+      'refund drops counter by 1',
+      (await retailerCount(STUDIO)) === STUDIO_LIMIT - 1,
+      `got ${await retailerCount(STUDIO)}`,
+    );
     const [r] = await resv(`${RUN}-j1`, STUDIO, 'retailer');
     check('row REFUNDED with refunded_at set', r?.state === 'REFUNDED' && r.refunded_at !== null);
     await refundJobQuota(`${RUN}-j1`, STUDIO);
-    check('second refund is a no-op', (await retailerCount(STUDIO)) === STUDIO_LIMIT - 1, `got ${await retailerCount(STUDIO)}`);
+    check(
+      'second refund is a no-op',
+      (await retailerCount(STUDIO)) === STUDIO_LIMIT - 1,
+      `got ${await retailerCount(STUDIO)}`,
+    );
 
     // race-0 only exists if it won; pick any RESERVED race row.
     const target = await prisma.quotaReservation.findFirst({
-      where: { retailer_id: retailerId, resource_type: STUDIO, state: 'RESERVED', job_id: { startsWith: `${RUN}-race-` } },
+      where: {
+        retailer_id: retailerId,
+        resource_type: STUDIO,
+        state: 'RESERVED',
+        job_id: { startsWith: `${RUN}-race-` },
+      },
     });
     const before = await retailerCount(STUDIO);
     if (target) {
       await Promise.all(Array.from({ length: 10 }, () => refundJobQuota(target.job_id, STUDIO)));
     }
-    check('10 concurrent refunds of one job drop the counter exactly once', !!target && (await retailerCount(STUDIO)) === before - 1, `${before} -> ${await retailerCount(STUDIO)}`);
+    check(
+      '10 concurrent refunds of one job drop the counter exactly once',
+      !!target && (await retailerCount(STUDIO)) === before - 1,
+      `${before} -> ${await retailerCount(STUDIO)}`,
+    );
 
     const spentTarget = await prisma.quotaReservation.findFirst({
-      where: { retailer_id: retailerId, resource_type: STUDIO, state: 'RESERVED', job_id: { startsWith: `${RUN}-race-` } },
+      where: {
+        retailer_id: retailerId,
+        resource_type: STUDIO,
+        state: 'RESERVED',
+        job_id: { startsWith: `${RUN}-race-` },
+      },
     });
     if (spentTarget) {
       await markJobQuotaSpent(spentTarget.job_id, STUDIO);
-      check('mark-spent flips RESERVED -> SPENT', (await stateOf(spentTarget.job_id, STUDIO, 'retailer')) === 'SPENT');
+      check(
+        'mark-spent flips RESERVED -> SPENT',
+        (await stateOf(spentTarget.job_id, STUDIO, 'retailer')) === 'SPENT',
+      );
       const c = await retailerCount(STUDIO);
       await refundJobQuota(spentTarget.job_id, STUDIO);
-      check('refund after SPENT changes nothing', (await retailerCount(STUDIO)) === c && (await stateOf(spentTarget.job_id, STUDIO, 'retailer')) === 'SPENT');
+      check(
+        'refund after SPENT changes nothing',
+        (await retailerCount(STUDIO)) === c &&
+          (await stateOf(spentTarget.job_id, STUDIO, 'retailer')) === 'SPENT',
+      );
     } else {
       check('mark-spent flips RESERVED -> SPENT', false, 'no RESERVED race row left to use');
     }
 
     // Documents known gap (finding 2): a refunded slot cannot be re-spent, so a late job runs free.
     await markJobQuotaSpent(`${RUN}-j1`, STUDIO);
-    check('KNOWN GAP: mark-spent on a REFUNDED row is a no-op (late job would run free)', (await stateOf(`${RUN}-j1`, STUDIO, 'retailer')) === 'REFUNDED');
+    check(
+      'KNOWN GAP: mark-spent on a REFUNDED row is a no-op (late job would run free)',
+      (await stateOf(`${RUN}-j1`, STUDIO, 'retailer')) === 'REFUNDED',
+    );
   });
 
   // 6. unlimited resource writes nothing
   await step('unlimited', async () => {
     await reserveJobQuota(retailerId, CROP, `${RUN}-crop`);
-    check('limit -1: no reservation row, no counter row', (await resv(`${RUN}-crop`, CROP, 'retailer')).length === 0 && (await retailerCount(CROP)) === 0);
+    check(
+      'limit -1: no reservation row, no counter row',
+      (await resv(`${RUN}-crop`, CROP, 'retailer')).length === 0 &&
+        (await retailerCount(CROP)) === 0,
+    );
     await refundJobQuota(`${RUN}-crop`, CROP);
     await markJobQuotaSpent(`${RUN}-crop`, CROP);
     check('refund / mark-spent on the missing row do not throw', true);
@@ -302,31 +409,66 @@ async function main(): Promise<void> {
   await step('customer scope', async () => {
     const N = 10;
     const settled = await Promise.allSettled(
-      Array.from({ length: N }, (_, i) => reserveCustomerJobQuota(customerId, TRYON, `${RUN}-c${i}`)),
+      Array.from({ length: N }, (_, i) =>
+        reserveCustomerJobQuota(customerId, TRYON, `${RUN}-c${i}`),
+      ),
     );
     const ok = settled.filter((s) => s.status === 'fulfilled').length;
     const limitErrs = settled.filter(
-      (s) => s.status === 'rejected' && s.reason instanceof AppError && s.reason.code === 'CUSTOMER_LIMIT_EXCEEDED',
+      (s) =>
+        s.status === 'rejected' &&
+        s.reason instanceof AppError &&
+        s.reason.code === 'CUSTOMER_LIMIT_EXCEEDED',
     ).length;
-    check(`exactly ${CUSTOMER_LIMIT} of ${N} concurrent shopper reserves win`, ok === CUSTOMER_LIMIT, `won ${ok}`);
-    check('every loser is CUSTOMER_LIMIT_EXCEEDED', limitErrs === N - CUSTOMER_LIMIT, `got ${limitErrs}`);
-    check(`customer counter = ${CUSTOMER_LIMIT}`, (await customerCount(TRYON)) === CUSTOMER_LIMIT, `got ${await customerCount(TRYON)}`);
+    check(
+      `exactly ${CUSTOMER_LIMIT} of ${N} concurrent shopper reserves win`,
+      ok === CUSTOMER_LIMIT,
+      `won ${ok}`,
+    );
+    check(
+      'every loser is CUSTOMER_LIMIT_EXCEEDED',
+      limitErrs === N - CUSTOMER_LIMIT,
+      `got ${limitErrs}`,
+    );
+    check(
+      `customer counter = ${CUSTOMER_LIMIT}`,
+      (await customerCount(TRYON)) === CUSTOMER_LIMIT,
+      `got ${await customerCount(TRYON)}`,
+    );
 
     const winners = settled.flatMap((s, i) => (s.status === 'fulfilled' ? [i] : []));
     const [w1, w2] = winners;
     if (w1 === undefined || w2 === undefined) throw new Error('fewer than two shopper winners');
-    await Promise.all([refundCustomerJobQuota(`${RUN}-c${w1}`, TRYON), refundCustomerJobQuota(`${RUN}-c${w1}`, TRYON)]);
-    check('double customer refund drops counter once', (await customerCount(TRYON)) === CUSTOMER_LIMIT - 1, `got ${await customerCount(TRYON)}`);
+    await Promise.all([
+      refundCustomerJobQuota(`${RUN}-c${w1}`, TRYON),
+      refundCustomerJobQuota(`${RUN}-c${w1}`, TRYON),
+    ]);
+    check(
+      'double customer refund drops counter once',
+      (await customerCount(TRYON)) === CUSTOMER_LIMIT - 1,
+      `got ${await customerCount(TRYON)}`,
+    );
     await markCustomerJobQuotaSpent(`${RUN}-c${w2}`, TRYON);
     await refundCustomerJobQuota(`${RUN}-c${w2}`, TRYON);
-    check('customer SPENT row survives a refund', (await stateOf(`${RUN}-c${w2}`, TRYON, 'customer')) === 'SPENT' && (await customerCount(TRYON)) === CUSTOMER_LIMIT - 1);
+    check(
+      'customer SPENT row survives a refund',
+      (await stateOf(`${RUN}-c${w2}`, TRYON, 'customer')) === 'SPENT' &&
+        (await customerCount(TRYON)) === CUSTOMER_LIMIT - 1,
+    );
 
     // A shopper try-on holds a retailer row AND a customer row under one job id.
     await reserveJobQuota(retailerId, TRYON, `${RUN}-dual`);
     await reserveCustomerJobQuota(customerId, TRYON, `${RUN}-dual`);
-    check('same job id reserves in both scopes', (await stateOf(`${RUN}-dual`, TRYON, 'retailer')) === 'RESERVED' && (await stateOf(`${RUN}-dual`, TRYON, 'customer')) === 'RESERVED');
+    check(
+      'same job id reserves in both scopes',
+      (await stateOf(`${RUN}-dual`, TRYON, 'retailer')) === 'RESERVED' &&
+        (await stateOf(`${RUN}-dual`, TRYON, 'customer')) === 'RESERVED',
+    );
     await refundJobQuota(`${RUN}-dual`, TRYON);
-    check('retailer refund leaves the customer row alone', (await stateOf(`${RUN}-dual`, TRYON, 'customer')) === 'RESERVED');
+    check(
+      'retailer refund leaves the customer row alone',
+      (await stateOf(`${RUN}-dual`, TRYON, 'customer')) === 'RESERVED',
+    );
     await refundCustomerJobQuota(`${RUN}-dual`, TRYON);
   });
 
@@ -342,7 +484,12 @@ async function main(): Promise<void> {
 
     // Make room under the studio limit: hand back every still-RESERVED race row.
     const leftovers = await prisma.quotaReservation.findMany({
-      where: { retailer_id: retailerId, resource_type: STUDIO, state: 'RESERVED', job_id: { startsWith: `${RUN}-race-` } },
+      where: {
+        retailer_id: retailerId,
+        resource_type: STUDIO,
+        state: 'RESERVED',
+        job_id: { startsWith: `${RUN}-race-` },
+      },
       select: { job_id: true },
     });
     for (const l of leftovers) await refundJobQuota(l.job_id, STUDIO);
@@ -370,18 +517,55 @@ async function main(): Promise<void> {
     const res = await handleQuotaReservationSweep();
     check('sweep reports no failed rows', res.failed === 0, JSON.stringify(res));
 
-    check('studio job with a product_photos trace -> SPENT (raw $queryRaw ::text predicate)', (await stateOf(studioPhoto, STUDIO, 'retailer')) === 'SPENT');
-    check('studio job without a photo -> REFUNDED', (await stateOf(studioNone, STUDIO, 'retailer')) === 'REFUNDED');
-    check('studio counter dropped by exactly 1 (only the refunded one)', (await retailerCount(STUDIO)) === studioBefore - 1, `${studioBefore} -> ${await retailerCount(STUDIO)}`);
-    check('try-on with gpu_ms (even FAILED) -> SPENT', (await stateOf(tryDone, TRYON, 'retailer')) === 'SPENT');
-    check('try-on COMPLETED with null gpu_ms -> SPENT', (await stateOf(tryCompleted, TRYON, 'retailer')) === 'SPENT');
-    check('try-on FAILED with null gpu_ms -> REFUNDED', (await stateOf(tryFailed, TRYON, 'retailer')) === 'REFUNDED');
-    check('try-on retailer counter dropped by exactly 1', (await retailerCount(TRYON)) === tryBefore - 1, `${tryBefore} -> ${await retailerCount(TRYON)}`);
-    check('stuck shopper row with no trace -> REFUNDED, customer counter -1', (await stateOf(custStuck, TRYON, 'customer')) === 'REFUNDED' && (await customerCount(TRYON)) === custBefore - 1, `${custBefore} -> ${await customerCount(TRYON)}`);
-    check('young (1 h) RESERVED row untouched', (await stateOf(young, STUDIO, 'retailer')) === 'RESERVED');
+    check(
+      'studio job with a product_photos trace -> SPENT (raw $queryRaw ::text predicate)',
+      (await stateOf(studioPhoto, STUDIO, 'retailer')) === 'SPENT',
+    );
+    check(
+      'studio job without a photo -> REFUNDED',
+      (await stateOf(studioNone, STUDIO, 'retailer')) === 'REFUNDED',
+    );
+    check(
+      'studio counter dropped by exactly 1 (only the refunded one)',
+      (await retailerCount(STUDIO)) === studioBefore - 1,
+      `${studioBefore} -> ${await retailerCount(STUDIO)}`,
+    );
+    check(
+      'try-on with gpu_ms (even FAILED) -> SPENT',
+      (await stateOf(tryDone, TRYON, 'retailer')) === 'SPENT',
+    );
+    check(
+      'try-on COMPLETED with null gpu_ms -> SPENT',
+      (await stateOf(tryCompleted, TRYON, 'retailer')) === 'SPENT',
+    );
+    check(
+      'try-on FAILED with null gpu_ms -> REFUNDED',
+      (await stateOf(tryFailed, TRYON, 'retailer')) === 'REFUNDED',
+    );
+    check(
+      'try-on retailer counter dropped by exactly 1',
+      (await retailerCount(TRYON)) === tryBefore - 1,
+      `${tryBefore} -> ${await retailerCount(TRYON)}`,
+    );
+    check(
+      'stuck shopper row with no trace -> REFUNDED, customer counter -1',
+      (await stateOf(custStuck, TRYON, 'customer')) === 'REFUNDED' &&
+        (await customerCount(TRYON)) === custBefore - 1,
+      `${custBefore} -> ${await customerCount(TRYON)}`,
+    );
+    check(
+      'young (1 h) RESERVED row untouched',
+      (await stateOf(young, STUDIO, 'retailer')) === 'RESERVED',
+    );
 
     const again = await handleQuotaReservationSweep();
-    check('second sweep changes none of our counters (idempotent)', (await retailerCount(STUDIO)) === studioBefore - 1 && (await retailerCount(TRYON)) === tryBefore - 1 && again.failed === 0, JSON.stringify(again));
+    check(
+      'second sweep changes none of our counters (idempotent)',
+      (await retailerCount(STUDIO)) === studioBefore - 1 &&
+        (await retailerCount(TRYON)) === tryBefore - 1 &&
+        again.failed === 0,
+      JSON.stringify(again),
+    );
   });
 
   // 9. migration 145 index matches the sweep predicate
@@ -394,7 +578,11 @@ async function main(): Promise<void> {
       );
     });
     const text = plan.map((r) => Object.values(r)[0]).join('\n');
-    check('planner can use product_photos_studio_job_id_idx for the sweep predicate (seqscan disabled)', text.includes('product_photos_studio_job_id_idx'), text.split('\n')[0] ?? '');
+    check(
+      'planner can use product_photos_studio_job_id_idx for the sweep predicate (seqscan disabled)',
+      text.includes('product_photos_studio_job_id_idx'),
+      text.split('\n')[0] ?? '',
+    );
   });
 }
 

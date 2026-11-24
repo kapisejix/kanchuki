@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Account Deletion | Kanchuki',
@@ -92,7 +92,9 @@ export default function AccountDeletionPage() {
               <Link href="/privacy" className="text-cobalt-600 underline">
                 Privacy Policy
               </Link>{' '}
-              for full details on how we collect, use, and retain data, including your right to complain to our Grievance Officer at privacy@kanchuki.app (we reply within 30 days) and, after that, to the Data Protection Board of India.
+              for full details on how we collect, use, and retain data, including your right to
+              complain to our Grievance Officer at privacy@kanchuki.app (we reply within 30 days)
+              and, after that, to the Data Protection Board of India.
             </p>
           </section>
         </div>

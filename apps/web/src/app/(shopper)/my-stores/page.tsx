@@ -10,53 +10,53 @@
 // customer id and never merges local state into the response, so it cannot
 // show another shopper's stores.
 
-'use client'
+'use client';
 
-import { InstallPrompt } from '@/components/InstallPrompt'
-import { PushOptIn } from '@/components/PushOptIn'
-import { motion } from 'framer-motion'
-import { ChevronRight, Clock, MapPin, QrCode, Store, UserRound } from 'lucide-react'
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { CARD, ITEM, LIST, Notice, SKELETON } from '../ui'
-import { formatLastVisit, mapStoreVisits, type StoreVisitRow } from './lib'
+import { InstallPrompt } from '@/components/InstallPrompt';
+import { PushOptIn } from '@/components/PushOptIn';
+import { motion } from 'framer-motion';
+import { ChevronRight, Clock, MapPin, QrCode, Store, UserRound } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { CARD, ITEM, LIST, Notice, SKELETON } from '../ui';
+import { type StoreVisitRow, formatLastVisit, mapStoreVisits } from './lib';
 
-type LoadState = 'loading' | 'anonymous' | 'ready'
+type LoadState = 'loading' | 'anonymous' | 'ready';
 
 export default function MyStoresPage() {
-  const [stores, setStores] = useState<StoreVisitRow[]>([])
-  const [state, setState] = useState<LoadState>('loading')
+  const [stores, setStores] = useState<StoreVisitRow[]>([]);
+  const [state, setState] = useState<LoadState>('loading');
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     async function load() {
       try {
-        const res = await fetch('/api/passport/stores', { credentials: 'include' })
-        if (cancelled) return
+        const res = await fetch('/api/passport/stores', { credentials: 'include' });
+        if (cancelled) return;
         if (res.status === 401) {
-          setState('anonymous')
-          return
+          setState('anonymous');
+          return;
         }
         if (!res.ok) {
           // Keep the page quiet on a blip — the reload affordance is below.
-          setState('anonymous')
-          return
+          setState('anonymous');
+          return;
         }
-        const rows = mapStoreVisits(await res.json())
-        if (cancelled) return
-        setStores(rows)
-        setState('ready')
+        const rows = mapStoreVisits(await res.json());
+        if (cancelled) return;
+        setStores(rows);
+        setState('ready');
       } catch {
-        if (!cancelled) setState('anonymous')
+        if (!cancelled) setState('anonymous');
       }
     }
 
-    void load()
+    void load();
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   if (state === 'loading') {
     return (
@@ -65,7 +65,7 @@ export default function MyStoresPage() {
         <div className={`h-20 rounded-3xl ${SKELETON}`} />
         <div className={`h-20 rounded-3xl ${SKELETON}`} />
       </div>
-    )
+    );
   }
 
   if (state === 'anonymous') {
@@ -73,7 +73,7 @@ export default function MyStoresPage() {
       <Notice icon={UserRound}>
         <p>Please log in to see the stores you&apos;ve visited.</p>
       </Notice>
-    )
+    );
   }
 
   return (
@@ -102,8 +102,7 @@ export default function MyStoresPage() {
         <motion.div variants={ITEM}>
           <Notice icon={QrCode}>
             <p>
-              No stores yet. Scan a store&apos;s QR code or open a catalog link to
-              start your list.
+              No stores yet. Scan a store&apos;s QR code or open a catalog link to start your list.
             </p>
           </Notice>
         </motion.div>
@@ -115,26 +114,24 @@ export default function MyStoresPage() {
         </ul>
       )}
     </motion.div>
-  )
+  );
 }
 
 function StoreRow({ store }: { store: StoreVisitRow }) {
-  const lastVisit = formatLastVisit(store.last_visited_at)
+  const lastVisit = formatLastVisit(store.last_visited_at);
 
   const card = (
     <div
       className={`${CARD} min-h-[76px] p-3 pr-4 flex items-center gap-3.5 transition-[border-color,box-shadow] ${
-        store.href ? 'group-hover:border-heliotrope-400 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-fuchsia-500/50' : ''
+        store.href
+          ? 'group-hover:border-heliotrope-400 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-fuchsia-500/50'
+          : ''
       }`}
     >
       <div className="w-14 h-14 rounded-2xl bg-fuchsia-500/15 overflow-hidden flex-shrink-0 flex items-center justify-center">
         {store.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element -- small list thumbnail, no LCP benefit from next/image
-          <img
-            src={store.logo_url}
-            alt=""
-            className="w-full h-full object-cover"
-          />
+          <img src={store.logo_url} alt="" className="w-full h-full object-cover" />
         ) : (
           <span className="text-xl font-bold text-fuchsia-600">
             {store.shop_name.charAt(0).toUpperCase()}
@@ -167,7 +164,7 @@ function StoreRow({ store }: { store: StoreVisitRow }) {
         </span>
       )}
     </div>
-  )
+  );
 
   // A store with no storefront slug has no catalog page to open yet.
   if (!store.href) {
@@ -180,14 +177,18 @@ function StoreRow({ store }: { store: StoreVisitRow }) {
           </p>
         </div>
       </motion.li>
-    )
+    );
   }
 
   return (
     <motion.li variants={ITEM}>
-      <Link href={store.href} className="block group rounded-3xl focus-visible:outline-none" prefetch>
+      <Link
+        href={store.href}
+        className="block group rounded-3xl focus-visible:outline-none"
+        prefetch
+      >
         {card}
       </Link>
     </motion.li>
-  )
+  );
 }

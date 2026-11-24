@@ -8,37 +8,28 @@
  * Module._resolveFilename hook in vitest.config.ts — NOT here.
  */
 
-import { vi } from 'vitest'
+import { vi } from 'vitest';
 
 // ── expo-image ─────────────────────────────────────────────────────
 
 vi.mock('expo-image', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require('react')
+  const React = require('react');
 
   const MockImage = React.forwardRef(
-    (
-      { source, style, ...props }: Record<string, unknown>,
-      ref: React.Ref<unknown>,
-    ) => {
+    ({ source, style, ...props }: Record<string, unknown>, ref: React.Ref<unknown>) => {
       const uri =
-        typeof source === 'object' && source
-          ? (source as Record<string, string>).uri
-          : null
+        typeof source === 'object' && source ? (source as Record<string, string>).uri : null;
       return React.createElement(
         'View' as never,
         { ref, style, ...props },
-        React.createElement(
-          'Text' as never,
-          { testID: 'expo-image-uri' },
-          uri ?? 'no-uri',
-        ),
-      )
+        React.createElement('Text' as never, { testID: 'expo-image-uri' }, uri ?? 'no-uri'),
+      );
     },
-  )
-  MockImage.displayName = 'MockImage'
-  return { Image: MockImage }
-})
+  );
+  MockImage.displayName = 'MockImage';
+  return { Image: MockImage };
+});
 
 // ── expo-router ────────────────────────────────────────────────────
 
@@ -47,20 +38,20 @@ vi.mock('expo-router', () => ({
   useLocalSearchParams: vi.fn(() => ({})),
   useSegments: vi.fn(() => []),
   Stack: { Screen: () => null },
-}))
+}));
 
 // ── expo-constants ─────────────────────────────────────────────────
 
 vi.mock('expo-constants', () => ({
   default: { expoConfig: { extra: {} }, statusBarHeight: 0 },
-}))
+}));
 
 // ── expo-image-picker (native module; ReportProblem screenshot picker) ──
 // Pulled in transitively by any screen that renders ReportAiContent.
 
 vi.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: vi.fn(async () => ({ canceled: true, assets: null })),
-}))
+}));
 
 // ── expo-notifications (native module; F-046 push) ─────────────────
 // Default: permission granted, a fixed token. push-notifications.test.ts overrides per case.
@@ -74,17 +65,16 @@ vi.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: vi.fn(async () => ({ data: 'ExponentPushToken[test]' })),
   addNotificationReceivedListener: vi.fn(() => ({ remove: vi.fn() })),
   useLastNotificationResponse: vi.fn(() => undefined),
-}))
+}));
 
 // ── react-native-safe-area-context ─────────────────────────────────
 
 vi.mock('react-native-safe-area-context', () => ({
-  SafeAreaProvider: ({ children }: { children: import('react').ReactNode }) =>
-    children,
+  SafeAreaProvider: ({ children }: { children: import('react').ReactNode }) => children,
   SafeAreaView: ({ children }: { children: import('react').ReactNode }) => children,
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
   useSafeAreaFrame: () => ({ x: 0, y: 0, width: 390, height: 844 }),
-}))
+}));
 
 // ── lucide-react-native (Proxy — catches any icon import) ──────────
 // CRITICAL: the `get` trap must return undefined for `then`/`__esModule`/non-string
@@ -96,7 +86,7 @@ vi.mock('react-native-safe-area-context', () => ({
 
 vi.mock('lucide-react-native', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require('react')
+  const React = require('react');
 
   return new Proxy(
     {},
@@ -106,10 +96,7 @@ vi.mock('lucide-react-native', () => {
       // would throw "No X export is defined on the mock". Report every string
       // key as present (get returns the factory below).
       has: (_, key) =>
-        typeof key === 'string' &&
-        key !== 'then' &&
-        key !== '__esModule' &&
-        key !== 'default',
+        typeof key === 'string' && key !== 'then' && key !== '__esModule' && key !== 'default',
       getOwnPropertyDescriptor: (_, key) => {
         if (
           typeof key !== 'string' ||
@@ -117,39 +104,38 @@ vi.mock('lucide-react-native', () => {
           key === '__esModule' ||
           key === 'default'
         ) {
-          return undefined
+          return undefined;
         }
-        return { configurable: true, enumerable: true, value: undefined }
+        return { configurable: true, enumerable: true, value: undefined };
       },
-      get:
-        (_, iconName) => {
-          if (
-            iconName === 'then' ||
-            iconName === '__esModule' ||
-            iconName === 'default' ||
-            typeof iconName !== 'string'
-          ) {
-            return undefined
-          }
-          return ({ size, color, ...props }: Record<string, unknown>) =>
+      get: (_, iconName) => {
+        if (
+          iconName === 'then' ||
+          iconName === '__esModule' ||
+          iconName === 'default' ||
+          typeof iconName !== 'string'
+        ) {
+          return undefined;
+        }
+        return ({ size, color, ...props }: Record<string, unknown>) =>
+          React.createElement(
+            'View' as never,
+            { testID: `lucide-${iconName}`, ...props },
             React.createElement(
-              'View' as never,
-              { testID: `lucide-${iconName}`, ...props },
-              React.createElement(
-                'Text' as never,
-                {
-                  style: {
-                    fontSize: Number(size) || 16,
-                    color: String(color || '#000'),
-                  },
+              'Text' as never,
+              {
+                style: {
+                  fontSize: Number(size) || 16,
+                  color: String(color || '#000'),
                 },
-                String(iconName),
-              ),
-            )
-        },
+              },
+              String(iconName),
+            ),
+          );
+      },
     },
-  )
-})
+  );
+});
 
 // ── @kanchuki/shared (real module + test overrides) ─────────────────
 // Spread the real exports first: a hand-listed whitelist broke every time
@@ -219,24 +205,23 @@ vi.mock('@kanchuki/shared', async (importOriginal) => ({
 
   // Formatting
   formatPrice: (paise: number | null | undefined) => {
-    if (paise == null) return '—'
-    const rupees = paise / 100
-    const isWhole = Number.isInteger(rupees)
+    if (paise == null) return '—';
+    const rupees = paise / 100;
+    const isWhole = Number.isInteger(rupees);
     const formatted = rupees.toLocaleString('en-IN', {
       minimumFractionDigits: isWhole ? 0 : 2,
       maximumFractionDigits: isWhole ? 0 : 2,
-    })
-    return `₹${formatted}/-`
+    });
+    return `₹${formatted}/-`;
   },
   formatPriceRange: (min: number | null, max: number | null) => {
-    if (min == null && max == null) return '—'
-    if (min === max)
-      return `₹${((min ?? 0) / 100).toLocaleString('en-IN')}`
-    return `₹${((min ?? 0) / 100).toLocaleString('en-IN')} – ₹${((max ?? 0) / 100).toLocaleString('en-IN')}`
+    if (min == null && max == null) return '—';
+    if (min === max) return `₹${((min ?? 0) / 100).toLocaleString('en-IN')}`;
+    return `₹${((min ?? 0) / 100).toLocaleString('en-IN')} – ₹${((max ?? 0) / 100).toLocaleString('en-IN')}`;
   },
-  normalizeIndianPhone: (v: string) =>
-    v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, ''),
-  isValidIndianPhone: (v: string) => /^[6-9]\d{9}$/.test(v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, '')),
+  normalizeIndianPhone: (v: string) => v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, ''),
+  isValidIndianPhone: (v: string) =>
+    /^[6-9]\d{9}$/.test(v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, '')),
   normalizeSearchQuery: (q: string) => q.toLowerCase().trim(),
 
   // Constants
@@ -255,20 +240,7 @@ vi.mock('@kanchuki/shared', async (importOriginal) => ({
     'Other',
   ],
   PRODUCT_TYPES: ['Unstitched', 'Semi-Stitched', 'Readymade'],
-  SIZE_OPTIONS: [
-    'XS',
-    'S',
-    'M',
-    'L',
-    'XL',
-    'XXL',
-    'XXXL',
-    '4XL',
-    '5XL',
-    '6XL',
-    '7XL',
-    '8XL',
-  ],
+  SIZE_OPTIONS: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL', '5XL', '6XL', '7XL', '8XL'],
   PATTERN_TYPES: [
     'Plain',
     'Printed',
@@ -294,12 +266,10 @@ vi.mock('@kanchuki/shared', async (importOriginal) => ({
   ],
   // R2 paths
   R2_PATHS: {
-    productPhoto: (r: string, p: string, f: string) =>
-      `retailers/${r}/products/${p}/${f}`,
+    productPhoto: (r: string, p: string, f: string) => `retailers/${r}/products/${p}/${f}`,
     tryonInput: (j: string) => `tryon/${j}/input.jpg`,
     tryonResult: (j: string) => `tryon/${j}/result.jpg`,
-    measurementPhoto: (c: string, m: string, s: string) =>
-      `measurements/${c}/${m}/${s}.jpg`,
+    measurementPhoto: (c: string, m: string, s: string) => `measurements/${c}/${m}/${s}.jpg`,
   },
 
   // Queue names
@@ -317,28 +287,28 @@ vi.mock('@kanchuki/shared', async (importOriginal) => ({
   // Config
   COLLECTION_SLUG_LENGTH: 8,
   COLLECTION_DEFAULT_EXPIRY_DAYS: 30,
-}))
+}));
 
 // ── @tanstack/react-query (minimal — test files override when needed) ─
 
 vi.mock('@tanstack/react-query', () => {
-  const noop = () => undefined
+  const noop = () => undefined;
   return {
     useQuery: () => ({ data: undefined, isLoading: false, refetch: noop }),
     useMutation: () => ({ mutate: noop, isPending: false }),
     useQueryClient: () => ({ invalidateQueries: noop }),
-  }
-})
+  };
+});
 
 // ── react-native-css-interop (tailwind runtime — not needed in tests) ─
 // The real package has ESM deps Node.js v22 can't parse.
 
-vi.mock('react-native-css-interop', () => ({}))
+vi.mock('react-native-css-interop', () => ({}));
 
 // ── @testing-library/react-native (ESM deps Node.js v22 can't parse) ─
 // Uses react-test-renderer for snapshot-compatible render.
 
 vi.mock('@testing-library/react-native', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('./__mocks__/testing-library.js')
-})
+  return require('./__mocks__/testing-library.js');
+});

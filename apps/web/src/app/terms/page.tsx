@@ -1,11 +1,11 @@
-import type { Metadata } from 'next'
-import Link from 'next/link'
-import Image from 'next/image'
+import type { Metadata } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Kanchuki',
   description: 'The terms that govern your use of the Kanchuki catalog platform.',
-}
+};
 
 export default function TermsOfServicePage() {
   return (
@@ -27,7 +27,9 @@ export default function TermsOfServicePage() {
           </p>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">1. Eligibility &amp; accounts</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              1. Eligibility &amp; accounts
+            </h2>
             <p>
               You must be at least 18 years old and authorised to run the business you register to
               use Kanchuki. You are responsible for keeping your login credentials secure and for
@@ -59,7 +61,9 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">4. Payments &amp; billing</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              4. Payments &amp; billing
+            </h2>
             <p>
               Subscription plans are billed monthly in INR via Razorpay. Listed plan prices are
               exclusive of GST, which is added at the applicable rate. Amounts paid are
@@ -101,11 +105,11 @@ export default function TermsOfServicePage() {
               For the customer details you enter or collect through Kanchuki, you decide why they
               are used and Kanchuki processes them on your behalf. You must have a lawful basis
               (such as the customer&apos;s consent) to collect and message them, keep the details
-              accurate, and honour their requests to access, correct or erase their data. You
-              must tell us without delay if you become aware of a breach affecting data held in
-              Kanchuki, so we can help you meet your notification duties under India&apos;s Digital
-              Personal Data Protection Act, 2023. Do not collect data from anyone under 18 without a
-              parent or guardian&apos;s verifiable consent. See our{' '}
+              accurate, and honour their requests to access, correct or erase their data. You must
+              tell us without delay if you become aware of a breach affecting data held in Kanchuki,
+              so we can help you meet your notification duties under India&apos;s Digital Personal
+              Data Protection Act, 2023. Do not collect data from anyone under 18 without a parent
+              or guardian&apos;s verifiable consent. See our{' '}
               <Link href="/privacy" className="text-cobalt-600 hover:underline">
                 Privacy Policy
               </Link>{' '}
@@ -117,14 +121,16 @@ export default function TermsOfServicePage() {
             <h2 className="font-display text-xl font-semibold text-carbon">8. Acceptable use</h2>
             <p>
               Do not misuse the platform: don&apos;t upload unlawful, infringing, or deceptive
-              content, don&apos;t attempt to access another retailer&apos;s data, and don&apos;t
-              use the service to harass customers. We may suspend accounts that violate these
-              rules, with notice where possible.
+              content, don&apos;t attempt to access another retailer&apos;s data, and don&apos;t use
+              the service to harass customers. We may suspend accounts that violate these rules,
+              with notice where possible.
             </p>
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">9. Availability &amp; liability</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              9. Availability &amp; liability
+            </h2>
             <p>
               We work to keep the service available, but provide it &quot;as is&quot; without
               warranties of uninterrupted availability. To the maximum extent permitted by law,
@@ -134,7 +140,9 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">10. Changes to these terms</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              10. Changes to these terms
+            </h2>
             <p>
               We may update these terms from time to time. Continued use of Kanchuki after changes
               are posted constitutes acceptance of the updated terms.
@@ -154,5 +162,5 @@ export default function TermsOfServicePage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-import { API_URL as apiUrl } from '@/lib/apiUrl'
-import { notFound } from 'next/navigation'
-import type { ReactNode } from 'react'
-import CollectionShell from './components/CollectionShell'
+import { API_URL as apiUrl } from '@/lib/apiUrl';
+import { notFound } from 'next/navigation';
+import type { ReactNode } from 'react';
+import CollectionShell from './components/CollectionShell';
 
 // Existence is decided here, outside the shell's <Suspense>, so an unknown slug
 // gets a real 404 instead of a streamed 200 "not found" (soft-404; same fix as
@@ -10,17 +10,20 @@ export default async function LegacyCollectionLayout({
   children,
   params,
 }: {
-  children: ReactNode
-  params: Promise<{ slug: string }>
+  children: ReactNode;
+  params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params
+  const { slug } = await params;
   try {
-    const res = await fetch(`${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}?page=1&pageSize=1`, {
-      next: { revalidate: 15 },
-    })
-    if (res.status === 404) notFound()
+    const res = await fetch(
+      `${apiUrl}/v1/public/collections/${encodeURIComponent(slug)}?page=1&pageSize=1`,
+      {
+        next: { revalidate: 15 },
+      },
+    );
+    if (res.status === 404) notFound();
   } catch (e) {
-    if (e instanceof Error && 'digest' in e) throw e // let notFound() through
+    if (e instanceof Error && 'digest' in e) throw e; // let notFound() through
   }
-  return <CollectionShell>{children}</CollectionShell>
+  return <CollectionShell>{children}</CollectionShell>;
 }

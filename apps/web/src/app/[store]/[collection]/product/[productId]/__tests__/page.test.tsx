@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import SharedProductPageRoute from '../page'
+import { render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import SharedProductPageRoute from '../page';
 
 // next/image renders through Next's optimizer config which jsdom doesn't
 // provide — mock to a plain <img> carrying the alt text (same as the
@@ -12,20 +12,20 @@ vi.mock('next/image', () => ({
     alt,
     className,
   }: {
-    src: string
-    alt?: string | null
-    className?: string
+    src: string;
+    alt?: string | null;
+    className?: string;
     // eslint-disable-next-line @next/next/no-img-element -- test mock of next/image
   }) => <img src={src} alt={alt ?? ''} className={className} />,
-}))
+}));
 
 // Pin the API base so the outbound fetch URLs are deterministic (no reliance
 // on real env vars in tests) — same pattern as sitemap.test.ts.
 vi.mock('@/lib/apiUrl', () => ({
   API_URL: 'https://api.test.invalid',
-}))
+}));
 
-const fetchMock = vi.fn()
+const fetchMock = vi.fn();
 
 // A shared-product URL whose collection segment is a browse-page pseudo-slug
 // (all-{store} / cat-{categoryId}). CollectionView passes the browse slug into
@@ -97,30 +97,30 @@ const fetchRoutes: Record<string, { status: number; body: unknown }> = {
       },
     },
   },
-}
+};
 
 beforeEach(() => {
-  localStorage.setItem('kanchuki_lead_meera-sarees', 'true')
-  fetchMock.mockReset()
+  localStorage.setItem('kanchuki_lead_meera-sarees', 'true');
+  fetchMock.mockReset();
   fetchMock.mockImplementation((input: string | URL | Request) => {
-    const url = typeof input === 'string' ? input : String(input)
-    const route = fetchRoutes[url]
-    if (!route) return Promise.reject(new Error(`unexpected fetch: ${url}`))
+    const url = typeof input === 'string' ? input : String(input);
+    const route = fetchRoutes[url];
+    if (!route) return Promise.reject(new Error(`unexpected fetch: ${url}`));
     return Promise.resolve(
       new Response(JSON.stringify(route.body), {
         status: route.status,
         headers: { 'Content-Type': 'application/json' },
       }),
-    )
-  })
-  vi.stubGlobal('fetch', fetchMock)
-})
+    );
+  });
+  vi.stubGlobal('fetch', fetchMock);
+});
 
 afterEach(() => {
-  localStorage.clear()
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
-})
+  localStorage.clear();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('[store]/[collection]/product/[productId] shared product route', () => {
   it('resolves a pseudo-slug collection segment (all-{store}) instead of 404ing', async () => {
@@ -128,31 +128,32 @@ describe('[store]/[collection]/product/[productId] shared product route', () => 
       store: 'meera-sarees',
       collection: 'all-meera-sarees',
       productId: 'prod-1',
-    })
+    });
 
-    let result: React.ReactElement
+    let result: React.ReactElement;
     await expect(
       SharedProductPageRoute({ params }).then((el) => {
-        result = el
-        render(result!)
+        result = el;
+        render(result!);
       }),
-    ).resolves.toBeUndefined()
+    ).resolves.toBeUndefined();
 
     // The product itself renders (name shows in the header + the info card).
-    expect(screen.getAllByText('Maroon Anarkali Suit').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Maroon Anarkali Suit').length).toBeGreaterThan(0);
     // Both CTAs point at the real browse page (All Products), never the
     // pseudo-slug URL (which has no page behind it). Assert on hrefs — the
     // next/link mock drops aria-label, so the icon-only back link has no
     // accessible name.
-    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'))
-    expect(hrefs).toContain('/meera-sarees/all')
+    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(hrefs).toContain('/meera-sarees/all');
     // 2 header links (back + bag) + the "View Full Catalog" CTA.
-    expect(hrefs.filter((h) => h === '/meera-sarees/all')).toHaveLength(3)
-    expect(hrefs).not.toContain('/meera-sarees/all-meera-sarees')
-  })
+    expect(hrefs.filter((h) => h === '/meera-sarees/all')).toHaveLength(3);
+    expect(hrefs).not.toContain('/meera-sarees/all-meera-sarees');
+  });
 
   it('resolves a cat-{categoryId} pseudo-slug via the category endpoint', async () => {
-    const categoryUrl = 'https://api.test.invalid/v1/public/retailers/meera-sarees/categories/cat-1'
+    const categoryUrl =
+      'https://api.test.invalid/v1/public/retailers/meera-sarees/categories/cat-1';
     fetchRoutes[categoryUrl] = {
       status: 200,
       body: {
@@ -175,29 +176,29 @@ describe('[store]/[collection]/product/[productId] shared product route', () => 
           filters: { categories: [], colors: [] },
         },
       },
-    }
+    };
     // fetchCollection (with params) AND resolveStorefront's own real-slug
     // probe (bare URL) both 404 → pseudo-slug branch is taken.
     fetchRoutes['https://api.test.invalid/v1/public/collections/cat-cat-1?page=1&pageSize=1'] = {
       status: 404,
       body: { error: 'Collection not found' },
-    }
+    };
     fetchRoutes['https://api.test.invalid/v1/public/collections/cat-cat-1'] = {
       status: 404,
       body: { error: 'Collection not found' },
-    }
+    };
 
     const params = Promise.resolve({
       store: 'meera-sarees',
       collection: 'cat-cat-1',
       productId: 'prod-1',
-    })
+    });
 
-    await SharedProductPageRoute({ params }).then((el) => render(el))
+    await SharedProductPageRoute({ params }).then((el) => render(el));
 
     // Back link goes to the category browse page the customer was on.
-    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'))
-    expect(hrefs).toContain('/meera-sarees/categories/cat-1')
-    expect(hrefs).not.toContain('/meera-sarees/categories/cat-cat-1')
-  })
-})
+    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(hrefs).toContain('/meera-sarees/categories/cat-1');
+    expect(hrefs).not.toContain('/meera-sarees/categories/cat-cat-1');
+  });
+});

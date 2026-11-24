@@ -169,7 +169,10 @@ function PostCard({
                 {item.image_level === 'TEMPLATE' ? (
                   <View className="flex-row items-center gap-1">
                     <Wand2 size={12} color="#6B4773" />
-                    <Text className="text-[11px] font-medium text-heliotrope-600 flex-shrink" numberOfLines={1}>
+                    <Text
+                      className="text-[11px] font-medium text-heliotrope-600 flex-shrink"
+                      numberOfLines={1}
+                    >
                       {templateLabel(item.template_id) ?? designName(item.template_id) ?? 'Styled'}
                     </Text>
                   </View>
@@ -624,7 +627,9 @@ export default function ScheduleCalendarScreen() {
                 ))}
                 {designList.length > 0 ? (
                   <>
-                    <Text className="text-xs font-semibold text-heliotrope-500 mt-1">Your designs</Text>
+                    <Text className="text-xs font-semibold text-heliotrope-500 mt-1">
+                      Your designs
+                    </Text>
                     <TextInput
                       value={headline}
                       onChangeText={setHeadline}

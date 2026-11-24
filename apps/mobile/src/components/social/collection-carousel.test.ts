@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { collectionProductsToCarouselItems, firstCollectionProductPhotoUrl } from './collection-carousel';
+import {
+  collectionProductsToCarouselItems,
+  firstCollectionProductPhotoUrl,
+} from './collection-carousel';
 
 const row = (id: string, photoId: string | null, url?: string) => ({
   product: { id, photos: photoId ? [{ id: photoId, url }] : [] },

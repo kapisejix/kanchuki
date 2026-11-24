@@ -17,11 +17,11 @@
  *   />
  */
 
-import React, { memo, useState, useEffect } from 'react'
-import { View, Text, type ViewStyle } from 'react-native'
-import { Image } from 'expo-image'
-import { Heart, ImageOff, Package } from 'lucide-react-native'
-import { AnimatedPressable } from './AnimatedPressable'
+import { Image } from 'expo-image';
+import { Heart, ImageOff, Package } from 'lucide-react-native';
+import React, { memo, useState, useEffect } from 'react';
+import { Text, View, type ViewStyle } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
 
 // iOS shadow (Android keeps its own `elevation` prop, RN can't share one style key for both).
 const CARD_SHADOW: ViewStyle = {
@@ -29,43 +29,43 @@ const CARD_SHADOW: ViewStyle = {
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.08,
   shadowRadius: 10,
-}
+};
 
 // Blurhash placeholder for product images (neutral grey)
-const BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4'
+const BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4';
 
 export interface ProductCardProps {
   /** Product photo URL (nullable — shows placeholder fallback) */
-  imageUrl: string | null
+  imageUrl: string | null;
   /** Tap handler */
-  onPress: () => void
+  onPress: () => void;
   /** Optional: long-press handler (e.g. enter bulk-selection mode) */
-  onLongPress?: () => void
+  onLongPress?: () => void;
   /** Footer content rendered below the image */
-  footer: React.ReactNode
+  footer: React.ReactNode;
   /** Elevation level (default 2) */
-  elevation?: number
+  elevation?: number;
   /** Override the outer container style (e.g. width) */
-  style?: ViewStyle
+  style?: ViewStyle;
   /** Whether to use flex-1 layout (for grid) */
-  flex?: boolean
+  flex?: boolean;
   /** Optional: Top-left status badge text (e.g. "SOLD", "RESERVED") */
-  statusBadge?: string | null
+  statusBadge?: string | null;
   /** Optional: Small dot indicator when AI tagging is pending */
-  showAIDot?: boolean
+  showAIDot?: boolean;
   /** Optional: WhatsApp catalog sync badge (bottom-right dot): green = synced,
    *  amber = pending, red = error. Only rendered when provided. (Phase II F7) */
-  catalogSyncStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS' | null
+  catalogSyncStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS' | null;
   /** Optional: Selected state overlay (checkmark) */
-  selected?: boolean
+  selected?: boolean;
   /** Optional: Custom image height (defaults to aspect-[3/4]) */
-  imageHeight?: number
+  imageHeight?: number;
   /** Optional: Enable image caching policy */
-  cachePolicy?: 'memory-disk' | 'memory' | 'disk'
+  cachePolicy?: 'memory-disk' | 'memory' | 'disk';
   /** Optional: Favorite action callback */
-  onFavorite?: () => void
+  onFavorite?: () => void;
   /** Optional: Whether card is currently favorited */
-  isFavorite?: boolean
+  isFavorite?: boolean;
 }
 
 const ProductCard = memo(function ProductCard({
@@ -85,10 +85,10 @@ const ProductCard = memo(function ProductCard({
   onFavorite,
   isFavorite,
 }: ProductCardProps) {
-  const [imageError, setImageError] = useState(false)
+  const [imageError, setImageError] = useState(false);
 
   // Reset error state when imageUrl changes (e.g. new photo uploaded)
-  useEffect(() => setImageError(false), [imageUrl])
+  useEffect(() => setImageError(false), [imageUrl]);
 
   return (
     <AnimatedPressable
@@ -101,11 +101,7 @@ const ProductCard = memo(function ProductCard({
         {/* Image container */}
         <View
           className="w-full bg-lavender-100 rounded-[10px] overflow-hidden relative"
-          style={
-            imageHeight
-              ? { height: imageHeight }
-              : { aspectRatio: 3 / 4 }
-          }
+          style={imageHeight ? { height: imageHeight } : { aspectRatio: 3 / 4 }}
         >
           {imageUrl && !imageError ? (
             <Image
@@ -119,7 +115,11 @@ const ProductCard = memo(function ProductCard({
             />
           ) : (
             <View className="w-full h-full items-center justify-center bg-lavender-50">
-              {imageError ? <ImageOff size={24} color="#6B4773" /> : <Package size={24} color="#6B4773" />}
+              {imageError ? (
+                <ImageOff size={24} color="#6B4773" />
+              ) : (
+                <Package size={24} color="#6B4773" />
+              )}
               {imageError && (
                 <Text className="text-heliotrope-500 text-[11px] mt-1">Image error</Text>
               )}
@@ -129,7 +129,9 @@ const ProductCard = memo(function ProductCard({
           {/* Status badge (top-left) */}
           {statusBadge && (
             <View className="absolute top-2 left-2 bg-spaceCadet-900/90 px-2 py-0.5 rounded-md">
-              <Text className="text-white text-[11px] font-medium">{statusBadge.charAt(0) + statusBadge.slice(1).toLowerCase()}</Text>
+              <Text className="text-white text-[11px] font-medium">
+                {statusBadge.charAt(0) + statusBadge.slice(1).toLowerCase()}
+              </Text>
             </View>
           )}
 
@@ -162,8 +164,8 @@ const ProductCard = memo(function ProductCard({
             >
               <Heart
                 size={16}
-                color={isFavorite ? "#BB3F95" : "#231F48"}
-                fill={isFavorite ? "#BB3F95" : "transparent"}
+                color={isFavorite ? '#BB3F95' : '#231F48'}
+                fill={isFavorite ? '#BB3F95' : 'transparent'}
               />
             </AnimatedPressable>
           )}
@@ -177,12 +179,10 @@ const ProductCard = memo(function ProductCard({
         </View>
 
         {/* Footer */}
-        <View className="px-2 pt-2.5 pb-1.5">
-          {footer}
-        </View>
+        <View className="px-2 pt-2.5 pb-1.5">{footer}</View>
       </View>
     </AnimatedPressable>
-  )
-})
+  );
+});
 
-export default ProductCard
+export default ProductCard;

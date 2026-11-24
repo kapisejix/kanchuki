@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
+import { useEffect } from 'react';
 
 // Global error boundary — the LAST line of defense in the App Router. It
 // replaces the default "Application error: a client-side exception has
@@ -12,16 +12,18 @@ export default function GlobalError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[web:global-error]', error)
-  }, [error])
+    console.error('[web:global-error]', error);
+  }, [error]);
 
   return (
     <html lang="en">
-      <body style={{ margin: 0, background: '#FFFFFF', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <body
+        style={{ margin: 0, background: '#FFFFFF', fontFamily: 'Inter, system-ui, sans-serif' }}
+      >
         <div
           style={{
             minHeight: '60vh',
@@ -63,7 +65,14 @@ export default function GlobalError({
               {error.message || 'An unexpected error occurred.'}
             </p>
             {error.digest && (
-              <p style={{ fontSize: 12, color: '#8FA0BC', fontFamily: 'monospace', margin: '0 0 16px' }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: '#8FA0BC',
+                  fontFamily: 'monospace',
+                  margin: '0 0 16px',
+                }}
+              >
                 Digest: {error.digest}
               </p>
             )}
@@ -86,5 +95,5 @@ export default function GlobalError({
         </div>
       </body>
     </html>
-  )
+  );
 }

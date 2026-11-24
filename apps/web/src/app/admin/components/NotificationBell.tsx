@@ -1,77 +1,85 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, AlertCircle, HardDrive, Info, ExternalLink } from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Bell, ExternalLink, HardDrive, Info } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type Alert = {
-  id: string
-  type: string
-  message: string
-  severity: string
-  time: string
-}
+  id: string;
+  type: string;
+  message: string;
+  severity: string;
+  time: string;
+};
 
 export function NotificationBell() {
-  const [alerts, setAlerts] = useState<Alert[]>([])
-  const [open, setOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [open, setOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch alerts on mount and every 60s
   useEffect(() => {
     const fetchAlerts = async () => {
-      const key = sessionStorage.getItem('admin_key')
-      if (!key) return
+      const key = sessionStorage.getItem('admin_key');
+      if (!key) return;
       try {
-        const res = await fetch(`${API_URL}/v1/admin/alerts`, adminGetOptions())
+        const res = await fetch(`${API_URL}/v1/admin/alerts`, adminGetOptions());
         if (res.ok) {
-          const json = (await res.json()) as { data: Alert[] }
-          const items = json.data ?? []
-          setAlerts(items)
-          const warnCount = items.filter((a) => a.severity === 'warning' || a.severity === 'critical').length
-          setUnreadCount(warnCount)
+          const json = (await res.json()) as { data: Alert[] };
+          const items = json.data ?? [];
+          setAlerts(items);
+          const warnCount = items.filter(
+            (a) => a.severity === 'warning' || a.severity === 'critical',
+          ).length;
+          setUnreadCount(warnCount);
         }
       } catch {
         // Silently ignore
       }
-    }
+    };
 
-    fetchAlerts()
-    const interval = setInterval(fetchAlerts, 60_000)
-    return () => clearInterval(interval)
-  }, [])
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Close on click outside
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false)
+        setOpen(false);
       }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const severityIcon = (s: string) => {
     switch (s) {
-      case 'critical': return <HardDrive size={14} className="text-red-500" />
-      case 'warning': return <AlertCircle size={14} className="text-amber-500" />
-      default: return <Info size={14} className="text-blue-400" />
+      case 'critical':
+        return <HardDrive size={14} className="text-red-500" />;
+      case 'warning':
+        return <AlertCircle size={14} className="text-amber-500" />;
+      default:
+        return <Info size={14} className="text-blue-400" />;
     }
-  }
+  };
 
   const severityBg = (s: string) => {
     switch (s) {
-      case 'critical': return 'bg-red-50 border-red-200'
-      case 'warning': return 'bg-amber-50 border-amber-200'
-      default: return 'bg-blue-50 border-blue-200'
+      case 'critical':
+        return 'bg-red-50 border-red-200';
+      case 'warning':
+        return 'bg-amber-50 border-amber-200';
+      default:
+        return 'bg-blue-50 border-blue-200';
     }
-  }
+  };
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -103,9 +111,7 @@ export function NotificationBell() {
                 <span className="text-sm font-medium text-gray-900">Notifications</span>
               </div>
               {unreadCount > 0 && (
-                <span className="text-xs text-red-700">
-                  {unreadCount} unread
-                </span>
+                <span className="text-xs text-red-700">{unreadCount} unread</span>
               )}
             </div>
 
@@ -123,9 +129,16 @@ export function NotificationBell() {
                   >
                     {severityIcon(alert.severity)}
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-800 leading-relaxed">{alert.message}</p>
+                      <p className="text-xs font-medium text-gray-800 leading-relaxed">
+                        {alert.message}
+                      </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {new Date(alert.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(alert.time).toLocaleString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </p>
                     </div>
                   </div>
@@ -147,7 +160,7 @@ export function NotificationBell() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
 
-export default NotificationBell
+export default NotificationBell;

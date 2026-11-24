@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
-import { Camera, Loader2, LogIn, ShieldCheck, X } from 'lucide-react'
-import { TRY_ON_CONSENT } from '@kanchuki/shared'
-import { Sheet } from '@/components/Sheet'
-import { ReportAiContent } from '@/components/ReportAiContent'
-import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to'
+import { ReportAiContent } from '@/components/ReportAiContent';
+import { Sheet } from '@/components/Sheet';
+import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to';
+import { TRY_ON_CONSENT } from '@kanchuki/shared';
+import { Camera, Loader2, LogIn, ShieldCheck, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 // F-040 — customer-web virtual try-on.
 //
@@ -27,32 +27,32 @@ import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to'
 // leaves them with nothing to do about it. So a 401 routes to its own `signin`
 // step — copy that says *why* an account is needed, and the one control that
 // resolves it. The raw message is never rendered, not even transiently.
-type Step = 'consent' | 'capture' | 'processing' | 'result' | 'signin'
+type Step = 'consent' | 'capture' | 'processing' | 'result' | 'signin';
 
 export function TryOnSheet({
   productId,
   productName,
   onClose,
 }: {
-  productId: string
-  productName: string
-  onClose: () => void
+  productId: string;
+  productName: string;
+  onClose: () => void;
 }) {
-  const [step, setStep] = useState<Step>('consent')
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [resultUrl, setResultUrl] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const stoppedRef = useRef(false)
+  const [step, setStep] = useState<Step>('consent');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stoppedRef = useRef(false);
 
   useEffect(() => {
     return () => {
-      stoppedRef.current = true
-      if (pollRef.current) clearTimeout(pollRef.current)
-    }
-  }, [])
+      stoppedRef.current = true;
+      if (pollRef.current) clearTimeout(pollRef.current);
+    };
+  }, []);
 
-  const handleAccept = () => setStep('capture')
+  const handleAccept = () => setStep('capture');
 
   // Hands off to the real login surface rather than growing a second OTP flow
   // in here — `/login` already carries the widget-then-API fallback and the
@@ -72,15 +72,15 @@ export function TryOnSheet({
       : `/login?${RETURN_TO_PARAM}=${encodeURIComponent(
           sanitizeReturnTo(`${window.location.pathname}${window.location.search}`),
         )}`,
-  )
+  );
 
   const handleFile = async (file: File) => {
-    setError(null)
-    setPreviewUrl(URL.createObjectURL(file))
-    setStep('processing')
+    setError(null);
+    setPreviewUrl(URL.createObjectURL(file));
+    setStep('processing');
 
-    const form = new FormData()
-    form.append('photo', file)
+    const form = new FormData();
+    form.append('photo', file);
 
     try {
       const res = await fetch(
@@ -88,39 +88,40 @@ export function TryOnSheet({
           TRY_ON_CONSENT.version,
         )}`,
         { method: 'POST', body: form },
-      )
-      const json = (await res.json().catch(() => null)) as
-        | { data?: { job_id: string }; error?: { message?: string } }
-        | null
+      );
+      const json = (await res.json().catch(() => null)) as {
+        data?: { job_id: string };
+        error?: { message?: string };
+      } | null;
 
       // 401 first, and deliberately not folded into the branch below: `!res.ok`
       // would also catch it, and `error.message` would then be the API's
       // sentence — the thing this step exists to replace.
       if (res.status === 401) {
-        setStep('signin')
-        return
+        setStep('signin');
+        return;
       }
 
       if (!res.ok || !json?.data?.job_id) {
-        setError(json?.error?.message ?? 'Could not start the try-on. Please try again.')
-        setStep('result')
-        return
+        setError(json?.error?.message ?? 'Could not start the try-on. Please try again.');
+        setStep('result');
+        return;
       }
 
-      poll(json.data.job_id)
+      poll(json.data.job_id);
     } catch {
-      setError('Could not start the try-on. Please check your connection and try again.')
-      setStep('result')
+      setError('Could not start the try-on. Please check your connection and try again.');
+      setStep('result');
     }
-  }
+  };
 
   const poll = (jobId: string) => {
     const tick = async () => {
-      if (stoppedRef.current) return
+      if (stoppedRef.current) return;
       try {
         const res = await fetch(
           `/api/products/${productId}/try-on/status?job_id=${encodeURIComponent(jobId)}`,
-        )
+        );
 
         // Session lapsed mid-run. Same 401 as the POST ("no passport session"),
         // and the same non-answer if it is swallowed: the API returns no
@@ -134,38 +135,38 @@ export function TryOnSheet({
         // `stoppedRef` is a separate guard, for the other way a poll dies — the
         // sheet closing with a read already in flight.
         if (res.status === 401) {
-          setStep('signin')
-          return
+          setStep('signin');
+          return;
         }
 
-        const json = (await res.json().catch(() => null)) as
-          | { data?: { status: string; url?: string | null; error?: string } }
-          | null
-        const status = json?.data?.status
+        const json = (await res.json().catch(() => null)) as {
+          data?: { status: string; url?: string | null; error?: string };
+        } | null;
+        const status = json?.data?.status;
 
         if (status === 'ready' && json?.data?.url) {
-          setResultUrl(json.data.url)
-          setStep('result')
-          return
+          setResultUrl(json.data.url);
+          setStep('result');
+          return;
         }
         if (status === 'failed') {
-          setError(json?.data?.error ?? 'The try-on could not be generated. Please try again.')
-          setStep('result')
-          return
+          setError(json?.data?.error ?? 'The try-on could not be generated. Please try again.');
+          setStep('result');
+          return;
         }
         if (status === 'withdrawn') {
           // Consent was withdrawn mid-run and the stored image deleted. Terminal.
-          setError('This try-on was withdrawn and its picture deleted.')
-          setStep('result')
-          return
+          setError('This try-on was withdrawn and its picture deleted.');
+          setStep('result');
+          return;
         }
       } catch {
         // Transient — keep polling; the job may still be running.
       }
-      if (!stoppedRef.current) pollRef.current = setTimeout(tick, 3000)
-    }
-    pollRef.current = setTimeout(tick, 3000)
-  }
+      if (!stoppedRef.current) pollRef.current = setTimeout(tick, 3000);
+    };
+    pollRef.current = setTimeout(tick, 3000);
+  };
 
   return (
     <Sheet
@@ -216,7 +217,9 @@ export function TryOnSheet({
             ))}
           </div>
 
-          <p className="text-[11px] text-[#6B4773] leading-relaxed mb-1">{TRY_ON_CONSENT.training}</p>
+          <p className="text-[11px] text-[#6B4773] leading-relaxed mb-1">
+            {TRY_ON_CONSENT.training}
+          </p>
           <p className="text-[11px] text-[#928EB2] leading-relaxed mb-4">
             {TRY_ON_CONSENT.withdrawal}{' '}
             <a
@@ -262,8 +265,8 @@ export function TryOnSheet({
               className="hidden"
               data-testid="try-on-selfie-input"
               onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) void handleFile(file)
+                const file = e.target.files?.[0];
+                if (file) void handleFile(file);
               }}
             />
           </label>
@@ -293,8 +296,8 @@ export function TryOnSheet({
           </div>
           <p className="text-sm font-extrabold text-[#231F48] mb-1">Sign in to try this on</p>
           <p className="text-xs text-[#6B4773] leading-relaxed mb-5">
-            Try-on needs your account. That is what keeps the picture yours — private to you and
-            the store, and yours to withdraw from My Profile at any time.
+            Try-on needs your account. That is what keeps the picture yours — private to you and the
+            store, and yours to withdraw from My Profile at any time.
           </p>
           <a
             href={loginHref}
@@ -329,7 +332,9 @@ export function TryOnSheet({
               <ReportAiContent feature="Virtual try-on" contentRef={productId} className="mt-2" />
             </>
           ) : (
-            <p className="text-sm font-semibold text-[#231F48] py-6">{error ?? 'Something went wrong.'}</p>
+            <p className="text-sm font-semibold text-[#231F48] py-6">
+              {error ?? 'Something went wrong.'}
+            </p>
           )}
           <button
             type="button"
@@ -341,5 +346,5 @@ export function TryOnSheet({
         </div>
       )}
     </Sheet>
-  )
+  );
 }

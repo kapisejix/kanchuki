@@ -16,19 +16,27 @@ import {
   Settings,
 } from 'lucide-react-native';
 import { useCallback, useRef } from 'react';
-import { BackHandler, Platform, RefreshControl, ScrollView, Text, ToastAndroid, View } from 'react-native';
+import {
+  BackHandler,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  Text,
+  ToastAndroid,
+  View,
+} from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
+import { SetupChecklist } from '../../src/components/SetupChecklist';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
 import { UsageRows } from '../../src/components/UsageCard';
+import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
 import { categoryApi, retailerApi } from '../../src/lib/api';
 import { useAuth } from '../../src/lib/auth-context';
-import { staffCan } from '../../src/lib/staff-can';
-import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
-import { SetupChecklist } from '../../src/components/SetupChecklist';
-import { useScreenInsets } from '../../src/lib/safe-area';
-import { useUnreadEnquiries } from '../../src/lib/use-unread-enquiries';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { staffCan } from '../../src/lib/staff-can';
+import { useUnreadEnquiries } from '../../src/lib/use-unread-enquiries';
 
 type RankedProduct = {
   product: {
@@ -128,9 +136,7 @@ export default function HomeScreen() {
       {/* ── Top Retailer Header & Identity ── */}
       <View className="px-5 pt-4 pb-3 flex-row items-center justify-between">
         <View className="flex-row items-center gap-3">
-          <View
-            className="w-10 h-10 rounded-2xl bg-lavender-100 border border-lavender-200 items-center justify-center"
-          >
+          <View className="w-10 h-10 rounded-2xl bg-lavender-100 border border-lavender-200 items-center justify-center">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-spaceCadet-900 text-sm"
@@ -145,7 +151,7 @@ export default function HomeScreen() {
                 letterSpacing: 0.32,
                 fontWeight: '800',
                 fontSize: 16,
-                lineHeight: 24
+                lineHeight: 24,
               }}
               className="text-base leading-6 text-spaceCadet-900"
             >
@@ -184,9 +190,7 @@ export default function HomeScreen() {
           }}
         >
           <View className="flex-row justify-between items-start mb-2">
-            <Text className="text-xs text-lavender-200">
-              Catalog overview
-            </Text>
+            <Text className="text-xs text-lavender-200">Catalog overview</Text>
           </View>
 
           <View className="flex-row items-baseline gap-2 mb-1">
@@ -210,17 +214,13 @@ export default function HomeScreen() {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text className="text-xs text-lavender-200">
-                WhatsApp enquiries
-              </Text>
+              <Text className="text-xs text-lavender-200">WhatsApp enquiries</Text>
               <Text className="text-white font-semibold text-sm mt-0.5">
                 {stats?.enquiries_this_month ?? 0} sent
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text className="text-xs text-lavender-200">
-                Active products
-              </Text>
+              <Text className="text-xs text-lavender-200">Active products</Text>
               <Text className="text-white font-semibold text-sm mt-0.5">
                 {stats?.total_products_available ?? 0} in stock
               </Text>
@@ -234,9 +234,7 @@ export default function HomeScreen() {
 
       {/* ── Quick Tools ── */}
       <View className="px-4 pt-2 pb-2">
-        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">
-          Quick tools
-        </Text>
+        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Quick tools</Text>
         <View className="gap-3">
           <View className="flex-row gap-3">
             <QuickAction
@@ -284,8 +282,6 @@ export default function HomeScreen() {
         />
       </View>
 
-
-
       {/* Trending products */}
       {(stats?.top_viewed_products?.length ?? 0) > 0 && (
         <View className="px-4 py-2">
@@ -311,7 +307,9 @@ export default function HomeScreen() {
 
       {/* ── Catalog & Products ── */}
       <View className="px-4 pt-4">
-        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Catalog & products</Text>
+        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">
+          Catalog & products
+        </Text>
         <View className="gap-3">
           <View className="flex-row gap-3">
             {canEditCatalog && (
@@ -392,7 +390,9 @@ export default function HomeScreen() {
       {/* ── Growth & Marketing ── Analytics tile lives in the top quick actions. */}
       {canGrowth && (
         <View className="px-4 pt-5">
-          <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Growth & marketing</Text>
+          <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">
+            Growth & marketing
+          </Text>
           <View className="flex-row gap-3">
             <QuickAction
               icon={<Megaphone size={18} color="#5A3962" />}

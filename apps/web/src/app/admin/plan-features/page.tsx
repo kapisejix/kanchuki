@@ -1,14 +1,14 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { CheckSquare, Square, Save, Loader2, Sparkles } from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
-import { rupees } from '@/lib/plan-pricing'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { rupees } from '@/lib/plan-pricing';
+import { motion } from 'framer-motion';
+import { CheckSquare, Loader2, Save, Sparkles, Square } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type Plan = 'STARTER' | 'GROWTH' | 'PRO'
+type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 type FeatureKey =
   | 'BULK_ONBOARDING_IMPORT'
   | 'CUSTOM_BACKGROUND_LIBRARY'
@@ -30,62 +30,125 @@ type FeatureKey =
   | 'RAZORPAY_ROUTE'
   | 'API_ACCESS'
   | 'PRIORITY_AI_QUEUE'
-  | 'MULTI_STORE'
+  | 'MULTI_STORE';
 
 type PlanFeature = {
-  id: string
-  plan: Plan
-  feature_key: FeatureKey
-  enabled: boolean
-}
+  id: string;
+  plan: Plan;
+  feature_key: FeatureKey;
+  enabled: boolean;
+};
 
-const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO']
+const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO'];
 
 const FEATURES: { key: FeatureKey; label: string; description: string }[] = [
   { key: 'SPIN_360', label: '360° Product Spin', description: 'Full-screen 360° product view' },
-  { key: 'BULK_ONBOARDING_IMPORT', label: 'Bulk Onboarding Import', description: 'Rack/shelf batch photo + PDF catalog import' },
-  { key: 'CUSTOM_BACKGROUND_LIBRARY', label: 'Custom Background Library', description: 'Admin-curated product photo backdrops' },
-  { key: 'VIRTUAL_TRY_ON', label: 'Virtual Try-On (retired)', description: 'Deprecated — superseded by the CatVTON try-on below' },
-  { key: 'VIRTUAL_TRY_ON_V2', label: 'Virtual Try-On (CatVTON)', description: 'In-store + customer-web try-on via the RunPod engine (F-040)' },
-  { key: 'SOCIAL_SCHEDULER', label: 'Social Post Scheduler', description: 'Daily auto-posted Facebook/Instagram carousels from a retailer-set plan (F-043)' },
-  { key: 'AI_CUSTOM_TEMPLATE', label: 'AI Custom Designs', description: 'Retailer writes a prompt, AI makes a social design (T5); also needs an AI_CUSTOM_TEMPLATE limit in Plan Limits' },
-  { key: 'AI_PROMO_VIDEO', label: 'AI Promo Videos', description: 'Photo to short AI video for Reels (F-034); also needs an AI_VIDEO limit in Plan Limits and an enabled video model for the plan' },
-  { key: 'GOOGLE_BUSINESS_PROFILE', label: 'Google Business Reviews', description: 'Read and reply to Google reviews from the app (Part B); also needs the Google connection + "API approved" in Admin → Google Business Profile' },
-  { key: 'WHATSAPP_BUSINESS_API', label: 'WhatsApp Business API', description: 'Bring-your-own Meta credentials for bulk-send' },
-  { key: 'CHECKOUT_CART', label: 'Shopping Cart / Checkout', description: 'Online checkout with Razorpay payments' },
-  { key: 'DATA_EXPORT_CSV', label: 'Data Export (CSV)', description: 'Export product/customer data to CSV' },
-  { key: 'CUSTOM_BRANDING', label: 'Custom Branding', description: 'Custom logo/branding on collection pages' },
-  { key: 'RAZORPAY_ROUTE', label: 'Razorpay Route', description: 'Marketplace split-payment settlement' },
-  { key: 'API_ACCESS', label: 'API Access', description: 'External API access for third-party integrations' },
-  { key: 'PRIORITY_AI_QUEUE', label: 'Priority AI Queue', description: 'Faster AI tagging queue priority' },
+  {
+    key: 'BULK_ONBOARDING_IMPORT',
+    label: 'Bulk Onboarding Import',
+    description: 'Rack/shelf batch photo + PDF catalog import',
+  },
+  {
+    key: 'CUSTOM_BACKGROUND_LIBRARY',
+    label: 'Custom Background Library',
+    description: 'Admin-curated product photo backdrops',
+  },
+  {
+    key: 'VIRTUAL_TRY_ON',
+    label: 'Virtual Try-On (retired)',
+    description: 'Deprecated — superseded by the CatVTON try-on below',
+  },
+  {
+    key: 'VIRTUAL_TRY_ON_V2',
+    label: 'Virtual Try-On (CatVTON)',
+    description: 'In-store + customer-web try-on via the RunPod engine (F-040)',
+  },
+  {
+    key: 'SOCIAL_SCHEDULER',
+    label: 'Social Post Scheduler',
+    description: 'Daily auto-posted Facebook/Instagram carousels from a retailer-set plan (F-043)',
+  },
+  {
+    key: 'AI_CUSTOM_TEMPLATE',
+    label: 'AI Custom Designs',
+    description:
+      'Retailer writes a prompt, AI makes a social design (T5); also needs an AI_CUSTOM_TEMPLATE limit in Plan Limits',
+  },
+  {
+    key: 'AI_PROMO_VIDEO',
+    label: 'AI Promo Videos',
+    description:
+      'Photo to short AI video for Reels (F-034); also needs an AI_VIDEO limit in Plan Limits and an enabled video model for the plan',
+  },
+  {
+    key: 'GOOGLE_BUSINESS_PROFILE',
+    label: 'Google Business Reviews',
+    description:
+      'Read and reply to Google reviews from the app (Part B); also needs the Google connection + "API approved" in Admin → Google Business Profile',
+  },
+  {
+    key: 'WHATSAPP_BUSINESS_API',
+    label: 'WhatsApp Business API',
+    description: 'Bring-your-own Meta credentials for bulk-send',
+  },
+  {
+    key: 'CHECKOUT_CART',
+    label: 'Shopping Cart / Checkout',
+    description: 'Online checkout with Razorpay payments',
+  },
+  {
+    key: 'DATA_EXPORT_CSV',
+    label: 'Data Export (CSV)',
+    description: 'Export product/customer data to CSV',
+  },
+  {
+    key: 'CUSTOM_BRANDING',
+    label: 'Custom Branding',
+    description: 'Custom logo/branding on collection pages',
+  },
+  {
+    key: 'RAZORPAY_ROUTE',
+    label: 'Razorpay Route',
+    description: 'Marketplace split-payment settlement',
+  },
+  {
+    key: 'API_ACCESS',
+    label: 'API Access',
+    description: 'External API access for third-party integrations',
+  },
+  {
+    key: 'PRIORITY_AI_QUEUE',
+    label: 'Priority AI Queue',
+    description: 'Faster AI tagging queue priority',
+  },
   { key: 'MULTI_STORE', label: 'Multi-Store', description: 'Manage multiple store locations' },
-]
+];
 
 // Prices are NOT here — they come live from plan_pricing (Admin → Plan Pricing).
 const PLAN_LABELS: Record<Plan, { name: string; color: string }> = {
   STARTER: { name: 'Starter', color: 'border-gray-200 bg-gray-50/50' },
   GROWTH: { name: 'Growth', color: 'border-ink-200 bg-ink-50/30' },
   PRO: { name: 'Pro', color: 'border-blue-200 bg-blue-50/30' },
-}
+};
 
 // Tier accents use the admin theme (gray + cyan/blue, same as the Sidebar): gray -> cyan -> cyan-to-blue.
 const PLAN_ACCENT: Record<Plan, string> = {
   STARTER: 'bg-gray-400',
   GROWTH: 'bg-ink-600',
   PRO: 'bg-ink-600',
-}
+};
 
 // ─── Page ──────────────────────────────────────────────────────────────
 
 export default function PlanFeaturesPage() {
-  const [rows, setRows] = useState<PlanFeature[]>([])
-  const [cells, setCells] = useState<Record<string, boolean>>({})
-  const [saving, setSaving] = useState<string | null>(null)
-  const [status, setStatus] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [prices, setPrices] = useState<Partial<Record<Plan, number>>>({})
+  const [rows, setRows] = useState<PlanFeature[]>([]);
+  const [cells, setCells] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [prices, setPrices] = useState<Partial<Record<Plan, number>>>({});
 
-  const key = (plan: Plan, featureKey: FeatureKey) => `${plan}:${featureKey}`
+  const key = (plan: Plan, featureKey: FeatureKey) => `${plan}:${featureKey}`;
 
   useEffect(() => {
     fetch(`${API_URL}/v1/admin/plan-pricing`, adminGetOptions())
@@ -93,69 +156,71 @@ export default function PlanFeaturesPage() {
       .then((j: { data?: { plan: Plan; monthly_paise: number }[] }) =>
         setPrices(Object.fromEntries((j.data ?? []).map((p) => [p.plan, p.monthly_paise]))),
       )
-      .catch(() => {}) // price label only — shows '—' if unavailable
+      .catch(() => {}); // price label only — shows '—' if unavailable
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/v1/admin/plan-features`, adminGetOptions())
-        const json = await res.json()
-        const data: PlanFeature[] = json.data ?? []
-        setRows(data)
+        const res = await fetch(`${API_URL}/v1/admin/plan-features`, adminGetOptions());
+        const json = await res.json();
+        const data: PlanFeature[] = json.data ?? [];
+        setRows(data);
 
-        const next: Record<string, boolean> = {}
+        const next: Record<string, boolean> = {};
         for (const row of data) {
-          next[key(row.plan, row.feature_key as FeatureKey)] = row.enabled
+          next[key(row.plan, row.feature_key as FeatureKey)] = row.enabled;
         }
-        setCells(next)
+        setCells(next);
       } catch {
-        setStatus('Failed to load plan features')
+        setStatus('Failed to load plan features');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    load()
-  }, [])
+    load();
+  }, []);
 
   const isEnabled = (plan: Plan, featureKey: FeatureKey): boolean =>
-    cells[key(plan, featureKey)] ?? false
+    cells[key(plan, featureKey)] ?? false;
 
   const toggle = (plan: Plan, featureKey: FeatureKey) => {
     setCells((prev) => ({
       ...prev,
       [key(plan, featureKey)]: !isEnabled(plan, featureKey),
-    }))
-  }
+    }));
+  };
 
   const save = async (plan: Plan, featureKey: FeatureKey) => {
-    const enabled = isEnabled(plan, featureKey)
-    const k = key(plan, featureKey)
-    setSaving(k)
-    setStatus('')
+    const enabled = isEnabled(plan, featureKey);
+    const k = key(plan, featureKey);
+    setSaving(k);
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/plan-features`, {
         ...(await adminMutateOptions()),
         method: 'PUT',
         body: JSON.stringify({ plan, feature_key: featureKey, enabled }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      const json = await res.json()
+      });
+      if (!res.ok) throw new Error('Save failed');
+      const json = await res.json();
       setRows((prev) => {
-        const others = prev.filter((r) => !(r.plan === plan && r.feature_key === featureKey))
-        return [...others, json.data]
-      })
-      setStatus(`✅ ${FEATURES.find((f) => f.key === featureKey)?.label} — ${PLAN_LABELS[plan].name}: ${enabled ? 'ON' : 'OFF'}`)
+        const others = prev.filter((r) => !(r.plan === plan && r.feature_key === featureKey));
+        return [...others, json.data];
+      });
+      setStatus(
+        `✅ ${FEATURES.find((f) => f.key === featureKey)?.label} — ${PLAN_LABELS[plan].name}: ${enabled ? 'ON' : 'OFF'}`,
+      );
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
@@ -170,9 +235,10 @@ export default function PlanFeaturesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Plan Features</h1>
         </div>
         <p className="text-sm text-gray-500">
-          Boolean feature flags per plan tier (F-013). <strong>Fails closed</strong> — a feature with no row is OFF by default.
-          Unlike plan limits (F-010) where missing row = unlimited, a missing PlanFeature row = feature disabled.
-          Toggle any cell to enable/disable a feature for a plan.
+          Boolean feature flags per plan tier (F-013). <strong>Fails closed</strong> — a feature
+          with no row is OFF by default. Unlike plan limits (F-010) where missing row = unlimited, a
+          missing PlanFeature row = feature disabled. Toggle any cell to enable/disable a feature
+          for a plan.
         </p>
       </div>
 
@@ -204,12 +270,18 @@ export default function PlanFeaturesPage() {
                   <th
                     key={plan}
                     className={`text-center px-4 py-4 text-xs font-semibold border-l border-gray-100 ${
-                      plan === 'GROWTH' ? 'text-ink-600' : plan === 'PRO' ? 'text-blue-700' : 'text-gray-500'
+                      plan === 'GROWTH'
+                        ? 'text-ink-600'
+                        : plan === 'PRO'
+                          ? 'text-blue-700'
+                          : 'text-gray-500'
                     }`}
                   >
                     <div className="flex flex-col items-center gap-0.5">
                       <span>{PLAN_LABELS[plan].name}</span>
-                      <span className="text-[10px] font-normal opacity-70">{prices[plan] != null ? `${rupees(prices[plan])}/mo` : '—'}</span>
+                      <span className="text-[10px] font-normal opacity-70">
+                        {prices[plan] != null ? `${rupees(prices[plan])}/mo` : '—'}
+                      </span>
                     </div>
                   </th>
                 ))}
@@ -231,9 +303,9 @@ export default function PlanFeaturesPage() {
                     </div>
                   </td>
                   {PLANS.map((plan) => {
-                    const enabled = isEnabled(plan, feature.key)
-                    const k = key(plan, feature.key)
-                    const isSaving = saving === k
+                    const enabled = isEnabled(plan, feature.key);
+                    const k = key(plan, feature.key);
+                    const isSaving = saving === k;
 
                     return (
                       <td key={plan} className="px-4 py-4 text-center border-l border-gray-50">
@@ -281,14 +353,16 @@ export default function PlanFeaturesPage() {
                             animate={{ scale: 1 }}
                             className="mt-1"
                           >
-                            <div className={`inline-flex h-1.5 w-12 rounded-full ${PLAN_ACCENT[plan]}`} />
+                            <div
+                              className={`inline-flex h-1.5 w-12 rounded-full ${PLAN_ACCENT[plan]}`}
+                            />
                           </motion.div>
                         )}
                         {!enabled && (
                           <div className="mt-1 text-[10px] text-gray-300 font-medium">OFF</div>
                         )}
                       </td>
-                    )
+                    );
                   })}
                 </motion.tr>
               ))}
@@ -297,5 +371,5 @@ export default function PlanFeaturesPage() {
         </div>
       </div>
     </motion.div>
-  )
+  );
 }

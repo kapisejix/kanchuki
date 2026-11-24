@@ -6,5 +6,5 @@
 // health reflects the web service itself, not the API's availability.
 // Wire it up: apps/web/railway.json `deploy.healthcheckPath` → "/api/health".
 export function GET() {
-  return Response.json({ status: 'ok', ts: Date.now() })
+  return Response.json({ status: 'ok', ts: Date.now() });
 }

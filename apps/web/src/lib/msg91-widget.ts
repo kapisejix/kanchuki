@@ -156,9 +156,7 @@ export function extractAccessToken(data: unknown): string | undefined {
   // A JWT is header.payload.signature — require all three segments so a
   // plain status message like "OTP verified" (or a stray 'a.b') is never
   // mistaken for a token.
-  return candidates.find(
-    (c): c is string => typeof c === 'string' && c.split('.').length >= 3,
-  );
+  return candidates.find((c): c is string => typeof c === 'string' && c.split('.').length >= 3);
 }
 
 /** Surface a readable message from the widget's opaque failure payload. */

@@ -1,33 +1,37 @@
-'use client'
+'use client';
 
-import { MapPin, Share2, Star } from 'lucide-react'
-import Link from 'next/link'
-import { SEGMENT_LABEL, type StoreCardData } from '@/lib/nearby-stores'
-import StoreLogo from './StoreLogo'
+import { SEGMENT_LABEL, type StoreCardData } from '@/lib/nearby-stores';
+import { MapPin, Share2, Star } from 'lucide-react';
+import Link from 'next/link';
+import StoreLogo from './StoreLogo';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
 
 function formatDistance(km: number): string {
-  return km < 1 ? `${Math.max(100, Math.round(km * 10) * 100)} m` : `${km} km`
+  return km < 1 ? `${Math.max(100, Math.round(km * 10) * 100)} m` : `${km} km`;
 }
 
 // Shared store card — /stores directory and the homepage teaser.
 export default function StoreCard({ store }: { store: StoreCardData }) {
-  const url = `${SITE_URL}/${store.public_slug}`
-  const place = [store.address, store.city].filter(Boolean).join(', ') || 'India'
+  const url = `${SITE_URL}/${store.public_slug}`;
+  const place = [store.address, store.city].filter(Boolean).join(', ') || 'India';
 
   const share = async () => {
-    const text = `${store.shop_name} — browse their catalog on Kanchuki`
+    const text = `${store.shop_name} — browse their catalog on Kanchuki`;
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: store.shop_name, text, url })
+        await navigator.share({ title: store.shop_name, text, url });
       } catch {
         // AbortError = the shopper closed the share sheet. Not an error (RC-014).
       }
-      return
+      return;
     }
-    window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`, '_blank', 'noopener,noreferrer')
-  }
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  };
 
   return (
     <article className="flex overflow-hidden rounded-2xl border border-carbon/10 bg-white shadow-sm">
@@ -38,7 +42,10 @@ export default function StoreCard({ store }: { store: StoreCardData }) {
       <div className="min-w-0 flex-1 p-3.5 sm:p-4">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-display text-base sm:text-lg font-semibold text-carbon leading-snug">
-            <Link href={`/${store.public_slug}`} className="hover:text-cobalt-600 transition-colors">
+            <Link
+              href={`/${store.public_slug}`}
+              className="hover:text-cobalt-600 transition-colors"
+            >
               {store.shop_name}
             </Link>
           </h3>
@@ -56,7 +63,9 @@ export default function StoreCard({ store }: { store: StoreCardData }) {
           <MapPin size={15} strokeWidth={1.75} className="mt-0.5 shrink-0 text-carbon/50" />
           <span className="min-w-0">
             {store.distance_km !== null && (
-              <strong className="font-semibold text-carbon">{formatDistance(store.distance_km)} · </strong>
+              <strong className="font-semibold text-carbon">
+                {formatDistance(store.distance_km)} ·{' '}
+              </strong>
             )}
             {place}
           </span>
@@ -70,7 +79,10 @@ export default function StoreCard({ store }: { store: StoreCardData }) {
             </span>
           )}
           {store.store_types.map((t) => (
-            <span key={t} className="rounded-full bg-cobalt-600/10 px-2.5 py-0.5 text-xs font-medium text-cobalt-700">
+            <span
+              key={t}
+              className="rounded-full bg-cobalt-600/10 px-2.5 py-0.5 text-xs font-medium text-cobalt-700"
+            >
               {SEGMENT_LABEL[t] ?? t}
             </span>
           ))}
@@ -84,5 +96,5 @@ export default function StoreCard({ store }: { store: StoreCardData }) {
         </Link>
       </div>
     </article>
-  )
+  );
 }

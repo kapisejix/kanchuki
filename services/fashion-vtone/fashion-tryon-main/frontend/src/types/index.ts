@@ -1,4 +1,4 @@
-export type Category = "tops" | "bottoms" | "one-pieces";
+export type Category = 'tops' | 'bottoms' | 'one-pieces';
 
 export interface TryOnRequest {
   personImage: File;

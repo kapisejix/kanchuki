@@ -1,13 +1,13 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Star } from 'lucide-react-native'
-import { useState } from 'react'
-import { ActivityIndicator, Text, TextInput, View } from 'react-native'
-import { type GbpReview, googleBusinessApi } from '../lib/api'
-import { showError } from '../lib/errors'
-import { gbpCountLabel, gbpEmptyNote } from '../lib/gbp-summary'
-import { AnimatedPressable } from './AnimatedPressable'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Star } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Text, TextInput, View } from 'react-native';
+import { type GbpReview, googleBusinessApi } from '../lib/api';
+import { showError } from '../lib/errors';
+import { gbpCountLabel, gbpEmptyNote } from '../lib/gbp-summary';
+import { AnimatedPressable } from './AnimatedPressable';
 
-const QUERY_KEY = ['google-business', 'reviews']
+const QUERY_KEY = ['google-business', 'reviews'];
 
 function Stars({ n }: { n: number }) {
   return (
@@ -21,42 +21,42 @@ function Stars({ n }: { n: number }) {
         />
       ))}
     </View>
-  )
+  );
 }
 
 function ReviewRow({ review }: { review: GbpReview }) {
-  const queryClient = useQueryClient()
-  const [editing, setEditing] = useState(false)
-  const [text, setText] = useState(review.reply?.comment ?? '')
-  const [draftSource, setDraftSource] = useState<'ai' | 'template' | null>(null)
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(review.reply?.comment ?? '');
+  const [draftSource, setDraftSource] = useState<'ai' | 'template' | null>(null);
 
   // Every open starts from the CURRENT reply: an abandoned draft is gone, and a reply that changed
   // on Google since the last open is never overwritten by a stale copy of the old text.
   const openEditor = () => {
-    setText(review.reply?.comment ?? '')
-    setDraftSource(null)
-    setEditing(true)
-  }
+    setText(review.reply?.comment ?? '');
+    setDraftSource(null);
+    setEditing(true);
+  };
 
   // The reply shows ONLY after the server (and Google) confirmed it — we refetch, not guess.
   const send = useMutation({
     mutationFn: () => googleBusinessApi.reply(review.id, text.trim()),
     onSuccess: () => {
-      setEditing(false)
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
+      setEditing(false);
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (e) => showError(e, 'Could not post your reply'),
-  })
+  });
 
   // A draft only fills the box. Nothing is posted until the person taps "Post reply".
   const draft = useMutation({
     mutationFn: () => googleBusinessApi.draftReply(review.id),
     onSuccess: (res) => {
-      setText(res.data.draft)
-      setDraftSource(res.data.source)
+      setText(res.data.draft);
+      setDraftSource(res.data.source);
     },
     onError: (e) => showError(e, 'Could not suggest a reply'),
-  })
+  });
 
   return (
     <View className="bg-white rounded-2xl p-4 border border-lavender-200">
@@ -147,7 +147,7 @@ function ReviewRow({ review }: { review: GbpReview }) {
         </AnimatedPressable>
       )}
     </View>
-  )
+  );
 }
 
 // "Google reviews" tab on the ratings screen. Rendered only when the server says LINKED.
@@ -160,12 +160,12 @@ export function GoogleReviewsTab() {
     // The first sync runs in the background after linking. Until it succeeds review_count is
     // null; keep asking every 5 s, and stop once Google answered or the sync reported a failure.
     refetchInterval: (query) => {
-      const s = query.state.data?.pages[0]?.data.summary
-      return s && s.review_count == null && !s.sync_failed ? 5000 : false
+      const s = query.state.data?.pages[0]?.data.summary;
+      return s && s.review_count == null && !s.sync_failed ? 5000 : false;
     },
-  })
+  });
 
-  if (q.isLoading) return <ActivityIndicator color="#BB3F95" className="mt-6" />
+  if (q.isLoading) return <ActivityIndicator color="#BB3F95" className="mt-6" />;
   if (q.isError) {
     return (
       <View className="bg-white rounded-2xl p-4 border border-lavender-200">
@@ -178,11 +178,11 @@ export function GoogleReviewsTab() {
           <Text className="text-xs font-bold text-fuchsia-600">Try again</Text>
         </AnimatedPressable>
       </View>
-    )
+    );
   }
 
-  const first = q.data?.pages[0]?.data
-  const reviews = q.data?.pages.flatMap((p) => p.data.reviews) ?? []
+  const first = q.data?.pages[0]?.data;
+  const reviews = q.data?.pages.flatMap((p) => p.data.reviews) ?? [];
 
   return (
     <View className="gap-3">
@@ -193,15 +193,13 @@ export function GoogleReviewsTab() {
         </Text>
       </View>
 
-      {reviews.length === 0 ? (
-        gbpEmptyNote(first?.summary ?? {}) && (
-          <Text className="text-xs text-heliotrope-500 text-center mt-4">
-            {gbpEmptyNote(first?.summary ?? {})}
-          </Text>
-        )
-      ) : (
-        reviews.map((r) => <ReviewRow key={r.id} review={r} />)
-      )}
+      {reviews.length === 0
+        ? gbpEmptyNote(first?.summary ?? {}) && (
+            <Text className="text-xs text-heliotrope-500 text-center mt-4">
+              {gbpEmptyNote(first?.summary ?? {})}
+            </Text>
+          )
+        : reviews.map((r) => <ReviewRow key={r.id} review={r} />)}
 
       {q.hasNextPage && (
         <AnimatedPressable
@@ -216,5 +214,5 @@ export function GoogleReviewsTab() {
         </AnimatedPressable>
       )}
     </View>
-  )
+  );
 }

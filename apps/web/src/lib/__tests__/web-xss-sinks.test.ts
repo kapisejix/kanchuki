@@ -6,7 +6,7 @@
 //    `_blank` call without `noopener` fails and names its file.
 // 2. JSON-LD in `<script>` must escape `<` through the tested `ldJson` helper. The hand-copied
 //    `.replace(/</g, ...)` survives only on pages that serialise static constants.
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -39,12 +39,19 @@ describe('window.open new-tab calls', () => {
   });
 
   it('passes noopener on every _blank call', () => {
-    expect(blankCalls.filter(({ call }) => !call.includes('noopener')).map(({ file }) => file)).toEqual([]);
+    expect(
+      blankCalls.filter(({ call }) => !call.includes('noopener')).map(({ file }) => file),
+    ).toEqual([]);
   });
 });
 
 // `ldJson` itself plus the static-constant JSON-LD pages that keep their own copy; every other page uses `ldJson`.
-const ESCAPE_COPIES = ['app/[store]/lib/store-seo.ts', 'app/faq/page.tsx', 'app/page.tsx', 'app/pricing/page.tsx'];
+const ESCAPE_COPIES = [
+  'app/[store]/lib/store-seo.ts',
+  'app/faq/page.tsx',
+  'app/page.tsx',
+  'app/pricing/page.tsx',
+];
 const HAND_ESCAPE = /\.replace\(\/<\/g/;
 
 describe('JSON-LD escaping', () => {

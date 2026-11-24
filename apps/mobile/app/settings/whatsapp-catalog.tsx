@@ -9,24 +9,17 @@
 // Reached from Settings → "WhatsApp Native Catalog" (F1). The per-product
 // badges live in the catalog tab (F7), driven by whatsappCatalogApi.getItems().
 
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, RefreshCw, Zap } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
-import { useScreenInsets } from '../../src/lib/safe-area';
+import { ActivityIndicator, RefreshControl, ScrollView, Switch, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
-import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { GradientButton } from '../../src/components/GradientButton';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
 import { categoryApi, whatsappCatalogApi } from '../../src/lib/api';
 import type { WhatsAppCatalogStatus } from '../../src/lib/api/whatsapp-catalog';
 import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 import { useTheme } from '../../src/lib/theme';
 
 const fmtDate = (iso: string | null) =>
@@ -140,12 +133,16 @@ export default function WhatsAppCatalogSettingsScreen() {
         className="flex-1 px-4 pt-4"
         contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={primaryColor} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor={primaryColor}
+          />
         }
       >
         <Text className="text-xs text-heliotrope-500 leading-5 mb-4">
-          Show your products inside WhatsApp Business — customers see your catalog when they
-          open your business chat, no app needed. Syncs your product list, prices and photos.
+          Show your products inside WhatsApp Business — customers see your catalog when they open
+          your business chat, no app needed. Syncs your product list, prices and photos.
         </Text>
 
         {loadingStatus ? (
@@ -181,7 +178,11 @@ export default function WhatsAppCatalogSettingsScreen() {
 
               <View className="flex-row mb-4">
                 <Stat label="Synced" value={String(status.items_synced)} color="text-emerald-600" />
-                <Stat label="Pending" value={String(status.items_pending)} color="text-turmeric-600" />
+                <Stat
+                  label="Pending"
+                  value={String(status.items_pending)}
+                  color="text-turmeric-600"
+                />
                 <Stat
                   label="Failed"
                   value={String(status.items_failed)}
@@ -197,20 +198,24 @@ export default function WhatsAppCatalogSettingsScreen() {
                   mono={!!status.whatsapp_catalog_id}
                 />
                 {status.sync_categories.length > 0 && (
-                  <InfoRow label="Syncing categories" value={`${status.sync_categories.length} selected`} />
+                  <InfoRow
+                    label="Syncing categories"
+                    value={`${status.sync_categories.length} selected`}
+                  />
                 )}
               </View>
 
               {!status.configured && (
                 <Text className="text-xs text-heliotrope-500 leading-5 mt-3">
-                  Connect your WhatsApp Business API in Settings → WhatsApp Business API first —
-                  the catalog is created on your Meta account.
+                  Connect your WhatsApp Business API in Settings → WhatsApp Business API first — the
+                  catalog is created on your Meta account.
                 </Text>
               )}
             </View>
 
             {/* ── F4: Sync Now ── */}
-            <GradientButton variant="web"
+            <GradientButton
+              variant="web"
               label={syncMutation.isPending ? 'Syncing…' : 'Sync Now'}
               icon={<Zap size={16} color="white" />}
               disabled={!status.configured || syncMutation.isPending}
@@ -226,7 +231,9 @@ export default function WhatsAppCatalogSettingsScreen() {
             <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1 mr-4">
-                  <Text className="text-sm font-semibold text-spaceCadet-900">Sync to WhatsApp Catalog</Text>
+                  <Text className="text-sm font-semibold text-spaceCadet-900">
+                    Sync to WhatsApp Catalog
+                  </Text>
                   <Text className="text-xs text-heliotrope-500 leading-5 mt-1">
                     Keep your WhatsApp catalog in sync as products change.
                   </Text>
@@ -244,7 +251,9 @@ export default function WhatsAppCatalogSettingsScreen() {
 
             {/* ── F3: category selector ── */}
             <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
-              <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">Categories to sync</Text>
+              <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">
+                Categories to sync
+              </Text>
               <Text className="text-xs text-heliotrope-500 leading-5 mb-3">
                 {status.sync_categories.length === 0
                   ? 'All categories are synced. Pick specific ones to sync only those products.'
@@ -270,7 +279,9 @@ export default function WhatsAppCatalogSettingsScreen() {
                             : 'bg-lavender-50 border-lavender-200'
                         }`}
                       >
-                        <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-heliotrope-600'}`}>
+                        <Text
+                          className={`text-xs font-semibold ${selected ? 'text-white' : 'text-heliotrope-600'}`}
+                        >
                           {category.name}
                         </Text>
                       </AnimatedPressable>
@@ -353,7 +364,10 @@ function InfoRow({ label, value, mono = false }: { label: string; value: string;
   return (
     <View className="flex-row items-center justify-between">
       <Text className="text-xs text-heliotrope-500">{label}</Text>
-      <Text className={`text-xs font-semibold text-heliotrope-600 ${mono ? 'font-mono' : ''}`} numberOfLines={1}>
+      <Text
+        className={`text-xs font-semibold text-heliotrope-600 ${mono ? 'font-mono' : ''}`}
+        numberOfLines={1}
+      >
         {value}
       </Text>
     </View>

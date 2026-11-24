@@ -35,8 +35,12 @@ interface Props {
 async function fetchData(store: string): Promise<StoreCategoriesData | null> {
   try {
     const [profileRes, categoriesRes] = await Promise.all([
-      fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}`, { next: { revalidate: 60 } }),
-      fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/categories`, { next: { revalidate: 60 } }),
+      fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}`, {
+        next: { revalidate: 60 },
+      }),
+      fetch(`${apiUrl}/v1/public/retailers/${encodeURIComponent(store)}/categories`, {
+        next: { revalidate: 60 },
+      }),
     ]);
     if (!profileRes.ok) return null;
     const profile = (await profileRes.json()) as {
@@ -109,7 +113,9 @@ export default async function StoreCategoriesPage({ params }: Props) {
         <div className="w-16 h-16 bg-white rounded-3xl items-center justify-center flex border border-[#E0E1F6] shadow-sm">
           <Store size={28} className="text-[#231F48]" />
         </div>
-        <h1 className="text-base leading-6 tracking-[0.02em] font-extrabold text-[#231F48] font-marcellus">{data.shop_name}</h1>
+        <h1 className="text-base leading-6 tracking-[0.02em] font-extrabold text-[#231F48] font-marcellus">
+          {data.shop_name}
+        </h1>
         <p className="text-sm text-[#6B4773]">Catalog coming soon.</p>
       </div>
     );
@@ -161,7 +167,9 @@ export default async function StoreCategoriesPage({ params }: Props) {
         {/* ── Headline Area (Spec #9 Discovery) ── */}
         <div className="mb-5">
           <h2 className="text-2xl font-extrabold text-[#231F48] font-marcellus leading-tight">
-            Find the best<br />collections for you
+            Find the best
+            <br />
+            collections for you
           </h2>
           <p className="text-xs text-[#6B4773] font-medium mt-1">
             Explore curated ethnic fashion and designer wear
@@ -176,7 +184,10 @@ export default async function StoreCategoriesPage({ params }: Props) {
             className="group bg-white rounded-[28px] overflow-hidden border border-[#E0E1F6] shadow-sm hover:shadow-md transition-all flex flex-col p-1.5"
           >
             <div className="w-full aspect-[4/3] bg-gradient-to-br from-[#231F48] to-[#560A39] rounded-[24px] relative flex items-center justify-center overflow-hidden">
-              <LayoutGrid size={32} className="text-white opacity-90 group-hover:scale-110 transition-transform duration-300" />
+              <LayoutGrid
+                size={32}
+                className="text-white opacity-90 group-hover:scale-110 transition-transform duration-300"
+              />
               <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md">
                 <span className="text-[10px] font-bold text-white uppercase tracking-wider">
                   {data.total_products} Items
@@ -184,10 +195,10 @@ export default async function StoreCategoriesPage({ params }: Props) {
               </div>
             </div>
             <div className="p-3 bg-white flex flex-col justify-between flex-1">
-              <p className="text-xs font-bold text-[#231F48] font-marcellus truncate">All Products</p>
-              <p className="text-[11px] text-[#BB3F95] font-bold mt-1">
-                Explore catalog →
+              <p className="text-xs font-bold text-[#231F48] font-marcellus truncate">
+                All Products
               </p>
+              <p className="text-[11px] text-[#BB3F95] font-bold mt-1">Explore catalog →</p>
             </div>
           </Link>
 
@@ -198,7 +209,10 @@ export default async function StoreCategoriesPage({ params }: Props) {
               className="group bg-white rounded-[28px] overflow-hidden border border-[#BB3F95]/30 shadow-sm hover:shadow-md transition-all flex flex-col p-1.5"
             >
               <div className="w-full aspect-[4/3] bg-gradient-to-br from-[#BB3F95] to-[#8C1D6B] rounded-[24px] relative flex items-center justify-center overflow-hidden">
-                <Sparkles size={32} className="text-white opacity-95 group-hover:scale-110 transition-transform duration-300 animate-pulse" />
+                <Sparkles
+                  size={32}
+                  className="text-white opacity-95 group-hover:scale-110 transition-transform duration-300 animate-pulse"
+                />
                 <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-white/25 backdrop-blur-md">
                   <span className="text-[10px] font-bold text-white uppercase tracking-wider">
                     {data.new_arrivals_count} New
@@ -207,12 +221,14 @@ export default async function StoreCategoriesPage({ params }: Props) {
               </div>
               <div className="p-3 bg-white flex flex-col justify-between flex-1">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-bold text-[#231F48] font-marcellus truncate">New Arrivals</p>
-                  <span className="px-1.5 py-0.2 rounded-md bg-fuchsia-50 text-[9px] font-bold text-[#BB3F95]">21 Days</span>
+                  <p className="text-xs font-bold text-[#231F48] font-marcellus truncate">
+                    New Arrivals
+                  </p>
+                  <span className="px-1.5 py-0.2 rounded-md bg-fuchsia-50 text-[9px] font-bold text-[#BB3F95]">
+                    21 Days
+                  </span>
                 </div>
-                <p className="text-[11px] text-[#BB3F95] font-bold mt-1">
-                  Fresh catalog →
-                </p>
+                <p className="text-[11px] text-[#BB3F95] font-bold mt-1">Fresh catalog →</p>
               </div>
             </Link>
           )}
@@ -233,7 +249,9 @@ export default async function StoreCategoriesPage({ params }: Props) {
                     sizes="(max-width: 640px) 50vw, 240px"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-3xl bg-[#FAF9FE]">🗂️</div>
+                  <div className="w-full h-full flex items-center justify-center text-3xl bg-[#FAF9FE]">
+                    🗂️
+                  </div>
                 )}
                 <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-[#231F48]/85 backdrop-blur-md">
                   <span className="text-[10px] font-bold text-white uppercase tracking-wider">
@@ -242,10 +260,10 @@ export default async function StoreCategoriesPage({ params }: Props) {
                 </div>
               </div>
               <div className="p-3 bg-white flex flex-col justify-between flex-1">
-                <p className="text-xs font-bold text-[#231F48] font-marcellus truncate">{cat.name}</p>
-                <p className="text-[11px] text-[#BB3F95] font-bold mt-1">
-                  View collection →
+                <p className="text-xs font-bold text-[#231F48] font-marcellus truncate">
+                  {cat.name}
                 </p>
+                <p className="text-[11px] text-[#BB3F95] font-bold mt-1">View collection →</p>
               </div>
             </Link>
           ))}

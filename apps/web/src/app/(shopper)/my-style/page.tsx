@@ -6,27 +6,56 @@
 // reason line while rationale_source is "none" (RC-059). Prices are paise and
 // go through the shared formatter (RC-055). Kids form + nav entries: PR-4b.
 
-'use client'
+'use client';
 
-import { StyleQuiz } from '@/app/c/[slug]/components/StyleQuiz'
-import { type GarmentDescriptor, PRODUCT_OCCASIONS, ageGroupFromLabel, formatPriceRange } from '@kanchuki/shared'
-import { Sheet } from '@/components/Sheet'
+import { StyleQuiz } from '@/app/c/[slug]/components/StyleQuiz';
+import { Sheet } from '@/components/Sheet';
 import {
-  AlertCircle, Baby, Camera, ChevronLeft, ChevronRight, ClipboardList, Globe2, LocateFixed, MapPin,
-  ScanSearch, SearchX, SlidersHorizontal, Sparkles, UserRound, X,
-} from 'lucide-react'
-import Link from 'next/link'
-import { useEffect, useState, useSyncExternalStore } from 'react'
-import { BTN_PRIMARY, BTN_SECONDARY, BTN_TEXT, CARD, IconTile, Notice, SEGMENTED, SELECT, chip, segment } from '../ui'
-import { AnalyzeSheet } from './AnalyzeSheet'
-import type { AnalyzeMode } from './analyze'
-import { KidsForm } from './KidsForm'
-import { CardSkeleton, LookPanel, type LookView } from './LookPanel'
-import { MeasurementsCard } from './MeasurementsCard'
-import { PaletteCard } from './PaletteCard'
-import { ShortlistBar, useEnquiry } from './ShortlistBar'
-import { StyleCard } from './StyleCard'
-import { TasteCard } from './TasteCard'
+  type GarmentDescriptor,
+  PRODUCT_OCCASIONS,
+  ageGroupFromLabel,
+  formatPriceRange,
+} from '@kanchuki/shared';
+import {
+  AlertCircle,
+  Baby,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Globe2,
+  LocateFixed,
+  MapPin,
+  ScanSearch,
+  SearchX,
+  SlidersHorizontal,
+  Sparkles,
+  UserRound,
+  X,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  BTN_PRIMARY,
+  BTN_SECONDARY,
+  BTN_TEXT,
+  CARD,
+  IconTile,
+  Notice,
+  SEGMENTED,
+  SELECT,
+  chip,
+  segment,
+} from '../ui';
+import { AnalyzeSheet } from './AnalyzeSheet';
+import { KidsForm } from './KidsForm';
+import { CardSkeleton, LookPanel, type LookView } from './LookPanel';
+import { MeasurementsCard } from './MeasurementsCard';
+import { PaletteCard } from './PaletteCard';
+import { ShortlistBar, useEnquiry } from './ShortlistBar';
+import { StyleCard } from './StyleCard';
+import { TasteCard } from './TasteCard';
+import type { AnalyzeMode } from './analyze';
 import {
   type FeedCard,
   type FeedMeta,
@@ -39,7 +68,7 @@ import {
   describeGarment,
   fetchFeed,
   fetchLook,
-} from './lib'
+} from './lib';
 import {
   MAX_PER_STORE,
   type ShortItem,
@@ -47,136 +76,136 @@ import {
   loadShortlist,
   saveShortlist,
   toShortItem,
-} from './shortlist'
+} from './shortlist';
 
 const SORTS: { value: FeedSort; label: string }[] = [
   { value: 'best', label: 'Best match' },
   { value: 'nearest', label: 'Nearest' },
   { value: 'price', label: 'Price' },
-]
+];
 // Budget caps in paise.
-const BUDGETS = [50000, 100000, 200000, 300000, 500000, 1000000]
-const SIZES = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL']
-const OCCASIONS = ['Daily Wear', 'Party / Festive', 'Wedding / Bridal', 'Office / Formal']
-const RADII = [5, 10, 25, 50]
-const LOOK_KEY = 'my-style:look-anchor'
+const BUDGETS = [50000, 100000, 200000, 300000, 500000, 1000000];
+const SIZES = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+const OCCASIONS = ['Daily Wear', 'Party / Festive', 'Wedding / Bridal', 'Office / Formal'];
+const RADII = [5, 10, 25, 50];
+const LOOK_KEY = 'my-style:look-anchor';
 
 // Below Tailwind's `sm`, budget/size/occasion move into a bottom sheet. With no
 // matchMedia (jsdom, very old browsers) they stay inline, so exactly one copy of
 // each labelled <select> is ever in the DOM.
-const PHONE = '(max-width: 639px)'
+const PHONE = '(max-width: 639px)';
 function useIsPhone() {
   return useSyncExternalStore(
     (onChange) => {
-      const m = window.matchMedia?.(PHONE)
-      m?.addEventListener?.('change', onChange)
-      return () => m?.removeEventListener?.('change', onChange)
+      const m = window.matchMedia?.(PHONE);
+      m?.addEventListener?.('change', onChange);
+      return () => m?.removeEventListener?.('change', onChange);
     },
     () => window.matchMedia?.(PHONE)?.matches ?? false,
     () => false,
-  )
+  );
 }
 
 type View =
   | { kind: 'loading' }
   | { kind: 'ok'; data: FeedCard[]; meta: FeedMeta }
   | { kind: 'unauthorized' }
-  | { kind: 'error' }
+  | { kind: 'error' };
 
 export default function MyStylePage() {
-  const [sort, setSort] = useState<FeedSort>('best')
-  const [page, setPage] = useState(1)
-  const [budget, setBudget] = useState('')
-  const [size, setSize] = useState('')
-  const [occasion, setOccasion] = useState('')
+  const [sort, setSort] = useState<FeedSort>('best');
+  const [page, setPage] = useState(1);
+  const [budget, setBudget] = useState('');
+  const [size, setSize] = useState('');
+  const [occasion, setOccasion] = useState('');
   // Tabs: Festival / Trending exist only while the feed says something is behind them.
-  const [tab, setTab] = useState<FeedTab | 'look'>('foryou')
+  const [tab, setTab] = useState<FeedTab | 'look'>('foryou');
   // Complete the look (PR-10b): the last anchor, kept for the session so the tab survives a
   // reload. It is a product id only; the tab hides until one is picked.
-  const [lookAnchor, setLookAnchor] = useState<string | null>(null)
-  const [lookView, setLookView] = useState<LookView>({ kind: 'loading' })
-  const [tabs, setTabs] = useState<FeedMeta['tabs']>(undefined)
+  const [lookAnchor, setLookAnchor] = useState<string | null>(null);
+  const [lookView, setLookView] = useState<LookView>({ kind: 'loading' });
+  const [tabs, setTabs] = useState<FeedMeta['tabs']>(undefined);
   // The Occasion tab's chip (canonical name), separate from the filter dropdown above.
-  const [tabOccasion, setTabOccasion] = useState('')
-  const [where, setWhere] = useState<{ lat: number; lng: number } | null>(null)
-  const [radius, setRadius] = useState(25)
-  const [geoDenied, setGeoDenied] = useState(false)
-  const [showQuiz, setShowQuiz] = useState(false)
-  const [showKids, setShowKids] = useState(false)
+  const [tabOccasion, setTabOccasion] = useState('');
+  const [where, setWhere] = useState<{ lat: number; lng: number } | null>(null);
+  const [radius, setRadius] = useState(25);
+  const [geoDenied, setGeoDenied] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [showKids, setShowKids] = useState(false);
   // Which photo sheet is open: selfie (palette) or garment (find similar).
-  const [analyzeMode, setAnalyzeMode] = useState<AnalyzeMode | null>(null)
+  const [analyzeMode, setAnalyzeMode] = useState<AnalyzeMode | null>(null);
   // Find similar: the garment description, kept in page state only and sent with each feed
   // request. Nothing is stored; a reload clears it.
-  const [similar, setSimilar] = useState<GarmentDescriptor | null>(null)
+  const [similar, setSimilar] = useState<GarmentDescriptor | null>(null);
   // Kept across refetches so the palette card does not flash away while the feed reloads.
-  const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null)
-  const [measurements, setMeasurements] = useState<Measurements | null>(null)
-  const [kids, setKids] = useState<{ who: string; age: string } | null>(null)
+  const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
+  const [measurements, setMeasurements] = useState<Measurements | null>(null);
+  const [kids, setKids] = useState<{ who: string; age: string } | null>(null);
   // The quick quiz's saved answers, kept across refetches like the palette. `quizNote` says so
   // when the save did not reach the account (signed out / offline), instead of staying silent.
-  const [taste, setTaste] = useState<TasteSummary | null>(null)
-  const [quizNote, setQuizNote] = useState('')
+  const [taste, setTaste] = useState<TasteSummary | null>(null);
+  const [quizNote, setQuizNote] = useState('');
   // Bumped to refetch with unchanged filters (retry, quiz saved).
-  const [nonce, setNonce] = useState(0)
-  const [view, setView] = useState<View>({ kind: 'loading' })
-  const [shortlist, setShortlist] = useState<ShortItem[]>([])
-  const enquiry = useEnquiry()
-  const phone = useIsPhone()
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const groups = groupByStore(shortlist)
+  const [nonce, setNonce] = useState(0);
+  const [view, setView] = useState<View>({ kind: 'loading' });
+  const [shortlist, setShortlist] = useState<ShortItem[]>([]);
+  const enquiry = useEnquiry();
+  const phone = useIsPhone();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const groups = groupByStore(shortlist);
 
   // Read after mount so the server and first client render agree.
-  useEffect(() => setShortlist(loadShortlist()), [])
+  useEffect(() => setShortlist(loadShortlist()), []);
 
   // ?look=<id> (from a store's product sheet) wins over the remembered anchor.
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('look')
+    const fromUrl = new URLSearchParams(window.location.search).get('look');
     if (fromUrl) {
-      openLook(fromUrl)
-      return
+      openLook(fromUrl);
+      return;
     }
     try {
-      setLookAnchor(window.sessionStorage.getItem(LOOK_KEY))
+      setLookAnchor(window.sessionStorage.getItem(LOOK_KEY));
     } catch {
       // storage blocked: no remembered anchor, the tab simply stays hidden
     }
-  }, [])
+  }, []);
 
   function openLook(id: string) {
-    setLookAnchor(id)
-    setTab('look')
-    setPage(1)
-    window.scrollTo(0, 0)
+    setLookAnchor(id);
+    setTab('look');
+    setPage(1);
+    window.scrollTo(0, 0);
     try {
-      window.sessionStorage.setItem(LOOK_KEY, id)
+      window.sessionStorage.setItem(LOOK_KEY, id);
     } catch {
       // not remembered across a reload; this visit still works
     }
   }
 
   function updateShortlist(next: ShortItem[]) {
-    setShortlist(next)
-    saveShortlist(next)
+    setShortlist(next);
+    saveShortlist(next);
   }
 
   function toggleShortlist(card: FeedCard) {
     if (shortlist.some((i) => i.id === card.id)) {
-      updateShortlist(shortlist.filter((i) => i.id !== card.id))
-      return
+      updateShortlist(shortlist.filter((i) => i.id !== card.id));
+      return;
     }
-    const item = toShortItem(card)
-    if (item) updateShortlist([...shortlist, item])
+    const item = toShortItem(card);
+    if (item) updateShortlist([...shortlist, item]);
   }
 
   function enquireOne(card: FeedCard) {
-    const item = toShortItem(card)
-    if (item) void enquiry.send([{ slug: item.slug, shop_name: item.shop_name, items: [item] }])
+    const item = toShortItem(card);
+    if (item) void enquiry.send([{ slug: item.slug, shop_name: item.shop_name, items: [item] }]);
   }
 
   useEffect(() => {
-    if (tab === 'look') return // the look tab has its own request below
-    const ctrl = new AbortController()
-    setView({ kind: 'loading' })
+    if (tab === 'look') return; // the look tab has its own request below
+    const ctrl = new AbortController();
+    setView({ kind: 'loading' });
     fetchFeed(
       {
         sort,
@@ -193,94 +222,109 @@ export default function MyStylePage() {
               ...(ageGroupFromLabel(kids.age) ? { kids_age: ageGroupFromLabel(kids.age) } : {}),
             }
           : {}),
-        ...(tab === 'occasion' ? (tabOccasion ? { occasion: tabOccasion } : {}) : occasion ? { occasion } : {}),
+        ...(tab === 'occasion'
+          ? tabOccasion
+            ? { occasion: tabOccasion }
+            : {}
+          : occasion
+            ? { occasion }
+            : {}),
         ...(where ? { ...where, radius_km: radius } : {}),
         ...(similar ? { similar } : {}),
       },
       ctrl.signal,
     )
       .then((r) => {
-        setView(r)
+        setView(r);
         if (r.kind === 'ok') {
-          setStyleProfile(r.meta.style_profile ?? null)
-          setMeasurements(r.meta.measurements ?? null)
-          setTaste(r.meta.taste ?? null)
-          setTabs(r.meta.tabs)
+          setStyleProfile(r.meta.style_profile ?? null);
+          setMeasurements(r.meta.measurements ?? null);
+          setTaste(r.meta.taste ?? null);
+          setTabs(r.meta.tabs);
           // The tab just lost its data (festival ended, trend retired): fall back to the feed.
-          const t = r.meta.tabs
+          const t = r.meta.tabs;
           if ((tab === 'festival' && !t?.festival) || (tab === 'trending' && !t?.trending)) {
-            setTab('foryou')
+            setTab('foryou');
           }
         }
       })
       .catch((e: unknown) => {
         // A superseded request aborts; that is not a failure (RC-014).
-        if (e instanceof DOMException && e.name === 'AbortError') return
-        if (!ctrl.signal.aborted) setView({ kind: 'error' })
-      })
-    return () => ctrl.abort()
-  }, [sort, tab, tabOccasion, page, budget, size, occasion, kids, where, radius, similar, nonce])
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (!ctrl.signal.aborted) setView({ kind: 'error' });
+      });
+    return () => ctrl.abort();
+  }, [sort, tab, tabOccasion, page, budget, size, occasion, kids, where, radius, similar, nonce]);
 
   useEffect(() => {
-    if (tab !== 'look' || !lookAnchor) return
-    const ctrl = new AbortController()
-    setLookView({ kind: 'loading' })
+    if (tab !== 'look' || !lookAnchor) return;
+    const ctrl = new AbortController();
+    setLookView({ kind: 'loading' });
     fetchLook(lookAnchor, where ? { ...where, radius_km: radius } : null, ctrl.signal)
       .then(setLookView)
       .catch((e: unknown) => {
         // A superseded request aborts; that is not a failure (RC-014).
-        if (e instanceof DOMException && e.name === 'AbortError') return
-        if (!ctrl.signal.aborted) setLookView({ kind: 'error' })
-      })
-    return () => ctrl.abort()
-  }, [tab, lookAnchor, where, radius, nonce])
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        if (!ctrl.signal.aborted) setLookView({ kind: 'error' });
+      });
+    return () => ctrl.abort();
+  }, [tab, lookAnchor, where, radius, nonce]);
 
   // Any filter change restarts at page 1.
-  const reset = <T,>(set: (v: T) => void) => (v: T) => {
-    set(v)
-    setPage(1)
-  }
+  const reset =
+    <T,>(set: (v: T) => void) =>
+    (v: T) => {
+      set(v);
+      setPage(1);
+    };
 
   function goToPage(next: number) {
-    setPage(next)
+    setPage(next);
     // The pager swaps the list in place; without this the new page opens
     // scrolled to wherever the old one ended (RC-053).
-    window.scrollTo(0, 0)
+    window.scrollTo(0, 0);
   }
 
   function nearMe() {
     if (!navigator.geolocation) {
-      setGeoDenied(true)
-      return
+      setGeoDenied(true);
+      return;
     }
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        setGeoDenied(false)
-        reset(setWhere)({ lat: p.coords.latitude, lng: p.coords.longitude })
+        setGeoDenied(false);
+        reset(setWhere)({ lat: p.coords.latitude, lng: p.coords.longitude });
       },
       () => setGeoDenied(true),
-    )
+    );
   }
 
-  const activeFilters = [budget, size, occasion].filter(Boolean).length + (where ? 1 : 0)
+  const activeFilters = [budget, size, occasion].filter(Boolean).length + (where ? 1 : 0);
 
   // Rendered once: inline from `sm`, inside the filter sheet on a phone.
   const filterControls = (stacked: boolean) => {
-    const sel = stacked ? `${SELECT} w-full` : `${SELECT} shrink-0`
+    const sel = stacked ? `${SELECT} w-full` : `${SELECT} shrink-0`;
     const field = (label: string, control: React.ReactNode) =>
       stacked ? (
         <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-heliotrope-500 px-1" aria-hidden="true">{label}</p>
+          <p className="text-xs font-semibold text-heliotrope-500 px-1" aria-hidden="true">
+            {label}
+          </p>
           {control}
         </div>
       ) : (
         control
-      )
+      );
     return (
       <>
         {field(
           'Budget',
-          <select aria-label="Budget" className={sel} value={budget} onChange={(e) => reset(setBudget)(e.target.value)}>
+          <select
+            aria-label="Budget"
+            className={sel}
+            value={budget}
+            onChange={(e) => reset(setBudget)(e.target.value)}
+          >
             <option value="">Any budget</option>
             {BUDGETS.map((b) => (
               <option key={b} value={b}>
@@ -291,28 +335,55 @@ export default function MyStylePage() {
         )}
         {field(
           'Size',
-          <select aria-label="Size" className={sel} value={size} onChange={(e) => reset(setSize)(e.target.value)}>
+          <select
+            aria-label="Size"
+            className={sel}
+            value={size}
+            onChange={(e) => reset(setSize)(e.target.value)}
+          >
             <option value="">Any size</option>
-            {SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+            {SIZES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>,
         )}
         {field(
           'Occasion',
-          <select aria-label="Occasion" className={sel} value={occasion} onChange={(e) => reset(setOccasion)(e.target.value)}>
+          <select
+            aria-label="Occasion"
+            className={sel}
+            value={occasion}
+            onChange={(e) => reset(setOccasion)(e.target.value)}
+          >
             <option value="">Any occasion</option>
-            {OCCASIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+            {OCCASIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
           </select>,
         )}
         {where &&
           field(
             'Distance',
-            <select aria-label="Distance" className={sel} value={radius} onChange={(e) => reset(setRadius)(Number(e.target.value))}>
-              {RADII.map((r) => <option key={r} value={r}>Within {r} km</option>)}
+            <select
+              aria-label="Distance"
+              className={sel}
+              value={radius}
+              onChange={(e) => reset(setRadius)(Number(e.target.value))}
+            >
+              {RADII.map((r) => (
+                <option key={r} value={r}>
+                  Within {r} km
+                </option>
+              ))}
             </select>,
           )}
       </>
-    )
-  }
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -345,18 +416,30 @@ export default function MyStylePage() {
                 <Icon aria-hidden className="h-4 w-4 text-fuchsia-600" />
               </span>
               <span className="min-w-0">
-                <span className="block text-sm font-bold text-spaceCadet-900 leading-tight">{label}</span>
+                <span className="block text-sm font-bold text-spaceCadet-900 leading-tight">
+                  {label}
+                </span>
                 <span className="block text-xs text-heliotrope-500 mt-0.5">{hint}</span>
               </span>
             </button>
           ))}
         </div>
         <div className="flex flex-wrap gap-x-1 mt-2 -mx-2">
-          <button type="button" onClick={() => setShowQuiz((v) => !v)} aria-expanded={showQuiz} className={BTN_TEXT}>
+          <button
+            type="button"
+            onClick={() => setShowQuiz((v) => !v)}
+            aria-expanded={showQuiz}
+            className={BTN_TEXT}
+          >
             <ClipboardList aria-hidden className="h-4 w-4" />
             {showQuiz ? 'Close quiz' : 'Take the quick quiz'}
           </button>
-          <button type="button" onClick={() => setShowKids((v) => !v)} aria-expanded={showKids} className={BTN_TEXT}>
+          <button
+            type="button"
+            onClick={() => setShowKids((v) => !v)}
+            aria-expanded={showKids}
+            className={BTN_TEXT}
+          >
             <Baby aria-hidden className="h-4 w-4" />
             {showKids ? 'Close' : 'For my child'}
           </button>
@@ -367,8 +450,8 @@ export default function MyStylePage() {
             <button
               type="button"
               onClick={() => {
-                setKids(null)
-                setPage(1)
+                setKids(null);
+                setPage(1);
               }}
               className="min-h-9 px-3 rounded-full underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50"
             >
@@ -382,17 +465,22 @@ export default function MyStylePage() {
               storeSlug="my-style"
               onComplete={(onAccount) => {
                 // Only after the save finished (StyleQuiz awaits it), so the refetch sees it.
-                setShowQuiz(false)
+                setShowQuiz(false);
                 setQuizNote(
-                  onAccount ? '' : 'We could not save your answers to your account, so they will not change this feed. Please try again.',
-                )
-                setNonce((n) => n + 1)
+                  onAccount
+                    ? ''
+                    : 'We could not save your answers to your account, so they will not change this feed. Please try again.',
+                );
+                setNonce((n) => n + 1);
               }}
             />
           </div>
         )}
         {quizNote && (
-          <p role="status" className="mt-3 rounded-2xl bg-fuchsia-500/10 px-3 py-2 text-xs font-semibold text-fuchsia-600">
+          <p
+            role="status"
+            className="mt-3 rounded-2xl bg-fuchsia-500/10 px-3 py-2 text-xs font-semibold text-fuchsia-600"
+          >
             {quizNote}
           </p>
         )}
@@ -400,11 +488,11 @@ export default function MyStylePage() {
           <KidsForm
             onApply={(need) => {
               // Session state only; only occasion + budget reach the feed.
-              setKids({ who: need.who, age: need.age })
-              setOccasion(need.occasion)
-              setBudget(need.budget)
-              setPage(1)
-              setShowKids(false)
+              setKids({ who: need.who, age: need.age });
+              setOccasion(need.occasion);
+              setBudget(need.budget);
+              setPage(1);
+              setShowKids(false);
             }}
           />
         )}
@@ -414,9 +502,9 @@ export default function MyStylePage() {
         <TasteCard
           taste={taste}
           onChange={() => {
-            setQuizNote('')
-            setShowQuiz(true)
-            window.scrollTo(0, 0)
+            setQuizNote('');
+            setShowQuiz(true);
+            window.scrollTo(0, 0);
           }}
         />
       )}
@@ -426,8 +514,8 @@ export default function MyStylePage() {
           profile={styleProfile}
           onRetake={() => setAnalyzeMode('selfie')}
           onCleared={() => {
-            setStyleProfile(null)
-            setNonce((n) => n + 1)
+            setStyleProfile(null);
+            setNonce((n) => n + 1);
           }}
         />
       )}
@@ -443,7 +531,8 @@ export default function MyStylePage() {
         <div className={`${CARD} p-4 flex items-start gap-3`}>
           <IconTile icon={ScanSearch} />
           <p className="min-w-0 flex-1 pt-1.5 text-sm text-heliotrope-500">
-            Looking for: <span className="font-semibold text-spaceCadet-900">{describeGarment(similar)}</span>
+            Looking for:{' '}
+            <span className="font-semibold text-spaceCadet-900">{describeGarment(similar)}</span>
             {view.kind === 'ok' && view.meta.similar?.source === 'attributes' && (
               <span className="block text-xs mt-1">
                 Matched on colour, style and work. Closer matching is not available right now.
@@ -453,8 +542,8 @@ export default function MyStylePage() {
           <button
             type="button"
             onClick={() => {
-              setSimilar(null)
-              setPage(1)
+              setSimilar(null);
+              setPage(1);
             }}
             className={`${BTN_TEXT} shrink-0 -my-1`}
           >
@@ -482,8 +571,8 @@ export default function MyStylePage() {
             type="button"
             aria-current={tab === value ? 'page' : undefined}
             onClick={() => {
-              setTab(value)
-              setPage(1)
+              setTab(value);
+              setPage(1);
             }}
             className={`${segment(tab === value)} flex-1`}
           >
@@ -501,8 +590,8 @@ export default function MyStylePage() {
                 type="button"
                 aria-pressed={tabOccasion === o}
                 onClick={() => {
-                  setTabOccasion(tabOccasion === o ? '' : o)
-                  setPage(1)
+                  setTabOccasion(tabOccasion === o ? '' : o);
+                  setPage(1);
                 }}
                 className={chip(tabOccasion === o)}
               >
@@ -510,7 +599,11 @@ export default function MyStylePage() {
               </button>
             ))}
           </div>
-          {!tabOccasion && <p className="text-xs text-heliotrope-500 px-1">Pick an occasion to see pieces chosen for it first.</p>}
+          {!tabOccasion && (
+            <p className="text-xs text-heliotrope-500 px-1">
+              Pick an occasion to see pieces chosen for it first.
+            </p>
+          )}
           {tabOccasion && view.kind === 'ok' && view.meta.occasion_matches === 0 && (
             <p className="text-xs text-heliotrope-500 px-1">
               Nothing near you is marked for {tabOccasion} yet, so this is your general feed.
@@ -538,28 +631,34 @@ export default function MyStylePage() {
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={nearMe} className={chip(Boolean(where))}>
-            <LocateFixed aria-hidden className={`h-4 w-4 ${where ? 'text-fuchsia-400' : 'text-heliotrope-500'}`} />
-            Near me
-          </button>
-          {phone ? (
-            <button
-              type="button"
-              onClick={() => setFiltersOpen(true)}
-              aria-haspopup="dialog"
-              className={chip(activeFilters > 0)}
-            >
-              <SlidersHorizontal aria-hidden className={`h-4 w-4 ${activeFilters > 0 ? 'text-fuchsia-400' : 'text-heliotrope-500'}`} />
-              Filters
-              {activeFilters > 0 && (
-                <span className="ml-0.5 min-w-5 h-5 px-1.5 rounded-full bg-fuchsia-600 text-white text-xs leading-5 text-center tabular-nums">
-                  {activeFilters}
-                </span>
-              )}
+            <button type="button" onClick={nearMe} className={chip(Boolean(where))}>
+              <LocateFixed
+                aria-hidden
+                className={`h-4 w-4 ${where ? 'text-fuchsia-400' : 'text-heliotrope-500'}`}
+              />
+              Near me
             </button>
-          ) : (
-            filterControls(false)
-          )}
+            {phone ? (
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(true)}
+                aria-haspopup="dialog"
+                className={chip(activeFilters > 0)}
+              >
+                <SlidersHorizontal
+                  aria-hidden
+                  className={`h-4 w-4 ${activeFilters > 0 ? 'text-fuchsia-400' : 'text-heliotrope-500'}`}
+                />
+                Filters
+                {activeFilters > 0 && (
+                  <span className="ml-0.5 min-w-5 h-5 px-1.5 rounded-full bg-fuchsia-600 text-white text-xs leading-5 text-center tabular-nums">
+                    {activeFilters}
+                  </span>
+                )}
+              </button>
+            ) : (
+              filterControls(false)
+            )}
           </div>
         </div>
         {geoDenied && (
@@ -577,7 +676,11 @@ export default function MyStylePage() {
         overlayClassName="z-[70] bg-spaceCadet-950/60 flex items-end justify-center"
         panelClassName="w-full bg-white rounded-t-3xl shadow-2xl shadow-spaceCadet-900/30 max-h-[85vh] overflow-y-auto pb-safe"
         maxHeightVh={85}
-        overlayAnimation={{ initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }}
+        overlayAnimation={{
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          exit: { opacity: 0 },
+        }}
         panelAnimation={{
           initial: { y: '100%' },
           animate: { y: 0 },
@@ -586,7 +689,10 @@ export default function MyStylePage() {
         }}
       >
         <div className="px-5 pt-3 pb-4">
-          <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-lavender-200" aria-hidden="true" />
+          <div
+            className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-lavender-200"
+            aria-hidden="true"
+          />
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-spaceCadet-900">Filters</h2>
             <button
@@ -599,7 +705,11 @@ export default function MyStylePage() {
             </button>
           </div>
           <div className="space-y-4">{filterControls(true)}</div>
-          <button type="button" onClick={() => setFiltersOpen(false)} className={`${BTN_PRIMARY} w-full mt-6`}>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(false)}
+            className={`${BTN_PRIMARY} w-full mt-6`}
+          >
             Show results
           </button>
         </div>
@@ -643,14 +753,14 @@ export default function MyStylePage() {
           onClose={() => setAnalyzeMode(null)}
           onDone={(garment) => {
             if (garment) {
-              setSimilar(garment)
-              setPage(1)
-            } else setNonce((n) => n + 1)
+              setSimilar(garment);
+              setPage(1);
+            } else setNonce((n) => n + 1);
           }}
         />
       )}
     </div>
-  )
+  );
 }
 
 function Results({
@@ -665,16 +775,16 @@ function Results({
   onEnquire,
   onLook,
 }: {
-  view: View
-  tab: FeedTab
-  page: number
-  onPage: (p: number) => void
-  onRetry: () => void
-  shortlist: ShortItem[]
-  busy: boolean
-  onToggle: (c: FeedCard) => void
-  onEnquire: (c: FeedCard) => void
-  onLook: (id: string) => void
+  view: View;
+  tab: FeedTab;
+  page: number;
+  onPage: (p: number) => void;
+  onRetry: () => void;
+  shortlist: ShortItem[];
+  busy: boolean;
+  onToggle: (c: FeedCard) => void;
+  onEnquire: (c: FeedCard) => void;
+  onLook: (id: string) => void;
 }) {
   if (view.kind === 'loading') {
     return (
@@ -683,29 +793,37 @@ function Results({
           <CardSkeleton key={i} />
         ))}
       </div>
-    )
+    );
   }
   if (view.kind === 'unauthorized') {
     return (
       <Notice icon={UserRound}>
         <p>
-          Your session ended. <Link href={LOGIN_HREF} className="text-fuchsia-600 font-semibold underline">Please log in</Link> to see your feed.
+          Your session ended.{' '}
+          <Link href={LOGIN_HREF} className="text-fuchsia-600 font-semibold underline">
+            Please log in
+          </Link>{' '}
+          to see your feed.
         </p>
       </Notice>
-    )
+    );
   }
   if (view.kind === 'error') {
     return (
       <Notice
         icon={AlertCircle}
-        action={<button type="button" onClick={onRetry} className={BTN_SECONDARY}>Try again</button>}
+        action={
+          <button type="button" onClick={onRetry} className={BTN_SECONDARY}>
+            Try again
+          </button>
+        }
       >
         <p>We could not load your feed.</p>
       </Notice>
-    )
+    );
   }
 
-  const { data, meta } = view
+  const { data, meta } = view;
   if (data.length === 0) {
     return (
       <Notice icon={SearchX}>
@@ -713,15 +831,15 @@ function Results({
           {meta.similar
             ? 'No close match nearby. Try a wider distance, or another photo.'
             : tab === 'festival'
-            ? 'No festival pieces near you yet. Try a wider distance.'
-            : tab === 'trending'
-              ? 'Nothing trending near you right now. Try a wider distance.'
-              : 'No matches yet. Try a wider budget or distance, or take the quick quiz.'}
+              ? 'No festival pieces near you yet. Try a wider distance.'
+              : tab === 'trending'
+                ? 'Nothing trending near you right now. Try a wider distance.'
+                : 'No matches yet. Try a wider budget or distance, or take the quick quiz.'}
         </p>
       </Notice>
-    )
+    );
   }
-  const pages = Math.ceil(meta.total / meta.limit)
+  const pages = Math.ceil(meta.total / meta.limit);
 
   return (
     <div className="space-y-4">
@@ -747,17 +865,29 @@ function Results({
       </ul>
       {pages > 1 && (
         <div className="flex items-center justify-between gap-2">
-          <button type="button" disabled={page <= 1} onClick={() => onPage(page - 1)} className={`${BTN_SECONDARY} px-4`}>
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => onPage(page - 1)}
+            className={`${BTN_SECONDARY} px-4`}
+          >
             <ChevronLeft aria-hidden className="h-4 w-4" />
             Prev
           </button>
-          <span className="text-xs font-semibold text-heliotrope-500 tabular-nums">Page {page} of {pages}</span>
-          <button type="button" disabled={page >= pages} onClick={() => onPage(page + 1)} className={`${BTN_SECONDARY} px-4`}>
+          <span className="text-xs font-semibold text-heliotrope-500 tabular-nums">
+            Page {page} of {pages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= pages}
+            onClick={() => onPage(page + 1)}
+            className={`${BTN_SECONDARY} px-4`}
+          >
             Next
             <ChevronRight aria-hidden className="h-4 w-4" />
           </button>
         </div>
       )}
     </div>
-  )
+  );
 }

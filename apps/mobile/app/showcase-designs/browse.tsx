@@ -1,55 +1,56 @@
+import { useQuery } from '@tanstack/react-query';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 // Suits Designs — "View more" browse (customer-facing, docs/tasks/done/suits-designs.md §2.4).
 // Full grid of the related designs for the store, with the expanded related
 // category set as filter chips. Uses only the public API — reachable without a
 // retailer session.
-import { useCallback, useMemo, useState } from 'react'
-import { View, Text, FlatList, Image, ActivityIndicator } from 'react-native'
-import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { showcaseDesignsApi, type PublicShowcaseDesign } from '../../src/lib/api'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { type PublicShowcaseDesign, showcaseDesignsApi } from '../../src/lib/api';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 interface BrowseData {
-  designs: PublicShowcaseDesign[]
-  related: string[]
+  designs: PublicShowcaseDesign[];
+  related: string[];
 }
 
 export default function ShowcaseDesignsBrowseScreen() {
-  const { store, category } = useLocalSearchParams<{ store?: string; category?: string }>()
-  const { screenPaddingBottom } = useScreenInsets()
+  const { store, category } = useLocalSearchParams<{ store?: string; category?: string }>();
+  const { screenPaddingBottom } = useScreenInsets();
 
-  const [activeSlug, setActiveSlug] = useState<string | null>(category ?? null)
+  const [activeSlug, setActiveSlug] = useState<string | null>(category ?? null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['showcase-designs', 'browse', { store: store ?? '', category: activeSlug }],
     queryFn: () => showcaseDesignsApi.publicBrowse(store ?? '', activeSlug ?? undefined),
     staleTime: 60_000,
-  })
+  });
   const { designs, related } = useMemo<BrowseData>(() => {
-    const d = data?.data
-    return { designs: d?.designs ?? [], related: d?.related ?? [] }
-  }, [data])
+    const d = data?.data;
+    return { designs: d?.designs ?? [], related: d?.related ?? [] };
+  }, [data]);
 
   // Chip labels come from the API's related slugs — resolve names from the
   // design rows (each carries its category name).
   const chipLabels = useMemo(() => {
-    const bySlug = new Map<string, string>()
+    const bySlug = new Map<string, string>();
     for (const d of designs) {
-      if (!bySlug.has(d.category.slug)) bySlug.set(d.category.slug, d.category.name ?? d.category.slug)
+      if (!bySlug.has(d.category.slug))
+        bySlug.set(d.category.slug, d.category.name ?? d.category.slug);
     }
     return related
       .map((slug) => ({ slug, name: bySlug.get(slug) ?? slug }))
-      .filter((c, i, arr) => arr.findIndex((x) => x.slug === c.slug) === i)
-  }, [designs, related])
+      .filter((c, i, arr) => arr.findIndex((x) => x.slug === c.slug) === i);
+  }, [designs, related]);
 
   const title = useMemo(() => {
-    if (!activeSlug) return 'Suits Designs'
-    const chip = chipLabels.find((c) => c.slug === activeSlug)
-    return `${chip?.name ?? activeSlug} Designs`
-  }, [activeSlug, chipLabels])
+    if (!activeSlug) return 'Suits Designs';
+    const chip = chipLabels.find((c) => c.slug === activeSlug);
+    return `${chip?.name ?? activeSlug} Designs`;
+  }, [activeSlug, chipLabels]);
 
-  const keyExtractor = useCallback((item: PublicShowcaseDesign) => item.id, [])
+  const keyExtractor = useCallback((item: PublicShowcaseDesign) => item.id, []);
 
   const renderItem = useCallback(
     ({ item }: { item: PublicShowcaseDesign }) => (
@@ -59,7 +60,11 @@ export default function ShowcaseDesignsBrowseScreen() {
           className="bg-white rounded-2xl overflow-hidden border border-lavender-200"
         >
           <View className="w-full aspect-[3/4] bg-lavender-100">
-            <Image source={{ uri: item.image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <Image
+              source={{ uri: item.image_url }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
           </View>
           <View className="px-2.5 py-2">
             <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
@@ -75,7 +80,7 @@ export default function ShowcaseDesignsBrowseScreen() {
       </View>
     ),
     [],
-  )
+  );
 
   return (
     <>
@@ -90,22 +95,26 @@ export default function ShowcaseDesignsBrowseScreen() {
               keyExtractor={(c) => c.slug}
               contentContainerStyle={{ gap: 8 }}
               renderItem={({ item }) => {
-                const selected = activeSlug === (item.slug === 'all' ? null : item.slug)
-                const isAll = item.slug === 'all'
+                const selected = activeSlug === (item.slug === 'all' ? null : item.slug);
+                const isAll = item.slug === 'all';
                 return (
                   <AnimatedPressable
                     onPress={() => setActiveSlug(isAll ? null : item.slug)}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     className={`px-3.5 py-1.5 rounded-full border ${
-                      selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
+                      selected
+                        ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                        : 'bg-white border-lavender-200'
                     }`}
                   >
-                    <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                    <Text
+                      className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}
+                    >
                       {item.name}
                     </Text>
                   </AnimatedPressable>
-                )
+                );
               }}
             />
           </View>
@@ -122,7 +131,12 @@ export default function ShowcaseDesignsBrowseScreen() {
             renderItem={renderItem}
             numColumns={2}
             columnWrapperStyle={{ gap: 12 }}
-            contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1, paddingBottom: screenPaddingBottom }}
+            contentContainerStyle={{
+              padding: 14,
+              gap: 12,
+              flexGrow: 1,
+              paddingBottom: screenPaddingBottom,
+            }}
             ListEmptyComponent={
               <View className="items-center py-16 px-8">
                 <Text className="text-heliotrope-500 text-sm font-medium text-center">
@@ -137,5 +151,5 @@ export default function ShowcaseDesignsBrowseScreen() {
         )}
       </View>
     </>
-  )
+  );
 }

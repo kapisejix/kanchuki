@@ -1,9 +1,9 @@
-import { Component, useState, type ReactNode, type ErrorInfo } from "react";
-import { COLORS } from "@kanchuki/shared";
-import { View, Text, TouchableOpacity } from "react-native";
-import { AlertTriangle, RefreshCw, Bug } from "lucide-react-native";
-import { ReportProblem } from "./ReportProblem";
-import { captureException } from "../lib/sentry";
+import { COLORS } from '@kanchuki/shared';
+import { AlertTriangle, Bug, RefreshCw } from 'lucide-react-native';
+import { Component, type ErrorInfo, type ReactNode, useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { captureException } from '../lib/sentry';
+import { ReportProblem } from './ReportProblem';
 
 interface Props {
   children: ReactNode;
@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error("[ErrorBoundary]", error.message, errorInfo.componentStack);
+    console.error('[ErrorBoundary]', error.message, errorInfo.componentStack);
     this.setState({ errorInfo });
     // Report to Sentry for automatic crash tracking
     captureException(error, errorInfo.componentStack ?? undefined);
@@ -73,19 +73,14 @@ function ErrorFallback({
       <View className="w-16 h-16 bg-rust-100 rounded-3xl items-center justify-center mb-4">
         <AlertTriangle size={32} color={COLORS.danger} />
       </View>
-      <Text className="text-lg font-bold text-sand-900 text-center mb-2">
-        Something went wrong
-      </Text>
+      <Text className="text-lg font-bold text-sand-900 text-center mb-2">Something went wrong</Text>
       <Text className="text-sm text-sand-500 text-center mb-6 leading-5">
         {
           "An unexpected error occurred. This doesn't affect your data — it's all safe in the cloud."
         }
       </Text>
       {error && (
-        <Text
-          className="text-xs text-sand-400 mb-4 text-center max-w-xs"
-          numberOfLines={3}
-        >
+        <Text className="text-xs text-sand-400 mb-4 text-center max-w-xs" numberOfLines={3}>
           {error.message}
         </Text>
       )}

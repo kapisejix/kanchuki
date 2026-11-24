@@ -363,9 +363,7 @@ export default function StorageReportPage() {
 
             {measurement.by_prefix.length > 0 && (
               <div className="mt-4">
-                <p className="text-xs text-gray-400 font-medium mb-1">
-                  Top prefixes by storage
-                </p>
+                <p className="text-xs text-gray-400 font-medium mb-1">Top prefixes by storage</p>
                 <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-100">
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-white">

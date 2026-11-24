@@ -12,11 +12,11 @@
  * - **No offline queue** yet — that's Phase 1 work.
  */
 
-const inflight = new Map<string, Promise<unknown>>()
-const cache = new Map<string, { data: unknown; expiresAt: number }>()
+const inflight = new Map<string, Promise<unknown>>();
+const cache = new Map<string, { data: unknown; expiresAt: number }>();
 
 /** Default TTL for cached GET responses (30s).  Set to 0 to disable. */
-const DEFAULT_GET_TTL_MS = 30_000
+const DEFAULT_GET_TTL_MS = 30_000;
 
 /**
  * TTL jitter (0–50% of the base TTL) applied per entry at write time.
@@ -27,17 +27,13 @@ const DEFAULT_GET_TTL_MS = 30_000
  * cached at the same moment (e.g. a screen batch-mounting many list queries
  * right after a cold start or logout).
  */
-const CACHE_TTL_JITTER_FRACTION = 0.5
+const CACHE_TTL_JITTER_FRACTION = 0.5;
 
 /** Default timeout per request (10s — fits 3G budget). */
-const DEFAULT_TIMEOUT_MS = 10_000
+const DEFAULT_TIMEOUT_MS = 10_000;
 
-function cacheKey(
-  url: string,
-  method: string,
-  body?: BodyInit | null,
-): string {
-  return `${method}:${url}:${body ?? ''}`
+function cacheKey(url: string, method: string, body?: BodyInit | null): string {
+  return `${method}:${url}:${body ?? ''}`;
 }
 
 // Error thrown by cachedJsonRequest — api.ts catches it by checking .code/.status
@@ -51,8 +47,8 @@ class RequestError extends Error {
      * (e.g. per-target results on an all-failed social publish, T-7.2). */
     public readonly results?: unknown[] | null,
   ) {
-    super(message)
-    this.name = 'RequestError'
+    super(message);
+    this.name = 'RequestError';
   }
 }
 
@@ -68,67 +64,69 @@ export async function cachedFetch(
   url: string,
   init: RequestInit & { timeoutMs?: number; getCacheTtlMs?: number } = {},
 ): Promise<Response> {
-  const method = (init.method ?? 'GET').toUpperCase()
-  const body = init.body
-  const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT_MS
-  const getTtl = init.getCacheTtlMs ?? DEFAULT_GET_TTL_MS
-  const key = cacheKey(url, method, body as string | null)
+  const method = (init.method ?? 'GET').toUpperCase();
+  const body = init.body;
+  const timeoutMs = init.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const getTtl = init.getCacheTtlMs ?? DEFAULT_GET_TTL_MS;
+  const key = cacheKey(url, method, body as string | null);
 
   // ── GET cache hit ───────────────────────────────────────────────
   if (method === 'GET' && getTtl > 0) {
-    const hit = cache.get(key)
+    const hit = cache.get(key);
     if (hit && hit.expiresAt > Date.now()) {
       return new Response(JSON.stringify(hit.data), {
         status: 200,
         headers: { 'content-type': 'application/json' },
-      })
+      });
     }
   }
 
   // ── Deduplication — return in-flight promise if same key ────────
   if (inflight.has(key)) {
-    const resp = (await inflight.get(key)) as Response
-    return resp.clone()
+    const resp = (await inflight.get(key)) as Response;
+    return resp.clone();
   }
 
   // ── Build the actual fetch with timeout ─────────────────────────
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   const fetchPromise = (async () => {
     try {
-      const response = await fetch(url, { ...init, signal: controller.signal })
+      const response = await fetch(url, { ...init, signal: controller.signal });
 
       // Cache successful GET responses
       if (method === 'GET' && getTtl > 0 && response.ok) {
-        const cloned = response.clone()
+        const cloned = response.clone();
         try {
-          const data = await cloned.json()
+          const data = await cloned.json();
           // TTL jitter: each entry expires at base TTL + 0–50% random offset.
           cache.set(key, {
             data,
             expiresAt:
               Date.now() + getTtl + Math.floor(Math.random() * getTtl * CACHE_TTL_JITTER_FRACTION),
-          })
-        } catch { /* non-JSON response — don't cache */ }
+          });
+        } catch {
+          /* non-JSON response — don't cache */
+        }
       }
 
       // Mutations invalidate the whole GET cache — otherwise a refetch
       // triggered right after a POST/PUT/PATCH/DELETE can still be served
       // stale data from this cache even though react-query thinks it refetched.
       if (method !== 'GET' && response.ok) {
-        cache.clear()
+        cache.clear();
       }
 
-      return response
+      return response;
     } finally {
-      clearTimeout(timer)
-      inflight.delete(key)
+      clearTimeout(timer);
+      inflight.delete(key);
     }
-  })()
+  })();
 
-  inflight.set(key, fetchPromise)
-  return fetchPromise
+  inflight.set(key, fetchPromise);
+  return fetchPromise;
 }
 
 /** Syntactic sugar: wrapped JSON request that returns `T` directly. */
@@ -136,25 +134,25 @@ export async function cachedJsonRequest<T>(
   url: string,
   init: RequestInit & { timeoutMs?: number; getCacheTtlMs?: number } = {},
 ): Promise<T> {
-  const response = await cachedFetch(url, init)
+  const response = await cachedFetch(url, init);
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as {
-      error?: { code?: string; message?: string; results?: unknown[] | null }
-    }
+      error?: { code?: string; message?: string; results?: unknown[] | null };
+    };
     throw new RequestError(
       body.error?.code ?? 'UNKNOWN',
       body.error?.message ?? `Request failed (${response.status})`,
       response.status,
       body.error?.results ?? null,
-    )
+    );
   }
 
   // 204 No Content (DELETE, etc.) — return undefined instead of parsing empty body
-  if (response.status === 204) return undefined as T
+  if (response.status === 204) return undefined as T;
 
   // Safely parse JSON body — some endpoints might return 200 with empty body
   try {
-    return (await response.json()) as T
+    return (await response.json()) as T;
   } catch {
     // Empty or malformed response body — return undefined for void endpoints,
     // throw for everything else so callers get a meaningful error
@@ -162,12 +160,12 @@ export async function cachedJsonRequest<T>(
       'PARSE_ERROR',
       `Invalid JSON response from ${url} (status ${response.status})`,
       response.status,
-    )
+    );
   }
 }
 
 /** Clear the entire request cache (useful after logout or mutation). */
 export function clearRequestCache(): void {
-  cache.clear()
-  inflight.clear()
+  cache.clear();
+  inflight.clear();
 }

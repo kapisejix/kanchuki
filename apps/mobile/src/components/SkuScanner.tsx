@@ -1,32 +1,32 @@
-import { useRef, useState } from 'react'
-import { View, Text, TextInput, ActivityIndicator } from 'react-native'
-import { CameraView, useCameraPermissions } from 'expo-camera'
-import { X, ScanLine } from 'lucide-react-native'
-import { COLORS } from '@kanchuki/shared'
-import { useScreenInsets } from '../lib/safe-area'
-import { AnimatedPressable } from './AnimatedPressable'
-import { WhiteButton } from './WhiteButton'
-import { KeyboardScreen } from './KeyboardScreen'
+import { COLORS } from '@kanchuki/shared';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { ScanLine, X } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Text, TextInput, View } from 'react-native';
+import { useScreenInsets } from '../lib/safe-area';
+import { AnimatedPressable } from './AnimatedPressable';
+import { KeyboardScreen } from './KeyboardScreen';
+import { WhiteButton } from './WhiteButton';
 
 /** Same code seen again inside this window is ignored: a tag in frame fires repeatedly. */
-export const SCAN_DEBOUNCE_MS = 1500
+export const SCAN_DEBOUNCE_MS = 1500;
 
 interface Props {
   /** Called with each accepted code (camera or typed). Awaited: no second call starts until it settles. */
-  onSku: (sku: string) => void | Promise<void>
-  onClose: () => void
+  onSku: (sku: string) => void | Promise<void>;
+  onClose: () => void;
   /** Stops the camera (e.g. while an alert is up). */
-  paused?: boolean
+  paused?: boolean;
   /** Shows the "Looking up" overlay. */
-  busy?: boolean
-  hint?: string
+  busy?: boolean;
+  hint?: string;
   /**
    * Embedded mode for a host screen that lays out its own header and list
    * (F-047 sell screen): fills the box the parent gives it, manual entry sits
    * under the camera, no close button and no KeyboardScreen of its own. The host
    * MUST wrap itself in KeyboardScreen (RC-116/042). `onClose` is unused.
    */
-  compact?: boolean
+  compact?: boolean;
 }
 
 /**
@@ -41,34 +41,34 @@ export function SkuScanner({
   hint = 'Point at the product’s SKU tag (QR or barcode)',
   compact = false,
 }: Props) {
-  const { insets } = useScreenInsets()
-  const [permission, requestPermission] = useCameraPermissions()
-  const [manualSku, setManualSku] = useState('')
+  const { insets } = useScreenInsets();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [manualSku, setManualSku] = useState('');
   // Refs, not state: two events in one tick both read stale state (RC-015/135).
-  const inFlightRef = useRef(false)
-  const lastScanRef = useRef<{ code: string; at: number } | null>(null)
+  const inFlightRef = useRef(false);
+  const lastScanRef = useRef<{ code: string; at: number } | null>(null);
 
   const submit = async (raw: string, fromCamera: boolean) => {
-    const sku = raw.trim()
-    if (!sku || inFlightRef.current) return
+    const sku = raw.trim();
+    if (!sku || inFlightRef.current) return;
     if (fromCamera) {
-      const last = lastScanRef.current
-      const now = Date.now()
-      if (last && last.code === sku && now - last.at < SCAN_DEBOUNCE_MS) return
-      lastScanRef.current = { code: sku, at: now }
+      const last = lastScanRef.current;
+      const now = Date.now();
+      if (last && last.code === sku && now - last.at < SCAN_DEBOUNCE_MS) return;
+      lastScanRef.current = { code: sku, at: now };
     }
-    inFlightRef.current = true
+    inFlightRef.current = true;
     try {
-      await onSku(sku)
+      await onSku(sku);
       // Compact stays open for the next article: a kept SKU would add it twice on a second Enter.
-      if (compact && !fromCamera) setManualSku('')
+      if (compact && !fromCamera) setManualSku('');
     } catch (err) {
       // Callers own their error UI (showError); this only keeps `void submit()` from leaking a rejection.
-      if (__DEV__) console.warn('[SkuScanner] onSku threw', err)
+      if (__DEV__) console.warn('[SkuScanner] onSku threw', err);
     } finally {
-      inFlightRef.current = false
+      inFlightRef.current = false;
     }
-  }
+  };
 
   // Manual entry fallback: pinned over the camera in full mode, a plain row in compact mode.
   const manualRow = (
@@ -102,9 +102,9 @@ export function SkuScanner({
         <Text className="text-white text-xs font-bold">Find</Text>
       </AnimatedPressable>
     </View>
-  )
+  );
 
-  if (!permission) return <View className="flex-1 bg-black" />
+  if (!permission) return <View className="flex-1 bg-black" />;
 
   if (!permission.granted) {
     const prompt = (
@@ -121,7 +121,7 @@ export function SkuScanner({
         </Text>
         <WhiteButton compact label="Allow Camera" onPress={() => void requestPermission()} />
       </View>
-    )
+    );
     // Compact keeps typing usable without the camera; full mode is unchanged.
     return compact ? (
       <View className="flex-1 bg-black">
@@ -130,7 +130,7 @@ export function SkuScanner({
       </View>
     ) : (
       prompt
-    )
+    );
   }
 
   const camera = (
@@ -142,10 +142,10 @@ export function SkuScanner({
         barcodeTypes: ['qr', 'ean13', 'ean8', 'code128', 'code39', 'upc_a', 'upc_e', 'pdf417'],
       }}
       onBarcodeScanned={({ data }) => {
-        if (!paused) void submit(data, true)
+        if (!paused) void submit(data, true);
       }}
     />
-  )
+  );
 
   const frameGuide = (
     <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
@@ -158,14 +158,14 @@ export function SkuScanner({
       />
       <Text className="text-white/80 text-sm mt-3">{hint}</Text>
     </View>
-  )
+  );
 
   const resolving = busy && (
     <View className="absolute inset-0 bg-black/60 items-center justify-center">
       <ActivityIndicator size="large" color="white" />
       <Text className="text-white mt-3 font-semibold">Looking up product...</Text>
     </View>
-  )
+  );
 
   if (compact) {
     return (
@@ -177,7 +177,7 @@ export function SkuScanner({
         </View>
         {manualRow}
       </View>
-    )
+    );
   }
 
   return (
@@ -200,5 +200,5 @@ export function SkuScanner({
       {resolving}
       {manualRow}
     </KeyboardScreen>
-  )
+  );
 }

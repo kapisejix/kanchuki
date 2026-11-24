@@ -10,9 +10,12 @@ export async function GET(
   const { store } = await params;
 
   try {
-    const res = await fetch(`${API_URL}/v1/public/retailers/${encodeURIComponent(store)}/collections`, {
-      next: { revalidate: 60 },
-    });
+    const res = await fetch(
+      `${API_URL}/v1/public/retailers/${encodeURIComponent(store)}/collections`,
+      {
+        next: { revalidate: 60 },
+      },
+    );
     const data = await res.json();
     return NextResponse.json(data, { status: res.status });
   } catch (err) {

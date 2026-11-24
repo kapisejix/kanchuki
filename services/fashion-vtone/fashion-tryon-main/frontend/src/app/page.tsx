@@ -1,12 +1,12 @@
-import Link from "next/link";
-import { Sparkles, Upload, Zap, Shield, ArrowRight } from "lucide-react";
-import Navbar from "@/components/Navbar";
+import Navbar from '@/components/Navbar';
+import { ArrowRight, Shield, Sparkles, Upload, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-zinc-50 dark:from-zinc-950 dark:to-zinc-900">
       <Navbar />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Hero Section */}
         <div className="text-center mb-20">
@@ -14,17 +14,18 @@ export default function Home() {
             <Sparkles className="w-4 h-4" />
             AI-Powered Virtual Try-On
           </div>
-          
+
           <h1 className="text-5xl md:text-6xl font-bold text-zinc-900 dark:text-zinc-50 mb-6 tracking-tight">
-            Try On Clothes<br />
+            Try On Clothes
+            <br />
             <span className="text-purple-600 dark:text-purple-400">Before You Buy</span>
           </h1>
-          
+
           <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-8 max-w-2xl mx-auto">
-            Experience the future of online shopping with AI-powered virtual fitting. 
-            See how any garment looks on you instantly.
+            Experience the future of online shopping with AI-powered virtual fitting. See how any
+            garment looks on you instantly.
           </p>
-          
+
           <Link
             href="/upload"
             className="inline-flex items-center gap-2 px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full text-lg font-semibold transition-colors"
@@ -39,7 +40,7 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-center text-zinc-900 dark:text-zinc-50 mb-12">
             How It Works
           </h2>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-white dark:bg-zinc-900 rounded-xl p-8 shadow-sm border border-zinc-200 dark:border-zinc-800">
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-950 rounded-lg flex items-center justify-center mb-4">
@@ -49,8 +50,8 @@ export default function Home() {
                 1. Upload Images
               </h3>
               <p className="text-zinc-600 dark:text-zinc-400">
-                Upload a photo of yourself and the garment you want to try on. 
-                Select the category (tops, bottoms, or one-pieces).
+                Upload a photo of yourself and the garment you want to try on. Select the category
+                (tops, bottoms, or one-pieces).
               </p>
             </div>
 
@@ -62,8 +63,8 @@ export default function Home() {
                 2. AI Processing
               </h3>
               <p className="text-zinc-600 dark:text-zinc-400">
-                Our advanced AI model processes your images and creates a realistic 
-                virtual try-on in seconds.
+                Our advanced AI model processes your images and creates a realistic virtual try-on
+                in seconds.
               </p>
             </div>
 
@@ -75,8 +76,8 @@ export default function Home() {
                 3. View & Download
               </h3>
               <p className="text-zinc-600 dark:text-zinc-400">
-                See the result instantly! Compare the original with the try-on result 
-                and download your image.
+                See the result instantly! Compare the original with the try-on result and download
+                your image.
               </p>
             </div>
           </div>
@@ -87,7 +88,7 @@ export default function Home() {
           <h2 className="text-3xl font-bold text-center text-zinc-900 dark:text-zinc-50 mb-12">
             Why Choose Us?
           </h2>
-          
+
           <div className="grid md:grid-cols-2 gap-8">
             <div className="flex gap-4">
               <div className="flex-shrink-0">

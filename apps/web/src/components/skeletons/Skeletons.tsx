@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
+import { motion } from 'framer-motion';
 
 // Route-level loading skeletons for the admin panel. These flash for well
 // under a second on navigation, so they signal "a page with this shape is
@@ -20,11 +20,11 @@ function ShimmerOverlay() {
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
       />
     </div>
-  )
+  );
 }
 
 function P({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={`bg-gray-200/70 rounded animate-pulse ${className}`} style={style} />
+  return <div className={`bg-gray-200/70 rounded animate-pulse ${className}`} style={style} />;
 }
 
 function Header() {
@@ -36,7 +36,7 @@ function Header() {
       </div>
       <P className="h-3 w-56 mt-1 rounded" />
     </div>
-  )
+  );
 }
 
 function FilterBar() {
@@ -46,7 +46,7 @@ function FilterBar() {
       <P className="h-10 w-36 rounded-xl" />
       <P className="h-10 w-36 rounded-xl" />
     </div>
-  )
+  );
 }
 
 function MetricCard() {
@@ -60,7 +60,7 @@ function MetricCard() {
       <P className="h-8 w-24 mb-2 rounded" />
       <P className="h-3 w-32 rounded" />
     </div>
-  )
+  );
 }
 
 function Card({ lines = 3 }: { lines?: number }) {
@@ -71,7 +71,7 @@ function Card({ lines = 3 }: { lines?: number }) {
         <P key={i} className="h-4 mb-3 last:mb-0 rounded" style={{ width: `${60 - i * 12}%` }} />
       ))}
     </div>
-  )
+  );
 }
 
 function Table({ rows = 8, cols = 6 }: { rows?: number; cols?: number }) {
@@ -102,7 +102,7 @@ function Table({ rows = 8, cols = 6 }: { rows?: number; cols?: number }) {
         </table>
       </div>
     </div>
-  )
+  );
 }
 
 function RowCards({ count = 4 }: { count?: number }) {
@@ -123,16 +123,21 @@ function RowCards({ count = 4 }: { count?: number }) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 // ─── One skeleton for every admin route ──────────────────────────
 
-export type SkeletonVariant = 'table' | 'dashboard' | 'form' | 'list'
+export type SkeletonVariant = 'table' | 'dashboard' | 'form' | 'list';
 
 export function PageSkeleton({ variant = 'table' }: { variant?: SkeletonVariant }) {
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+      className="space-y-6"
+    >
       <Header />
 
       {variant === 'dashboard' && (
@@ -166,5 +171,5 @@ export function PageSkeleton({ variant = 'table' }: { variant?: SkeletonVariant 
         </>
       )}
     </motion.div>
-  )
+  );
 }

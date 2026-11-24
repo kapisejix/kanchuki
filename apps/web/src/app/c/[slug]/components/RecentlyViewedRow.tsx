@@ -1,34 +1,31 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { Clock } from 'lucide-react'
-import {
-  type RecentlyViewedProduct,
-  loadRecentlyViewed,
-} from '../lib/recentlyViewed'
-import { type PublicProduct, formatPriceRange } from '@kanchuki/shared'
+import { type PublicProduct, formatPriceRange } from '@kanchuki/shared';
+import { Clock } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { type RecentlyViewedProduct, loadRecentlyViewed } from '../lib/recentlyViewed';
 
 interface Props {
-  storeSlug: string
-  onProductTap: (product: PublicProduct) => void
+  storeSlug: string;
+  onProductTap: (product: PublicProduct) => void;
 }
 
 export function RecentlyViewed({ storeSlug, onProductTap }: Props) {
-  const [items, setItems] = useState<RecentlyViewedProduct[]>([])
+  const [items, setItems] = useState<RecentlyViewedProduct[]>([]);
 
   useEffect(() => {
-    setItems(loadRecentlyViewed(storeSlug))
-  }, [storeSlug])
+    setItems(loadRecentlyViewed(storeSlug));
+  }, [storeSlug]);
 
   // Refresh when localStorage changes (another tab or component updates it)
   useEffect(() => {
-    const handler = () => setItems(loadRecentlyViewed(storeSlug))
-    window.addEventListener('storage', handler)
-    return () => window.removeEventListener('storage', handler)
-  }, [storeSlug])
+    const handler = () => setItems(loadRecentlyViewed(storeSlug));
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, [storeSlug]);
 
-  if (items.length === 0) return null
+  if (items.length === 0) return null;
 
   return (
     <section className="mb-4">
@@ -39,7 +36,8 @@ export function RecentlyViewed({ storeSlug, onProductTap }: Props) {
       <div className="flex gap-2.5 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-hide snap-x snap-mandatory">
         {items.map((item) => (
           <button
-            key={item.id}            onClick={() =>
+            key={item.id}
+            onClick={() =>
               onProductTap({
                 id: item.id,
                 name: item.name,
@@ -93,5 +91,5 @@ export function RecentlyViewed({ storeSlug, onProductTap }: Props) {
         ))}
       </div>
     </section>
-  )
+  );
 }

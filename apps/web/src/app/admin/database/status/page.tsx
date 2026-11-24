@@ -1,32 +1,32 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Database,
-  Server,
   Activity,
-  Clock,
   AlertCircle,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  RefreshCw,
-  HardDrive,
-  Shield,
-  TrendingUp,
-  Zap,
-  Layers,
-  Wifi,
-  WifiOff,
   Archive,
   BarChart3,
+  CheckCircle2,
+  Clock,
+  Database,
   FileText,
+  HardDrive,
+  Layers,
+  Loader2,
   type LucideIcon,
-} from 'lucide-react'
+  RefreshCw,
+  Server,
+  Shield,
+  TrendingUp,
+  Wifi,
+  WifiOff,
+  XCircle,
+  Zap,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -34,80 +34,80 @@ type DatabaseStatusResponse = {
   data: {
     primary:
       | {
-          server_version: string
-          active_connections: number
-          max_connections: number
-          connection_usage_pct: number
-          database_size: string
-          cache_hit_ratio: number
-          uptime_seconds: number
+          server_version: string;
+          active_connections: number;
+          max_connections: number;
+          connection_usage_pct: number;
+          database_size: string;
+          cache_hit_ratio: number;
+          uptime_seconds: number;
           transactions: {
-            committed: number
-            rolled_back: number
-            total: number
-          }
-          deadlocks: number
-          temp_files: number
-          temp_bytes: string
-          healthy: boolean
+            committed: number;
+            rolled_back: number;
+            total: number;
+          };
+          deadlocks: number;
+          temp_files: number;
+          temp_bytes: string;
+          healthy: boolean;
         }
-      | { error: string }
+      | { error: string };
     replica: {
-      connected: boolean
-      lag_bytes: number | null
-      lag_seconds: number | null
-      error: string | null
-    } | null
+      connected: boolean;
+      lag_bytes: number | null;
+      lag_seconds: number | null;
+      error: string | null;
+    } | null;
     backup: {
-      latest_key: string | null
-      latest_age_hours: number | null
-      total_count: number
-      total_size_formatted: string
-    } | null
+      latest_key: string | null;
+      latest_age_hours: number | null;
+      total_count: number;
+      total_size_formatted: string;
+    } | null;
     vault: {
-      connected: boolean
-      record_count: number
-      db_size: string | null
-      failed?: boolean
-    }
+      connected: boolean;
+      record_count: number;
+      db_size: string | null;
+      failed?: boolean;
+    };
     guardrails: {
-      active: boolean
-    }
-  }
-}
+      active: boolean;
+    };
+  };
+};
 
 // ─── Helpers ───────────────────────────────────────────────────
 
 function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const mins = Math.floor((seconds % 3600) / 60)
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
 
-  const parts: string[] = []
-  if (days > 0) parts.push(`${days}d`)
-  if (hours > 0) parts.push(`${hours}h`)
-  parts.push(`${mins}m`)
-  return parts.join(' ')
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  parts.push(`${mins}m`);
+  return parts.join(' ');
 }
 
 function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-  return n.toLocaleString('en-IN')
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString('en-IN');
 }
 
 function formatAgeHours(hours: number | null): string {
-  if (hours === null) return 'Unknown'
-  if (hours < 1) return `${Math.round(hours * 60)}m ago`
-  if (hours < 24) return `${hours.toFixed(1)}h ago`
-  return `${(hours / 24).toFixed(1)}d ago`
+  if (hours === null) return 'Unknown';
+  if (hours < 1) return `${Math.round(hours * 60)}m ago`;
+  if (hours < 24) return `${hours.toFixed(1)}h ago`;
+  return `${(hours / 24).toFixed(1)}d ago`;
 }
 
 function formatLag(seconds: number | null): string {
-  if (seconds === null) return 'N/A'
-  if (seconds < 0.001) return '<1ms'
-  if (seconds < 1) return `${(seconds * 1000).toFixed(0)}ms`
-  return `${seconds.toFixed(1)}s`
+  if (seconds === null) return 'N/A';
+  if (seconds < 0.001) return '<1ms';
+  if (seconds < 1) return `${(seconds * 1000).toFixed(0)}ms`;
+  return `${seconds.toFixed(1)}s`;
 }
 
 // ─── Animations ────────────────────────────────────────────────
@@ -118,7 +118,7 @@ const containerVariants = {
     opacity: 1,
     transition: { staggerChildren: 0.05, delayChildren: 0.1 },
   },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -127,7 +127,7 @@ const itemVariants = {
     y: 0,
     transition: { type: 'spring', stiffness: 200, damping: 20 },
   },
-}
+};
 
 // ─── Status Badge ──────────────────────────────────────────────
 
@@ -135,9 +135,7 @@ function StatusBadge({ healthy }: { healthy: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-        healthy
-          ? 'bg-emerald-100 text-emerald-700'
-          : 'bg-red-100 text-red-700'
+        healthy ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
       }`}
     >
       <span
@@ -147,40 +145,40 @@ function StatusBadge({ healthy }: { healthy: boolean }) {
       />
       {healthy ? 'Healthy' : 'Unhealthy'}
     </span>
-  )
+  );
 }
 
 // ─── Main Page ─────────────────────────────────────────────────
 
 export default function DatabaseStatusPage() {
-  const [status, setStatus] = useState<DatabaseStatusResponse['data'] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState('')
+  const [status, setStatus] = useState<DatabaseStatusResponse['data'] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
 
   // ── Fetch status ──────────────────────────────────────────────
   const fetchStatus = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true)
-    else setLoading(true)
-    setError('')
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError('');
 
     try {
-      const res = await fetch(`${API_URL}/v1/admin/database/status`, adminGetOptions())
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      const res = await fetch(`${API_URL}/v1/admin/database/status`, adminGetOptions());
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
-      const json = (await res.json()) as DatabaseStatusResponse
-      setStatus(json.data)
+      const json = (await res.json()) as DatabaseStatusResponse;
+      setStatus(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load database status')
+      setError(err instanceof Error ? err.message : 'Failed to load database status');
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchStatus()
-  }, [fetchStatus])
+    fetchStatus();
+  }, [fetchStatus]);
 
   return (
     <motion.div
@@ -388,8 +386,9 @@ export default function DatabaseStatusPage() {
               <div className="flex items-start gap-2 text-sm text-amber-600">
                 <AlertCircle size={16} className="mt-0.5 shrink-0" />
                 <span>
-                  Backup status unavailable. R2 storage not configured — set
-                  {' '}<code className="text-[10px] font-mono">R2_*</code> env vars to enable backup monitoring.
+                  Backup status unavailable. R2 storage not configured — set{' '}
+                  <code className="text-[10px] font-mono">R2_*</code> env vars to enable backup
+                  monitoring.
                 </span>
               </div>
             ) : (
@@ -397,9 +396,7 @@ export default function DatabaseStatusPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {status.backup.latest_key ? (
-                      <StatusBadge
-                        healthy={(status.backup.latest_age_hours ?? Infinity) < 48}
-                      />
+                      <StatusBadge healthy={(status.backup.latest_age_hours ?? Infinity) < 48} />
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
                         No Backups
@@ -565,7 +562,7 @@ export default function DatabaseStatusPage() {
         </p>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 // ─── DbCard ────────────────────────────────────────────────────
@@ -577,11 +574,11 @@ function DbCard({
   borderAccent,
   children,
 }: {
-  title: string
-  icon: LucideIcon
-  iconColor: string
-  borderAccent: string
-  children: React.ReactNode
+  title: string;
+  icon: LucideIcon;
+  iconColor: string;
+  borderAccent: string;
+  children: React.ReactNode;
 }) {
   return (
     <motion.div
@@ -594,7 +591,7 @@ function DbCard({
       </div>
       {children}
     </motion.div>
-  )
+  );
 }
 
 // ─── MetricTile ────────────────────────────────────────────────
@@ -606,20 +603,20 @@ function MetricTile({
   subtext,
   color,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string
-  subtext?: string
-  color: 'blue' | 'emerald' | 'amber' | 'gray'
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  subtext?: string;
+  color: 'blue' | 'emerald' | 'amber' | 'gray';
 }) {
   const colorMap = {
     blue: 'text-blue-500 bg-blue-50',
     emerald: 'text-emerald-500 bg-emerald-50',
     amber: 'text-amber-500 bg-amber-50',
     gray: 'text-gray-400 bg-gray-50',
-  }
+  };
 
-  const iconBg = colorMap[color]
+  const iconBg = colorMap[color];
 
   return (
     <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100/60">
@@ -627,16 +624,12 @@ function MetricTile({
         <div className={`p-1 rounded-lg ${iconBg} bg-opacity-50`}>
           <Icon size={12} className={iconBg.split(' ')[0]} />
         </div>
-        <span className="text-[10px] font-medium text-gray-500 uppercase">
-          {label}
-        </span>
+        <span className="text-[10px] font-medium text-gray-500 uppercase">{label}</span>
       </div>
       <div className="text-base font-bold text-gray-900">{value}</div>
-      {subtext && (
-        <div className="text-[10px] text-gray-400 mt-0.5 truncate">{subtext}</div>
-      )}
+      {subtext && <div className="text-[10px] text-gray-400 mt-0.5 truncate">{subtext}</div>}
     </div>
-  )
+  );
 }
 
 // ─── GuardrailRow ──────────────────────────────────────────────
@@ -646,9 +639,9 @@ function GuardrailRow({
   active,
   description,
 }: {
-  label: string
-  active: boolean
-  description: string
+  label: string;
+  active: boolean;
+  description: string;
 }) {
   return (
     <div className="flex items-start gap-2.5">
@@ -662,5 +655,5 @@ function GuardrailRow({
         <div className="text-[10px] text-gray-400">{description}</div>
       </div>
     </div>
-  )
+  );
 }

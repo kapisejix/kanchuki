@@ -1,26 +1,26 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { render } from '@testing-library/react-native'
-import React from 'react'
-import { View, Text } from 'react-native'
-import { createControllableAccessibility } from '../test/__mocks__/react-native'
-import ProductCard from './ProductCard'
+import { render } from '@testing-library/react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createControllableAccessibility } from '../test/__mocks__/react-native';
+import ProductCard from './ProductCard';
 
 // ProductCard renders AnimatedPressable, which calls useReduceMotion →
 // AccessibilityInfo. The controllable handle locks the default (reduce motion
 // off) per test and exercises the documented helper (see src/test/README.md).
-const accessibility = createControllableAccessibility(false)
+const accessibility = createControllableAccessibility(false);
 
 const sampleFooter = (
   <View>
     <Text testID="footer-text">Category · Color</Text>
     <Text testID="footer-price">₹1,999</Text>
   </View>
-)
+);
 
 describe('ProductCard', () => {
   beforeEach(() => {
-    accessibility.reset()
-  })
+    accessibility.reset();
+  });
   it('renders with an image URL', () => {
     const tree = render(
       <ProductCard
@@ -28,20 +28,14 @@ describe('ProductCard', () => {
         onPress={() => {}}
         footer={sampleFooter}
       />,
-    )
-    expect(tree.toJSON()).toMatchSnapshot('with-image-url')
-  })
+    );
+    expect(tree.toJSON()).toMatchSnapshot('with-image-url');
+  });
 
   it('renders placeholder when imageUrl is null', () => {
-    const tree = render(
-      <ProductCard
-        imageUrl={null}
-        onPress={() => {}}
-        footer={sampleFooter}
-      />,
-    )
-    expect(tree.toJSON()).toMatchSnapshot('no-image-placeholder')
-  })
+    const tree = render(<ProductCard imageUrl={null} onPress={() => {}} footer={sampleFooter} />);
+    expect(tree.toJSON()).toMatchSnapshot('no-image-placeholder');
+  });
 
   it('renders with a status badge', () => {
     const tree = render(
@@ -51,9 +45,9 @@ describe('ProductCard', () => {
         footer={sampleFooter}
         statusBadge="SOLD"
       />,
-    )
-    expect(tree.toJSON()).toMatchSnapshot('with-status-badge')
-  })
+    );
+    expect(tree.toJSON()).toMatchSnapshot('with-status-badge');
+  });
 
   it('renders with AI tagging indicator dot', () => {
     const tree = render(
@@ -63,9 +57,9 @@ describe('ProductCard', () => {
         footer={sampleFooter}
         showAIDot
       />,
-    )
-    expect(tree.toJSON()).toMatchSnapshot('with-ai-dot')
-  })
+    );
+    expect(tree.toJSON()).toMatchSnapshot('with-ai-dot');
+  });
 
   it('renders selected state with checkmark overlay', () => {
     const tree = render(
@@ -75,21 +69,16 @@ describe('ProductCard', () => {
         footer={sampleFooter}
         selected
       />,
-    )
-    expect(tree.toJSON()).toMatchSnapshot('selected-checkmark')
-  })
+    );
+    expect(tree.toJSON()).toMatchSnapshot('selected-checkmark');
+  });
 
   it('renders with custom height and placeholder icon', () => {
     const tree = render(
-      <ProductCard
-        imageUrl={null}
-        onPress={() => {}}
-        footer={sampleFooter}
-        imageHeight={144}
-      />,
-    )
-    expect(tree.toJSON()).toMatchSnapshot('custom-height-placeholder')
-  })
+      <ProductCard imageUrl={null} onPress={() => {}} footer={sampleFooter} imageHeight={144} />,
+    );
+    expect(tree.toJSON()).toMatchSnapshot('custom-height-placeholder');
+  });
 
   it('renders with all props combined', () => {
     const tree = render(
@@ -103,7 +92,7 @@ describe('ProductCard', () => {
         selected
         cachePolicy="memory"
       />,
-    )
-    expect(tree.toJSON()).toMatchSnapshot('all-props-combined')
-  })
-})
+    );
+    expect(tree.toJSON()).toMatchSnapshot('all-props-combined');
+  });
+});

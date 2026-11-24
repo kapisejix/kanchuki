@@ -5,6 +5,7 @@
 // Shoot card below (sample photo, prompt, demographic, garment type). Port of
 // docs/ai-studio/AI Studio Effects.html; data + rules live in lib/studio-effects.ts.
 
+import { Sheet } from '@/components/Sheet';
 import {
   AUD_LABEL,
   type Aud,
@@ -28,7 +29,6 @@ import {
   recommend,
 } from '@/lib/studio-effects';
 import { Sparkles, X } from 'lucide-react';
-import { Sheet } from '@/components/Sheet';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -364,139 +364,137 @@ export default function EffectsCatalog({ onUse }: { onUse: (a: UseEffectArgs) =>
           maxHeightVh={92}
           ariaLabel={cur.title}
         >
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={() => setCur(null)}
-              className="absolute right-3 top-3 rounded-full bg-gray-100 p-1.5"
-            >
-              <X size={14} />
-            </button>
-            <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
-              <div>
-                <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
-                  <Photo
-                    src={saved(cur.code) ?? `${IMG}/previews/${cur.code}.jpg`}
-                    alt={cur.title}
-                    label={cur.code}
-                  />
-                </div>
-                <p className="mt-1 text-[10px] text-gray-400">
-                  public/effect-photos/previews/{cur.code}.jpg
-                </p>
-                <label className="mt-2 block cursor-pointer rounded-xl bg-fuchsia-600 px-3 py-2 text-center text-xs font-bold text-white">
-                  Upload output image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => upload(e.target.files?.[0], cur.code)}
-                  />
-                </label>
-                {saved(cur.code) && (
-                  <div className="mt-1 text-center text-[11px]">
-                    <a
-                      href={saved(cur.code) ?? ''}
-                      download={`${cur.code}.jpg`}
-                      className="font-semibold underline"
-                    >
-                      Download as {cur.code}.jpg
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => clear(cur.code)}
-                      className="ml-2 text-gray-500 underline"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setCur(null)}
+            className="absolute right-3 top-3 rounded-full bg-gray-100 p-1.5"
+          >
+            <X size={14} />
+          </button>
+          <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
+            <div>
+              <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
+                <Photo
+                  src={saved(cur.code) ?? `${IMG}/previews/${cur.code}.jpg`}
+                  alt={cur.title}
+                  label={cur.code}
+                />
               </div>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400">{cur.code}</p>
-                  <h3 className="text-lg font-bold text-gray-800">{cur.title}</h3>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    <Chip>
-                      {cur.env} · {cur.group}
-                    </Chip>
-                    <Chip
-                      tone={cur.combo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : ''}
-                    >
-                      {cur.combo ? 'combo — override below' : 'fixed effect'}
-                    </Chip>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
-                  <label>
-                    {cur.mode === 'model' ? 'Pose / action' : 'Presentation'}
-                    <select
-                      disabled={!cur.combo}
-                      value={po}
-                      onChange={(e) => setPo(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
-                    >
-                      {Object.entries(cur.mode === 'model' ? POSE : PRES).map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v[0]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Lighting
-                    <select
-                      disabled={!cur.combo}
-                      value={li}
-                      onChange={(e) => setLi(e.target.value as LightId)}
-                      className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
-                    >
-                      {(Object.keys(LIGHT) as LightId[]).map((k) => (
-                        <option key={k} value={k}>
-                          {LIGHT[k][0]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <div>
-                  <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                    Composed prompt · {AUD_LABEL[aud]} · {CLS[cls]}
-                  </p>
-                  <p className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed">
-                    {promptFor(cur)}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
+              <p className="mt-1 text-[10px] text-gray-400">
+                public/effect-photos/previews/{cur.code}.jpg
+              </p>
+              <label className="mt-2 block cursor-pointer rounded-xl bg-fuchsia-600 px-3 py-2 text-center text-xs font-bold text-white">
+                Upload output image
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => upload(e.target.files?.[0], cur.code)}
+                />
+              </label>
+              {saved(cur.code) && (
+                <div className="mt-1 text-center text-[11px]">
+                  <a
+                    href={saved(cur.code) ?? ''}
+                    download={`${cur.code}.jpg`}
+                    className="font-semibold underline"
+                  >
+                    Download as {cur.code}.jpg
+                  </a>
                   <button
                     type="button"
-                    onClick={() => {
-                      onUse({
-                        prompt: promptFor(cur),
-                        aud,
-                        cls,
-                        sample: sample.cls === cls && sample.aud === aud ? sample : null,
-                      });
-                      setCur(null);
-                    }}
-                    className="rounded-xl bg-[#231F48] px-4 py-2 text-xs font-bold text-white hover:bg-fuchsia-700"
+                    onClick={() => clear(cur.code)}
+                    className="ml-2 text-gray-500 underline"
                   >
-                    Use in bench
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void navigator.clipboard.writeText(promptFor(cur))}
-                    className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700"
-                  >
-                    Copy prompt
+                    Remove
                   </button>
                 </div>
-                <p className="text-[11px] text-gray-500">
-                  Fits: {cur.fit === 'all' ? 'all garments' : cur.fit.map((c) => CLS[c]).join(', ')}{' '}
-                  · Audience: {cur.aud ? cur.aud.map((a) => AUD_LABEL[a]).join(', ') : 'all'}
-                </p>
-              </div>
+              )}
             </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[10px] font-bold text-gray-400">{cur.code}</p>
+                <h3 className="text-lg font-bold text-gray-800">{cur.title}</h3>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <Chip>
+                    {cur.env} · {cur.group}
+                  </Chip>
+                  <Chip tone={cur.combo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : ''}>
+                    {cur.combo ? 'combo — override below' : 'fixed effect'}
+                  </Chip>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs font-semibold">
+                <label>
+                  {cur.mode === 'model' ? 'Pose / action' : 'Presentation'}
+                  <select
+                    disabled={!cur.combo}
+                    value={po}
+                    onChange={(e) => setPo(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
+                  >
+                    {Object.entries(cur.mode === 'model' ? POSE : PRES).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v[0]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Lighting
+                  <select
+                    disabled={!cur.combo}
+                    value={li}
+                    onChange={(e) => setLi(e.target.value as LightId)}
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs"
+                  >
+                    {(Object.keys(LIGHT) as LightId[]).map((k) => (
+                      <option key={k} value={k}>
+                        {LIGHT[k][0]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                  Composed prompt · {AUD_LABEL[aud]} · {CLS[cls]}
+                </p>
+                <p className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed">
+                  {promptFor(cur)}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onUse({
+                      prompt: promptFor(cur),
+                      aud,
+                      cls,
+                      sample: sample.cls === cls && sample.aud === aud ? sample : null,
+                    });
+                    setCur(null);
+                  }}
+                  className="rounded-xl bg-[#231F48] px-4 py-2 text-xs font-bold text-white hover:bg-fuchsia-700"
+                >
+                  Use in bench
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(promptFor(cur))}
+                  className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-bold text-gray-700"
+                >
+                  Copy prompt
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Fits: {cur.fit === 'all' ? 'all garments' : cur.fit.map((c) => CLS[c]).join(', ')} ·
+                Audience: {cur.aud ? cur.aud.map((a) => AUD_LABEL[a]).join(', ') : 'all'}
+              </p>
+            </div>
+          </div>
         </Sheet>
       )}
     </div>

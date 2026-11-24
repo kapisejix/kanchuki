@@ -9,26 +9,30 @@
 // the SDK's responses are untyped `any` (defensive parsing in msg91-otp.ts).
 declare module '@msg91comm/sendotp-react-native' {
   export const OTPWidget: {
-    initializeWidget(widgetId: string, tokenAuth: string): Promise<void>
-    sendOTP(body: { identifier: string; [key: string]: unknown }): Promise<unknown>
-    verifyOTP(body: { reqId: string; otp?: string; [key: string]: unknown }): Promise<unknown>
-    retryOTP(body: { reqId: string; retryChannel?: number; [key: string]: unknown }): Promise<unknown>
-    getWidgetProcess(): Promise<unknown>
-  }
+    initializeWidget(widgetId: string, tokenAuth: string): Promise<void>;
+    sendOTP(body: { identifier: string; [key: string]: unknown }): Promise<unknown>;
+    verifyOTP(body: { reqId: string; otp?: string; [key: string]: unknown }): Promise<unknown>;
+    retryOTP(body: {
+      reqId: string;
+      retryChannel?: number;
+      [key: string]: unknown;
+    }): Promise<unknown>;
+    getWidgetProcess(): Promise<unknown>;
+  };
 
   export const BiometricAuth: {
-    isSensorAvailable(): Promise<{ available: boolean; biometryType?: string; error?: string }>
-    authenticate(): Promise<string>
-    getBiometricType(): Promise<string>
+    isSensorAvailable(): Promise<{ available: boolean; biometryType?: string; error?: string }>;
+    authenticate(): Promise<string>;
+    getBiometricType(): Promise<string>;
     simplePrompt(options: {
-      promptMessage: string
-      fallbackPromptMessage?: string
-      cancelButtonText?: string
-      allowDeviceCredentials?: boolean
-    }): Promise<{ success: boolean; error?: string }>
-    cancelAuthentication(): Promise<string>
-  }
+      promptMessage: string;
+      fallbackPromptMessage?: string;
+      cancelButtonText?: string;
+      allowDeviceCredentials?: boolean;
+    }): Promise<{ success: boolean; error?: string }>;
+    cancelAuthentication(): Promise<string>;
+  };
 
-  export const BiometryTypes: Record<string, string>
-  export const DefaultWidget: unknown
+  export const BiometryTypes: Record<string, string>;
+  export const DefaultWidget: unknown;
 }

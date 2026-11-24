@@ -1,13 +1,13 @@
-import React from 'react'
-import { History, Play, Trash2, X, Clock, AlertCircle } from 'lucide-react'
-import type { HistoryEntry } from './types'
+import { AlertCircle, Clock, History, Play, Trash2, X } from 'lucide-react';
+import React from 'react';
+import type { HistoryEntry } from './types';
 
 interface QueryHistoryProps {
-  visible: boolean
-  onClose: () => void
-  history: HistoryEntry[]
-  onSelectQuery: (sql: string) => void
-  onClearHistory: () => void
+  visible: boolean;
+  onClose: () => void;
+  history: HistoryEntry[];
+  onSelectQuery: (sql: string) => void;
+  onClearHistory: () => void;
 }
 
 export function QueryHistory({
@@ -17,7 +17,7 @@ export function QueryHistory({
   onSelectQuery,
   onClearHistory,
 }: QueryHistoryProps) {
-  if (!visible) return null
+  if (!visible) return null;
 
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-white border-l border-gray-200 shadow-2xl z-50 flex flex-col">
@@ -86,8 +86,8 @@ export function QueryHistory({
 
               <button
                 onClick={() => {
-                  onSelectQuery(entry.query)
-                  onClose()
+                  onSelectQuery(entry.query);
+                  onClose();
                 }}
                 className="w-full py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
               >
@@ -99,6 +99,5 @@ export function QueryHistory({
         )}
       </div>
     </div>
-  )
+  );
 }
-

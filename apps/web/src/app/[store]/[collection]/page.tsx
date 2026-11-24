@@ -1,3 +1,4 @@
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { CollectionView } from '../../c/[slug]/components/CollectionView';
@@ -5,7 +6,6 @@ import { SuspendedNotice } from '../../c/[slug]/components/SuspendedNotice';
 import { fetchCollection } from '../../c/[slug]/lib/fetchCollection';
 import { resolveStorefront } from '../lib/resolveStorefront';
 import { itemListLd, ldJson } from '../lib/store-seo';
-import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app';
 
@@ -91,7 +91,11 @@ export default async function CollectionPage({ params }: Props) {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD, '<' escaped by ldJson
         dangerouslySetInnerHTML={{
           __html: ldJson(
-            itemListLd(data.title, data.products, (id) => `${SITE_URL}/${store}/${collection}/product/${id}`),
+            itemListLd(
+              data.title,
+              data.products,
+              (id) => `${SITE_URL}/${store}/${collection}/product/${id}`,
+            ),
           ),
         }}
       />

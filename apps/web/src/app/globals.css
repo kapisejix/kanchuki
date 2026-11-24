@@ -13,19 +13,19 @@
      2026-08-03). Mirrors apps/web/tailwind.config.ts for the handful of spots
      (scrollbar, hero texture, logomark) that need a raw CSS value instead of
      a class. */
-  --color-ink: #14213D;
-  --color-rust: #FCA311;
-  --color-turmeric: #8A5A12;
-  --color-cotton: #FFFFFF;
+  --color-ink: #14213d;
+  --color-rust: #fca311;
+  --color-turmeric: #8a5a12;
+  --color-cotton: #ffffff;
   --color-charcoal: #000000;
   --color-sand: #737373;
 
   /* "CoLab" marketing palette (2026-08-11, colabs.com.au) — same raw-CSS
      mirror for the handful of spots that need a value instead of a class
      (Lenis/scroll chrome, marquee fades). */
-  --color-cream: #F9F8F6;
+  --color-cream: #f9f8f6;
   --color-carbon: #060606;
-  --color-volt: #D9DB4D;
+  --color-volt: #d9db4d;
 }
 
 * {
@@ -68,8 +68,14 @@ html.lenis body {
   width: 6px;
   height: 4px;
 }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-ink); border-radius: 3px; opacity: 0.4; }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-ink);
+  border-radius: 3px;
+  opacity: 0.4;
+}
 
 @layer utilities {
   .text-balance {
@@ -78,7 +84,7 @@ html.lenis body {
 
   .font-brand-title,
   .brand-heading {
-    font-family: 'Marcellus', serif;
+    font-family: "Marcellus", serif;
     font-size: 1rem;
     line-height: 1.5rem;
     letter-spacing: 0.02em;

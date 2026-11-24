@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient()
+const prisma = new PrismaClient();
 
 // F-010 (docs/PRO-REQUIREMENTS.md): seeds only the two resources with real $
 // economics behind them (Claude Vision tagging calls, product-catalog size).
@@ -16,10 +16,10 @@ const prisma = new PrismaClient()
 //
 // Idempotent — upsert on the (plan, resource_type) unique key, safe to re-run.
 const ROWS: Array<{
-  plan: 'STARTER' | 'GROWTH' | 'PRO'
-  resource_type: 'PRODUCT_UPLOAD' | 'AI_TAGGING_CALL' | 'TRY_ON'
-  limit_per_period: number
-  period: 'LIFETIME' | 'MONTH'
+  plan: 'STARTER' | 'GROWTH' | 'PRO';
+  resource_type: 'PRODUCT_UPLOAD' | 'AI_TAGGING_CALL' | 'TRY_ON';
+  limit_per_period: number;
+  period: 'LIFETIME' | 'MONTH';
 }> = [
   // PRODUCT_UPLOAD — matches Retailer.max_products defaults (seed.ts, admin.ts)
   { plan: 'STARTER', resource_type: 'PRODUCT_UPLOAD', limit_per_period: 500, period: 'LIFETIME' },
@@ -36,7 +36,7 @@ const ROWS: Array<{
   { plan: 'STARTER', resource_type: 'TRY_ON', limit_per_period: 0, period: 'MONTH' },
   { plan: 'GROWTH', resource_type: 'TRY_ON', limit_per_period: 100, period: 'MONTH' },
   { plan: 'PRO', resource_type: 'TRY_ON', limit_per_period: 500, period: 'MONTH' },
-]
+];
 
 async function main() {
   for (const row of ROWS) {
@@ -44,15 +44,17 @@ async function main() {
       where: { plan_resource_type: { plan: row.plan, resource_type: row.resource_type } },
       create: row,
       update: { limit_per_period: row.limit_per_period, period: row.period },
-    })
-    console.log(`  ✅ ${row.plan} / ${row.resource_type} → ${row.limit_per_period} per ${row.period}`)
+    });
+    console.log(
+      `  ✅ ${row.plan} / ${row.resource_type} → ${row.limit_per_period} per ${row.period}`,
+    );
   }
-  console.log('\n✅ plan_limits seeded.')
+  console.log('\n✅ plan_limits seeded.');
 }
 
 main()
   .catch((e) => {
-    console.error('\n❌ plan_limits seed failed:', e)
-    process.exit(1)
+    console.error('\n❌ plan_limits seed failed:', e);
+    process.exit(1);
   })
-  .finally(() => prisma.$disconnect())
+  .finally(() => prisma.$disconnect());

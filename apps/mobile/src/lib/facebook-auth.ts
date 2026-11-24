@@ -36,7 +36,7 @@ const IG_PERMISSIONS = [...PAGE_PERMISSIONS, 'instagram_basic', 'instagram_conte
 
 /** Message of any thrown value — some native paths reject with a string. */
 function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
+  return err instanceof Error ? err.message : String(err);
 }
 
 /**
@@ -50,7 +50,7 @@ function errorMessage(err: unknown): string {
  * `loginWithFacebook`.
  */
 export function isSdkUnavailableError(err: unknown): boolean {
-  return /cannot find module|unable to resolve module/i.test(errorMessage(err))
+  return /cannot find module|unable to resolve module/i.test(errorMessage(err));
 }
 
 /**
@@ -88,9 +88,7 @@ export async function loginWithFacebook(
     // Treating the second as the first silently dropped a broken release
     // build into the web OAuth flow and hid the reason it broke.
     if (!isSdkUnavailableError(err)) {
-      throw new Error(
-        `Facebook SDK could not be loaded in this build: ${errorMessage(err)}`,
-      );
+      throw new Error(`Facebook SDK could not be loaded in this build: ${errorMessage(err)}`);
     }
     throw new FacebookAuthUnavailable(errorMessage(err));
   }

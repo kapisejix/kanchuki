@@ -1,63 +1,63 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import {
-  Star,
-  Flag,
-  EyeOff,
-  Eye,
   AlertTriangle,
-  Filter,
   ChevronLeft,
   ChevronRight,
-  Store,
-  ShoppingBag,
+  Eye,
+  EyeOff,
+  Filter,
+  Flag,
   MessageSquare,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+  ShoppingBag,
+  Star,
+  Store,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type ReviewStats = {
-  total_reviews: number
-  product_reviews: number
-  store_reviews: number
-  avg_product_rating: number
-  avg_store_rating: number
-  flagged: number
-  hidden: number
-}
+  total_reviews: number;
+  product_reviews: number;
+  store_reviews: number;
+  avg_product_rating: number;
+  avg_store_rating: number;
+  flagged: number;
+  hidden: number;
+};
 
 type Review = {
-  id: string
-  rating: number
-  comment: string | null
-  is_flagged: boolean
-  is_hidden: boolean
-  created_at: string
-  _type: 'product' | 'store'
-  product?: { id: string; name: string | null }
-  display_name?: string | null
-  customer?: { id: string; name: string } | null
-  retailer?: { id: string; shop_name: string }
-}
+  id: string;
+  rating: number;
+  comment: string | null;
+  is_flagged: boolean;
+  is_hidden: boolean;
+  created_at: string;
+  _type: 'product' | 'store';
+  product?: { id: string; name: string | null };
+  display_name?: string | null;
+  customer?: { id: string; name: string } | null;
+  retailer?: { id: string; shop_name: string };
+};
 
 type Pagination = {
-  page: number
-  limit: number
-  total: number
-  pages: number
-}
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 25 } },
-}
+};
 
 function StarDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -70,83 +70,83 @@ function StarDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
         />
       ))}
     </div>
-  )
+  );
 }
 
 export default function AdminRatingsPage() {
-  const [stats, setStats] = useState<ReviewStats | null>(null)
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<ReviewStats | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     type: 'all' as 'all' | 'product' | 'store',
     flagged: '' as string,
     hidden: '' as string,
     min_rating: '' as string,
     max_rating: '' as string,
-  })
-  const [page, setPage] = useState(1)
+  });
+  const [page, setPage] = useState(1);
 
   const loadStats = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/v1/admin/reviews/stats`, adminGetOptions())
+      const res = await fetch(`${API_URL}/v1/admin/reviews/stats`, adminGetOptions());
       if (res.ok) {
-        const json = await res.json()
-        setStats(json.data)
+        const json = await res.json();
+        setStats(json.data);
       }
     } catch {
       // ignore
     }
-  }, [])
+  }, []);
 
   const loadReviews = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const params = new URLSearchParams()
-      params.set('page', String(page))
-      params.set('limit', '20')
-      if (filters.type !== 'all') params.set('type', filters.type)
-      if (filters.flagged) params.set('flagged', filters.flagged)
-      if (filters.hidden) params.set('hidden', filters.hidden)
-      if (filters.min_rating) params.set('min_rating', filters.min_rating)
-      if (filters.max_rating) params.set('max_rating', filters.max_rating)
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('limit', '20');
+      if (filters.type !== 'all') params.set('type', filters.type);
+      if (filters.flagged) params.set('flagged', filters.flagged);
+      if (filters.hidden) params.set('hidden', filters.hidden);
+      if (filters.min_rating) params.set('min_rating', filters.min_rating);
+      if (filters.max_rating) params.set('max_rating', filters.max_rating);
 
-      const res = await fetch(`${API_URL}/v1/admin/reviews?${params}`, adminGetOptions())
+      const res = await fetch(`${API_URL}/v1/admin/reviews?${params}`, adminGetOptions());
       if (res.ok) {
-        const json = await res.json()
-        setReviews(json.data)
-        setPagination(json.pagination)
+        const json = await res.json();
+        setReviews(json.data);
+        setPagination(json.pagination);
       }
     } catch {
       // ignore
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [page, filters])
+  }, [page, filters]);
 
   useEffect(() => {
-    void loadStats()
-  }, [loadStats])
+    void loadStats();
+  }, [loadStats]);
 
   useEffect(() => {
-    void loadReviews()
-  }, [loadReviews])
+    void loadReviews();
+  }, [loadReviews]);
 
   const handleAction = async (type: string, id: string, action: 'flag' | 'hide' | 'unhide') => {
     try {
-      const opts = await adminMutateOptions()
+      const opts = await adminMutateOptions();
       const res = await fetch(`${API_URL}/v1/admin/reviews/${type}/${id}/${action}`, {
         ...opts,
         method: 'PATCH',
-      })
+      });
       if (res.ok) {
-        void loadReviews()
-        void loadStats()
+        void loadReviews();
+        void loadStats();
       }
     } catch {
       // ignore
     }
-  }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -156,9 +156,7 @@ export default function AdminRatingsPage() {
           <Star size={24} className="text-amber-400" />
           Ratings & Reviews
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Moderate customer reviews across all retailers
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Moderate customer reviews across all retailers</p>
       </div>
 
       {/* Stats Cards */}
@@ -201,7 +199,10 @@ export default function AdminRatingsPage() {
         <div className="flex flex-wrap gap-3">
           <select
             value={filters.type}
-            onChange={(e) => { setFilters((f) => ({ ...f, type: e.target.value as typeof f.type })); setPage(1) }}
+            onChange={(e) => {
+              setFilters((f) => ({ ...f, type: e.target.value as typeof f.type }));
+              setPage(1);
+            }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="all">All Types</option>
@@ -211,7 +212,10 @@ export default function AdminRatingsPage() {
 
           <select
             value={filters.flagged}
-            onChange={(e) => { setFilters((f) => ({ ...f, flagged: e.target.value })); setPage(1) }}
+            onChange={(e) => {
+              setFilters((f) => ({ ...f, flagged: e.target.value }));
+              setPage(1);
+            }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">All Flags</option>
@@ -221,7 +225,10 @@ export default function AdminRatingsPage() {
 
           <select
             value={filters.hidden}
-            onChange={(e) => { setFilters((f) => ({ ...f, hidden: e.target.value })); setPage(1) }}
+            onChange={(e) => {
+              setFilters((f) => ({ ...f, hidden: e.target.value }));
+              setPage(1);
+            }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">All Visibility</option>
@@ -231,7 +238,10 @@ export default function AdminRatingsPage() {
 
           <select
             value={filters.min_rating}
-            onChange={(e) => { setFilters((f) => ({ ...f, min_rating: e.target.value })); setPage(1) }}
+            onChange={(e) => {
+              setFilters((f) => ({ ...f, min_rating: e.target.value }));
+              setPage(1);
+            }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">Min Rating</option>
@@ -244,7 +254,10 @@ export default function AdminRatingsPage() {
 
           <select
             value={filters.max_rating}
-            onChange={(e) => { setFilters((f) => ({ ...f, max_rating: e.target.value })); setPage(1) }}
+            onChange={(e) => {
+              setFilters((f) => ({ ...f, max_rating: e.target.value }));
+              setPage(1);
+            }}
             className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ink-400"
           >
             <option value="">Max Rating</option>
@@ -309,7 +322,7 @@ export default function AdminRatingsPage() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function StatCard({
@@ -319,11 +332,11 @@ function StatCard({
   sub,
   alert,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: string | number
-  sub: string
-  alert?: boolean
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  sub: string;
+  alert?: boolean;
 }) {
   return (
     <div
@@ -338,7 +351,7 @@ function StatCard({
       <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
     </div>
-  )
+  );
 }
 
 function ReviewRow({
@@ -347,15 +360,17 @@ function ReviewRow({
   onHide,
   onUnhide,
 }: {
-  review: Review
-  onFlag: () => void
-  onHide: () => void
-  onUnhide: () => void
+  review: Review;
+  onFlag: () => void;
+  onHide: () => void;
+  onUnhide: () => void;
 }) {
-  const isProduct = review._type === 'product'
+  const isProduct = review._type === 'product';
 
   return (
-    <div className={`px-4 py-3 hover:bg-gray-50/50 transition-colors ${review.is_hidden ? 'opacity-50' : ''}`}>
+    <div
+      className={`px-4 py-3 hover:bg-gray-50/50 transition-colors ${review.is_hidden ? 'opacity-50' : ''}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           {/* Header row */}
@@ -367,9 +382,13 @@ function ReviewRow({
               }`}
             >
               {isProduct ? (
-                <span className="flex items-center gap-1"><ShoppingBag size={9} /> Product</span>
+                <span className="flex items-center gap-1">
+                  <ShoppingBag size={9} /> Product
+                </span>
               ) : (
-                <span className="flex items-center gap-1"><Store size={9} /> Store</span>
+                <span className="flex items-center gap-1">
+                  <Store size={9} /> Store
+                </span>
               )}
             </span>
             {review.is_flagged && (
@@ -431,5 +450,5 @@ function ReviewRow({
         </div>
       </div>
     </div>
-  )
+  );
 }

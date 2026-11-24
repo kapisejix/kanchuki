@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Navbar() {
   return (

@@ -2,7 +2,16 @@
 
 import type { PublicCollection, PublicProductDetail } from '@kanchuki/shared';
 import { formatPriceRange } from '@kanchuki/shared';
-import { ArrowLeft, Eye, Heart, Info, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import {
+  ArrowLeft,
+  Eye,
+  Heart,
+  Info,
+  MessageCircle,
+  ShoppingBag,
+  Sparkles,
+  Star,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -10,11 +19,11 @@ import { useEffect, useState } from 'react';
 // Family-sizing card is parked, not deleted — flip to re-enable.
 const SHOW_FAMILY_SIZING = false;
 import { ContactGate } from '@/app/[store]/components/ContactGate';
+import { socialProofChip, useSocialProof } from '../lib/socialProof';
+import { CustomerConsentModal } from './CustomerConsentModal';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { ProductGallery } from './ProductGallery';
 import { ReviewForm } from './StarPicker';
-import { CustomerConsentModal } from './CustomerConsentModal';
-import { socialProofChip, useSocialProof } from '../lib/socialProof';
 
 interface Props {
   collection: PublicCollection;
@@ -48,7 +57,8 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
   const socialProof = useSocialProof(storeSlug);
   const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null);
   const catalogTarget = storeSlug
-    ? collectionPath.startsWith(`/${storeSlug}/categories/`) || collectionPath === `/${storeSlug}/all`
+    ? collectionPath.startsWith(`/${storeSlug}/categories/`) ||
+      collectionPath === `/${storeSlug}/all`
       ? collectionPath
       : collectionPath.includes(`/all-`) || collectionPath.endsWith('/all')
         ? `/${storeSlug}/all`
@@ -105,9 +115,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
               {shop.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 text-center">
-              <h1 className="font-bold text-xs text-[#231F48] truncate max-w-[200px]">
-                {shop}
-              </h1>
+              <h1 className="font-bold text-xs text-[#231F48] truncate max-w-[200px]">{shop}</h1>
               {city && <p className="text-[10px] text-[#6B4773] font-medium">{city}</p>}
             </div>
           </div>
@@ -152,9 +160,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
                 <span className="text-xs font-bold text-[#231F48]">
                   {(product.avg_rating ?? 0).toFixed(1)}
                 </span>
-                <span className="text-[10px] text-[#6B4773]">
-                  ({product.rating_count})
-                </span>
+                <span className="text-[10px] text-[#6B4773]">({product.rating_count})</span>
               </div>
             )}
             {/* Real social proof — real counts only, never fabricated. */}
@@ -186,7 +192,9 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           <div className="p-4 bg-gradient-to-br from-[#FAF9FE] to-[#F2F1FA] border border-[#E0E1F6] rounded-[24px] shadow-sm">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles size={14} className="text-[#BB3F95]" />
-              <span className="text-xs font-bold text-[#BB3F95] uppercase tracking-wider">AI Summary</span>
+              <span className="text-xs font-bold text-[#BB3F95] uppercase tracking-wider">
+                AI Summary
+              </span>
             </div>
             <p className="text-xs text-[#231F48] leading-relaxed font-medium">
               {product.description}
@@ -198,7 +206,9 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <Info size={14} className="text-[#6B4773]" />
-            <span className="text-xs font-bold text-[#231F48] uppercase tracking-wider">Product Info</span>
+            <span className="text-xs font-bold text-[#231F48] uppercase tracking-wider">
+              Product Info
+            </span>
           </div>
           {product.name && (
             <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
@@ -222,29 +232,33 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
 
         {/* ── Family Sizing Selector Card ── */}
         {SHOW_FAMILY_SIZING && (
-        <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm">👥</span>
-              <h4 className="text-xs font-bold text-[#231F48]">Shopping for Family?</h4>
+          <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">👥</span>
+                <h4 className="text-xs font-bold text-[#231F48]">Shopping for Family?</h4>
+              </div>
+              <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
             </div>
-            <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
-          </div>
-          <p className="text-[10px] text-[#6B4773]">Save family sizes to find the right fit when gifting</p>
+            <p className="text-[10px] text-[#6B4773]">
+              Save family sizes to find the right fit when gifting
+            </p>
 
-          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
+              </div>
+              <span className="text-xs font-extrabold text-emerald-700">✓</span>
             </div>
-            <span className="text-xs font-extrabold text-emerald-700">✓</span>
           </div>
-        </div>
         )}
 
         {/* ── Available Sizes ── */}
         {product.sizes.length > 0 && (
           <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm">
-            <p className="text-xs text-[#6B4773] font-bold uppercase tracking-wider mb-2.5">Available Sizes</p>
+            <p className="text-xs text-[#6B4773] font-bold uppercase tracking-wider mb-2.5">
+              Available Sizes
+            </p>
             <div className="flex flex-wrap gap-2">
               {product.sizes.map((size) => (
                 <span
@@ -314,4 +328,3 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
     </div>
   );
 }
-

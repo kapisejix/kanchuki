@@ -50,7 +50,11 @@ import type { ConfigContext } from '@expo/config';
 // consumer.
 require('sucrase/register/ts');
 
-const { ANDROID_PACKAGE, APP_SCHEME, IOS_BUNDLE_ID } = require('@kanchuki/shared/constants/app-identity');
+const {
+  ANDROID_PACKAGE,
+  APP_SCHEME,
+  IOS_BUNDLE_ID,
+} = require('@kanchuki/shared/constants/app-identity');
 const { execSync } = require('node:child_process');
 
 function resolveSha() {

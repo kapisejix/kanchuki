@@ -1,8 +1,8 @@
-import { Stack } from 'expo-router'
-import { useTheme } from '../../src/lib/theme'
+import { Stack } from 'expo-router';
+import { useTheme } from '../../src/lib/theme';
 
 export default function StaffLayout() {
-  const { colors } = useTheme()
+  const { colors } = useTheme();
   return (
     <Stack
       screenOptions={{
@@ -14,7 +14,10 @@ export default function StaffLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="retailer-onboard" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen
+        name="retailer-onboard"
+        options={{ presentation: 'modal', headerShown: false }}
+      />
     </Stack>
-  )
+  );
 }

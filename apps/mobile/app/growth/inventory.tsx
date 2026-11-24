@@ -1,11 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
-import { LinearGradient } from 'expo-linear-gradient'
-import { router } from 'expo-router'
-import { AlertTriangle, ChevronLeft, PackageSearch, TrendingUp, UserX, Zap } from 'lucide-react-native'
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { growthApi, type InventoryAlert } from '../../src/lib/api/growth'
+import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import {
+  AlertTriangle,
+  ChevronLeft,
+  PackageSearch,
+  TrendingUp,
+  UserX,
+  Zap,
+} from 'lucide-react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { type InventoryAlert, growthApi } from '../../src/lib/api/growth';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 const KIND_META: Record<
   InventoryAlert['kind'],
@@ -35,19 +42,17 @@ const KIND_META: Record<
     badge: 'bg-rose-500/10',
     chipBg: 'bg-rose-500/10',
   },
-}
+};
 
 function AlertCard({ alert }: { alert: InventoryAlert }) {
-  const meta = KIND_META[alert.kind]
+  const meta = KIND_META[alert.kind];
   return (
     <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-2 mb-2">
         <View className={`w-8 h-8 rounded-xl items-center justify-center ${meta.badge}`}>
           {meta.icon}
         </View>
-        <Text className="text-[11px] font-semibold text-heliotrope-500">
-          {meta.label}
-        </Text>
+        <Text className="text-[11px] font-semibold text-heliotrope-500">{meta.label}</Text>
       </View>
       <Text
         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
@@ -56,11 +61,15 @@ function AlertCard({ alert }: { alert: InventoryAlert }) {
       >
         {alert.product_name ?? alert.sku ?? 'Product'}
       </Text>
-      <Text className="text-xs text-heliotrope-500 leading-relaxed mt-1 font-medium">{alert.message}</Text>
+      <Text className="text-xs text-heliotrope-500 leading-relaxed mt-1 font-medium">
+        {alert.message}
+      </Text>
       <View className="flex-row flex-wrap gap-2 mt-3">
         {alert.views_30d > 0 && (
           <View className={`rounded-full px-3 py-1 ${meta.chipBg}`}>
-            <Text className="text-[11px] font-semibold text-spaceCadet-900">{alert.views_30d} views</Text>
+            <Text className="text-[11px] font-semibold text-spaceCadet-900">
+              {alert.views_30d} views
+            </Text>
           </View>
         )}
         {alert.enquiries_30d > 0 && (
@@ -86,25 +95,46 @@ function AlertCard({ alert }: { alert: InventoryAlert }) {
         )}
       </View>
     </View>
-  )
+  );
 }
 
 export default function InventoryScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'inventory-alerts'],
     queryFn: () => growthApi.inventoryAlerts(),
-  })
-  const alerts = data?.data.alerts ?? []
-  const counts = data?.data.counts ?? { dead_stock: 0, high_velocity: 0, top_performer: 0, unlisted: 0 }
+  });
+  const alerts = data?.data.alerts ?? [];
+  const counts = data?.data.counts ?? {
+    dead_stock: 0,
+    high_velocity: 0,
+    top_performer: 0,
+    unlisted: 0,
+  };
 
   const sections: { key: InventoryAlert['kind']; title: string; items: InventoryAlert[] }[] = [
-    { key: 'HIGH_VELOCITY', title: 'Moving Fast — Stock Up', items: alerts.filter((a) => a.kind === 'HIGH_VELOCITY') },
-    { key: 'TOP_PERFORMER', title: 'This Month’s Winners', items: alerts.filter((a) => a.kind === 'TOP_PERFORMER') },
-    { key: 'DEAD_STOCK', title: 'Quiet Designs — Consider Clearing', items: alerts.filter((a) => a.kind === 'DEAD_STOCK') },
-    { key: 'UNLISTED', title: 'Never Viewed — Share With VIPs', items: alerts.filter((a) => a.kind === 'UNLISTED') },
-  ]
+    {
+      key: 'HIGH_VELOCITY',
+      title: 'Moving Fast — Stock Up',
+      items: alerts.filter((a) => a.kind === 'HIGH_VELOCITY'),
+    },
+    {
+      key: 'TOP_PERFORMER',
+      title: 'This Month’s Winners',
+      items: alerts.filter((a) => a.kind === 'TOP_PERFORMER'),
+    },
+    {
+      key: 'DEAD_STOCK',
+      title: 'Quiet Designs — Consider Clearing',
+      items: alerts.filter((a) => a.kind === 'DEAD_STOCK'),
+    },
+    {
+      key: 'UNLISTED',
+      title: 'Never Viewed — Share With VIPs',
+      items: alerts.filter((a) => a.kind === 'UNLISTED'),
+    },
+  ];
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -135,7 +165,9 @@ export default function InventoryScreen() {
       <ScrollView
         className="flex-1 px-4 pt-4"
         contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
-        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+        }
       >
         {/* Signature Gradient Summary Hero Card */}
         <LinearGradient
@@ -145,9 +177,7 @@ export default function InventoryScreen() {
           className="rounded-2xl p-5 mb-5"
         >
           <View className="flex-row items-center gap-2 mb-1">
-            <Text className="text-[11px] text-lavender-200 font-medium">
-              Inventory signals
-            </Text>
+            <Text className="text-[11px] text-lavender-200 font-medium">Inventory signals</Text>
           </View>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
@@ -158,7 +188,11 @@ export default function InventoryScreen() {
           <View className="flex-row gap-2 mt-4">
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-xl text-white"
               >
                 {counts.high_velocity + counts.top_performer}
@@ -167,7 +201,11 @@ export default function InventoryScreen() {
             </View>
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-xl text-white"
               >
                 {counts.dead_stock}
@@ -176,7 +214,11 @@ export default function InventoryScreen() {
             </View>
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-xl text-white"
               >
                 {counts.unlisted}
@@ -192,9 +234,7 @@ export default function InventoryScreen() {
           </View>
         ) : alerts.length === 0 ? (
           <View className="bg-white rounded-2xl p-8 border border-lavender-200 items-center">
-            <View
-              className="w-14 h-14 rounded-2xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200"
-            >
+            <View className="w-14 h-14 rounded-2xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200">
               <PackageSearch size={26} color="#6B4773" />
             </View>
             <Text
@@ -204,7 +244,8 @@ export default function InventoryScreen() {
               All Signals Healthy
             </Text>
             <Text className="text-xs text-heliotrope-500 text-center mt-1 leading-relaxed max-w-[260px] font-medium">
-              No inventory issues detected. Insights populate as designs receive views, customer inquiries, and sales.
+              No inventory issues detected. Insights populate as designs receive views, customer
+              inquiries, and sales.
             </Text>
           </View>
         ) : (
@@ -214,7 +255,11 @@ export default function InventoryScreen() {
                 s.items.length > 0 && (
                   <View key={s.key}>
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                      style={{
+                        fontFamily: 'Marcellus_400Regular',
+                        letterSpacing: 0.32,
+                        fontWeight: '800',
+                      }}
                       className="text-base text-spaceCadet-900 px-1 mb-3"
                     >
                       {s.title}
@@ -231,5 +276,5 @@ export default function InventoryScreen() {
         )}
       </ScrollView>
     </View>
-  )
+  );
 }

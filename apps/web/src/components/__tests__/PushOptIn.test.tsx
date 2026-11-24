@@ -1,13 +1,16 @@
+import { urlBase64ToUint8Array } from '@/lib/web-push';
 // F-036 Phase B: the opt-in only shows when push can actually work, and a failed
 // server registration never leaves the button claiming "on".
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { urlBase64ToUint8Array } from '@/lib/web-push';
 import { PushOptIn } from '../PushOptIn';
 
 const sub = {
   endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
-  toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/abc', keys: { p256dh: 'p', auth: 'a' } }),
+  toJSON: () => ({
+    endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+    keys: { p256dh: 'p', auth: 'a' },
+  }),
   unsubscribe: vi.fn().mockResolvedValue(true),
 };
 const pushManager = { getSubscription: vi.fn(), subscribe: vi.fn() };
@@ -15,7 +18,10 @@ const pushManager = { getSubscription: vi.fn(), subscribe: vi.fn() };
 function stubBrowser(permission: NotificationPermission = 'default') {
   const reg = { pushManager };
   vi.stubGlobal('PushManager', function PushManager() {});
-  vi.stubGlobal('Notification', { permission, requestPermission: vi.fn().mockResolvedValue('granted') });
+  vi.stubGlobal('Notification', {
+    permission,
+    requestPermission: vi.fn().mockResolvedValue('granted'),
+  });
   Object.defineProperty(navigator, 'serviceWorker', {
     configurable: true,
     value: { getRegistration: vi.fn().mockResolvedValue(reg), ready: Promise.resolve(reg) },
@@ -76,7 +82,9 @@ describe('PushOptIn', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Notify me about new arrivals' }));
     await screen.findByRole('alert');
     expect(sub.unsubscribe).toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Notify me about new arrivals' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Notify me about new arrivals' }),
+    ).toBeInTheDocument();
   });
 
   it('explains a browser-level block instead of offering a dead button', async () => {

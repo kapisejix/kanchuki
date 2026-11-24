@@ -1,15 +1,15 @@
-import { Image } from 'expo-image'
-import { Facebook, Globe, Instagram, Link2, Play } from 'lucide-react-native'
-import { Text, View } from 'react-native'
-import type { SocialPostComposeType } from '../../lib/api/social'
-import { useTheme } from '../../lib/theme'
-import { previewCover, previewLinkLine, type PreviewTarget } from './post-preview'
-import type { ComposeMedia } from './types'
+import { Image } from 'expo-image';
+import { Facebook, Globe, Instagram, Link2, Play } from 'lucide-react-native';
+import { Text, View } from 'react-native';
+import type { SocialPostComposeType } from '../../lib/api/social';
+import { useTheme } from '../../lib/theme';
+import { type PreviewTarget, previewCover, previewLinkLine } from './post-preview';
+import type { ComposeMedia } from './types';
 
 const PLATFORM_META: Record<'FACEBOOK' | 'INSTAGRAM', { label: string; bg: string }> = {
   FACEBOOK: { label: 'Facebook', bg: '#1877F2' },
   INSTAGRAM: { label: 'Instagram', bg: '#E1306C' },
-}
+};
 
 /**
  * Render mocks of the composed post the way it will look on the selected
@@ -25,32 +25,35 @@ export function PostPreview({
   linkLabel,
   linkUrl,
 }: {
-  targets: PreviewTarget[]
-  postType: SocialPostComposeType
+  targets: PreviewTarget[];
+  postType: SocialPostComposeType;
   /** First-image per media item, in publish order (carousel shows 1). */
-  media: ComposeMedia[]
-  caption: string
+  media: ComposeMedia[];
+  caption: string;
   /** Human label of the attached link ('' when none). */
-  linkLabel: string
+  linkLabel: string;
   /** URL the server appends to the caption; null when unknown or not appended. */
-  linkUrl: string | null
+  linkUrl: string | null;
 }) {
-  const { colors } = useTheme()
-  if (targets.length === 0) return null
+  const { colors } = useTheme();
+  if (targets.length === 0) return null;
 
-  const cover = previewCover(media)
-  const linkLine = previewLinkLine(caption, linkUrl)
+  const cover = previewCover(media);
+  const linkLine = previewLinkLine(caption, linkUrl);
   // Link card only when there is no photo to show — a collection link with a
   // cover photo, or the Photo carousel format, renders its media like any post.
-  const isLinkOnly = postType === 'COLLECTION_LINK' && !cover
+  const isLinkOnly = postType === 'COLLECTION_LINK' && !cover;
 
   return (
     <View className="gap-3">
       {targets.map(({ platform, name }) => {
-        const meta = PLATFORM_META[platform]
-        const isIg = platform === 'INSTAGRAM'
+        const meta = PLATFORM_META[platform];
+        const isIg = platform === 'INSTAGRAM';
         return (
-          <View key={platform} className="bg-white rounded-2xl border border-sand-100 overflow-hidden">
+          <View
+            key={platform}
+            className="bg-white rounded-2xl border border-sand-100 overflow-hidden"
+          >
             {/* Header */}
             <View className="flex-row items-center px-4 py-3">
               <View
@@ -141,8 +144,8 @@ export function PostPreview({
               ) : null}
             </View>
           </View>
-        )
+        );
       })}
     </View>
-  )
+  );
 }

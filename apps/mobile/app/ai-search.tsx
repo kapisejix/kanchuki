@@ -119,7 +119,11 @@ export default function AiSearchScreen() {
             {/* Hero */}
             <View className="bg-white rounded-2xl border border-lavender-200 p-4 mb-4">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                style={{
+                  fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
+                }}
                 className="text-spaceCadet-900 text-base"
               >
                 Describe the design in your own words
@@ -219,7 +223,11 @@ export default function AiSearchScreen() {
                     )}
                     <View className="p-3">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                        style={{
+                          fontFamily: 'Marcellus_400Regular',
+                          letterSpacing: 0.32,
+                          fontWeight: '800',
+                        }}
                         className="text-sm text-spaceCadet-900"
                         numberOfLines={1}
                       >
@@ -228,7 +236,11 @@ export default function AiSearchScreen() {
                       <View className="flex-row items-center justify-between mt-1">
                         {p.price_min != null ? (
                           <Text
-                            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                            style={{
+                              fontFamily: 'Marcellus_400Regular',
+                              letterSpacing: 0.32,
+                              fontWeight: '800',
+                            }}
                             className="text-xs text-spaceCadet-900"
                           >
                             {formatPaiseShort(p.price_min)}

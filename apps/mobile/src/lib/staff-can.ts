@@ -26,7 +26,7 @@ export type StaffFeature =
   | 'enquiries.assign' // reassign an enquiry (owner + manager)
   | 'enquiries.tryon' // F-044 R2 in-store "Try on with customer" (owner + manager)
   | 'setup' // dashboard "Complete your profile" checklist (owner only)
-  | 'google.reviews' // read Google reviews, draft + post a reply (owner + manager)
+  | 'google.reviews'; // read Google reviews, draft + post a reply (owner + manager)
 
 // 'manager' = manager (and any non-salesperson staff role) may; 'owner' =
 // only the retailer owner. catalog.view / customers.add / enquiries are
@@ -49,16 +49,16 @@ const ROLE_FEATURES: Record<
   'enquiries.tryon': 'manager',
   setup: 'owner',
   'google.reviews': 'manager',
-}
+};
 
 export function staffCan(role: string | null | undefined, feature: StaffFeature): boolean {
-  if (!role || role === 'owner') return true
+  if (!role || role === 'owner') return true;
   if (feature === 'catalog.view' || feature === 'customers.add' || feature === 'enquiries') {
-    return true
+    return true;
   }
-  if (role === 'salesperson') return false
+  if (role === 'salesperson') return false;
   // manager (or any non-salesperson staff role) — check the map.
-  return ROLE_FEATURES[feature] === 'manager'
+  return ROLE_FEATURES[feature] === 'manager';
 }
 
 /** Plain-language capability summary shown under each member's name. */
@@ -67,4 +67,4 @@ export const ROLE_SUMMARY: Record<string, string> = {
     'Can manage products, collections, campaigns and social posts, and view analytics. Customer phone numbers are hidden. No settings or billing.',
   salesperson:
     'Can view the catalog, add customers and handle customer enquiries. Customer phone numbers are hidden. Cannot edit products, create collections or run campaigns.',
-}
+};

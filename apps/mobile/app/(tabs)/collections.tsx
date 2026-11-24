@@ -1,36 +1,36 @@
-import { useCallback, memo, useState, useEffect } from 'react'
-import { View, Text, FlatList, Share, Alert, Modal, TextInput, Image } from 'react-native'
-import { router } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2, Send } from 'lucide-react-native'
-import { collectionApi, retailerApi } from '../../src/lib/api'
-import { CollectionListSkeleton } from '../../src/components/Skeleton'
-import { showError } from '../../src/lib/errors'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { WhiteButton } from '../../src/components/WhiteButton'
-import { GradientButton } from '../../src/components/GradientButton'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { Clock, Edit, Eye, Link2, MessageCircle, Plus, Send, Trash2 } from 'lucide-react-native';
+import { memo, useCallback, useEffect, useState } from 'react';
+import { Alert, FlatList, Image, Modal, Share, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { CollectionListSkeleton } from '../../src/components/Skeleton';
+import { WhiteButton } from '../../src/components/WhiteButton';
+import { collectionApi, retailerApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 type Collection = {
-  id: string
-  title: string
-  slug: string
-  url: string
-  status: string
-  view_count: number
-  enquiry_count: number
-  product_count: number
-  expires_at: string | null
-  created_at: string
-}
+  id: string;
+  title: string;
+  slug: string;
+  url: string;
+  status: string;
+  view_count: number;
+  enquiry_count: number;
+  product_count: number;
+  expires_at: string | null;
+  created_at: string;
+};
 
 function daysUntil(dateStr: string | null): string {
-  if (!dateStr) return 'No expiry'
-  const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000)
-  if (diff < 0) return 'Expired'
-  if (diff === 0) return 'Expires today'
-  return `${diff}d left`
+  if (!dateStr) return 'No expiry';
+  const diff = Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
+  if (diff < 0) return 'Expired';
+  if (diff === 0) return 'Expires today';
+  return `${diff}d left`;
 }
 
 // ── Edit Collection Modal ──────────────────────────────────────────
@@ -41,106 +41,105 @@ function EditCollectionModal({
   onClose,
   onSaved,
 }: {
-  visible: boolean
-  collection: Collection | null
-  onClose: () => void
-  onSaved: () => void
+  visible: boolean;
+  collection: Collection | null;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
-  const [title, setTitle] = useState(collection?.title ?? '')
-  const [expiryDays, setExpiryDays] = useState('30')
-  const [saving, setSaving] = useState(false)
+  const [title, setTitle] = useState(collection?.title ?? '');
+  const [expiryDays, setExpiryDays] = useState('30');
+  const [saving, setSaving] = useState(false);
 
   // Sync form fields when modal opens with a different collection
   useEffect(() => {
     if (visible && collection) {
-      setTitle(collection.title)
+      setTitle(collection.title);
       // Calculate remaining days from expires_at
       if (collection.expires_at) {
         const remaining = Math.ceil(
           (new Date(collection.expires_at).getTime() - Date.now()) / 86_400_000,
-        )
-        setExpiryDays(String(Math.max(1, remaining)))
+        );
+        setExpiryDays(String(Math.max(1, remaining)));
       } else {
-        setExpiryDays('30')
+        setExpiryDays('30');
       }
     }
-  }, [visible, collection])
+  }, [visible, collection]);
 
   const handleSave = async () => {
-    if (!collection || !title.trim()) return
-    setSaving(true)
+    if (!collection || !title.trim()) return;
+    setSaving(true);
     try {
       await collectionApi.update(collection.id, {
         title: title.trim(),
         ...(expiryDays ? { expires_days: parseInt(expiryDays, 10) } : {}),
-      })
-      onSaved()
-      onClose()
+      });
+      onSaved();
+      onClose();
     } catch (err) {
-      showError(err, 'Failed to update')
+      showError(err, 'Failed to update');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen>
-      <View className="flex-1 bg-black/50 items-center justify-center px-6">
-        <View className="bg-white rounded-2xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
-          <Text
-            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-lg text-spaceCadet-900"
-          >
-            Edit Collection
-          </Text>
-
-          <View>
-            <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
-              Title
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-white rounded-2xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+              className="text-lg text-spaceCadet-900"
+            >
+              Edit Collection
             </Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Collection name"
-              placeholderTextColor="#928EB2"
-              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
-              autoFocus
-            />
-          </View>
 
-          <View>
-            <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
-              Expires in (days)
-            </Text>
-            <TextInput
-              value={expiryDays}
-              onChangeText={setExpiryDays}
-              placeholder="30"
-              placeholderTextColor="#928EB2"
-              keyboardType="numeric"
-              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
-            />
-          </View>
-
-          <View className="flex-row gap-3 mt-2">
-            <View className="flex-1">
-              <WhiteButton label="Cancel" disabled={saving} onPress={onClose} />
-            </View>
-            <View className="flex-1">
-              <GradientButton variant="web"
-                label="Save"
-                onPress={() => void handleSave()}
-                disabled={saving || !title.trim()}
-                loading={saving}
+            <View>
+              <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">Title</Text>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                placeholder="Collection name"
+                placeholderTextColor="#928EB2"
+                className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
+                autoFocus
               />
+            </View>
+
+            <View>
+              <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">
+                Expires in (days)
+              </Text>
+              <TextInput
+                value={expiryDays}
+                onChangeText={setExpiryDays}
+                placeholder="30"
+                placeholderTextColor="#928EB2"
+                keyboardType="numeric"
+                className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
+              />
+            </View>
+
+            <View className="flex-row gap-3 mt-2">
+              <View className="flex-1">
+                <WhiteButton label="Cancel" disabled={saving} onPress={onClose} />
+              </View>
+              <View className="flex-1">
+                <GradientButton
+                  variant="web"
+                  label="Save"
+                  onPress={() => void handleSave()}
+                  disabled={saving || !title.trim()}
+                  loading={saving}
+                />
+              </View>
             </View>
           </View>
         </View>
-      </View>
       </KeyboardScreen>
     </Modal>
-  )
+  );
 }
 
 // ── Memoized Collection Card ───────────────────────────────────────
@@ -153,12 +152,12 @@ const CollectionCard = memo(function CollectionCard({
   onEdit,
   onDelete,
 }: {
-  item: Collection
-  onPress: () => void
-  onShare: () => void
-  onWhatsApp: () => void
-  onEdit: () => void
-  onDelete: () => void
+  item: Collection;
+  onPress: () => void;
+  onShare: () => void;
+  onWhatsApp: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   return (
     <AnimatedPressable
@@ -178,9 +177,7 @@ const CollectionCard = memo(function CollectionCard({
             {item.product_count} {item.product_count === 1 ? 'product' : 'products'}
           </Text>
         </View>
-        <View
-          className="px-2 py-0.5 rounded-md bg-lavender-100"
-        >
+        <View className="px-2 py-0.5 rounded-md bg-lavender-100">
           <Text
             className={`text-[11px] font-medium ${
               item.status === 'ACTIVE' ? 'text-spaceCadet-900' : 'text-heliotrope-500'
@@ -203,7 +200,9 @@ const CollectionCard = memo(function CollectionCard({
         </View>
         <View className="flex-row items-center gap-1.5">
           <Clock size={14} color="#6B4773" />
-          <Text className="text-xs font-medium text-heliotrope-500">{daysUntil(item.expires_at)}</Text>
+          <Text className="text-xs font-medium text-heliotrope-500">
+            {daysUntil(item.expires_at)}
+          </Text>
         </View>
       </View>
 
@@ -253,80 +252,78 @@ const CollectionCard = memo(function CollectionCard({
         </AnimatedPressable>
       </View>
     </AnimatedPressable>
-  )
-})
+  );
+});
 
 // ── Collections Screen ─────────────────────────────────────────────
 
 export default function CollectionsScreen() {
-  const queryClient = useQueryClient()
-  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
+  const queryClient = useQueryClient();
+  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets();
   const { data: retailerData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
-  })
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data
-  const [editTarget, setEditTarget] = useState<Collection | null>(null)
-  const [showEditModal, setShowEditModal] = useState(false)
+  });
+  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data;
+  const [editTarget, setEditTarget] = useState<Collection | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['collections'],
     queryFn: () => collectionApi.list(),
     staleTime: 30_000,
     gcTime: 300_000,
-  })
+  });
 
-  const collections = ((data as { data: Collection[] } | undefined)?.data ?? [])
+  const collections = (data as { data: Collection[] } | undefined)?.data ?? [];
 
-  const handleShare = useCallback(
-    async (collection: Collection) => {
-      await Share.share({
-        message: `Check out ${collection.title}: ${collection.url}`,
-        url: collection.url,
-      })
-    },
-    [],
-  )
+  const handleShare = useCallback(async (collection: Collection) => {
+    await Share.share({
+      message: `Check out ${collection.title}: ${collection.url}`,
+      url: collection.url,
+    });
+  }, []);
 
   const handleEdit = useCallback((collection: Collection) => {
-    setEditTarget(collection)
-    setShowEditModal(true)
-  }, [])
+    setEditTarget(collection);
+    setShowEditModal(true);
+  }, []);
 
-  const handleDelete = useCallback((collection: Collection) => {
-    Alert.alert(
-      'Delete Collection',
-      `Permanently delete "${collection.title}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await collectionApi.delete(collection.id)
-              void queryClient.invalidateQueries({ queryKey: ['collections'] })
-            } catch (err) {
-              showError(err, 'Failed to delete')
-            }
+  const handleDelete = useCallback(
+    (collection: Collection) => {
+      Alert.alert(
+        'Delete Collection',
+        `Permanently delete "${collection.title}"? This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await collectionApi.delete(collection.id);
+                void queryClient.invalidateQueries({ queryKey: ['collections'] });
+              } catch (err) {
+                showError(err, 'Failed to delete');
+              }
+            },
           },
-        },
-      ],
-    )
-  }, [queryClient])
+        ],
+      );
+    },
+    [queryClient],
+  );
 
   const handleEditSaved = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['collections'] })
-  }, [queryClient])
+    void queryClient.invalidateQueries({ queryKey: ['collections'] });
+  }, [queryClient]);
 
   const renderItem = useCallback(
     ({ item }: { item: Collection }) => (
       <CollectionCard
         item={item}
-        onPress={() =>
-          router.push({ pathname: '/collection/[id]', params: { id: item.id } })
-        }
+        onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
         onShare={() => void handleShare(item)}
         onWhatsApp={() =>
           router.push({ pathname: '/collection/[id]', params: { id: item.id, share: '1' } })
@@ -336,9 +333,9 @@ export default function CollectionsScreen() {
       />
     ),
     [handleShare, handleEdit, handleDelete],
-  )
+  );
 
-  const keyExtractor = useCallback((item: Collection) => item.id, [])
+  const keyExtractor = useCallback((item: Collection) => item.id, []);
 
   const listEmpty = useCallback(
     () => (
@@ -356,7 +353,8 @@ export default function CollectionsScreen() {
           Create a collection and share it on WhatsApp{'\n'}so customers can browse and enquire.
         </Text>
         <View className="mt-5 w-full max-w-xs">
-          <GradientButton variant="web"
+          <GradientButton
+            variant="web"
             label="Create Collection"
             onPress={() => router.push('/collection/new')}
           />
@@ -364,7 +362,7 @@ export default function CollectionsScreen() {
       </View>
     ),
     [],
-  )
+  );
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -375,7 +373,11 @@ export default function CollectionsScreen() {
       >
         <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
           {retailerProfile?.logo_url ? (
-            <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            <Image
+              source={{ uri: retailerProfile.logo_url }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="cover"
+            />
           ) : (
             <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
               {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
@@ -383,9 +385,12 @@ export default function CollectionsScreen() {
           )}
         </View>
         <View>
-          <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
+          <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">
+            {retailerProfile?.shop_name ?? 'Store'}
+          </Text>
           <Text className="text-xs text-heliotrope-500">
-            {retailerProfile?.city ?? 'Collections'} · {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
+            {retailerProfile?.city ?? 'Collections'} · {collections.length}{' '}
+            {collections.length === 1 ? 'collection' : 'collections'}
           </Text>
         </View>
       </View>
@@ -397,7 +402,12 @@ export default function CollectionsScreen() {
           data={collections}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1, paddingBottom: tabScrollPaddingBottom }}
+          contentContainerStyle={{
+            padding: 14,
+            gap: 12,
+            flexGrow: 1,
+            paddingBottom: tabScrollPaddingBottom,
+          }}
           ListEmptyComponent={listEmpty}
           windowSize={5}
           maxToRenderPerBatch={10}
@@ -428,11 +438,11 @@ export default function CollectionsScreen() {
         visible={showEditModal}
         collection={editTarget}
         onClose={() => {
-          setShowEditModal(false)
-          setEditTarget(null)
+          setShowEditModal(false);
+          setEditTarget(null);
         }}
         onSaved={handleEditSaved}
       />
     </View>
-  )
+  );
 }

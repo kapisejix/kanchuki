@@ -15,8 +15,8 @@
 
 export default {
   createAnimatedComponent: (component: unknown) => component,
-}
+};
 
-export const useSharedValue = <T,>(value: T) => ({ value })
-export const useAnimatedStyle = (styleFactory: () => unknown) => styleFactory()
-export const withSpring = (value: unknown) => value
+export const useSharedValue = <T>(value: T) => ({ value });
+export const useAnimatedStyle = (styleFactory: () => unknown) => styleFactory();
+export const withSpring = (value: unknown) => value;

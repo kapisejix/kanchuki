@@ -8,41 +8,41 @@
  */
 export function pollWithBackoff(opts: {
   /** First poll delay in ms (default 2000) */
-  initialMs?: number
+  initialMs?: number;
   /** Maximum delay between polls in ms (default 16000) */
-  maxMs?: number
+  maxMs?: number;
   /** Stop after this many attempts (default 60) */
-  maxAttempts?: number
+  maxAttempts?: number;
   /** Async callback — return `true` to stop polling (job done or failed) */
-  onPoll: () => Promise<boolean>
+  onPoll: () => Promise<boolean>;
 }): () => void {
-  const { initialMs = 2000, maxMs = 16_000, maxAttempts = 60, onPoll } = opts
-  let attempt = 0
-  let timer: ReturnType<typeof setTimeout> | null = null
-  let stopped = false
+  const { initialMs = 2000, maxMs = 16_000, maxAttempts = 60, onPoll } = opts;
+  let attempt = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
 
   const tick = async () => {
-    if (stopped) return
-    attempt++
+    if (stopped) return;
+    attempt++;
 
     try {
-      const done = await onPoll()
-      if (done || stopped) return
+      const done = await onPoll();
+      if (done || stopped) return;
     } catch {
       // Transient failure — keep polling
     }
 
-    if (attempt >= maxAttempts) return
+    if (attempt >= maxAttempts) return;
 
-    const delay = Math.min(initialMs * Math.pow(2, attempt - 1), maxMs)
-    timer = setTimeout(tick, delay)
-  }
+    const delay = Math.min(initialMs * Math.pow(2, attempt - 1), maxMs);
+    timer = setTimeout(tick, delay);
+  };
 
   // First poll fires immediately (the job was just enqueued)
-  void tick()
+  void tick();
 
   return () => {
-    stopped = true
-    if (timer) clearTimeout(timer)
-  }
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
 }

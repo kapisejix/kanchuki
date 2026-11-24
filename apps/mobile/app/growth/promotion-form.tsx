@@ -1,29 +1,23 @@
-import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft } from 'lucide-react-native'
-import { useEffect, useState } from 'react'
-import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { growthApi, type Promotion } from '../../src/lib/api/growth'
-import { showError } from '../../src/lib/errors'
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { type Promotion, growthApi } from '../../src/lib/api/growth';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 function Chip({
   label,
   active,
   onPress,
 }: {
-  label: string
-  active: boolean
-  onPress: () => void
+  label: string;
+  active: boolean;
+  onPress: () => void;
 }) {
   return (
     <AnimatedPressable
@@ -32,13 +26,15 @@ function Chip({
       accessibilityState={{ selected: active }}
       className={`px-4 py-2 rounded-2xl border ${active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'border-lavender-200 bg-lavender-50'}`}
     >
-      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>{label}</Text>
+      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
+        {label}
+      </Text>
     </AnimatedPressable>
-  )
+  );
 }
 
 function Label({ text }: { text: string }) {
-  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5 mt-3">{text}</Text>
+  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5 mt-3">{text}</Text>;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -52,80 +48,85 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </Text>
       {children}
     </View>
-  )
+  );
 }
 
 export default function PromotionFormScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const params = useLocalSearchParams<{ id?: string }>()
-  const editingId = params.id
-  const isEdit = !!editingId
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const editingId = params.id;
+  const isEdit = !!editingId;
 
-  const [code, setCode] = useState('')
-  const [discountType, setDiscountType] = useState<'PERCENT' | 'FIXED'>('PERCENT')
-  const [discountValue, setDiscountValue] = useState('')
-  const [minOrder, setMinOrder] = useState('')
-  const [isActive, setIsActive] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [code, setCode] = useState('');
+  const [discountType, setDiscountType] = useState<'PERCENT' | 'FIXED'>('PERCENT');
+  const [discountValue, setDiscountValue] = useState('');
+  const [minOrder, setMinOrder] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const { data: existingData, isLoading: existingLoading } = useQuery({
     queryKey: ['growth', 'promotions', editingId],
     queryFn: () =>
       growthApi.promotions().then((res) => res.data.find((p: Promotion) => p.id === editingId)),
     enabled: isEdit,
-  })
-  const existing = existingData
+  });
+  const existing = existingData;
 
   useEffect(() => {
-    if (!existing) return
-    setCode(existing.code)
-    setDiscountType(existing.discount_type)
-    setDiscountValue(String(existing.discount_value))
-    setMinOrder(existing.min_order_paise ? String(existing.min_order_paise / 100) : '')
-    setIsActive(existing.is_active)
-  }, [existing])
+    if (!existing) return;
+    setCode(existing.code);
+    setDiscountType(existing.discount_type);
+    setDiscountValue(String(existing.discount_value));
+    setMinOrder(existing.min_order_paise ? String(existing.min_order_paise / 100) : '');
+    setIsActive(existing.is_active);
+  }, [existing]);
 
   const handleSave = async () => {
     if (!code.trim()) {
-      Alert.alert('Missing info', 'Give the promotion a code, e.g. DIWALI10.')
-      return
+      Alert.alert('Missing info', 'Give the promotion a code, e.g. DIWALI10.');
+      return;
     }
-    const value = parseInt(discountValue, 10)
+    const value = parseInt(discountValue, 10);
     if (!value || value <= 0 || (discountType === 'PERCENT' && value > 100)) {
-      Alert.alert('Invalid discount', discountType === 'PERCENT' ? 'Enter a % between 1 and 100.' : 'Enter a discount amount in ₹.')
-      return
+      Alert.alert(
+        'Invalid discount',
+        discountType === 'PERCENT'
+          ? 'Enter a % between 1 and 100.'
+          : 'Enter a discount amount in ₹.',
+      );
+      return;
     }
-    const min = Math.round((parseFloat(minOrder) || 0) * 100)
+    const min = Math.round((parseFloat(minOrder) || 0) * 100);
     const payload = {
       code: code.trim(),
       discount_type: discountType,
       discount_value: value,
       ...(min > 0 ? { min_order_paise: min } : {}),
       is_active: isActive,
-    }
-    setSaving(true)
+    };
+    setSaving(true);
     try {
       if (isEdit) {
-        await growthApi.updatePromotion(editingId!, payload)
+        await growthApi.updatePromotion(editingId!, payload);
       } else {
-        await growthApi.createPromotion(payload)
+        await growthApi.createPromotion(payload);
       }
-      await queryClient.invalidateQueries({ queryKey: ['growth', 'promotions'] })
-      router.back()
+      await queryClient.invalidateQueries({ queryKey: ['growth', 'promotions'] });
+      router.back();
     } catch (err) {
-      showError(err, isEdit ? 'Failed to update promotion' : 'Failed to create promotion')
-      setSaving(false)
+      showError(err, isEdit ? 'Failed to update promotion' : 'Failed to create promotion');
+      setSaving(false);
     }
-  }
+  };
 
   if (isEdit && existingLoading) {
     return (
       <View className="flex-1 bg-[#F8F7FC] items-center justify-center">
         <Text className="text-xs text-heliotrope-500 font-medium">Loading…</Text>
       </View>
-    )
+    );
   }
 
   return (
@@ -152,10 +153,18 @@ export default function PromotionFormScreen() {
             {isEdit ? 'Edit Promotion' : 'New Promotion'}
           </Text>
         </View>
-        <GradientButton variant="web" label={saving ? 'Saving…' : 'Save'} onPress={() => void handleSave()} loading={saving} />
+        <GradientButton
+          variant="web"
+          label={saving ? 'Saving…' : 'Save'}
+          onPress={() => void handleSave()}
+          loading={saving}
+        />
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <View className="gap-4">
           <Section title="Promo Code">
             <TextInput
@@ -174,8 +183,16 @@ export default function PromotionFormScreen() {
 
           <Section title="Discount Configuration">
             <View className="flex-row gap-2 mb-3">
-              <Chip label="% off" active={discountType === 'PERCENT'} onPress={() => setDiscountType('PERCENT')} />
-              <Chip label="Flat ₹" active={discountType === 'FIXED'} onPress={() => setDiscountType('FIXED')} />
+              <Chip
+                label="% off"
+                active={discountType === 'PERCENT'}
+                onPress={() => setDiscountType('PERCENT')}
+              />
+              <Chip
+                label="Flat ₹"
+                active={discountType === 'FIXED'}
+                onPress={() => setDiscountType('FIXED')}
+              />
             </View>
             <Label text={discountType === 'PERCENT' ? 'Discount %' : 'Discount amount (₹)'} />
             <TextInput
@@ -200,20 +217,12 @@ export default function PromotionFormScreen() {
 
           <Section title="Availability">
             <View className="flex-row gap-2">
-              <Chip
-                label="Active now"
-                active={isActive}
-                onPress={() => setIsActive(true)}
-              />
-              <Chip
-                label="Paused"
-                active={!isActive}
-                onPress={() => setIsActive(false)}
-              />
+              <Chip label="Active now" active={isActive} onPress={() => setIsActive(true)} />
+              <Chip label="Paused" active={!isActive} onPress={() => setIsActive(false)} />
             </View>
           </Section>
         </View>
       </ScrollView>
     </KeyboardScreen>
-  )
+  );
 }

@@ -1,14 +1,14 @@
-import { request } from './client'
+import { request } from './client';
 
 // ─── Product Categories ────────────────────────────────────────────
 
 export type ProductCategory = {
-  id: string
-  name: string
-  image_url: string | null
-  sort_order: number
-  product_count: number
-}
+  id: string;
+  name: string;
+  image_url: string | null;
+  sort_order: number;
+  product_count: number;
+};
 
 export const categoryApi = {
   list: () => request<{ data: ProductCategory[] }>('/v1/categories', { getCacheTtlMs: 15_000 }),
@@ -22,7 +22,10 @@ export const categoryApi = {
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: { name?: string; image_url?: string | null; image_r2_key?: string | null }) =>
+  update: (
+    id: string,
+    data: { name?: string; image_url?: string | null; image_r2_key?: string | null },
+  ) =>
     request<{ data: ProductCategory }>(`/v1/categories/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -32,10 +35,15 @@ export const categoryApi = {
 
   getUploadUrl: (contentType: string, sizeBytes: number) =>
     request<{
-      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
+      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number };
     }>('/v1/categories/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename: 'category.jpg', content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
+      body: JSON.stringify({
+        filename: 'category.jpg',
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        content_length: sizeBytes,
+      }),
       timeoutMs: 30_000,
     }),
 
@@ -44,4 +52,4 @@ export const categoryApi = {
       method: 'POST',
       body: JSON.stringify({ product_ids: productIds }),
     }),
-}
+};

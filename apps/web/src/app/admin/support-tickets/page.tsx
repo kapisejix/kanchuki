@@ -1,94 +1,94 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  Ticket,
-  Search,
-  CheckCircle2,
   AlertCircle,
-  MapPin,
-  Phone,
-  Store,
-  UserCheck,
+  CheckCircle2,
   ChevronRight,
-  Loader2,
-  X,
-  Save,
-  RefreshCw,
-  Navigation,
   IndianRupee,
-  Plus,
-  Trash2,
+  Loader2,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+  MapPin,
+  Navigation,
+  Phone,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  Store,
+  Ticket,
+  Trash2,
+  UserCheck,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type TicketStatus = 'OPEN' | 'ASSIGNED' | 'RESOLVED' | 'CLOSED'
+type TicketStatus = 'OPEN' | 'ASSIGNED' | 'RESOLVED' | 'CLOSED';
 
-type TicketType = 'GENERAL' | 'CATALOG_UPLOAD'
+type TicketType = 'GENERAL' | 'CATALOG_UPLOAD';
 
 type Ticket = {
-  id: string
-  retailer_id: string
-  requires_visit: boolean
-  region_scope_id: string | null
-  assigned_to_id: string | null
-  status: TicketStatus
-  note: string | null
-  created_at: string
-  resolved_at: string | null
-  assigned_to: { id: string; name: string } | null
-  retailer: { id: string; shop_name: string; city: string; phone: string }
-  ticket_type: TicketType
-  setup_item: string | null
-  item_count_requested: number | null
-  quoted_price_inr: number | null
-  proposed_slots: string[] | null
-  confirmed_slot: string | null
-  paid_at: string | null
-}
+  id: string;
+  retailer_id: string;
+  requires_visit: boolean;
+  region_scope_id: string | null;
+  assigned_to_id: string | null;
+  status: TicketStatus;
+  note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  assigned_to: { id: string; name: string } | null;
+  retailer: { id: string; shop_name: string; city: string; phone: string };
+  ticket_type: TicketType;
+  setup_item: string | null;
+  item_count_requested: number | null;
+  quoted_price_inr: number | null;
+  proposed_slots: string[] | null;
+  confirmed_slot: string | null;
+  paid_at: string | null;
+};
 
 type TicketStats = {
-  open: number
-  assigned: number
-  resolved: number
-  closed: number
-  total: number
-  requires_visit: number
-}
+  open: number;
+  assigned: number;
+  resolved: number;
+  closed: number;
+  total: number;
+  requires_visit: number;
+};
 
 type TeamMember = {
-  id: string
-  name: string
-  role: string
-}
+  id: string;
+  name: string;
+  role: string;
+};
 
 const STATUS_LABELS: Record<TicketStatus, string> = {
   OPEN: 'Open',
   ASSIGNED: 'Assigned',
   RESOLVED: 'Resolved',
   CLOSED: 'Closed',
-}
+};
 
 const STATUS_COLORS: Record<TicketStatus, string> = {
   OPEN: 'bg-amber-100 text-amber-700 border-amber-200',
   ASSIGNED: 'bg-blue-100 text-blue-700 border-blue-200',
   RESOLVED: 'bg-green-100 text-green-700 border-green-200',
   CLOSED: 'bg-gray-100 text-gray-500 border-gray-200',
-}
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
-}
+};
 
 const rowVariants = {
   hidden: { opacity: 0, x: -10 },
   visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 200, damping: 25 } },
-}
+};
 
 // ─── Ticket Detail Panel ─────────────────────────────────────────
 
@@ -98,63 +98,67 @@ function TicketDetailPanel({
   onClose,
   onUpdated,
 }: {
-  ticket: Ticket
-  supportMembers: TeamMember[]
-  onClose: () => void
-  onUpdated: () => void
+  ticket: Ticket;
+  supportMembers: TeamMember[];
+  onClose: () => void;
+  onUpdated: () => void;
 }) {
-  const [status, setStatus] = useState(ticket.status)
-  const [assignedTo, setAssignedTo] = useState(ticket.assigned_to_id ?? '')
-  const [note, setNote] = useState(ticket.note ?? '')
-  const [saving, setSaving] = useState(false)
-  const [quotedPrice, setQuotedPrice] = useState(ticket.quoted_price_inr?.toString() ?? '')
-  const [slots, setSlots] = useState<string[]>(ticket.proposed_slots ?? [])
-  const [newSlot, setNewSlot] = useState('')
+  const [status, setStatus] = useState(ticket.status);
+  const [assignedTo, setAssignedTo] = useState(ticket.assigned_to_id ?? '');
+  const [note, setNote] = useState(ticket.note ?? '');
+  const [saving, setSaving] = useState(false);
+  const [quotedPrice, setQuotedPrice] = useState(ticket.quoted_price_inr?.toString() ?? '');
+  const [slots, setSlots] = useState<string[]>(ticket.proposed_slots ?? []);
+  const [newSlot, setNewSlot] = useState('');
 
   const addSlot = () => {
-    if (!newSlot) return
-    const iso = new Date(newSlot).toISOString()
-    if (!slots.includes(iso)) setSlots((prev) => [...prev, iso])
-    setNewSlot('')
-  }
+    if (!newSlot) return;
+    const iso = new Date(newSlot).toISOString();
+    if (!slots.includes(iso)) setSlots((prev) => [...prev, iso]);
+    setNewSlot('');
+  };
 
   const handleSave = async () => {
-    setSaving(true)
+    setSaving(true);
     try {
-      const body: Record<string, unknown> = {}
-      if (status !== ticket.status) body.status = status
-      if (assignedTo !== (ticket.assigned_to_id ?? '')) body.assigned_to_id = assignedTo || null
-      if (note !== (ticket.note ?? '')) body.note = note
+      const body: Record<string, unknown> = {};
+      if (status !== ticket.status) body.status = status;
+      if (assignedTo !== (ticket.assigned_to_id ?? '')) body.assigned_to_id = assignedTo || null;
+      if (note !== (ticket.note ?? '')) body.note = note;
       if (ticket.ticket_type === 'CATALOG_UPLOAD') {
-        const priceNum = quotedPrice.trim() === '' ? NaN : parseInt(quotedPrice, 10)
-        if (!Number.isNaN(priceNum) && priceNum >= 0 && priceNum !== (ticket.quoted_price_inr ?? -1)) {
-          body.quoted_price_inr = priceNum
+        const priceNum = quotedPrice.trim() === '' ? NaN : parseInt(quotedPrice, 10);
+        if (
+          !Number.isNaN(priceNum) &&
+          priceNum >= 0 &&
+          priceNum !== (ticket.quoted_price_inr ?? -1)
+        ) {
+          body.quoted_price_inr = priceNum;
         }
         if (JSON.stringify(slots) !== JSON.stringify(ticket.proposed_slots ?? [])) {
-          body.proposed_slots = slots
+          body.proposed_slots = slots;
         }
       }
 
       if (Object.keys(body).length === 0) {
-        onClose()
-        return
+        onClose();
+        return;
       }
 
       await fetch(`${API_URL}/v1/team/tickets/${ticket.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify(body),
-      })
-      onUpdated()
-      onClose()
+      });
+      onUpdated();
+      onClose();
     } catch {
       // ignore
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
-  const statusOptions: TicketStatus[] = ['OPEN', 'ASSIGNED', 'RESOLVED', 'CLOSED']
+  const statusOptions: TicketStatus[] = ['OPEN', 'ASSIGNED', 'RESOLVED', 'CLOSED'];
 
   return (
     <motion.div
@@ -169,7 +173,10 @@ function TicketDetailPanel({
           <Ticket size={16} className="text-ink-500" />
           <span className="text-sm font-bold text-gray-900">Ticket Detail</span>
         </div>
-        <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer">
+        <button
+          onClick={onClose}
+          className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer"
+        >
           <X size={16} />
         </button>
       </div>
@@ -221,7 +228,9 @@ function TicketDetailPanel({
           >
             <option value="">Unassigned (pool)</option>
             {supportMembers.map((m) => (
-              <option key={m.id} value={m.id}>{m.name} ({m.role.replace('_', ' ')})</option>
+              <option key={m.id} value={m.id}>
+                {m.name} ({m.role.replace('_', ' ')})
+              </option>
             ))}
           </select>
         </div>
@@ -250,9 +259,14 @@ function TicketDetailPanel({
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Quoted Price (₹)</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                Quoted Price (₹)
+              </label>
               <div className="relative">
-                <IndianRupee size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <IndianRupee
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
                 <input
                   type="number"
                   min={0}
@@ -264,23 +278,35 @@ function TicketDetailPanel({
               </div>
               {ticket.paid_at && (
                 <p className="text-[10px] text-green-600 mt-1">
-                  Already paid on {new Date(ticket.paid_at).toLocaleString('en-IN')} — price is locked.
+                  Already paid on {new Date(ticket.paid_at).toLocaleString('en-IN')} — price is
+                  locked.
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Proposed Visit Slots</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                Proposed Visit Slots
+              </label>
               {slots.length > 0 && (
                 <div className="space-y-1.5 mb-2">
                   {slots.map((slot) => (
-                    <div key={slot} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                    <div
+                      key={slot}
+                      className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2"
+                    >
                       <span className="text-xs text-gray-700">
                         {new Date(slot).toLocaleString('en-IN', {
-                          weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+                          weekday: 'short',
+                          day: 'numeric',
+                          month: 'short',
+                          hour: 'numeric',
+                          minute: '2-digit',
                         })}
                         {ticket.confirmed_slot === slot && (
-                          <span className="ml-1.5 text-[10px] font-medium text-green-600">(confirmed)</span>
+                          <span className="ml-1.5 text-[10px] font-medium text-green-600">
+                            (confirmed)
+                          </span>
                         )}
                       </span>
                       <button
@@ -354,76 +380,79 @@ function TicketDetailPanel({
         </button>
       </div>
     </motion.div>
-  )
+  );
 }
 
 // ─── Main Page ───────────────────────────────────────────────────
 
 export default function SupportTicketsPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([])
-  const [stats, setStats] = useState<TicketStats | null>(null)
-  const [supportMembers, setSupportMembers] = useState<TeamMember[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'' | TicketType>('')
-  const [search, setSearch] = useState('')
-  const [routing, setRouting] = useState(false)
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [stats, setStats] = useState<TicketStats | null>(null);
+  const [supportMembers, setSupportMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'' | TicketType>('');
+  const [search, setSearch] = useState('');
+  const [routing, setRouting] = useState(false);
 
   const handleRouteAll = async () => {
-    setRouting(true)
+    setRouting(true);
     try {
       await fetch(`${API_URL}/v1/team/tickets/route-all`, {
         ...(await adminMutateOptions()),
         method: 'POST',
-      })
-      await loadData()
+      });
+      await loadData();
     } catch {
       // ignore
     } finally {
-      setRouting(false)
+      setRouting(false);
     }
-  }
+  };
 
   const loadData = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const [t, s, m] = await Promise.all([
         fetch(`${API_URL}/v1/team/tickets`, adminGetOptions()).then((r) => r.json()),
         fetch(`${API_URL}/v1/team/tickets/stats`, adminGetOptions()).then((r) => r.json()),
         fetch(`${API_URL}/v1/team/members`, adminGetOptions()).then((r) => r.json()),
-      ])
-      setTickets(t.data ?? [])
-      setStats(s.data ?? null)
-      const all = (m.data ?? []) as TeamMember[]
-      setSupportMembers(all.filter((mem) => mem.role.includes('SUPPORT') || mem.role === 'SUPER_ADMIN'))
+      ]);
+      setTickets(t.data ?? []);
+      setStats(s.data ?? null);
+      const all = (m.data ?? []) as TeamMember[];
+      setSupportMembers(
+        all.filter((mem) => mem.role.includes('SUPPORT') || mem.role === 'SUPER_ADMIN'),
+      );
     } catch {
       // ignore
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    loadData();
+  }, [loadData]);
 
   const filtered = tickets.filter((t) => {
     if (search) {
-      const q = search.toLowerCase()
+      const q = search.toLowerCase();
       if (
         !t.retailer.shop_name.toLowerCase().includes(q) &&
         !t.retailer.city.toLowerCase().includes(q) &&
         !t.retailer.phone.includes(q)
       )
-        return false
+        return false;
     }
-    if (statusFilter && t.status !== statusFilter) return false
-    if (typeFilter && t.ticket_type !== typeFilter) return false
-    return true
-  })
+    if (statusFilter && t.status !== statusFilter) return false;
+    if (typeFilter && t.ticket_type !== typeFilter) return false;
+    return true;
+  });
 
-  const selectClass = "border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
+  const selectClass =
+    'border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition';
 
   return (
     <motion.div
@@ -438,7 +467,9 @@ export default function SupportTicketsPage() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">Support Tickets</h1>
           </div>
-          <p className="text-sm text-gray-500">Manage retailer support requests and field agent tasks</p>
+          <p className="text-sm text-gray-500">
+            Manage retailer support requests and field agent tasks
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <motion.button
@@ -448,11 +479,7 @@ export default function SupportTicketsPage() {
             className="bg-ink-600 hover:bg-ink-500 flex items-center gap-1.5 px-4 py-2.5 text-white text-sm font-semibold rounded-xl transition shadow-lg disabled:opacity-60 cursor-pointer"
             title="Route all unassigned tickets"
           >
-            {routing ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <Navigation size={15} />
-            )}
+            {routing ? <Loader2 size={15} className="animate-spin" /> : <Navigation size={15} />}
             {routing ? 'Routing...' : 'Route All'}
           </motion.button>
           <motion.button
@@ -486,7 +513,10 @@ export default function SupportTicketsPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[220px] group">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors" />
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-ink-500 transition-colors"
+          />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -524,26 +554,37 @@ export default function SupportTicketsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Retailer</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Status</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Assigned To</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Type</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">Route</th>
-                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">Created</th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                    Retailer
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                    Status
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                    Assigned To
+                  </th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                    Type
+                  </th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500">
+                    Route
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500">
+                    Created
+                  </th>
                   <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500" />
                 </tr>
               </thead>
-              <motion.tbody
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
+              <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
                 {loading ? (
                   [...Array(5)].map((_, i) => (
                     <tr key={i} className="border-b border-gray-50">
                       {[...Array(6)].map((_, j) => (
                         <td key={j} className="px-4 py-4">
-                          <div className="h-4 bg-gray-200/60 rounded animate-pulse" style={{ width: `${40 + Math.random() * 40}%` }} />
+                          <div
+                            className="h-4 bg-gray-200/60 rounded animate-pulse"
+                            style={{ width: `${40 + Math.random() * 40}%` }}
+                          />
                         </td>
                       ))}
                     </tr>
@@ -558,7 +599,9 @@ export default function SupportTicketsPage() {
                       >
                         <Ticket size={40} className="mx-auto mb-3 text-gray-300" />
                         <p className="text-sm font-medium">No tickets found</p>
-                        <p className="text-xs mt-1 text-gray-400">All clear — no open support requests</p>
+                        <p className="text-xs mt-1 text-gray-400">
+                          All clear — no open support requests
+                        </p>
                       </motion.div>
                     </td>
                   </tr>
@@ -575,7 +618,9 @@ export default function SupportTicketsPage() {
                       <td className="px-4 py-3.5">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-gray-900 truncate">{t.retailer.shop_name}</p>
+                            <p className="font-medium text-gray-900 truncate">
+                              {t.retailer.shop_name}
+                            </p>
                             {t.ticket_type === 'CATALOG_UPLOAD' && (
                               <span className="shrink-0 text-[10px] font-medium text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-full">
                                 Catalog
@@ -591,7 +636,9 @@ export default function SupportTicketsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${STATUS_COLORS[t.status]}`}>
+                        <span
+                          className={`text-xs font-medium px-2.5 py-1 rounded-full border ${STATUS_COLORS[t.status]}`}
+                        >
                           {STATUS_LABELS[t.status]}
                         </span>
                       </td>
@@ -636,7 +683,10 @@ export default function SupportTicketsPage() {
                       </td>
                       <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
                         {new Date(t.created_at).toLocaleDateString('en-IN', {
-                          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+                          day: '2-digit',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </td>
                       <td className="px-4 py-3.5 text-right">
@@ -661,7 +711,7 @@ export default function SupportTicketsPage() {
         )}
       </div>
     </motion.div>
-  )
+  );
 }
 
 // ── Sub-components ─────────────────────────────────────────────
@@ -671,9 +721,9 @@ function TicketStatsCard({
   label,
   value,
 }: {
-  icon: LucideIcon
-  label: string
-  value: number
+  icon: LucideIcon;
+  label: string;
+  value: number;
 }) {
   return (
     <motion.div
@@ -686,5 +736,5 @@ function TicketStatsCard({
       </div>
       <div className="text-xl font-bold text-gray-900">{value}</div>
     </motion.div>
-  )
+  );
 }

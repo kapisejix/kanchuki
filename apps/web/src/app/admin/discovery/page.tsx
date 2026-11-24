@@ -1,152 +1,157 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  MapPin,
-  Store,
-  Navigation,
-  Phone,
-  Package,
   ExternalLink,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+  MapPin,
+  Navigation,
+  Package,
+  Phone,
+  Store,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
 type RetailerLocation = {
-  id: string
-  shop_name: string | null
-  phone: string
-  city: string | null
-  state: string | null
-  latitude: number | null
-  longitude: number | null
+  id: string;
+  shop_name: string | null;
+  phone: string;
+  city: string | null;
+  state: string | null;
+  latitude: number | null;
+  longitude: number | null;
   /** 'RETAILER_PIN' = shop pinned in the app; 'GEOCODED_APPROX' = guessed from the typed address. */
-  location_source: string | null
-  address_line1: string | null
-  address_line2: string | null
-  pincode: string | null
-  public_slug: string | null
-  product_count: number
+  location_source: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  pincode: string | null;
+  public_slug: string | null;
+  product_count: number;
   /** Only on "nearby" results: straight-line km from the searched pincode/city centre. */
-  distance_km?: number
-}
+  distance_km?: number;
+};
 
 type Nearby = {
-  center: { lat: number; lng: number; label: string; level: 'address' | 'pincode' | 'city' }
-  radius_km: number
-  count: number
-  retailers: RetailerLocation[]
-}
+  center: { lat: number; lng: number; label: string; level: 'address' | 'pincode' | 'city' };
+  radius_km: number;
+  count: number;
+  retailers: RetailerLocation[];
+};
 
-const RADIUS_OPTIONS = [5, 10, 25, 50, 100, 200]
+const RADIUS_OPTIONS = [5, 10, 25, 50, 100, 200];
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
-}
+};
 const itemVariants = {
   hidden: { opacity: 0, y: 14 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 220, damping: 24 } },
-}
+};
 
 // ─── Main Page ────────────────────────────────────────────────────
 
 export default function DiscoveryPage() {
-  const [retailers, setRetailers] = useState<RetailerLocation[] | null>(null)
-  const [totalAll, setTotalAll] = useState(0)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [retailers, setRetailers] = useState<RetailerLocation[] | null>(null);
+  const [totalAll, setTotalAll] = useState(0);
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   // "Stores near a pincode / city" search. null = not searching (show every located store).
-  const [place, setPlace] = useState('')
-  const [radius, setRadius] = useState(25)
-  const [nearby, setNearby] = useState<Nearby | null>(null)
-  const [nearbyError, setNearbyError] = useState('')
-  const [nearbyLoading, setNearbyLoading] = useState(false)
+  const [place, setPlace] = useState('');
+  const [radius, setRadius] = useState(25);
+  const [nearby, setNearby] = useState<Nearby | null>(null);
+  const [nearbyError, setNearbyError] = useState('');
+  const [nearbyLoading, setNearbyLoading] = useState(false);
 
   const runNearby = async () => {
-    const q = place.trim()
-    if (q.length < 2) return
-    setNearbyLoading(true)
-    setNearbyError('')
+    const q = place.trim();
+    if (q.length < 2) return;
+    setNearbyLoading(true);
+    setNearbyError('');
     try {
       const res = await fetch(
         `${API_URL}/v1/admin/discovery/nearby?query=${encodeURIComponent(q)}&radius_km=${radius}`,
         adminGetOptions(),
-      )
-      const json = await res.json()
+      );
+      const json = await res.json();
       if (!res.ok) {
         throw new Error(
           res.status === 404
             ? `Could not find "${q}" in India. Check the pincode or city name.`
             : (json?.error?.message ?? `Search failed (HTTP ${res.status})`),
-        )
+        );
       }
-      setNearby(json.data)
+      setNearby(json.data);
     } catch (err) {
-      setNearby(null)
-      setNearbyError(err instanceof Error ? err.message : 'Search failed')
+      setNearby(null);
+      setNearbyError(err instanceof Error ? err.message : 'Search failed');
     } finally {
-      setNearbyLoading(false)
+      setNearbyLoading(false);
     }
-  }
+  };
 
   const clearNearby = () => {
-    setNearby(null)
-    setNearbyError('')
-    setPlace('')
-  }
+    setNearby(null);
+    setNearbyError('');
+    setPlace('');
+  };
 
   const load = async () => {
     try {
       // Only retailers with coordinates can appear in "Near Me" discovery, so ask the
       // API for just those (has_location) and walk its cursor, 100 per page (API max).
-      const located: RetailerLocation[] = []
-      let cursor: string | null = null
+      const located: RetailerLocation[] = [];
+      let cursor: string | null = null;
       do {
-        const qs: string = `limit=100&has_location=true${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
-        const res = await fetch(`${API_URL}/v1/admin/retailers?${qs}`, adminGetOptions())
-        if (!res.ok) throw new Error(`Failed to load retailers (HTTP ${res.status})`)
-        const json = await res.json()
-        located.push(...(json?.data ?? []))
-        cursor = json?.pagination?.has_more ? (json.pagination.cursor ?? null) : null
-      } while (cursor)
+        const qs: string = `limit=100&has_location=true${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+        const res = await fetch(`${API_URL}/v1/admin/retailers?${qs}`, adminGetOptions());
+        if (!res.ok) throw new Error(`Failed to load retailers (HTTP ${res.status})`);
+        const json = await res.json();
+        located.push(...(json?.data ?? []));
+        cursor = json?.pagination?.has_more ? (json.pagination.cursor ?? null) : null;
+      } while (cursor);
 
-      const statsRes = await fetch(`${API_URL}/v1/admin/stats`, adminGetOptions())
-      const stats = statsRes.ok ? await statsRes.json() : null
-      setTotalAll(stats?.data?.total_retailers ?? located.length)
-      setRetailers(located.map((r) => ({ ...r, product_count: r.product_count ?? 0 })))
+      const statsRes = await fetch(`${API_URL}/v1/admin/stats`, adminGetOptions());
+      const stats = statsRes.ok ? await statsRes.json() : null;
+      setTotalAll(stats?.data?.total_retailers ?? located.length);
+      setRetailers(located.map((r) => ({ ...r, product_count: r.product_count ?? 0 })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load retailer locations')
+      setError(err instanceof Error ? err.message : 'Failed to load retailer locations');
     }
-  }
+  };
 
   useEffect(() => {
-    void load()
-  }, [])
+    void load();
+  }, []);
 
   const filtered = (nearby?.retailers ?? retailers ?? []).filter((r) => {
-    if (!search) return true
-    const q = search.toLowerCase()
+    if (!search) return true;
+    const q = search.toLowerCase();
     return (
       (r.shop_name?.toLowerCase().includes(q) ?? false) ||
       (r.city?.toLowerCase().includes(q) ?? false) ||
       (r.state?.toLowerCase().includes(q) ?? false) ||
       r.phone.includes(q)
-    )
-  })
+    );
+  });
 
-  const selected = filtered.find((r) => r.id === selectedId)
+  const selected = filtered.find((r) => r.id === selectedId);
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-3 mb-1">
@@ -154,8 +159,8 @@ export default function DiscoveryPage() {
           <MapPin size={20} className="text-emerald-500" />
         </div>
         <p className="text-sm text-gray-500 max-w-2xl">
-          Retailer locations with geo-coordinates. Customers use &ldquo;Near Me&rdquo; search
-          to discover nearby stores. Retailers without coordinates won&apos;t appear.
+          Retailer locations with geo-coordinates. Customers use &ldquo;Near Me&rdquo; search to
+          discover nearby stores. Retailers without coordinates won&apos;t appear.
         </p>
       </motion.div>
 
@@ -171,7 +176,12 @@ export default function DiscoveryPage() {
       {/* Stats */}
       {retailers && (
         <motion.div variants={containerVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard icon={Store} label="Total Retailers" value={String(totalAll)} color="emerald" />
+          <StatsCard
+            icon={Store}
+            label="Total Retailers"
+            value={String(totalAll)}
+            color="emerald"
+          />
           <StatsCard
             icon={MapPin}
             label="With Location"
@@ -205,8 +215,8 @@ export default function DiscoveryPage() {
         <p className="text-sm font-semibold text-gray-900">Find stores near a pincode or city</p>
         <form
           onSubmit={(e) => {
-            e.preventDefault()
-            void runNearby()
+            e.preventDefault();
+            void runNearby();
           }}
           className="flex flex-wrap items-center gap-2"
         >
@@ -268,7 +278,10 @@ export default function DiscoveryPage() {
       </motion.div>
 
       {/* Retailer grid */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <motion.div
+        variants={itemVariants}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+      >
         {filtered.map((r, i) => (
           <motion.div
             key={r.id}
@@ -287,7 +300,9 @@ export default function DiscoveryPage() {
                 <Store size={18} className="text-emerald-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 truncate">{r.shop_name ?? 'Unnamed'}</p>
+                <p className="text-sm font-bold text-gray-900 truncate">
+                  {r.shop_name ?? 'Unnamed'}
+                </p>
                 <p className="text-xs text-gray-400 truncate">
                   {[r.city, r.state].filter(Boolean).join(', ') || 'No city'}
                 </p>
@@ -343,7 +358,9 @@ export default function DiscoveryPage() {
       </motion.div>
 
       {!retailers && !error && (
-        <div className="text-center text-sm text-gray-400 animate-pulse py-12">Loading retailer locations…</div>
+        <div className="text-center text-sm text-gray-400 animate-pulse py-12">
+          Loading retailer locations…
+        </div>
       )}
 
       {retailers && filtered.length === 0 && (
@@ -358,7 +375,7 @@ export default function DiscoveryPage() {
         </div>
       )}
     </motion.div>
-  )
+  );
 }
 
 // ── Stats card ─────────────────────────────────────────────────────
@@ -369,18 +386,18 @@ function StatsCard({
   value,
   color,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string
-  color: 'emerald' | 'blue' | 'purple' | 'amber'
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  color: 'emerald' | 'blue' | 'purple' | 'amber';
 }) {
   const colorMap = {
     emerald: { bg: 'bg-emerald-50 border-emerald-100', icon: 'text-emerald-500' },
     blue: { bg: 'bg-blue-50 border-blue-100', icon: 'text-blue-500' },
     purple: { bg: 'bg-purple-50 border-purple-100', icon: 'text-purple-500' },
     amber: { bg: 'bg-amber-50 border-amber-100', icon: 'text-amber-500' },
-  }
-  const c = colorMap[color]
+  };
+  const c = colorMap[color];
   return (
     <motion.div
       variants={itemVariants}
@@ -394,5 +411,5 @@ function StatsCard({
       </div>
       <p className="text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
     </motion.div>
-  )
+  );
 }

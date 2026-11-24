@@ -9,11 +9,29 @@ const ROOT = process.argv[2] || 'apps/mobile';
 const TEXTISH = new Set(['Text', 'TextInput', 'Animated.Text']);
 // Host (lowercase) + known native containers that cannot host raw text:
 const NON_TEXT_HOSTS = new Set([
-  'view', 'scrollview', 'flatlist', 'pressable', 'image', 'modal',
-  'View', 'ScrollView', 'FlatList', 'Pressable', 'Image', 'Modal',
-  'TouchableOpacity', 'TouchableHighlight', 'TouchableWithoutFeedback',
-  'KeyboardAvoidingView', 'SafeAreaView', 'Animated.View', 'AnimatedPressable',
-  'RefreshControl', 'Switch', 'ActivityIndicator', 'Skeleton',
+  'view',
+  'scrollview',
+  'flatlist',
+  'pressable',
+  'image',
+  'modal',
+  'View',
+  'ScrollView',
+  'FlatList',
+  'Pressable',
+  'Image',
+  'Modal',
+  'TouchableOpacity',
+  'TouchableHighlight',
+  'TouchableWithoutFeedback',
+  'KeyboardAvoidingView',
+  'SafeAreaView',
+  'Animated.View',
+  'AnimatedPressable',
+  'RefreshControl',
+  'Switch',
+  'ActivityIndicator',
+  'Skeleton',
 ]);
 
 function walk(dir, out) {
@@ -79,15 +97,15 @@ for (const file of walk(ROOT, [])) {
             if (child.value.trim() || (!/\n/.test(child.value) && child.value.length > 0)) {
               bad = true;
             }
-          } else if (
-            child.type === 'JSXExpressionContainer' &&
-            isStringNode(child.expression)
-          ) {
+          } else if (child.type === 'JSXExpressionContainer' && isStringNode(child.expression)) {
             bad = true;
           }
           if (bad) {
             const line = src.slice(0, child.start).split('\n').length;
-            const text = child.type === 'JSXText' ? JSON.stringify(child.value.trim().slice(0, 60)) : src.slice(child.start, child.end).slice(0, 60);
+            const text =
+              child.type === 'JSXText'
+                ? JSON.stringify(child.value.trim().slice(0, 60))
+                : src.slice(child.start, child.end).slice(0, 60);
             findings.push(`${file}:${line}  <${name}> child = ${text}`);
           }
         }

@@ -1,84 +1,89 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  History,
-  Search,
-  Filter,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  RefreshCw,
-  Calendar,
-  User,
-  Monitor,
-  FileText,
-  Clock,
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Download,
+  FileText,
+  Filter,
+  History,
   Loader2,
-  AlertCircle,
-} from 'lucide-react'
+  Monitor,
+  RefreshCw,
+  Search,
+  User,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type AuditLogEntry = {
-  id: string
-  actor_id: string | null
-  actor_type: string | null
-  action: string
-  resource_type: string
-  resource_id: string | null
-  metadata: Record<string, unknown> | null
-  ip_address: string | null
-  created_at: string
-}
+  id: string;
+  actor_id: string | null;
+  actor_type: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  metadata: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+};
 
 type Pagination = {
-  cursor: string | null
-  has_more: boolean
-}
+  cursor: string | null;
+  has_more: boolean;
+};
 
 function formatDate(iso: string): string {
-  const d = new Date(iso)
+  const d = new Date(iso);
   return d.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 }
 
 function formatDateShort(iso: string): string {
-  const d = new Date(iso)
+  const d = new Date(iso);
   return d.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 }
 
 /** Color-code actions for visual scanning */
 function actionColor(action: string): string {
-  const lower = action.toLowerCase()
-  if (lower.includes('delete') || lower.includes('cancel')) return 'text-red-600 bg-red-50 border-red-200'
-  if (lower.includes('create') || lower.includes('connect')) return 'text-green-600 bg-green-50 border-green-200'
-  if (lower.includes('update') || lower.includes('change') || lower.includes('extend')) return 'text-amber-600 bg-amber-50 border-amber-200'
-  if (lower.includes('login') || lower.includes('logout')) return 'text-blue-600 bg-blue-50 border-blue-200'
-  return 'text-gray-600 bg-gray-50 border-gray-200'
+  const lower = action.toLowerCase();
+  if (lower.includes('delete') || lower.includes('cancel'))
+    return 'text-red-600 bg-red-50 border-red-200';
+  if (lower.includes('create') || lower.includes('connect'))
+    return 'text-green-600 bg-green-50 border-green-200';
+  if (lower.includes('update') || lower.includes('change') || lower.includes('extend'))
+    return 'text-amber-600 bg-amber-50 border-amber-200';
+  if (lower.includes('login') || lower.includes('logout'))
+    return 'text-blue-600 bg-blue-50 border-blue-200';
+  return 'text-gray-600 bg-gray-50 border-gray-200';
 }
 
 function actionBg(action: string): string {
-  const lower = action.toLowerCase()
-  if (lower.includes('delete') || lower.includes('cancel')) return 'bg-red-500'
-  if (lower.includes('create') || lower.includes('connect')) return 'bg-green-500'
-  if (lower.includes('update') || lower.includes('change') || lower.includes('extend')) return 'bg-amber-500'
-  if (lower.includes('login') || lower.includes('logout')) return 'bg-blue-500'
-  return 'bg-gray-500'
+  const lower = action.toLowerCase();
+  if (lower.includes('delete') || lower.includes('cancel')) return 'bg-red-500';
+  if (lower.includes('create') || lower.includes('connect')) return 'bg-green-500';
+  if (lower.includes('update') || lower.includes('change') || lower.includes('extend'))
+    return 'bg-amber-500';
+  if (lower.includes('login') || lower.includes('logout')) return 'bg-blue-500';
+  return 'bg-gray-500';
 }
 
 const containerVariants = {
@@ -87,7 +92,7 @@ const containerVariants = {
     opacity: 1,
     transition: { staggerChildren: 0.05, delayChildren: 0.1 },
   },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -96,7 +101,7 @@ const itemVariants = {
     y: 0,
     transition: { type: 'spring', stiffness: 200, damping: 20 },
   },
-}
+};
 
 // ─── Filter Bar ──────────────────────────────────────────────
 
@@ -107,14 +112,17 @@ function FilterBar({
   onClear,
   loading,
 }: {
-  filters: Record<string, string>
-  onChange: (key: string, value: string) => void
-  onSearch: () => void
-  onClear: () => void
-  loading: boolean
+  filters: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+  onSearch: () => void;
+  onClear: () => void;
+  loading: boolean;
 }) {
   return (
-    <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5">
+    <motion.div
+      variants={itemVariants}
+      className="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5"
+    >
       <div className="flex items-center gap-2 mb-3">
         <Filter size={15} className="text-gray-400" />
         <span className="text-xs font-semibold text-gray-500">Filters</span>
@@ -181,13 +189,13 @@ function FilterBar({
         </motion.button>
       </div>
     </motion.div>
-  )
+  );
 }
 
 // ─── Audit Log Row ───────────────────────────────────────────
 
 function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div
@@ -203,7 +211,9 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
         <div className={`w-2 h-2 rounded-full shrink-0 ${actionBg(entry.action)}`} />
 
         {/* Action badge */}
-        <span className={`text-[10px] font-semibold px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${actionColor(entry.action)}`}>
+        <span
+          className={`text-[10px] font-semibold px-2 py-1 rounded-md border whitespace-nowrap shrink-0 ${actionColor(entry.action)}`}
+        >
           {entry.action.slice(0, 20)}
         </span>
 
@@ -287,16 +297,16 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
         </motion.div>
       )}
     </motion.div>
-  )
+  );
 }
 
 // ─── Main Page ───────────────────────────────────────────────
 
 export default function AuditLogPage() {
-  const [logs, setLogs] = useState<AuditLogEntry[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   // Filter inputs are local state (no side effects)
   const [filterInputs, setFilterInputs] = useState<Record<string, string>>({
     action: '',
@@ -305,88 +315,111 @@ export default function AuditLogPage() {
     ip_address: '',
     date_from: '',
     date_to: '',
-  })
+  });
   // Committed filters are only set when Search is clicked
-  const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({})
-  const [cursorStack, setCursorStack] = useState<string[]>([])
-  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined)
+  const [committedFilters, setCommittedFilters] = useState<Record<string, string>>({});
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
 
-  const fetchLogs = useCallback(async (cursor?: string, appendStack?: boolean) => {
-    setLoading(true)
-    setError('')
-    try {
-      const params = new URLSearchParams()
-      params.set('limit', '50')
-      if (cursor) params.set('cursor', cursor)
-      // Use committedFilters — only set when Search is clicked
-      for (const [key, val] of Object.entries(committedFilters)) {
-        if (val) params.set(key, val)
+  const fetchLogs = useCallback(
+    async (cursor?: string, appendStack?: boolean) => {
+      setLoading(true);
+      setError('');
+      try {
+        const params = new URLSearchParams();
+        params.set('limit', '50');
+        if (cursor) params.set('cursor', cursor);
+        // Use committedFilters — only set when Search is clicked
+        for (const [key, val] of Object.entries(committedFilters)) {
+          if (val) params.set(key, val);
+        }
+
+        const res = await fetch(
+          `${API_URL}/v1/admin/audit-logs?${params.toString()}`,
+          adminGetOptions(),
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+
+        const json = await res.json();
+        setLogs(json.data);
+        setPagination(json.pagination);
+        setCurrentCursor(cursor);
+
+        if (appendStack && cursor) {
+          setCursorStack((prev) => [...prev, cursor]);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load audit logs');
+      } finally {
+        setLoading(false);
       }
-
-      const res = await fetch(`${API_URL}/v1/admin/audit-logs?${params.toString()}`, adminGetOptions())
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
-
-      const json = await res.json()
-      setLogs(json.data)
-      setPagination(json.pagination)
-      setCurrentCursor(cursor)
-
-      if (appendStack && cursor) {
-        setCursorStack((prev) => [...prev, cursor])
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load audit logs')
-    } finally {
-      setLoading(false)
-    }
-  }, [committedFilters])
+    },
+    [committedFilters],
+  );
 
   // Load on mount — runs once because committedFilters is stable
   useEffect(() => {
-    fetchLogs()
+    fetchLogs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   const handleSearch = () => {
     // Commit the current filter inputs to trigger API call
-    setCommittedFilters({ ...filterInputs })
-    setCursorStack([])
-    setCurrentCursor(undefined)
-  }
+    setCommittedFilters({ ...filterInputs });
+    setCursorStack([]);
+    setCurrentCursor(undefined);
+  };
 
   const handleClear = () => {
-    setFilterInputs({ action: '', actor_type: '', resource_type: '', ip_address: '', date_from: '', date_to: '' })
-    setCommittedFilters({})
-    setCursorStack([])
-    setCurrentCursor(undefined)
-    fetchLogs(undefined)
-  }
+    setFilterInputs({
+      action: '',
+      actor_type: '',
+      resource_type: '',
+      ip_address: '',
+      date_from: '',
+      date_to: '',
+    });
+    setCommittedFilters({});
+    setCursorStack([]);
+    setCurrentCursor(undefined);
+    fetchLogs(undefined);
+  };
 
   // When committed filters change (after Search click), fetch with new filters
   useEffect(() => {
     if (Object.keys(committedFilters).length > 0 || logs.length > 0) {
-      fetchLogs()
+      fetchLogs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [committedFilters])
+  }, [committedFilters]);
 
   const handleNext = () => {
     if (pagination?.cursor) {
-      setCursorStack((prev) => currentCursor ? [...prev, currentCursor] : prev)
-      fetchLogs(pagination.cursor!, true)
+      setCursorStack((prev) => (currentCursor ? [...prev, currentCursor] : prev));
+      fetchLogs(pagination.cursor!, true);
     }
-  }
+  };
 
   const handlePrev = () => {
-    const prev = cursorStack[cursorStack.length - 1]
+    const prev = cursorStack[cursorStack.length - 1];
     if (prev) {
-      setCursorStack((prev) => prev.slice(0, -1))
-      fetchLogs(prev)
+      setCursorStack((prev) => prev.slice(0, -1));
+      fetchLogs(prev);
     }
-  }
+  };
 
   const exportToCsv = () => {
-    const headers = ['ID', 'Timestamp', 'Action', 'Actor Type', 'Actor ID', 'Resource Type', 'Resource ID', 'IP Address', 'Metadata']
+    const headers = [
+      'ID',
+      'Timestamp',
+      'Action',
+      'Actor Type',
+      'Actor ID',
+      'Resource Type',
+      'Resource ID',
+      'IP Address',
+      'Metadata',
+    ];
     const rows = logs.map((entry) => [
       entry.id,
       entry.created_at,
@@ -397,21 +430,21 @@ export default function AuditLogPage() {
       entry.resource_id ?? '',
       entry.ip_address ?? '',
       entry.metadata ? JSON.stringify(entry.metadata).replace(/"/g, '""') : '',
-    ])
+    ]);
 
     const csv = [
       headers.join(','),
       ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
-    ].join('\n')
+    ].join('\n');
 
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <motion.div
@@ -501,7 +534,9 @@ export default function AuditLogPage() {
         <motion.div variants={itemVariants} className="text-center py-16">
           <History size={40} className="mx-auto text-gray-300 mb-3" />
           <p className="text-sm text-gray-500">No audit log entries found</p>
-          <p className="text-xs text-gray-400 mt-1">Try adjusting your filters or creating an admin action</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Try adjusting your filters or creating an admin action
+          </p>
         </motion.div>
       )}
 
@@ -551,5 +586,5 @@ export default function AuditLogPage() {
         </p>
       </motion.div>
     </motion.div>
-  )
+  );
 }

@@ -1,48 +1,51 @@
-import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import { ChevronLeft, ExternalLink } from 'lucide-react-native'
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View, Linking } from 'react-native'
-import { useScreenInsets } from '../../../src/lib/safe-area'
-import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { GradientButton } from '../../../src/components/GradientButton'
-import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton'
-import { retailerApi } from '../../../src/lib/api/retailer'
-import { showError } from '../../../src/lib/errors'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ChevronLeft, ExternalLink } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Linking, ScrollView, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { GradientButton } from '../../../src/components/GradientButton';
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
+import { retailerApi } from '../../../src/lib/api/retailer';
+import { showError } from '../../../src/lib/errors';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
 const INPUT =
-  'bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4'
+  'bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4';
 
 export default function WhatsAppCloudConfigScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
 
-  const [phoneNumberId, setPhoneNumberId] = useState('')
-  const [accessToken, setAccessToken] = useState('')
-  const [templateName, setTemplateName] = useState('')
-  const [templateLang, setTemplateLang] = useState('en_US')
+  const [phoneNumberId, setPhoneNumberId] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [templateName, setTemplateName] = useState('');
+  const [templateLang, setTemplateLang] = useState('en_US');
 
   // GET /me/whatsapp-api → data: null when WHATSAPP_BUSINESS_API isn't on the plan.
   const { data, isLoading } = useQuery({
     queryKey: ['retailer', 'whatsapp-api'],
     queryFn: () => retailerApi.getWhatsAppApiConfig(),
-  })
-  const cfg = data?.data ?? null
-  const configured = !!cfg?.configured
-  const planBlocked = !isLoading && data?.data === null
+  });
+  const cfg = data?.data ?? null;
+  const configured = !!cfg?.configured;
+  const planBlocked = !isLoading && data?.data === null;
 
   // Prefill once the saved config lands (the token is never returned by the API).
   useEffect(() => {
-    if (!cfg) return
-    setPhoneNumberId(cfg.whatsapp_api_phone_number_id ?? '')
-    setTemplateName(cfg.whatsapp_api_template_name ?? '')
-    setTemplateLang(cfg.whatsapp_api_template_lang ?? 'en_US')
-  }, [cfg])
+    if (!cfg) return;
+    setPhoneNumberId(cfg.whatsapp_api_phone_number_id ?? '');
+    setTemplateName(cfg.whatsapp_api_template_name ?? '');
+    setTemplateLang(cfg.whatsapp_api_template_lang ?? 'en_US');
+  }, [cfg]);
 
   // A saved token can be kept by leaving the field blank; a first save needs one.
   const canSave =
-    !planBlocked && !!phoneNumberId.trim() && !!templateName.trim() && (configured || !!accessToken.trim())
+    !planBlocked &&
+    !!phoneNumberId.trim() &&
+    !!templateName.trim() &&
+    (configured || !!accessToken.trim());
 
   const save = useMutation({
     mutationFn: () =>
@@ -53,14 +56,14 @@ export default function WhatsAppCloudConfigScreen() {
         template_lang: templateLang.trim() || 'en_US',
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-      void queryClient.invalidateQueries({ queryKey: ['retailer', 'whatsapp-api'] })
+      void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] });
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'whatsapp-api'] });
       Alert.alert('Connected', 'WhatsApp Business Cloud API is configured.', [
         { text: 'OK', onPress: () => router.back() },
-      ])
+      ]);
     },
     onError: (err) => showError(err, 'Failed to save WhatsApp Cloud API credentials'),
-  })
+  });
 
   return (
     <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
@@ -87,7 +90,10 @@ export default function WhatsAppCloudConfigScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
         <Text className="text-xs text-heliotrope-500 mb-4 leading-relaxed font-medium">
           Connect your Meta WhatsApp Cloud API credentials to send collection links and campaigns
           straight from Kanchuki, instead of one-by-one WhatsApp shares.
@@ -113,7 +119,9 @@ export default function WhatsAppCloudConfigScreen() {
           <WhiteButton
             label="How to get WhatsApp Cloud API credentials"
             icon={<ExternalLink size={14} color={WHITE_BUTTON_INK} />}
-            onPress={() => void Linking.openURL('https://developers.facebook.com/docs/whatsapp/cloud-api')}
+            onPress={() =>
+              void Linking.openURL('https://developers.facebook.com/docs/whatsapp/cloud-api')
+            }
           />
         </View>
 
@@ -177,11 +185,9 @@ export default function WhatsAppCloudConfigScreen() {
         </View>
       </ScrollView>
     </KeyboardScreen>
-  )
+  );
 }
 
 function Label({ text }: { text: string }) {
-  return (
-    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>
-  )
+  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>;
 }

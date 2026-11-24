@@ -1,5 +1,7 @@
 'use client';
 
+import { appLink } from '@/lib/deep-links';
+import { useSearchParams } from 'next/navigation';
 // F-031: Meta OAuth callback target.
 //
 // Meta redirects the browser here with ?code=&state= after the retailer
@@ -13,8 +15,6 @@
 //   4. Shows a success screen — the retailer closes this tab and sees the
 //      connected account in the mobile app.
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { appLink } from '@/lib/deep-links';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const TOKEN_KEY = 'kanchuki_social_token';
@@ -48,7 +48,10 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
     const refreshed = await refreshAccessToken();
     if (refreshed) res = await doFetch(accessToken);
   }
-  const json = (await res.json().catch(() => null)) as { data?: unknown; error?: { message?: string } };
+  const json = (await res.json().catch(() => null)) as {
+    data?: unknown;
+    error?: { message?: string };
+  };
   if (!res.ok || json === null) {
     throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
   }
@@ -138,8 +141,8 @@ function CallbackInner() {
         <div className="text-4xl mb-3">✅</div>
         <h2 className="text-lg font-bold text-carbon mb-1">{done}</h2>
         <p className="text-sm text-carbon/60 mb-5">
-          Your Facebook Page is connected. You can close this tab and continue in the Kanchuki app
-          — open Settings → Social Media to post products.
+          Your Facebook Page is connected. You can close this tab and continue in the Kanchuki app —
+          open Settings → Social Media to post products.
         </p>
         <a
           href={appLink('settings/social')}
@@ -170,9 +173,7 @@ function CallbackInner() {
       )}
 
       {!pages && !error && (
-        <p className="text-sm text-carbon/60">
-          Confirming your Facebook account with the server…
-        </p>
+        <p className="text-sm text-carbon/60">Confirming your Facebook account with the server…</p>
       )}
 
       {pages && (

@@ -1,84 +1,84 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Bell,
-  Save,
-  Loader2,
   AlertCircle,
+  Bell,
   CheckCircle2,
-  RefreshCw,
-  HardDrive,
-  ShieldAlert,
-  Mail,
-  Monitor,
-  Info,
   ChevronDown,
   ChevronUp,
-  X,
-  Send,
-  Sparkles,
+  HardDrive,
+  Info,
+  Loader2,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+  Mail,
+  Monitor,
+  RefreshCw,
+  Save,
+  Send,
+  ShieldAlert,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type NotificationPreferences = {
-  backup_failure: { enabled: boolean; channels: ('admin_bell' | 'email')[] }
-  consecutive_failures: { enabled: boolean; threshold: number }
-  integrity_failure: { enabled: boolean }
-  last_alert: { time: string; type: string; message: string } | null
-  consecutive_failures_count: number
-}
+  backup_failure: { enabled: boolean; channels: ('admin_bell' | 'email')[] };
+  consecutive_failures: { enabled: boolean; threshold: number };
+  integrity_failure: { enabled: boolean };
+  last_alert: { time: string; type: string; message: string } | null;
+  consecutive_failures_count: number;
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 15 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 22 } },
-}
+};
 
 export default function NotificationsSettingsPage() {
-  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<string | null>(null)
-  const [saveResult, setSaveResult] = useState<string | null>(null)
-  const [error, setError] = useState('')
-  const [expandedSection, setExpandedSection] = useState<string | null>('backup')
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [saveResult, setSaveResult] = useState<string | null>(null);
+  const [error, setError] = useState('');
+  const [expandedSection, setExpandedSection] = useState<string | null>('backup');
 
   // ── Load preferences ───────────────────────────────────────
   const loadPrefs = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/notifications`, adminGetOptions())
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      setPrefs(json.data)
+      const res = await fetch(`${API_URL}/v1/admin/settings/notifications`, adminGetOptions());
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setPrefs(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load preferences')
+      setError(err instanceof Error ? err.message : 'Failed to load preferences');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    loadPrefs()
-  }, [loadPrefs])
+    loadPrefs();
+  }, [loadPrefs]);
 
   // ── Save preferences ───────────────────────────────────────
   const handleSave = async () => {
-    if (!prefs) return
-    setSaving(true)
-    setSaveResult(null)
-    setError('')
+    if (!prefs) return;
+    setSaving(true);
+    setSaveResult(null);
+    setError('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/settings/notifications`, {
         ...(await adminMutateOptions()),
@@ -88,51 +88,51 @@ export default function NotificationsSettingsPage() {
           consecutive_failures: prefs.consecutive_failures,
           integrity_failure: prefs.integrity_failure,
         }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setSaveResult('Preferences saved successfully')
-      setTimeout(() => setSaveResult(null), 3000)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSaveResult('Preferences saved successfully');
+      setTimeout(() => setSaveResult(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   // ── Test notification ──────────────────────────────────────
   const handleTest = async () => {
-    setTesting(true)
-    setTestResult(null)
-    setError('')
+    setTesting(true);
+    setTestResult(null);
+    setError('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/notify/test`, {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({}),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      setTestResult(json.data.message)
-      setTimeout(() => setTestResult(null), 5000)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setTestResult(json.data.message);
+      setTimeout(() => setTestResult(null), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Test failed')
+      setError(err instanceof Error ? err.message : 'Test failed');
     } finally {
-      setTesting(false)
+      setTesting(false);
     }
-  }
+  };
 
   // ── Toggle channel ─────────────────────────────────────────
   const toggleChannel = (channel: 'admin_bell' | 'email') => {
-    if (!prefs) return
-    const channels = prefs.backup_failure.channels
+    if (!prefs) return;
+    const channels = prefs.backup_failure.channels;
     const updated = channels.includes(channel)
       ? channels.filter((c) => c !== channel)
-      : [...channels, channel]
+      : [...channels, channel];
     setPrefs({
       ...prefs,
       backup_failure: { ...prefs.backup_failure, channels: updated },
-    })
-  }
+    });
+  };
 
   const SectionHeader = ({
     id,
@@ -140,10 +140,10 @@ export default function NotificationsSettingsPage() {
     icon: Icon,
     description,
   }: {
-    id: string
-    title: string
-    icon: LucideIcon
-    description: string
+    id: string;
+    title: string;
+    icon: LucideIcon;
+    description: string;
   }) => (
     <button
       onClick={() => setExpandedSection(expandedSection === id ? null : id)}
@@ -158,12 +158,21 @@ export default function NotificationsSettingsPage() {
           <p className="text-xs text-gray-400">{description}</p>
         </div>
       </div>
-      {expandedSection === id ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+      {expandedSection === id ? (
+        <ChevronUp size={16} className="text-gray-400" />
+      ) : (
+        <ChevronDown size={16} className="text-gray-400" />
+      )}
     </button>
-  )
+  );
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6"
+    >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -288,8 +297,16 @@ export default function NotificationsSettingsPage() {
           </motion.div>
 
           {/* Backup Alerts Section */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg">
-            <SectionHeader id="backup" title="Backup Failure Alerts" icon={HardDrive} description="Get notified when database backups fail" />
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden shadow-lg"
+          >
+            <SectionHeader
+              id="backup"
+              title="Backup Failure Alerts"
+              icon={HardDrive}
+              description="Get notified when database backups fail"
+            />
 
             <AnimatePresence>
               {expandedSection === 'backup' && (
@@ -304,8 +321,12 @@ export default function NotificationsSettingsPage() {
                     {/* Backup failure toggle */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-800">Backup failure notifications</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Alert when a scheduled backup fails</p>
+                        <p className="text-sm font-medium text-gray-800">
+                          Backup failure notifications
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Alert when a scheduled backup fails
+                        </p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -314,7 +335,10 @@ export default function NotificationsSettingsPage() {
                           onChange={() =>
                             setPrefs({
                               ...prefs,
-                              backup_failure: { ...prefs.backup_failure, enabled: !prefs.backup_failure.enabled },
+                              backup_failure: {
+                                ...prefs.backup_failure,
+                                enabled: !prefs.backup_failure.enabled,
+                              },
                             })
                           }
                           className="sr-only peer"
@@ -326,7 +350,9 @@ export default function NotificationsSettingsPage() {
                     {/* Channels */}
                     {prefs.backup_failure.enabled && (
                       <div>
-                        <p className="text-xs font-semibold text-gray-500 mb-2">Notification Channels</p>
+                        <p className="text-xs font-semibold text-gray-500 mb-2">
+                          Notification Channels
+                        </p>
                         <div className="flex gap-3">
                           <button
                             onClick={() => toggleChannel('admin_bell')}
@@ -361,8 +387,12 @@ export default function NotificationsSettingsPage() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <p className="text-sm font-medium text-gray-800">Consecutive failure threshold</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Alert after N consecutive backup failures</p>
+                          <p className="text-sm font-medium text-gray-800">
+                            Consecutive failure threshold
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Alert after N consecutive backup failures
+                          </p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
@@ -371,7 +401,10 @@ export default function NotificationsSettingsPage() {
                             onChange={() =>
                               setPrefs({
                                 ...prefs,
-                                consecutive_failures: { ...prefs.consecutive_failures, enabled: !prefs.consecutive_failures.enabled },
+                                consecutive_failures: {
+                                  ...prefs.consecutive_failures,
+                                  enabled: !prefs.consecutive_failures.enabled,
+                                },
                               })
                             }
                             className="sr-only peer"
@@ -389,7 +422,10 @@ export default function NotificationsSettingsPage() {
                                 onClick={() =>
                                   setPrefs({
                                     ...prefs,
-                                    consecutive_failures: { ...prefs.consecutive_failures, threshold: n },
+                                    consecutive_failures: {
+                                      ...prefs.consecutive_failures,
+                                      threshold: n,
+                                    },
                                   })
                                 }
                                 className={`w-9 h-9 rounded-lg text-xs font-medium border transition cursor-pointer ${
@@ -410,11 +446,15 @@ export default function NotificationsSettingsPage() {
                     {/* Separator */}
                     <div className="border-t border-gray-100" />
 
-                    {/* Integrity failure */ }
+                    {/* Integrity failure */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-800">Integrity check failures</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Alert when restored backup table count doesn&apos;t match source</p>
+                        <p className="text-sm font-medium text-gray-800">
+                          Integrity check failures
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Alert when restored backup table count doesn&apos;t match source
+                        </p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -423,7 +463,10 @@ export default function NotificationsSettingsPage() {
                           onChange={() =>
                             setPrefs({
                               ...prefs,
-                              integrity_failure: { ...prefs.integrity_failure, enabled: !prefs.integrity_failure.enabled },
+                              integrity_failure: {
+                                ...prefs.integrity_failure,
+                                enabled: !prefs.integrity_failure.enabled,
+                              },
                             })
                           }
                           className="sr-only peer"
@@ -438,7 +481,10 @@ export default function NotificationsSettingsPage() {
           </motion.div>
 
           {/* Test Notification */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-lg">
+          <motion.div
+            variants={itemVariants}
+            className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-lg"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="bg-gray-100 w-9 h-9 rounded-xl flex items-center justify-center">
@@ -446,7 +492,9 @@ export default function NotificationsSettingsPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-800">Test Notification</p>
-                  <p className="text-xs text-gray-400">Send a test notification to verify your alert channels are working</p>
+                  <p className="text-xs text-gray-400">
+                    Send a test notification to verify your alert channels are working
+                  </p>
                 </div>
               </div>
               <motion.button
@@ -462,7 +510,10 @@ export default function NotificationsSettingsPage() {
           </motion.div>
 
           {/* Info note */}
-          <motion.div variants={itemVariants} className="flex items-start gap-2 bg-gray-50/80 border border-gray-200 rounded-xl px-4 py-3">
+          <motion.div
+            variants={itemVariants}
+            className="flex items-start gap-2 bg-gray-50/80 border border-gray-200 rounded-xl px-4 py-3"
+          >
             <Info size={14} className="text-gray-400 mt-0.5 shrink-0" />
             <p className="text-xs text-gray-500">
               Email notifications require an SMTP provider to be configured (Phase 2). Currently,
@@ -473,5 +524,5 @@ export default function NotificationsSettingsPage() {
         </>
       )}
     </motion.div>
-  )
+  );
 }

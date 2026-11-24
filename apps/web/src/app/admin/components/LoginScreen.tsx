@@ -1,64 +1,64 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { resetAdminFetchCache } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Shield,
-  Mail,
-  Lock,
-  Loader2,
   AlertCircle,
-  Eye,
-  EyeOff,
-  Smartphone,
-  KeyRound,
   ArrowLeft,
   CheckCircle2,
-} from 'lucide-react'
-import { resetAdminFetchCache } from '@/lib/admin-fetch'
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Lock,
+  Mail,
+  Shield,
+  Smartphone,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type LoginTab = 'password' | 'otp'
-type FlowState = 'login' | 'forgot_password' | 'reset_password'
+type LoginTab = 'password' | 'otp';
+type FlowState = 'login' | 'forgot_password' | 'reset_password';
 
 export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: string) => void }) {
-  const [tab, setTab] = useState<LoginTab>('password')
-  const [flow, setFlow] = useState<FlowState>('login')
+  const [tab, setTab] = useState<LoginTab>('password');
+  const [flow, setFlow] = useState<FlowState>('login');
 
   // Password fields
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // OTP fields
-  const [identifier, setIdentifier] = useState('')
-  const [otpSent, setOtpSent] = useState(false)
-  const [otpCode, setOtpCode] = useState('')
-  const [otpDestination, setOtpDestination] = useState('')
+  const [identifier, setIdentifier] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpDestination, setOtpDestination] = useState('');
 
   // Password Reset fields
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetCode, setResetCode] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [resetSuccess, setResetSuccess] = useState(false)
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   // UI state
-  const [error, setError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [shakeKey, setShakeKey] = useState(0)
-  const emailRef = useRef<HTMLInputElement>(null)
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    emailRef.current?.focus()
-  }, [tab, flow])
+    emailRef.current?.focus();
+  }, [tab, flow]);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccessMsg('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
 
     try {
       // Try admin/superadmin login first, fall back to team member login
@@ -66,11 +66,12 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-      })
+      });
 
-      let json = (await res.json().catch(() => null)) as
-        | { error?: { message?: string }; data?: { token?: string } }
-        | null
+      let json = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+        data?: { token?: string };
+      } | null;
 
       if (!res.ok) {
         // Try team login
@@ -78,29 +79,32 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
-        })
-        const teamJson = (await teamRes.json().catch(() => null)) as
-          | { error?: { message?: string }; data?: { token?: string; team_member?: { name?: string; role?: string } } }
-          | null
+        });
+        const teamJson = (await teamRes.json().catch(() => null)) as {
+          error?: { message?: string };
+          data?: { token?: string; team_member?: { name?: string; role?: string } };
+        } | null;
 
         if (teamRes.ok && teamJson?.data?.token) {
-          res = teamRes
-          json = teamJson
+          res = teamRes;
+          json = teamJson;
         } else {
-          throw new Error(json?.error?.message ?? teamJson?.error?.message ?? 'Invalid email or password')
+          throw new Error(
+            json?.error?.message ?? teamJson?.error?.message ?? 'Invalid email or password',
+          );
         }
       }
 
-      const token = json?.data?.token
-      if (!token) throw new Error('No token returned')
+      const token = json?.data?.token;
+      if (!token) throw new Error('No token returned');
 
       const role =
         (json?.data as { team_member?: { role?: string } } | undefined)?.team_member?.role ??
-        'SUPER_ADMIN'
+        'SUPER_ADMIN';
 
-      resetAdminFetchCache()
-      sessionStorage.setItem('admin_key', token)
-      sessionStorage.setItem('admin_role', role)
+      resetAdminFetchCache();
+      sessionStorage.setItem('admin_key', token);
+      sessionStorage.setItem('admin_role', role);
 
       if (role === 'MARKETING_AGENT' || role === 'SUPPORT_AGENT') {
         try {
@@ -108,86 +112,90 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
             'kanchuki_survey_staff_session',
             JSON.stringify({
               token,
-              name: (json?.data as { team_member?: { name?: string } } | undefined)?.team_member?.name ?? 'Staff',
+              name:
+                (json?.data as { team_member?: { name?: string } } | undefined)?.team_member
+                  ?.name ?? 'Staff',
             }),
-          )
+          );
         } catch {
           // Ignore localStorage errors
         }
-        window.location.href = '/survey'
-        return
+        window.location.href = '/survey';
+        return;
       }
 
-      onLogin(token, role)
+      onLogin(token, role);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
-      setShakeKey((k) => k + 1)
+      setError(err instanceof Error ? err.message : 'Login failed');
+      setShakeKey((k) => k + 1);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccessMsg('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/v1/team/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier }),
-      })
+      });
 
-      const json = (await res.json().catch(() => null)) as
-        | { error?: { message?: string }; data?: { message?: string; destination?: string } }
-        | null
+      const json = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+        data?: { message?: string; destination?: string };
+      } | null;
 
       if (!res.ok) {
-        throw new Error(json?.error?.message ?? 'Failed to send OTP')
+        throw new Error(json?.error?.message ?? 'Failed to send OTP');
       }
 
-      setOtpDestination(json?.data?.destination ?? identifier)
-      setOtpSent(true)
-      setSuccessMsg(json?.data?.message ?? 'OTP sent successfully!')
+      setOtpDestination(json?.data?.destination ?? identifier);
+      setOtpSent(true);
+      setSuccessMsg(json?.data?.message ?? 'OTP sent successfully!');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send OTP')
-      setShakeKey((k) => k + 1)
+      setError(err instanceof Error ? err.message : 'Failed to send OTP');
+      setShakeKey((k) => k + 1);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccessMsg('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/v1/team/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, otp: otpCode }),
-      })
+      });
 
-      const json = (await res.json().catch(() => null)) as
-        | { error?: { message?: string }; data?: { token?: string; team_member?: { name?: string; role?: string } } }
-        | null
+      const json = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+        data?: { token?: string; team_member?: { name?: string; role?: string } };
+      } | null;
 
       if (!res.ok) {
-        throw new Error(json?.error?.message ?? 'Invalid or expired OTP code')
+        throw new Error(json?.error?.message ?? 'Invalid or expired OTP code');
       }
 
-      const token = json?.data?.token
-      if (!token) throw new Error('No token returned')
+      const token = json?.data?.token;
+      if (!token) throw new Error('No token returned');
 
-      const role = json?.data?.team_member?.role ?? 'SUPER_ADMIN'
+      const role = json?.data?.team_member?.role ?? 'SUPER_ADMIN';
 
-      resetAdminFetchCache()
-      sessionStorage.setItem('admin_key', token)
-      sessionStorage.setItem('admin_role', role)
+      resetAdminFetchCache();
+      sessionStorage.setItem('admin_key', token);
+      sessionStorage.setItem('admin_role', role);
 
       if (role === 'MARKETING_AGENT' || role === 'SUPPORT_AGENT') {
         try {
@@ -197,53 +205,53 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               token,
               name: json?.data?.team_member?.name ?? 'Staff',
             }),
-          )
+          );
         } catch {
           // Ignore localStorage errors
         }
-        window.location.href = '/survey'
-        return
+        window.location.href = '/survey';
+        return;
       }
 
-      onLogin(token, role)
+      onLogin(token, role);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code')
-      setShakeKey((k) => k + 1)
+      setError(err instanceof Error ? err.message : 'Invalid code');
+      setShakeKey((k) => k + 1);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccessMsg('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/v1/team/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resetEmail }),
-      })
-      const json = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(json?.error?.message ?? 'Request failed')
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error?.message ?? 'Request failed');
 
-      setSuccessMsg(json?.data?.message ?? 'Verification code sent to your email.')
-      setFlow('reset_password')
+      setSuccessMsg(json?.data?.message ?? 'Verification code sent to your email.');
+      setFlow('reset_password');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to request reset')
-      setShakeKey((k) => k + 1)
+      setError(err instanceof Error ? err.message : 'Failed to request reset');
+      setShakeKey((k) => k + 1);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSuccessMsg('')
-    setLoading(true)
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/v1/team/reset-password`, {
@@ -254,27 +262,27 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
           reset_code: resetCode,
           new_password: newPassword,
         }),
-      })
-      const json = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(json?.error?.message ?? 'Failed to reset password')
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error?.message ?? 'Failed to reset password');
 
-      setResetSuccess(true)
-      setSuccessMsg(json?.data?.message ?? 'Password reset successfully!')
+      setResetSuccess(true);
+      setSuccessMsg(json?.data?.message ?? 'Password reset successfully!');
       setTimeout(() => {
-        setFlow('login')
-        setTab('password')
-        setEmail(resetEmail)
-        setResetSuccess(false)
-        setError('')
-        setSuccessMsg('')
-      }, 2000)
+        setFlow('login');
+        setTab('password');
+        setEmail(resetEmail);
+        setResetSuccess(false);
+        setError('');
+        setSuccessMsg('');
+      }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reset failed')
-      setShakeKey((k) => k + 1)
+      setError(err instanceof Error ? err.message : 'Reset failed');
+      setShakeKey((k) => k + 1);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-gray-950">
@@ -310,9 +318,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               <button
                 type="button"
                 onClick={() => {
-                  setTab('password')
-                  setError('')
-                  setSuccessMsg('')
+                  setTab('password');
+                  setError('');
+                  setSuccessMsg('');
                 }}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
                   tab === 'password'
@@ -326,14 +334,12 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               <button
                 type="button"
                 onClick={() => {
-                  setTab('otp')
-                  setError('')
-                  setSuccessMsg('')
+                  setTab('otp');
+                  setError('');
+                  setSuccessMsg('');
                 }}
                 className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 ${
-                  tab === 'otp'
-                    ? 'bg-white/10 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                  tab === 'otp' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-gray-200'
                 }`}
               >
                 <Smartphone size={13} />
@@ -401,10 +407,10 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                   <button
                     type="button"
                     onClick={() => {
-                      setFlow('forgot_password')
-                      setResetEmail(email)
-                      setError('')
-                      setSuccessMsg('')
+                      setFlow('forgot_password');
+                      setResetEmail(email);
+                      setError('');
+                      setSuccessMsg('');
                     }}
                     className="text-[11px] text-gray-300 hover:text-white transition-colors"
                   >
@@ -450,9 +456,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                       Signing in...
                     </>
                   ) : (
-                    <>
-                      Sign In with Password
-                    </>
+                    <>Sign In with Password</>
                   )}
                 </span>
               </motion.button>
@@ -498,9 +502,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                           Sending Code...
                         </>
                       ) : (
-                        <>
-                          Send Sign-In OTP
-                        </>
+                        <>Send Sign-In OTP</>
                       )}
                     </span>
                   </motion.button>
@@ -515,9 +517,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                       <button
                         type="button"
                         onClick={() => {
-                          setOtpSent(false)
-                          setOtpCode('')
-                          setError('')
+                          setOtpSent(false);
+                          setOtpCode('');
+                          setError('');
                         }}
                         className="text-[11px] text-gray-300 hover:text-white"
                       >
@@ -556,9 +558,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                           Verifying...
                         </>
                       ) : (
-                        <>
-                          Verify &amp; Sign In
-                        </>
+                        <>Verify &amp; Sign In</>
                       )}
                     </span>
                   </motion.button>
@@ -604,9 +604,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               <button
                 type="button"
                 onClick={() => {
-                  setFlow('login')
-                  setError('')
-                  setSuccessMsg('')
+                  setFlow('login');
+                  setError('');
+                  setSuccessMsg('');
                 }}
                 className="w-full text-center text-xs text-gray-400 hover:text-gray-200 transition-colors flex items-center justify-center gap-1.5 mt-2"
               >
@@ -664,7 +664,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
 
               <motion.button
                 type="submit"
-                disabled={loading || resetCode.length !== 6 || newPassword.length < 8 || resetSuccess}
+                disabled={
+                  loading || resetCode.length !== 6 || newPassword.length < 8 || resetSuccess
+                }
                 whileTap={{ scale: 0.98 }}
                 className="relative w-full bg-white hover:bg-gray-200 text-gray-950 font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
               >
@@ -674,9 +676,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               <button
                 type="button"
                 onClick={() => {
-                  setFlow('login')
-                  setError('')
-                  setSuccessMsg('')
+                  setFlow('login');
+                  setError('');
+                  setSuccessMsg('');
                 }}
                 className="w-full text-center text-xs text-gray-400 hover:text-gray-200 transition-colors flex items-center justify-center gap-1.5 mt-2"
               >
@@ -697,7 +699,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
         </div>
       </motion.div>
     </div>
-  )
+  );
 }
 
-export default LoginScreen
+export default LoginScreen;

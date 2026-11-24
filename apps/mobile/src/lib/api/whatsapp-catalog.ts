@@ -4,44 +4,44 @@
 // API side; GET /me/whatsapp-catalog returns { data: null } when the plan
 // feature is off.
 
-import { request } from './client'
+import { request } from './client';
 
-export type CatalogSyncStatus = 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS'
+export type CatalogSyncStatus = 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS';
 
 export type WhatsAppCatalogStatus = {
-  configured: boolean
-  whatsapp_api_phone_number_id: string | null
-  whatsapp_catalog_id: string | null
-  sync_enabled: boolean
-  sync_categories: string[]
-  last_synced_at: string | null
-  items_synced: number
-  items_failed: number
-  items_pending: number
-}
+  configured: boolean;
+  whatsapp_api_phone_number_id: string | null;
+  whatsapp_catalog_id: string | null;
+  sync_enabled: boolean;
+  sync_categories: string[];
+  last_synced_at: string | null;
+  items_synced: number;
+  items_failed: number;
+  items_pending: number;
+};
 
 export type WhatsAppCatalogLog = {
-  id: string
-  operation: string
-  product_id: string | null
-  meta_item_id: string | null
-  status: CatalogSyncStatus
-  error_message: string | null
-  created_at: string
-}
+  id: string;
+  operation: string;
+  product_id: string | null;
+  meta_item_id: string | null;
+  status: CatalogSyncStatus;
+  error_message: string | null;
+  created_at: string;
+};
 
 export type WhatsAppCatalogItem = {
-  product_id: string
-  product_name: string
-  sku: string | null
-  price_paise: number
-  status: CatalogSyncStatus
-  error_message: string | null
-  whatsapp_catalog_item_id: string | null
-  product_status: string
-  hsn_code: string | null
-  last_synced_at: string | null
-}
+  product_id: string;
+  product_name: string;
+  sku: string | null;
+  price_paise: number;
+  status: CatalogSyncStatus;
+  error_message: string | null;
+  whatsapp_catalog_item_id: string | null;
+  product_status: string;
+  hsn_code: string | null;
+  last_synced_at: string | null;
+};
 
 export const whatsappCatalogApi = {
   /** D1 — status + counts. Returns data:null when the plan feature is off. */
@@ -54,11 +54,11 @@ export const whatsappCatalogApi = {
   updateSettings: (data: { sync_enabled?: boolean; sync_categories?: string[] }) =>
     request<{
       data: {
-        sync_enabled: boolean
-        sync_categories: string[]
-        whatsapp_catalog_id: string | null
-        last_synced_at: string | null
-      }
+        sync_enabled: boolean;
+        sync_categories: string[];
+        whatsapp_catalog_id: string | null;
+        last_synced_at: string | null;
+      };
     }>('/v1/retailers/me/whatsapp-catalog', {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -82,4 +82,4 @@ export const whatsappCatalogApi = {
     request<{ data: WhatsAppCatalogItem[] }>('/v1/retailers/me/whatsapp-catalog/items', {
       getCacheTtlMs: 60_000,
     }),
-}
+};

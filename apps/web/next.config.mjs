@@ -1,32 +1,32 @@
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
-import withSerwistInit from '@serwist/next'
-import { withSentryConfig } from '@sentry/nextjs/config'
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { withSentryConfig } from '@sentry/nextjs/config';
+import withSerwistInit from '@serwist/next';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // CSP origins come from build-time env (NEXT_PUBLIC_* is inlined at build anyway).
 const originOf = (u) => {
   try {
-    return u ? new URL(u).origin : null
+    return u ? new URL(u).origin : null;
   } catch {
-    return null
+    return null;
   }
-}
-const dev = process.env.NODE_ENV !== 'production'
-const apiOrigin = originOf(process.env.NEXT_PUBLIC_API_URL)
-const r2Origin = originOf(process.env.NEXT_PUBLIC_R2_PUBLIC_URL)
+};
+const dev = process.env.NODE_ENV !== 'production';
+const apiOrigin = originOf(process.env.NEXT_PUBLIC_API_URL);
+const r2Origin = originOf(process.env.NEXT_PUBLIC_R2_PUBLIC_URL);
 // Sentry DSN = https://<key>@<host>/<projectId>; its CSP report endpoint is derived from it.
-let sentryOrigin = null
-let cspReportUri = null
+let sentryOrigin = null;
+let cspReportUri = null;
 try {
-  const dsn = new URL(process.env.NEXT_PUBLIC_SENTRY_DSN ?? '')
-  sentryOrigin = dsn.origin
-  cspReportUri = `${dsn.origin}/api${dsn.pathname}/security/?sentry_key=${dsn.username}`
+  const dsn = new URL(process.env.NEXT_PUBLIC_SENTRY_DSN ?? '');
+  sentryOrigin = dsn.origin;
+  cspReportUri = `${dsn.origin}/api${dsn.pathname}/security/?sentry_key=${dsn.username}`;
 } catch {}
-const msg91 = ['https://*.msg91.com', 'https://*.phone91.com']
-const r2 = ['https://*.r2.dev', 'https://*.r2.cloudflarestorage.com', r2Origin]
-const directive = (name, ...values) => [name, ...values.flat().filter(Boolean)].join(' ')
+const msg91 = ['https://*.msg91.com', 'https://*.phone91.com'];
+const r2 = ['https://*.r2.dev', 'https://*.r2.cloudflarestorage.com', r2Origin];
+const directive = (name, ...values) => [name, ...values.flat().filter(Boolean)].join(' ');
 
 // ponytail: 'unsafe-inline' scripts because App Router emits inline bootstrap
 // scripts; nonces need middleware + dynamic rendering. Report-Only first, enforce
@@ -48,7 +48,7 @@ const csp = [
   cspReportUri && directive('report-uri', cspReportUri),
 ]
   .filter(Boolean)
-  .join('; ')
+  .join('; ');
 
 const withSerwist = withSerwistInit({
   swSrc: 'src/app/sw.ts',
@@ -67,7 +67,7 @@ const withSerwist = withSerwistInit({
   // manifest contains the content-hashed prod chunks that a dev-mode offline
   // reload can't serve (hydration never runs on the raw SSR page).
   disable: process.env.NODE_ENV === 'development',
-})
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -117,9 +117,9 @@ const nextConfig = {
           { key: 'Content-Security-Policy-Report-Only', value: csp },
         ],
       },
-    ]
+    ];
   },
-}
+};
 
 // Sentry build integration: injects the client/server/edge configs and, when
 // SENTRY_AUTH_TOKEN + SENTRY_ORG + SENTRY_PROJECT are set at build time,
@@ -129,5 +129,4 @@ export default withSentryConfig(withSerwist(nextConfig), {
   widenClientFileUpload: true,
   // Don't tunnel through the app: keep bundle lean; ad-blockers dropping a few
   // client events is an acceptable trade for pilot scale.
-})
-
+});

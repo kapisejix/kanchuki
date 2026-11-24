@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -11,4 +11,4 @@ export default defineConfig({
       DATABASE_URL: 'postgresql://ci:ci@localhost:5432/ci_db_unused',
     },
   },
-})
+});

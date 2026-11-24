@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { API_URL as apiUrl } from '@/lib/apiUrl'
+import { API_URL as apiUrl } from '@/lib/apiUrl';
+import { type NextRequest, NextResponse } from 'next/server';
 
 // Proxy the customer's try-on status poll. Plain JSON GET, so the passport
 // proxy's simple forwarder shape applies — cookies only, no body.
@@ -12,8 +12,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ productId: string }> },
 ) {
-  const { productId } = await params
-  const jobId = request.nextUrl.searchParams.get('job_id') ?? ''
+  const { productId } = await params;
+  const jobId = request.nextUrl.searchParams.get('job_id') ?? '';
 
   try {
     const res = await fetch(
@@ -26,16 +26,19 @@ export async function GET(
         },
         cache: 'no-store',
       },
-    )
+    );
 
-    const body = await res.text()
+    const body = await res.text();
     return new NextResponse(body, {
       status: res.status,
       headers: { 'Content-Type': 'application/json' },
-    })
+    });
   } catch {
-    return NextResponse.json({ error: { code: 'UNAVAILABLE', message: 'Service unavailable' } }, {
-      status: 503,
-    })
+    return NextResponse.json(
+      { error: { code: 'UNAVAILABLE', message: 'Service unavailable' } },
+      {
+        status: 503,
+      },
+    );
   }
 }

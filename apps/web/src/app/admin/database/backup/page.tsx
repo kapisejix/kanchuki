@@ -1,112 +1,112 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Database,
-  HardDrive,
-  Download,
-  Upload,
-  RefreshCw,
-  Clock,
   AlertCircle,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  ChevronDown,
-  ChevronUp,
-  Terminal,
-  Trash2,
-  Server,
-  ShieldCheck,
-  ShieldAlert,
   Bell,
   Calendar,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Database,
+  Download,
+  HardDrive,
+  Loader2,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+  RefreshCw,
+  Server,
+  ShieldAlert,
+  ShieldCheck,
+  Terminal,
+  Trash2,
+  Upload,
+  XCircle,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────
 
 type BackupEntry = {
-  prefix: string
-  key: string
-  size: number
-  size_formatted: string
-  last_modified: string | null
-  metadata: Record<string, unknown> | null
-  has_metadata: boolean
-}
+  prefix: string;
+  key: string;
+  size: number;
+  size_formatted: string;
+  last_modified: string | null;
+  metadata: Record<string, unknown> | null;
+  has_metadata: boolean;
+};
 
 type BackupSummary = {
-  total_count: number
-  total_size: number
-  total_size_formatted: string
+  total_count: number;
+  total_size: number;
+  total_size_formatted: string;
   latest_backup: {
-    key: string
-    size_formatted: string
-    last_modified: string | null
-    has_metadata: boolean
-  } | null
-}
+    key: string;
+    size_formatted: string;
+    last_modified: string | null;
+    has_metadata: boolean;
+  } | null;
+};
 
 type BackupListResponse = {
   data: {
-    backups: BackupEntry[]
-    summary: BackupSummary
+    backups: BackupEntry[];
+    summary: BackupSummary;
     environment: {
-      docker_available: boolean
-      backup_command: string
-      restore_command: string
-    }
-  }
-}
+      docker_available: boolean;
+      backup_command: string;
+      restore_command: string;
+    };
+  };
+};
 
 type ActionResponse = {
   data: {
-    status: string
-    message: string
-    commands: string[]
-    cli_command: string
-    audit_logged: boolean
-  }
-}
+    status: string;
+    message: string;
+    commands: string[];
+    cli_command: string;
+    audit_logged: boolean;
+  };
+};
 
 // ─── Helpers ───────────────────────────────────────────────────
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
+  if (!iso) return '—';
+  const d = new Date(iso);
   return d.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 }
 
 function formatDateShort(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffHours = diffMs / (1000 * 60 * 60)
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
 
   if (diffHours < 1) {
-    const mins = Math.round(diffMs / (1000 * 60))
-    return `${mins}m ago`
+    const mins = Math.round(diffMs / (1000 * 60));
+    return `${mins}m ago`;
   }
   if (diffHours < 24) {
-    return `${Math.round(diffHours)}h ago`
+    return `${Math.round(diffHours)}h ago`;
   }
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
 function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text)
+  navigator.clipboard.writeText(text);
 }
 
 // ─── Container Variants ────────────────────────────────────────
@@ -117,7 +117,7 @@ const containerVariants = {
     opacity: 1,
     transition: { staggerChildren: 0.05, delayChildren: 0.1 },
   },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -126,125 +126,134 @@ const itemVariants = {
     y: 0,
     transition: { type: 'spring', stiffness: 200, damping: 20 },
   },
-}
+};
 
 // ─── Main Page ─────────────────────────────────────────────────
 
 export default function DatabaseBackupPage() {
-  const [backups, setBackups] = useState<BackupEntry[]>([])
-  const [summary, setSummary] = useState<BackupSummary | null>(null)
-  const [environment, setEnvironment] = useState<{ backup_command: string; restore_command: string; docker_available: boolean } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState('')
+  const [backups, setBackups] = useState<BackupEntry[]>([]);
+  const [summary, setSummary] = useState<BackupSummary | null>(null);
+  const [environment, setEnvironment] = useState<{
+    backup_command: string;
+    restore_command: string;
+    docker_available: boolean;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
 
   // Trigger backup state
-  const [triggering, setTriggering] = useState(false)
-  const [triggerResult, setTriggerResult] = useState<ActionResponse['data'] | null>(null)
+  const [triggering, setTriggering] = useState(false);
+  const [triggerResult, setTriggerResult] = useState<ActionResponse['data'] | null>(null);
 
   // Restore state
-  const [restoringKey, setRestoringKey] = useState<string | null>(null)
-  const [restoreResult, setRestoreResult] = useState<string | null>(null)
+  const [restoringKey, setRestoringKey] = useState<string | null>(null);
+  const [restoreResult, setRestoreResult] = useState<string | null>(null);
 
   // Expanded rows
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // Create/Restore are Super Admin only (Admin is view-only, API returns 403).
   // Fail closed: hidden until the stored role is confirmed SUPER_ADMIN.
-  const [canWrite, setCanWrite] = useState(false)
+  const [canWrite, setCanWrite] = useState(false);
   useEffect(() => {
     try {
-      setCanWrite(sessionStorage.getItem('admin_role') === 'SUPER_ADMIN')
+      setCanWrite(sessionStorage.getItem('admin_role') === 'SUPER_ADMIN');
     } catch {
-      setCanWrite(false)
+      setCanWrite(false);
     }
-  }, [])
+  }, []);
 
   // ── Fetch backups ────────────────────────────────────────────
   const fetchBackups = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true)
-    else setLoading(true)
-    setError('')
-    setTriggerResult(null)
-    setRestoreResult(null)
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    setError('');
+    setTriggerResult(null);
+    setRestoreResult(null);
 
     try {
-      const res = await fetch(`${API_URL}/v1/admin/backups`, adminGetOptions())
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      const res = await fetch(`${API_URL}/v1/admin/backups`, adminGetOptions());
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
-      const json = (await res.json()) as BackupListResponse
-      setBackups(json.data.backups)
-      setSummary(json.data.summary)
-      setEnvironment(json.data.environment)
+      const json = (await res.json()) as BackupListResponse;
+      setBackups(json.data.backups);
+      setSummary(json.data.summary);
+      setEnvironment(json.data.environment);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load backups')
+      setError(err instanceof Error ? err.message : 'Failed to load backups');
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    fetchBackups()
-  }, [fetchBackups])
+    fetchBackups();
+  }, [fetchBackups]);
 
   // ── Trigger backup ───────────────────────────────────────────
   const handleTriggerBackup = async () => {
-    setTriggering(true)
-    setTriggerResult(null)
-    setError('')
+    setTriggering(true);
+    setTriggerResult(null);
+    setError('');
 
     try {
       const res = await fetch(`${API_URL}/v1/admin/backup/create`, {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({}),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
-      const json = (await res.json()) as ActionResponse
-      setTriggerResult(json.data)
+      const json = (await res.json()) as ActionResponse;
+      setTriggerResult(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to trigger backup')
+      setError(err instanceof Error ? err.message : 'Failed to trigger backup');
     } finally {
-      setTriggering(false)
+      setTriggering(false);
     }
-  }
+  };
 
   // ── Trigger restore ──────────────────────────────────────────
   const handleRestore = async (key: string) => {
-    if (!confirm(`Are you sure you want to restore from this backup?\n\n${key}\n\nThis will overwrite the target database.`)) return
+    if (
+      !confirm(
+        `Are you sure you want to restore from this backup?\n\n${key}\n\nThis will overwrite the target database.`,
+      )
+    )
+      return;
 
-    setRestoringKey(key)
-    setRestoreResult(null)
-    setError('')
+    setRestoringKey(key);
+    setRestoreResult(null);
+    setError('');
 
     try {
       const res = await fetch(`${API_URL}/v1/admin/backups/restore`, {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({ key }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
-      const json = (await res.json()) as ActionResponse
-      setRestoreResult(json.data.cli_command)
+      const json = (await res.json()) as ActionResponse;
+      setRestoreResult(json.data.cli_command);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to trigger restore')
+      setError(err instanceof Error ? err.message : 'Failed to trigger restore');
     } finally {
-      setRestoringKey(null)
+      setRestoringKey(null);
     }
-  }
+  };
 
   // ── Toggle metadata expansion ────────────────────────────────
   const toggleRow = (key: string) => {
     setExpandedRows((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   return (
     <motion.div
@@ -284,11 +293,7 @@ export default function DatabaseBackupPage() {
                 whileTap={{ scale: 0.98 }}
                 className="bg-green-700 hover:bg-green-800 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white rounded-xl transition disabled:opacity-50 shadow-lg"
               >
-                {triggering ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Upload size={14} />
-                )}
+                {triggering ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                 {triggering ? 'Triggering...' : 'Trigger Backup'}
               </motion.button>
             )}
@@ -314,7 +319,9 @@ export default function DatabaseBackupPage() {
           <SummaryCard
             icon={Clock}
             label="Latest Backup"
-            value={summary.latest_backup ? formatDateShort(summary.latest_backup.last_modified) : 'None'}
+            value={
+              summary.latest_backup ? formatDateShort(summary.latest_backup.last_modified) : 'None'
+            }
             color="amber"
           />
           <SummaryCard
@@ -353,7 +360,9 @@ export default function DatabaseBackupPage() {
             <div className="flex items-start gap-3">
               <CheckCircle2 size={20} className="text-emerald-500 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-emerald-800 mb-1">{triggerResult.message}</p>
+                <p className="text-sm font-semibold text-emerald-800 mb-1">
+                  {triggerResult.message}
+                </p>
 
                 {/* CLI commands */}
                 <div className="mt-3 space-y-1.5">
@@ -417,7 +426,8 @@ export default function DatabaseBackupPage() {
                   </motion.button>
                 </div>
                 <p className="text-[11px] text-amber-600 mt-2">
-                  ⚠️ This will overwrite the target database. Ensure you have a current backup before restoring.
+                  ⚠️ This will overwrite the target database. Ensure you have a current backup before
+                  restoring.
                 </p>
               </div>
               <button
@@ -449,8 +459,10 @@ export default function DatabaseBackupPage() {
           <HardDrive size={48} className="mx-auto text-gray-200 mb-4" />
           <p className="text-sm text-gray-500">No backups found</p>
           <p className="text-xs text-gray-400 mt-1">
-            Backups are stored in Cloudflare R2 under the <code className="text-gray-500 font-mono">backups/</code> prefix.
-            Run <code className="text-gray-500 font-mono">pnpm db:backup:local</code> from a machine with Docker to create the first backup.
+            Backups are stored in Cloudflare R2 under the{' '}
+            <code className="text-gray-500 font-mono">backups/</code> prefix. Run{' '}
+            <code className="text-gray-500 font-mono">pnpm db:backup:local</code> from a machine
+            with Docker to create the first backup.
           </p>
           {canWrite && (
             <motion.button
@@ -501,7 +513,9 @@ export default function DatabaseBackupPage() {
                     <span className="text-xs font-mono text-gray-500">{backup.size_formatted}</span>
                   </div>
                   <div className="w-28 text-right shrink-0 hidden sm:block">
-                    <span className="text-xs text-gray-400">{formatDateShort(backup.last_modified)}</span>
+                    <span className="text-xs text-gray-400">
+                      {formatDateShort(backup.last_modified)}
+                    </span>
                   </div>
                   <div className="w-20 text-center shrink-0">
                     {backup.has_metadata ? (
@@ -513,7 +527,10 @@ export default function DatabaseBackupPage() {
                   <div className="w-28 text-right shrink-0 hidden md:flex items-center justify-end gap-1">
                     {canWrite && (
                       <motion.button
-                        onClick={(e) => { e.stopPropagation(); handleRestore(backup.key) }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRestore(backup.key);
+                        }}
                         disabled={restoringKey === backup.key}
                         whileTap={{ scale: 0.98 }}
                         className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition disabled:opacity-40"
@@ -528,10 +545,17 @@ export default function DatabaseBackupPage() {
                       </motion.button>
                     )}
                     <button
-                      onClick={(e) => { e.stopPropagation(); toggleRow(backup.key) }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRow(backup.key);
+                      }}
                       className="p-1 text-gray-300 hover:text-gray-500"
                     >
-                      {expandedRows.has(backup.key) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      {expandedRows.has(backup.key) ? (
+                        <ChevronUp size={14} />
+                      ) : (
+                        <ChevronDown size={14} />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -542,11 +566,15 @@ export default function DatabaseBackupPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                       <div>
                         <span className="text-gray-400 block mb-0.5">Key</span>
-                        <code className="text-gray-700 font-mono text-[10px] break-all">{backup.key}</code>
+                        <code className="text-gray-700 font-mono text-[10px] break-all">
+                          {backup.key}
+                        </code>
                       </div>
                       <div>
                         <span className="text-gray-400 block mb-0.5">Size</span>
-                        <span className="text-gray-700">{backup.size_formatted} ({backup.size.toLocaleString()} bytes)</span>
+                        <span className="text-gray-700">
+                          {backup.size_formatted} ({backup.size.toLocaleString()} bytes)
+                        </span>
                       </div>
                       <div>
                         <span className="text-gray-400 block mb-0.5">Last Modified</span>
@@ -554,13 +582,17 @@ export default function DatabaseBackupPage() {
                       </div>
                       <div>
                         <span className="text-gray-400 block mb-0.5">Metadata File</span>
-                        <span className={backup.has_metadata ? 'text-emerald-600' : 'text-gray-400'}>
+                        <span
+                          className={backup.has_metadata ? 'text-emerald-600' : 'text-gray-400'}
+                        >
                           {backup.has_metadata ? 'Available' : 'Not found'}
                         </span>
                       </div>
                       <div className="sm:col-span-2 lg:col-span-2">
                         <span className="text-gray-400 block mb-0.5">Prefix</span>
-                        <code className="text-gray-700 font-mono text-[10px] break-all">{backup.prefix}</code>
+                        <code className="text-gray-700 font-mono text-[10px] break-all">
+                          {backup.prefix}
+                        </code>
                       </div>
                     </div>
 
@@ -596,10 +628,12 @@ export default function DatabaseBackupPage() {
           {/* Footer stats */}
           <div className="flex items-center justify-between text-[10px] text-gray-400 px-1">
             <span>
-              {backups.length} backup{backups.length !== 1 ? 's' : ''} · {summary?.total_size_formatted ?? '?'} total
+              {backups.length} backup{backups.length !== 1 ? 's' : ''} ·{' '}
+              {summary?.total_size_formatted ?? '?'} total
             </span>
             <span>
-              Last refreshed: {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              Last refreshed:{' '}
+              {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
         </motion.div>
@@ -643,8 +677,8 @@ export default function DatabaseBackupPage() {
             </div>
             <p className="text-[10px] text-gray-400 mt-3 flex items-center gap-1">
               <AlertCircle size={10} />
-              Docker is required for pg_dump/pg_restore. The API server cannot execute backups directly —
-              run these commands from a machine with Docker and the same R2 credentials.
+              Docker is required for pg_dump/pg_restore. The API server cannot execute backups
+              directly — run these commands from a machine with Docker and the same R2 credentials.
             </p>
           </div>
         </motion.div>
@@ -658,7 +692,7 @@ export default function DatabaseBackupPage() {
         </p>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 // ─── Summary Card ──────────────────────────────────────────────
@@ -669,17 +703,17 @@ function SummaryCard({
   value,
   color,
 }: {
-  icon: LucideIcon
-  label: string
-  value: string | number
-  color: 'emerald' | 'blue' | 'amber' | 'gray'
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+  color: 'emerald' | 'blue' | 'amber' | 'gray';
 }) {
   const iconColorMap = {
     emerald: 'text-emerald-500',
     blue: 'text-blue-500',
     amber: 'text-amber-500',
     gray: 'text-gray-400',
-  }
+  };
 
   return (
     <motion.div
@@ -694,5 +728,5 @@ function SummaryCard({
         {typeof value === 'number' ? value.toLocaleString('en-IN') : value}
       </div>
     </motion.div>
-  )
+  );
 }

@@ -1,8 +1,8 @@
+import { API_URL as apiUrl } from '@/lib/apiUrl';
 // Proxy all /api/passport/* requests to the backend API.
 // Follows the existing proxy pattern (app/api/[store]/leads/route.ts).
 // Forwards the visitor's cookies so the passport session is visible to the API.
 import { type NextRequest, NextResponse } from 'next/server';
-import { API_URL as apiUrl } from '@/lib/apiUrl';
 
 // Every passport subpath the browser may reach. A path missing here answers 404,
 // and a verb with no exported handler answers 405 — so both have to be kept in
@@ -10,7 +10,25 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 // missing while /my-profile already PUT to this path, which made the
 // "Personalized recommendations" opt-out fail silently: fetch does not throw on
 // a 405, so the toggle looked saved and came back on reload (RC-026).
-const PASSPORT_PATHS = ['otp/send', 'otp/verify', 'me', 'logout', 'stores', 'events', 'preferences', 'wishlist', 'recently-viewed', 'export', 'delete', 'try-on/consent', 'try-on/withdraw', 'push/key', 'push/subscribe', 'push/unsubscribe', 'ai-report'];
+const PASSPORT_PATHS = [
+  'otp/send',
+  'otp/verify',
+  'me',
+  'logout',
+  'stores',
+  'events',
+  'preferences',
+  'wishlist',
+  'recently-viewed',
+  'export',
+  'delete',
+  'try-on/consent',
+  'try-on/withdraw',
+  'push/key',
+  'push/subscribe',
+  'push/unsubscribe',
+  'ai-report',
+];
 
 type ProxyMethod = 'GET' | 'POST' | 'PUT' | 'PATCH';
 
@@ -68,10 +86,7 @@ async function forward(request: NextRequest, path: string[], method: ProxyMethod
 
     return response;
   } catch {
-    return NextResponse.json(
-      { error: 'Service unavailable' },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
   }
 }
 

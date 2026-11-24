@@ -1,37 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { COLORS } from '@kanchuki/shared';
+import Constants from 'expo-constants';
+import * as ImagePicker from 'expo-image-picker';
+import { AlertTriangle, Bug, Camera, Send, X } from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  Modal,
-  TextInput,
-  ScrollView,
   ActivityIndicator,
   Alert,
-  Platform,
   Image,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
-import Constants from "expo-constants";
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Bug,
-  Camera,
-  Send,
-  X,
-  AlertTriangle,
-} from "lucide-react-native";
-import {
+  type BugReportSeverity,
   bugReportApi,
+  prepareImageForUpload,
   retailerApi,
   uploadImageToR2,
-  prepareImageForUpload,
-  type BugReportSeverity,
-} from "../lib/api";
-import { showError } from "../lib/errors";
-import { COLORS } from "@kanchuki/shared";
-import { AnimatedPressable } from "./AnimatedPressable";
-import { GradientButton } from "./GradientButton";
-import { KeyboardScreen } from "./KeyboardScreen";
+} from '../lib/api';
+import { showError } from '../lib/errors';
+import { AnimatedPressable } from './AnimatedPressable';
+import { GradientButton } from './GradientButton';
+import { KeyboardScreen } from './KeyboardScreen';
 
 type Props = {
   visible: boolean;
@@ -58,10 +52,10 @@ const SEVERITY_OPTIONS: {
   label: string;
   color: string;
 }[] = [
-  { value: "LOW", label: "Minor", color: "#4ade80" },
-  { value: "MEDIUM", label: "Moderate", color: "#facc15" },
-  { value: "HIGH", label: "Major", color: "#fb923c" },
-  { value: "CRITICAL", label: "Critical", color: "#ef4444" },
+  { value: 'LOW', label: 'Minor', color: '#4ade80' },
+  { value: 'MEDIUM', label: 'Moderate', color: '#facc15' },
+  { value: 'HIGH', label: 'Major', color: '#fb923c' },
+  { value: 'CRITICAL', label: 'Critical', color: '#ef4444' },
 ];
 
 export function ReportProblem({
@@ -73,11 +67,9 @@ export function ReportProblem({
   aiContent,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const [description, setDescription] = useState("");
-  const [severity, setSeverity] = useState<BugReportSeverity>(
-    errorContext ? "HIGH" : "MEDIUM",
-  );
-  const [notes, setNotes] = useState("");
+  const [description, setDescription] = useState('');
+  const [severity, setSeverity] = useState<BugReportSeverity>(errorContext ? 'HIGH' : 'MEDIUM');
+  const [notes, setNotes] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [screenshotR2Key, setScreenshotR2Key] = useState<string | null>(null);
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
@@ -96,18 +88,18 @@ export function ReportProblem({
     if (visible) {
       setSubmitted(false);
       if (!errorContext) {
-        setDescription("");
-        setNotes("");
+        setDescription('');
+        setNotes('');
         setScreenshot(null);
         setScreenshotR2Key(null);
-        setSeverity("MEDIUM");
+        setSeverity('MEDIUM');
       }
     }
   }, [visible, errorContext]);
 
   const handlePickScreenshot = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
+      mediaTypes: ['images'],
       quality: 0.7,
       allowsEditing: true,
     });
@@ -119,29 +111,19 @@ export function ReportProblem({
     // Upload to R2 in background
     setUploadingScreenshot(true);
     try {
-      const prep = await prepareImageForUpload(uri, "image/jpeg");
-      const uploadResult = await retailerApi.getLogoUploadUrl(
-        "image/jpeg",
-        prep.size,
-      );
+      const prep = await prepareImageForUpload(uri, 'image/jpeg');
+      const uploadResult = await retailerApi.getLogoUploadUrl('image/jpeg', prep.size);
       const info = uploadResult.data as {
         upload_url: string;
         r2_key: string;
         public_url: string;
       };
-      await uploadImageToR2(
-        prep.uri,
-        info.upload_url,
-        "image/jpeg",
-        undefined,
-        undefined,
-        {
-          compress: false,
-        },
-      );
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+        compress: false,
+      });
       setScreenshotR2Key(info.r2_key);
     } catch (err) {
-      showError(err, "Failed to upload screenshot — continuing without it");
+      showError(err, 'Failed to upload screenshot — continuing without it');
       setScreenshot(null);
       setScreenshotR2Key(null);
     } finally {
@@ -151,30 +133,29 @@ export function ReportProblem({
 
   const handleSubmit = useCallback(async () => {
     if (description.trim().length < 10) {
-      Alert.alert(
-        "More detail needed",
-        "Please describe the issue in at least 10 characters.",
-      );
+      Alert.alert('More detail needed', 'Please describe the issue in at least 10 characters.');
       return;
     }
 
     setSubmitting(true);
     try {
       // Auto-capture device info
-      const osVersion = `${Platform.OS === "android" ? "Android" : "iOS"} ${Platform.Version}`;
+      const osVersion = `${Platform.OS === 'android' ? 'Android' : 'iOS'} ${Platform.Version}`;
       const appVersion =
-        Constants.expoConfig?.version ??
-        Constants.expoConfig?.ios?.bundleIdentifier ??
-        "unknown";
+        Constants.expoConfig?.version ?? Constants.expoConfig?.ios?.bundleIdentifier ?? 'unknown';
 
       await bugReportApi.submit({
         description: aiContent
-          ? `[AI content report: ${aiContent.feature}${aiContent.ref ? ` · ${aiContent.ref}` : ""}] ${description.trim().slice(0, 3800)}`
+          ? `[AI content report: ${aiContent.feature}${aiContent.ref ? ` · ${aiContent.ref}` : ''}] ${description.trim().slice(0, 3800)}`
           : description.trim().slice(0, 4000),
         severity,
         app_version: appVersion.slice(0, 100),
         os_version: osVersion.slice(0, 100),
-        device_model: `${Platform.OS} ${Platform.Version} (${Platform.OS === "android" ? (Constants.expoConfig?.android?.package ?? "unknown") : (Constants.expoConfig?.ios?.bundleIdentifier ?? "unknown")})`.slice(0, 300),
+        device_model:
+          `${Platform.OS} ${Platform.Version} (${Platform.OS === 'android' ? (Constants.expoConfig?.android?.package ?? 'unknown') : (Constants.expoConfig?.ios?.bundleIdentifier ?? 'unknown')})`.slice(
+            0,
+            300,
+          ),
         screen_name: (aiContent?.feature ?? screenName)?.slice(0, 100),
         last_screen: lastScreen?.slice(0, 100),
         error_message: errorContext?.errorMessage?.slice(0, 2000),
@@ -186,7 +167,7 @@ export function ReportProblem({
 
       setSubmitted(true);
     } catch (err) {
-      showError(err, "Failed to submit report. Please try again.");
+      showError(err, 'Failed to submit report. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -203,23 +184,16 @@ export function ReportProblem({
 
   if (submitted) {
     return (
-      <Modal
-        visible={visible}
-        transparent
-        animationType="fade"
-        onRequestClose={onClose}
-      >
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
         <View className="flex-1 bg-black/50 justify-center px-6">
           <View className="bg-white rounded-3xl w-full p-8 items-center">
             <View className="w-16 h-16 rounded-3xl bg-green-100 items-center justify-center mb-4">
               <Send size={28} color="#22c55e" />
             </View>
-            <Text className="text-lg font-bold text-sand-900 mb-2">
-              Report Submitted
-            </Text>
+            <Text className="text-lg font-bold text-sand-900 mb-2">Report Submitted</Text>
             <Text className="text-sm text-sand-500 text-center mb-6 leading-5">
-              Thank you! Our team will review this and get back to you. Your
-              feedback helps us improve Kanchuki for everyone.
+              Thank you! Our team will review this and get back to you. Your feedback helps us
+              improve Kanchuki for everyone.
             </Text>
             <GradientButton variant="web" label="Done" onPress={onClose} />
           </View>
@@ -229,190 +203,164 @@ export function ReportProblem({
   }
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen>
-      <View
-        className="flex-1 bg-black/50 justify-end"
-        style={{ paddingBottom: insets.bottom }}
-      >
-        <View
-          className="bg-white rounded-t-3xl w-full"
-          style={{ maxHeight: "90%" }}
-        >
-          {/* Header */}
-          <View className="flex-row items-center justify-between px-5 pt-5 pb-3">
-            <View className="flex-row items-center gap-2">
-              <View className="w-9 h-9 rounded-xl bg-rust-100 items-center justify-center">
-                <Bug size={18} color={COLORS.danger} />
-              </View>
-              <Text className="text-lg font-bold text-sand-900">
-                {aiContent ? "Report AI Content" : "Report a Problem"}
-              </Text>
-            </View>
-            <AnimatedPressable
-              onPress={onClose}
-              hitSlop={8}
-              accessibilityLabel="Close"
-            >
-              <X size={22} color="#9ca3af" />
-            </AnimatedPressable>
-          </View>
-
-          <ScrollView className="px-5 pb-6" keyboardShouldPersistTaps="handled">
-            {/* Error context banner */}
-            {errorContext?.errorMessage && (
-              <View className="bg-rust-50 border border-rust-200 rounded-2xl p-3.5 mb-4">
-                <View className="flex-row items-center gap-2 mb-1.5">
-                  <AlertTriangle size={14} color={COLORS.danger} />
-                  <Text className="text-xs font-semibold text-rust-600">
-                    Auto-captured error
-                  </Text>
+        <View className="flex-1 bg-black/50 justify-end" style={{ paddingBottom: insets.bottom }}>
+          <View className="bg-white rounded-t-3xl w-full" style={{ maxHeight: '90%' }}>
+            {/* Header */}
+            <View className="flex-row items-center justify-between px-5 pt-5 pb-3">
+              <View className="flex-row items-center gap-2">
+                <View className="w-9 h-9 rounded-xl bg-rust-100 items-center justify-center">
+                  <Bug size={18} color={COLORS.danger} />
                 </View>
-                <Text className="text-xs text-rust-500" numberOfLines={3}>
-                  {errorContext.errorMessage}
+                <Text className="text-lg font-bold text-sand-900">
+                  {aiContent ? 'Report AI Content' : 'Report a Problem'}
                 </Text>
               </View>
-            )}
-
-            {/* Description */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
-                {aiContent
-                  ? "What is wrong with this AI-generated content? *"
-                  : "What went wrong? *"}
-              </Text>
-              <TextInput
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Describe the issue you're facing..."
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                className="bg-sand-50 px-4 py-3 rounded-2xl text-sm text-sand-900 min-h-[100px]"
-                placeholderTextColor="#9ca3af"
-              />
+              <AnimatedPressable onPress={onClose} hitSlop={8} accessibilityLabel="Close">
+                <X size={22} color="#9ca3af" />
+              </AnimatedPressable>
             </View>
 
-            {/* Severity */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
-                How severe is this?
-              </Text>
-              <View className="flex-row gap-2">
-                {SEVERITY_OPTIONS.map((opt) => (
-                  <AnimatedPressable
-                    key={opt.value}
-                    onPress={() => setSeverity(opt.value)}
-                    className={`flex-1 py-2.5 rounded-xl items-center border ${
-                      severity === opt.value
-                        ? "border-ink-600 bg-ink-50"
-                        : "border-sand-200 bg-white"
-                    }`}
-                  >
-                    <View
-                      className="w-2.5 h-2.5 rounded-full mb-1"
-                      style={{ backgroundColor: opt.color }}
-                    />
-                    <Text
-                      className={`text-[10px] font-semibold ${
+            <ScrollView className="px-5 pb-6" keyboardShouldPersistTaps="handled">
+              {/* Error context banner */}
+              {errorContext?.errorMessage && (
+                <View className="bg-rust-50 border border-rust-200 rounded-2xl p-3.5 mb-4">
+                  <View className="flex-row items-center gap-2 mb-1.5">
+                    <AlertTriangle size={14} color={COLORS.danger} />
+                    <Text className="text-xs font-semibold text-rust-600">Auto-captured error</Text>
+                  </View>
+                  <Text className="text-xs text-rust-500" numberOfLines={3}>
+                    {errorContext.errorMessage}
+                  </Text>
+                </View>
+              )}
+
+              {/* Description */}
+              <View className="mb-4">
+                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+                  {aiContent
+                    ? 'What is wrong with this AI-generated content? *'
+                    : 'What went wrong? *'}
+                </Text>
+                <TextInput
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Describe the issue you're facing..."
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  className="bg-sand-50 px-4 py-3 rounded-2xl text-sm text-sand-900 min-h-[100px]"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+
+              {/* Severity */}
+              <View className="mb-4">
+                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+                  How severe is this?
+                </Text>
+                <View className="flex-row gap-2">
+                  {SEVERITY_OPTIONS.map((opt) => (
+                    <AnimatedPressable
+                      key={opt.value}
+                      onPress={() => setSeverity(opt.value)}
+                      className={`flex-1 py-2.5 rounded-xl items-center border ${
                         severity === opt.value
-                          ? "text-ink-600"
-                          : "text-sand-500"
+                          ? 'border-ink-600 bg-ink-50'
+                          : 'border-sand-200 bg-white'
                       }`}
                     >
-                      {opt.label}
-                    </Text>
-                  </AnimatedPressable>
-                ))}
-              </View>
-            </View>
-
-            {/* Screenshot */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
-                Screenshot (optional)
-              </Text>
-              {screenshot ? (
-                <View className="relative">
-                  <Image
-                    source={{ uri: screenshot }}
-                    className="w-full h-40 rounded-2xl"
-                    resizeMode="cover"
-                  />
-                  {uploadingScreenshot && (
-                    <View className="absolute inset-0 bg-black/40 rounded-2xl items-center justify-center">
-                      <ActivityIndicator color="white" />
-                      <Text className="text-white text-xs mt-2">
-                        Uploading...
+                      <View
+                        className="w-2.5 h-2.5 rounded-full mb-1"
+                        style={{ backgroundColor: opt.color }}
+                      />
+                      <Text
+                        className={`text-[10px] font-semibold ${
+                          severity === opt.value ? 'text-ink-600' : 'text-sand-500'
+                        }`}
+                      >
+                        {opt.label}
                       </Text>
-                    </View>
-                  )}
-                  <AnimatedPressable
-                    onPress={() => {
-                      setScreenshot(null);
-                      setScreenshotR2Key(null);
-                    }}
-                    className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5"
-                  >
-                    <X size={14} color="white" />
-                  </AnimatedPressable>
+                    </AnimatedPressable>
+                  ))}
                 </View>
-              ) : (
-                <AnimatedPressable
-                  onPress={() => void handlePickScreenshot()}
-                  disabled={uploadingScreenshot}
-                  className="bg-sand-50 border border-dashed border-sand-300 rounded-2xl py-8 items-center"
-                >
-                  <Camera size={24} color="#9ca3af" />
-                  <Text className="text-xs text-sand-400 mt-2">
-                    Tap to add a screenshot
-                  </Text>
-                </AnimatedPressable>
-              )}
-            </View>
+              </View>
 
-            {/* Additional notes */}
-            <View className="mb-5">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
-                Any extra details? (optional)
-              </Text>
-              <TextInput
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Steps to reproduce, what you expected..."
-                multiline
-                numberOfLines={2}
-                textAlignVertical="top"
-                className="bg-sand-50 px-4 py-3 rounded-2xl text-sm text-sand-900 min-h-[60px]"
-                placeholderTextColor="#9ca3af"
+              {/* Screenshot */}
+              <View className="mb-4">
+                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+                  Screenshot (optional)
+                </Text>
+                {screenshot ? (
+                  <View className="relative">
+                    <Image
+                      source={{ uri: screenshot }}
+                      className="w-full h-40 rounded-2xl"
+                      resizeMode="cover"
+                    />
+                    {uploadingScreenshot && (
+                      <View className="absolute inset-0 bg-black/40 rounded-2xl items-center justify-center">
+                        <ActivityIndicator color="white" />
+                        <Text className="text-white text-xs mt-2">Uploading...</Text>
+                      </View>
+                    )}
+                    <AnimatedPressable
+                      onPress={() => {
+                        setScreenshot(null);
+                        setScreenshotR2Key(null);
+                      }}
+                      className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5"
+                    >
+                      <X size={14} color="white" />
+                    </AnimatedPressable>
+                  </View>
+                ) : (
+                  <AnimatedPressable
+                    onPress={() => void handlePickScreenshot()}
+                    disabled={uploadingScreenshot}
+                    className="bg-sand-50 border border-dashed border-sand-300 rounded-2xl py-8 items-center"
+                  >
+                    <Camera size={24} color="#9ca3af" />
+                    <Text className="text-xs text-sand-400 mt-2">Tap to add a screenshot</Text>
+                  </AnimatedPressable>
+                )}
+              </View>
+
+              {/* Additional notes */}
+              <View className="mb-5">
+                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+                  Any extra details? (optional)
+                </Text>
+                <TextInput
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Steps to reproduce, what you expected..."
+                  multiline
+                  numberOfLines={2}
+                  textAlignVertical="top"
+                  className="bg-sand-50 px-4 py-3 rounded-2xl text-sm text-sand-900 min-h-[60px]"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+
+              {/* Device info badge */}
+              <View className="bg-sand-50 rounded-xl px-3 py-2 mb-4 flex-row items-center gap-2">
+                <Text className="text-[10px] text-sand-400">
+                  📱 Device info auto-captured for troubleshooting
+                </Text>
+              </View>
+
+              {/* Submit */}
+              <GradientButton
+                variant="web"
+                label={submitting ? 'Submitting...' : 'Submit Report'}
+                onPress={() => void handleSubmit()}
+                disabled={submitting || description.trim().length < 10 || uploadingScreenshot}
               />
-            </View>
-
-            {/* Device info badge */}
-            <View className="bg-sand-50 rounded-xl px-3 py-2 mb-4 flex-row items-center gap-2">
-              <Text className="text-[10px] text-sand-400">
-                📱 Device info auto-captured for troubleshooting
-              </Text>
-            </View>
-
-            {/* Submit */}
-            <GradientButton variant="web"
-              label={submitting ? "Submitting..." : "Submit Report"}
-              onPress={() => void handleSubmit()}
-              disabled={
-                submitting ||
-                description.trim().length < 10 ||
-                uploadingScreenshot
-              }
-            />
-          </ScrollView>
+            </ScrollView>
+          </View>
         </View>
-      </View>
       </KeyboardScreen>
     </Modal>
   );

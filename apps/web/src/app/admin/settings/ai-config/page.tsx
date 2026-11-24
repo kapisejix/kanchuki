@@ -1,99 +1,115 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { Cpu, Loader2, AlertCircle, Save, RefreshCw } from 'lucide-react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { AlertCircle, Cpu, Loader2, RefreshCw, Save } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type AiConfigEntry = {
-  model: string
-  temperature: number
-  max_tokens: number
-  timeout_ms: number
-  is_default: boolean
-}
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  timeout_ms: number;
+  is_default: boolean;
+};
 
-type AiConfigs = Record<string, AiConfigEntry>
+type AiConfigs = Record<string, AiConfigEntry>;
 
 export default function AiConfigPage() {
-  const [configs, setConfigs] = useState<AiConfigs>({})
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [testResult, setTestResult] = useState<string | null>(null)
+  const [configs, setConfigs] = useState<AiConfigs>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   const loadConfigs = useCallback(async () => {
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/ai-config`, adminGetOptions())
-      if (!res.ok) throw new Error('Failed to load')
-      const json = await res.json()
-      setConfigs(json.data ?? {})
+      const res = await fetch(`${API_URL}/v1/admin/settings/ai-config`, adminGetOptions());
+      if (!res.ok) throw new Error('Failed to load');
+      const json = await res.json();
+      setConfigs(json.data ?? {});
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
+      setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [])
+  }, []);
 
-  useEffect(() => { loadConfigs() }, [loadConfigs])
+  useEffect(() => {
+    loadConfigs();
+  }, [loadConfigs]);
 
   const updateConfig = (key: string, field: string, value: string | number) => {
     setConfigs((prev) => ({
       ...prev,
       [key]: { ...prev[key], [field]: value, is_default: false },
-    }))
-  }
+    }));
+  };
 
   const handleSave = async () => {
-    setSaving(true)
-    setError('')
-    setSuccess('')
-    setTestResult(null)
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    setTestResult(null);
     try {
-      const payload: Record<string, { model: string; temperature: number; max_tokens: number; timeout_ms: number }> = {}
+      const payload: Record<
+        string,
+        { model: string; temperature: number; max_tokens: number; timeout_ms: number }
+      > = {};
       for (const [key, val] of Object.entries(configs)) {
-        payload[key] = { model: val.model, temperature: val.temperature, max_tokens: val.max_tokens, timeout_ms: val.timeout_ms }
+        payload[key] = {
+          model: val.model,
+          temperature: val.temperature,
+          max_tokens: val.max_tokens,
+          timeout_ms: val.timeout_ms,
+        };
       }
       const res = await fetch(`${API_URL}/v1/admin/settings/ai-config`, {
         ...(await adminMutateOptions()),
         method: 'PUT',
         body: JSON.stringify({ configs: payload }),
-      })
-      if (!res.ok) throw new Error('Failed to save')
-      setSuccess('AI config updated successfully')
-      setTimeout(() => setSuccess(''), 3000)
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setSuccess('AI config updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const formatKey = (key: string): string =>
-    key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+    key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 size={24} className="animate-spin text-gray-400" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <Cpu size={24} className="text-gray-700" />
             <h1 className="text-2xl font-bold text-gray-900">AI Model Configuration</h1>
           </div>
-          <p className="text-sm text-gray-500">Select AI models and parameters per operation type</p>
+          <p className="text-sm text-gray-500">
+            Select AI models and parameters per operation type
+          </p>
         </div>
         <motion.button
           whileTap={{ scale: 0.98 }}
@@ -133,7 +149,9 @@ export default function AiConfigPage() {
               <div>
                 <h3 className="font-semibold text-gray-900 text-sm">{formatKey(key)}</h3>
                 {entry.is_default && (
-                  <span className="text-[10px] text-gray-400 font-medium">Default config (not customized)</span>
+                  <span className="text-[10px] text-gray-400 font-medium">
+                    Default config (not customized)
+                  </span>
                 )}
               </div>
             </div>
@@ -157,10 +175,14 @@ export default function AiConfigPage() {
                     max={2}
                     step={0.05}
                     value={entry.temperature}
-                    onChange={(e) => updateConfig(key, 'temperature', Number.parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      updateConfig(key, 'temperature', Number.parseFloat(e.target.value))
+                    }
                     className="flex-1 accent-ink-500"
                   />
-                  <span className="text-xs font-mono text-gray-600 w-8 text-right">{entry.temperature.toFixed(2)}</span>
+                  <span className="text-xs font-mono text-gray-600 w-8 text-right">
+                    {entry.temperature.toFixed(2)}
+                  </span>
                 </div>
               </div>
               <div>
@@ -192,5 +214,5 @@ export default function AiConfigPage() {
         ))}
       </div>
     </motion.div>
-  )
+  );
 }

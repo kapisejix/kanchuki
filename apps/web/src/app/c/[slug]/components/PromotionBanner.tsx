@@ -1,65 +1,69 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { Tag, Clock, X, Copy, Check } from 'lucide-react'
+import { Check, Clock, Copy, Tag, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Promotion {
-  id: string
-  code: string
-  discount_type: 'PERCENT' | 'FIXED'
-  discount_value: number
-  min_order_paise: number | null
-  ends_at: string | null
+  id: string;
+  code: string;
+  discount_type: 'PERCENT' | 'FIXED';
+  discount_value: number;
+  min_order_paise: number | null;
+  ends_at: string | null;
 }
 
 interface Props {
-  storeSlug: string
+  storeSlug: string;
 }
 
 export function PromotionBanner({ storeSlug }: Props) {
-  const [promotions, setPromotions] = useState<Promotion[]>([])
-  const [loading, setLoading] = useState(true)
-  const [dismissed, setDismissed] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dismissed, setDismissed] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     fetch(`/api/${storeSlug}/promotions`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { data: Promotion[] } | null) => {
-        if (!cancelled && json?.data) setPromotions(json.data)
+        if (!cancelled && json?.data) setPromotions(json.data);
       })
       .catch(() => undefined)
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [storeSlug])
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeSlug]);
 
   const handleCopy = useCallback(async (code: string, id: string) => {
-    await navigator.clipboard.writeText(code)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId(null), 2000)
-  }, [])
+    await navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }, []);
 
-  if (loading || promotions.length === 0 || dismissed) return null
+  if (loading || promotions.length === 0 || dismissed) return null;
 
   const fmtDiscount = (p: Promotion) =>
-    p.discount_type === 'PERCENT' ? `${p.discount_value}% off` : `₹${(p.discount_value / 100).toFixed(0)} off`
+    p.discount_type === 'PERCENT'
+      ? `${p.discount_value}% off`
+      : `₹${(p.discount_value / 100).toFixed(0)} off`;
 
   const fmtTimeLeft = (endsAt: string | null) => {
-    if (!endsAt) return null
-    const diff = new Date(endsAt).getTime() - Date.now()
-    if (diff <= 0) return null
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    if (hours < 24) return `${hours}h left`
-    const days = Math.floor(hours / 24)
-    return `${days}d left`
-  }
+    if (!endsAt) return null;
+    const diff = new Date(endsAt).getTime() - Date.now();
+    if (diff <= 0) return null;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 24) return `${hours}h left`;
+    const days = Math.floor(hours / 24);
+    return `${days}d left`;
+  };
 
   // Show the first active promotion as a banner
-  const promo = promotions[0]!
-  const timeLeft = fmtTimeLeft(promo.ends_at)
+  const promo = promotions[0]!;
+  const timeLeft = fmtTimeLeft(promo.ends_at);
 
   return (
     <div className="bg-gradient-to-r from-[#FAF9FE] via-white to-[#F2F1FA] border border-[#E0E1F6] rounded-[22px] p-3.5 shadow-sm mb-4">
@@ -108,5 +112,5 @@ export function PromotionBanner({ storeSlug }: Props) {
         </p>
       )}
     </div>
-  )
+  );
 }

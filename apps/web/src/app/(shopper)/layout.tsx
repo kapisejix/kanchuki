@@ -9,34 +9,34 @@
 // page and has no customer login surface — an installed-PWA launch (start_url
 // → /my-stores) had nowhere to complete login.
 
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import Image from 'next/image'
-import Link from 'next/link'
-import { MotionConfig } from 'framer-motion'
-import { Sparkles, Store, UserRound } from 'lucide-react'
-import { getPassportSession } from '@/lib/passport-client'
-import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to'
+import { getPassportSession } from '@/lib/passport-client';
+import { RETURN_TO_PARAM, sanitizeReturnTo } from '@/lib/return-to';
+import { MotionConfig } from 'framer-motion';
+import { Sparkles, Store, UserRound } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface PassportAccount {
-  id: string
-  name: string | null
-  phone_masked: string
-  usual_size: string | null
-  city: string | null
+  id: string;
+  name: string | null;
+  phone_masked: string;
+  usual_size: string | null;
+  city: string | null;
 }
 
 export default function ShopperLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const [account, setAccount] = useState<PassportAccount | null>(null)
-  const [loading, setLoading] = useState(true)
+  const router = useRouter();
+  const pathname = usePathname();
+  const [account, setAccount] = useState<PassportAccount | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // The query string is carried too, so a shopper intercepted on
@@ -45,28 +45,28 @@ export default function ShopperLayout({
     // runs in an effect, so it is browser-only by definition, and
     // `useSearchParams()` in a layout with no Suspense boundary would force
     // every guarded route out of static rendering.
-    const wanted = `${pathname}${window.location.search}`
+    const wanted = `${pathname}${window.location.search}`;
 
     // Pathname is same-origin by construction, but it is still the value that
     // becomes a post-login navigation target, so it goes through the same
     // validator — a bad value can never be written into the URL. The validator
     // keeps a query string but refuses anything that leaves the origin.
-    const loginUrl = `/login?${RETURN_TO_PARAM}=${encodeURIComponent(sanitizeReturnTo(wanted))}`
+    const loginUrl = `/login?${RETURN_TO_PARAM}=${encodeURIComponent(sanitizeReturnTo(wanted))}`;
 
     getPassportSession()
       .then((session) => {
         if (!session) {
           // Not signed in — log in first, then come back to this page.
-          router.replace(loginUrl)
-          return
+          router.replace(loginUrl);
+          return;
         }
-        setAccount(session)
-        setLoading(false)
+        setAccount(session);
+        setLoading(false);
       })
       .catch(() => {
-        router.replace(loginUrl)
-      })
-  }, [router, pathname])
+        router.replace(loginUrl);
+      });
+  }, [router, pathname]);
 
   if (loading) {
     return (
@@ -76,7 +76,7 @@ export default function ShopperLayout({
           <p className="text-heliotrope-500 text-sm">Loading your profile…</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -88,7 +88,11 @@ export default function ShopperLayout({
       <div className="min-h-screen bg-lavender-50">
         <header className="bg-white/80 backdrop-blur-xl border-b border-lavender-200/80 sticky top-0 z-40 pt-safe">
           <div className="max-w-4xl mx-auto px-4 sm:h-16 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2 sm:py-0">
-            <Link href="/" className="flex items-center self-start sm:self-auto" aria-label="Kanchuki — home">
+            <Link
+              href="/"
+              className="flex items-center self-start sm:self-auto"
+              aria-label="Kanchuki — home"
+            >
               {/* Official wordmark (same asset as the site Chrome), 884×176 source, 5:1. */}
               <Image
                 src="/kanchuki-logo.png"
@@ -102,7 +106,7 @@ export default function ShopperLayout({
             {/* Segmented control: full-width thirds on a phone, inline from sm. */}
             <nav className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-lavender-100 text-sm">
               {NAV.map(({ href, label, icon: Icon }) => {
-                const active = pathname === href
+                const active = pathname === href;
                 return (
                   <Link
                     key={href}
@@ -114,10 +118,13 @@ export default function ShopperLayout({
                         : 'text-heliotrope-500 hover:text-spaceCadet-900'
                     }`}
                   >
-                    <Icon aria-hidden className={`h-4 w-4 shrink-0 ${active ? 'text-fuchsia-600' : ''}`} />
+                    <Icon
+                      aria-hidden
+                      className={`h-4 w-4 shrink-0 ${active ? 'text-fuchsia-600' : ''}`}
+                    />
                     {label}
                   </Link>
-                )
+                );
               })}
             </nav>
           </div>
@@ -126,11 +133,11 @@ export default function ShopperLayout({
         <main className="max-w-4xl mx-auto px-4 py-6">{children}</main>
       </div>
     </MotionConfig>
-  )
+  );
 }
 
 const NAV = [
   { href: '/my-style', label: 'My Style', icon: Sparkles },
   { href: '/my-profile', label: 'My Profile', icon: UserRound },
   { href: '/my-stores', label: 'My Stores', icon: Store },
-] as const
+] as const;

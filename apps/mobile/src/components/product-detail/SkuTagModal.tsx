@@ -1,8 +1,8 @@
 // Auto-split from app/product/[id].tsx (1944 lines).
 // F-025: printable SKU/QR tag modal — white, print/screenshot friendly.
-import { View, Text, Modal } from 'react-native'
-import QRCode from 'react-native-qrcode-svg'
-import { AnimatedPressable } from '../AnimatedPressable'
+import { Modal, Text, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import { AnimatedPressable } from '../AnimatedPressable';
 
 export function SkuTagModal({
   open,
@@ -10,10 +10,10 @@ export function SkuTagModal({
   sku,
   name,
 }: {
-  open: boolean
-  onClose: () => void
-  sku: string | null
-  name: string | null
+  open: boolean;
+  onClose: () => void;
+  sku: string | null;
+  name: string | null;
 }) {
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
@@ -35,5 +35,5 @@ export function SkuTagModal({
         </View>
       </View>
     </Modal>
-  )
+  );
 }

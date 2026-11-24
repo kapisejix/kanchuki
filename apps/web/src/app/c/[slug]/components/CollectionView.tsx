@@ -1,25 +1,32 @@
 'use client';
 
+import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
+import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
+import { trackPassportEvent } from '@/lib/passport-client';
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
 import {
+  Calendar,
+  ChevronRight,
   Eye,
   Filter,
   Heart,
+  LayoutGrid,
   MessageCircle,
   Share2,
   ShoppingBag,
+  SlidersHorizontal,
   Sparkles,
   Star,
-  Calendar,
-  ChevronRight,
-  LayoutGrid,
-  SlidersHorizontal,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type GoogleRating,
+  GoogleRatingBadge,
+} from '../../../[store]/components/GoogleRatingBadge';
 import { type SocialProof, socialProofChip, useSocialProof } from '../lib/socialProof';
 import {
   type WishlistItem,
@@ -28,12 +35,8 @@ import {
   saveWishlist,
   wishlistKey,
 } from '../lib/wishlist';
-import { trackPassportEvent } from '@/lib/passport-client';
-import { GoogleRatingBadge, type GoogleRating } from '../../../[store]/components/GoogleRatingBadge';
 import { FilterBar } from './FilterBar';
-import { CATALOG_PAGE_SIZE } from '@/lib/catalog';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
-import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
 
 // Lazy-load sheet and modal — only fetched when user taps a product or try-on.
 // The components include image carousels, forms, and heavy lucide icons that
@@ -43,9 +46,15 @@ const ProductDetailSheet = dynamic(
   { ssr: false },
 );
 
-const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
-const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
-const PickedForYou = dynamic(() => import('./PickedForYou').then((m) => m.PickedForYou), { ssr: false });
+const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), {
+  ssr: false,
+});
+const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), {
+  ssr: false,
+});
+const PickedForYou = dynamic(() => import('./PickedForYou').then((m) => m.PickedForYou), {
+  ssr: false,
+});
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
 // Feature flags for customer catalog screen
@@ -109,10 +118,10 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
   // Check if quiz was already completed for this store
   useEffect(() => {
     try {
-      const existing = localStorage.getItem(`kanchuki_quiz_${slug}`)
-      if (existing) setQuizDone(true)
+      const existing = localStorage.getItem(`kanchuki_quiz_${slug}`);
+      if (existing) setQuizDone(true);
     } catch {}
-  }, [slug])
+  }, [slug]);
 
   // (The F-302 checkout-status probe is gone: checkout was removed, its web
   // proxy route deleted with it in 76c5acdb, and the leftover call 404'd on
@@ -125,8 +134,8 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
-    }).catch(() => undefined)
-  }, [apiBasePath])
+    }).catch(() => undefined);
+  }, [apiBasePath]);
 
   // F-037 §2 row 5 — real social-proof chip counts. ONE request per collection
   // load, for the whole store, shared by every card: the API answers per store,
@@ -255,7 +264,11 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
         const next = new Map(prev);
         if (next.has(productId)) {
           next.delete(productId);
-          trackPassportEvent({ type: 'unfavorite', product_id: productId, retailer_id: collection.retailer.id });
+          trackPassportEvent({
+            type: 'unfavorite',
+            product_id: productId,
+            retailer_id: collection.retailer.id,
+          });
         } else {
           // Store product summary at heart-click time (we have the product
           // object in hand) — this is the core F-006 fix: no more bare IDs.
@@ -275,7 +288,11 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: productId }),
           });
-          trackPassportEvent({ type: 'favorite', product_id: productId, retailer_id: collection.retailer.id });
+          trackPassportEvent({
+            type: 'favorite',
+            product_id: productId,
+            retailer_id: collection.retailer.id,
+          });
         }
         saveWishlist(slug, next);
         return next;
@@ -352,7 +369,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
       }
     } catch (err) {
       // User dismissed the native share sheet — not an error.
-      if (err instanceof Error && err.name === "AbortError") return;
+      if (err instanceof Error && err.name === 'AbortError') return;
       // Share failed otherwise — copy the link so there's always an outcome.
       await navigator.clipboard.writeText(url).catch(() => {});
     }
@@ -362,275 +379,283 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
 
   return (
     <PageTransitionWrapper>
-    <div className="min-h-screen bg-[#F8F7FC] font-sans pb-24">
-      {/* ── Top Header & Greeting (Spec #9 Discovery) ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6] pt-safe">
-        <KanchukiBrandBar />
-        <div className="max-w-md mx-auto px-4 py-3.5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#E0E1F6] border border-[#E0E1F6] flex items-center justify-center flex-shrink-0 shadow-sm">
-                {collection.retailer.logo_url ? (
-                  <Image
-                    src={collection.retailer.logo_url}
-                    alt={collection.retailer.shop_name}
-                    width={40}
-                    height={40}
-                    className="object-cover w-full h-full"
-                  />
-                ) : (
-                  <span className="font-bold text-[#231F48] font-marcellus text-sm">
-                    {collection.retailer.shop_name.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-[#231F48] truncate">
-                  Hi, Welcome!
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-[10px] text-[#6B4773] font-bold uppercase tracking-wider leading-tight">
-                    {collection.retailer.shop_name} {collection.retailer.city ? `· ${collection.retailer.city}` : ''}
-                  </p>
-                  {collection.retailer.latitude != null && collection.retailer.longitude != null && (
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${collection.retailer.latitude},${collection.retailer.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-[#BB3F95]/10 flex items-center gap-1 text-[10px] font-bold text-[#BB3F95]"
-                      aria-label="Get directions to store"
-                    >
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#BB3F95" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                        <circle cx="12" cy="10" r="3" />
-                      </svg>
-                      Directions
-                    </a>
+      <div className="min-h-screen bg-[#F8F7FC] font-sans pb-24">
+        {/* ── Top Header & Greeting (Spec #9 Discovery) ── */}
+        <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6] pt-safe">
+          <KanchukiBrandBar />
+          <div className="max-w-md mx-auto px-4 py-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#E0E1F6] border border-[#E0E1F6] flex items-center justify-center flex-shrink-0 shadow-sm">
+                  {collection.retailer.logo_url ? (
+                    <Image
+                      src={collection.retailer.logo_url}
+                      alt={collection.retailer.shop_name}
+                      width={40}
+                      height={40}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <span className="font-bold text-[#231F48] font-marcellus text-sm">
+                      {collection.retailer.shop_name.slice(0, 2).toUpperCase()}
+                    </span>
                   )}
                 </div>
-                <GoogleRatingBadge google={googleRating} />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[#231F48] truncate">Hi, Welcome!</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[10px] text-[#6B4773] font-bold uppercase tracking-wider leading-tight">
+                      {collection.retailer.shop_name}{' '}
+                      {collection.retailer.city ? `· ${collection.retailer.city}` : ''}
+                    </p>
+                    {collection.retailer.latitude != null &&
+                      collection.retailer.longitude != null && (
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${collection.retailer.latitude},${collection.retailer.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-[#BB3F95]/10 flex items-center gap-1 text-[10px] font-bold text-[#BB3F95]"
+                          aria-label="Get directions to store"
+                        >
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#BB3F95"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                            <circle cx="12" cy="10" r="3" />
+                          </svg>
+                          Directions
+                        </a>
+                      )}
+                  </div>
+                  <GoogleRatingBadge google={googleRating} />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setShowFilters((v) => !v)}
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
+                    showFilters || filterPrice || filterColor || filterSize
+                      ? 'bg-[#231F48] text-white border-[#231F48]'
+                      : 'bg-white text-[#231F48] border-[#E0E1F6] shadow-sm'
+                  }`}
+                  aria-label="Toggle filters"
+                >
+                  <SlidersHorizontal size={18} />
+                </button>
+
+                <button
+                  onClick={() => void handleShare()}
+                  className="w-10 h-10 rounded-2xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center text-[#231F48] hover:bg-[#F8F7FC] transition-all active:scale-90"
+                  aria-label="Share collection"
+                >
+                  <Share2 size={18} />
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                onClick={() => setShowFilters((v) => !v)}
-                className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
-                  showFilters || filterPrice || filterColor || filterSize
-                    ? 'bg-[#231F48] text-white border-[#231F48]'
-                    : 'bg-white text-[#231F48] border-[#E0E1F6] shadow-sm'
-                }`}
-                aria-label="Toggle filters"
-              >
-                <SlidersHorizontal size={18} />
-              </button>
+            {/* Secondary filters (price / color) */}
+            {showFilters && (
+              <FilterBar
+                colors={collection.filters.colors}
+                filterPrice={filterPrice}
+                filterColor={filterColor}
+                onPriceChange={setFilterPrice}
+                onColorChange={setFilterColor}
+              />
+            )}
+          </div>
+        </header>
 
-              <button
-                onClick={() => void handleShare()}
-                className="w-10 h-10 rounded-2xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center text-[#231F48] hover:bg-[#F8F7FC] transition-all active:scale-90"
-                aria-label="Share collection"
-              >
-                <Share2 size={18} />
-              </button>
-            </div>
+        {/* ── Main Discovery Content ── */}
+        <main className="max-w-md mx-auto px-4 py-4">
+          {/* ── Collection summary ── */}
+          <div className="mb-4">
+            <p className="text-xs text-[#6B4773] font-medium">
+              {collection.title} · {collection.total} curated items
+            </p>
           </div>
 
-          {/* Secondary filters (price / color) */}
-          {showFilters && (
-            <FilterBar
-              colors={collection.filters.colors}
-              filterPrice={filterPrice}
-              filterColor={filterColor}
-              onPriceChange={setFilterPrice}
-              onColorChange={setFilterColor}
-            />
-          )}
-        </div>
-      </header>
+          {/* ── Promotion Banner ── */}
+          <div className="mb-4">
+            <PromotionBanner storeSlug={store ?? slug} />
+          </div>
 
-      {/* ── Main Discovery Content ── */}
-      <main className="max-w-md mx-auto px-4 py-4">
-        {/* ── Collection summary ── */}
-        <div className="mb-4">
-          <p className="text-xs text-[#6B4773] font-medium">
-            {collection.title} · {collection.total} curated items
-          </p>
-        </div>
-
-        {/* ── Promotion Banner ── */}
-        <div className="mb-4">
-          <PromotionBanner storeSlug={store ?? slug} />
-        </div>
-
-        {/* Recently-viewed carousel — F-037 §2 item 2. Reads localStorage, so it
+          {/* Recently-viewed carousel — F-037 §2 item 2. Reads localStorage, so it
             costs no request and renders nothing for a first-time visitor. Sits
             above the grid because its whole job is to shorten the trip back to
             something this shopper already opened. */}
-        <RecentlyViewed
-          storeSlug={store ?? slug}
-          onProductTap={(recent) =>
-            // Prefer the real summary when this session already loaded it — a
-            // fresh record then carries the rating/photo fields the sheet
-            // paints before its own detail fetch lands. A record from an
-            // earlier session has only the thin tracked shape, which is enough
-            // because the sheet re-fetches the product by id anyway.
-            setSelectedProduct(productCacheRef.current.get(recent.id) ?? recent)
-          }
-        />
+          <RecentlyViewed
+            storeSlug={store ?? slug}
+            onProductTap={(recent) =>
+              // Prefer the real summary when this session already loaded it — a
+              // fresh record then carries the rating/photo fields the sheet
+              // paints before its own detail fetch lands. A record from an
+              // earlier session has only the thin tracked shape, which is enough
+              // because the sheet re-fetches the product by id anyway.
+              setSelectedProduct(productCacheRef.current.get(recent.id) ?? recent)
+            }
+          />
 
-        <PickedForYou
-          storeSlug={storeSlug}
-          onProductTap={(product) => setSelectedProduct(productCacheRef.current.get(product.id) ?? product)}
-        />
+          <PickedForYou
+            storeSlug={storeSlug}
+            onProductTap={(product) =>
+              setSelectedProduct(productCacheRef.current.get(product.id) ?? product)
+            }
+          />
 
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-16 px-6">
-            <div className="w-16 h-16 rounded-3xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center mx-auto mb-4">
-              <ShoppingBag size={26} className="text-[#6B4773]" />
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-16 px-6">
+              <div className="w-16 h-16 rounded-3xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center mx-auto mb-4">
+                <ShoppingBag size={26} className="text-[#6B4773]" />
+              </div>
+              <p className="text-sm font-bold text-[#231F48] mb-1 font-marcellus">
+                No products match this filter
+              </p>
+              <p className="text-xs text-[#6B4773] mb-4">
+                Try clearing a filter to see more of the collection
+              </p>
+              <button
+                onClick={() => {
+                  setFilterCategory(null);
+                  setFilterPrice(null);
+                  setFilterColor(null);
+                  setFilterSize(null);
+                }}
+                className="text-[#231F48] bg-white border border-[#E0E1F6] hover:bg-[#F8F7FC] text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-sm"
+              >
+                Clear filters
+              </button>
             </div>
-            <p className="text-sm font-bold text-[#231F48] mb-1 font-marcellus">No products match this filter</p>
-            <p className="text-xs text-[#6B4773] mb-4">
-              Try clearing a filter to see more of the collection
-            </p>
-            <button
-              onClick={() => {
-                setFilterCategory(null);
-                setFilterPrice(null);
-                setFilterColor(null);
-                setFilterSize(null);
-              }}
-              className="text-[#231F48] bg-white border border-[#E0E1F6] hover:bg-[#F8F7FC] text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-sm"
+          ) : (
+            <>
+              <div
+                className={`grid grid-cols-2 gap-3 transition-opacity ${loading ? 'opacity-50' : ''}`}
+              >
+                {filteredProducts.map((product, idx) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isFavorited={favorites.has(product.id)}
+                    onFavorite={(id) => toggleFavorite(id, product)}
+                    onTap={() => setSelectedProduct(product)}
+                    collectionSlug={slug}
+                    priority={idx < 2}
+                    socialProof={socialProof}
+                  />
+                ))}
+              </div>
+
+              {/* Append progress. Deliberately small and non-blocking — the grid
+                above stays interactive while the next page lands. */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-3 mt-5">
+                  <button
+                    onClick={() => goToPage(Math.max(1, page - 1))}
+                    disabled={page === 1 || loading}
+                    className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-xs font-medium text-gray-500">
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => goToPage(Math.min(totalPages, page + 1))}
+                    disabled={page === totalPages || loading}
+                    className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+
+        {/* ── Product Detail Sheet ── */}
+        {selectedProduct && (
+          <ProductDetailSheet
+            product={selectedProduct}
+            retailer={collection.retailer}
+            collectionTitle={collection.title}
+            isFavorited={favorites.has(selectedProduct.id)}
+            slug={slug}
+            store={store ?? null}
+            socialProof={socialProof}
+            onFavorite={toggleFavorite}
+            onSelectProduct={(p) => setSelectedProduct(p)}
+            onClose={() => setSelectedProduct(null)}
+          />
+        )}
+
+        {/* ── AI Stylist FAB + Modal ── */}
+        <AIStylist
+          storeSlug={store ?? slug}
+          storeName={collection.retailer.shop_name}
+          onProductTap={(id) => {
+            const p = products.find((x) => x.id === id);
+            if (p) setSelectedProduct(p);
+          }}
+        />
+
+        {/* Bottom padding for sticky nav */}
+        <div className="h-20" />
+
+        {/* ── Fixed Bottom Overlay Nav: Catalog, Saved, Enquire ── */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E0E1F6] shadow-[0_-8px_24px_-12px_rgba(35,31,72,0.1)]">
+          <div className="max-w-md mx-auto grid grid-cols-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <Link
+              href={catalogPath}
+              prefetch
+              className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#231F48] hover:text-[#BB3F95] transition-colors"
             >
-              Clear filters
+              <LayoutGrid size={20} />
+              <span className="text-[10px] font-semibold">Catalog</span>
+            </Link>
+            {/* F-045: cross-store My Style feed. */}
+            <Link
+              href="/my-style"
+              className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#6B4773] hover:text-[#BB3F95] transition-colors"
+            >
+              <Sparkles size={20} />
+              <span className="text-[10px] font-semibold">My Style</span>
+            </Link>
+            <Link
+              href={`${basePath}/wishlist`}
+              prefetch
+              className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#6B4773] hover:text-[#BB3F95] transition-colors relative"
+            >
+              <div className="relative">
+                <Heart
+                  size={20}
+                  className={favorites.size > 0 ? 'text-[#BB3F95] fill-[#BB3F95]' : ''}
+                />
+                {favorites.size > 0 && (
+                  <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-1 bg-[#BB3F95] text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                    {favorites.size}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-semibold">Saved</span>
+            </Link>
+            <button
+              onClick={handleEnquireAll}
+              className="flex flex-col items-center justify-center gap-0.5 py-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all"
+            >
+              <MessageCircle size={20} />
+              <span className="text-[10px] font-semibold">Enquire</span>
             </button>
           </div>
-        ) : (
-          <>
-            <div
-              className={`grid grid-cols-2 gap-3 transition-opacity ${loading ? 'opacity-50' : ''}`}
-            >
-              {filteredProducts.map((product, idx) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  isFavorited={favorites.has(product.id)}
-                  onFavorite={(id) => toggleFavorite(id, product)}
-                  onTap={() => setSelectedProduct(product)}
-                  collectionSlug={slug}
-                  priority={idx < 2}
-                  socialProof={socialProof}
-                />
-              ))}
-            </div>
-
-            {/* Append progress. Deliberately small and non-blocking — the grid
-                above stays interactive while the next page lands. */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-5">
-                <button
-                  onClick={() => goToPage(Math.max(1, page - 1))}
-                  disabled={page === 1 || loading}
-                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
-                >
-                  Prev
-                </button>
-                <span className="text-xs font-medium text-gray-500">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  onClick={() => goToPage(Math.min(totalPages, page + 1))}
-                  disabled={page === totalPages || loading}
-                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </main>
-
-
-
-      {/* ── Product Detail Sheet ── */}
-      {selectedProduct && (          <ProductDetailSheet
-              product={selectedProduct}
-              retailer={collection.retailer}
-              collectionTitle={collection.title}
-              isFavorited={favorites.has(selectedProduct.id)}
-              slug={slug}
-              store={store ?? null}
-              socialProof={socialProof}
-              onFavorite={toggleFavorite}
-              onSelectProduct={(p) => setSelectedProduct(p)}
-              onClose={() => setSelectedProduct(null)}
-          />
-      )}
-
-      {/* ── AI Stylist FAB + Modal ── */}
-      <AIStylist
-        storeSlug={store ?? slug}
-        storeName={collection.retailer.shop_name}
-        onProductTap={(id) => {
-          const p = products.find((x) => x.id === id)
-          if (p) setSelectedProduct(p)
-        }}
-      />
-
-
-
-
-
-      {/* Bottom padding for sticky nav */}
-      <div className="h-20" />
-
-      {/* ── Fixed Bottom Overlay Nav: Catalog, Saved, Enquire ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E0E1F6] shadow-[0_-8px_24px_-12px_rgba(35,31,72,0.1)]">
-        <div className="max-w-md mx-auto grid grid-cols-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <Link
-            href={catalogPath}
-            prefetch
-            className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#231F48] hover:text-[#BB3F95] transition-colors"
-          >
-            <LayoutGrid size={20} />
-            <span className="text-[10px] font-semibold">Catalog</span>
-          </Link>
-          {/* F-045: cross-store My Style feed. */}
-          <Link
-            href="/my-style"
-            className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#6B4773] hover:text-[#BB3F95] transition-colors"
-          >
-            <Sparkles size={20} />
-            <span className="text-[10px] font-semibold">My Style</span>
-          </Link>
-          <Link
-            href={`${basePath}/wishlist`}
-            prefetch
-            className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#6B4773] hover:text-[#BB3F95] transition-colors relative"
-          >
-            <div className="relative">
-              <Heart
-                size={20}
-                className={favorites.size > 0 ? 'text-[#BB3F95] fill-[#BB3F95]' : ''}
-              />
-              {favorites.size > 0 && (
-                <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-1 bg-[#BB3F95] text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
-                  {favorites.size}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] font-semibold">Saved</span>
-          </Link>
-          <button
-            onClick={handleEnquireAll}
-            className="flex flex-col items-center justify-center gap-0.5 py-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all"
-          >
-            <MessageCircle size={20} />
-            <span className="text-[10px] font-semibold">Enquire</span>
-          </button>
-        </div>
-      </nav>
-    </div>
+        </nav>
+      </div>
     </PageTransitionWrapper>
   );
 }

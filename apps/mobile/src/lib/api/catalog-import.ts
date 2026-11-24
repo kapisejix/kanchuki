@@ -1,35 +1,35 @@
-import type { KidsAgeGroupValue, ProductAudienceValue } from '@kanchuki/shared'
-import { request } from './client'
+import type { KidsAgeGroupValue, ProductAudienceValue } from '@kanchuki/shared';
+import { request } from './client';
 
 // ─── Catalog Import (F-001b / F-001c) ────────────────────────────
 
 export type CatalogDetectedItem = {
-  description: string
-  cropped_url: string
-  cropped_r2_key: string
-  page_number?: number
+  description: string;
+  cropped_url: string;
+  cropped_r2_key: string;
+  page_number?: number;
   tags: {
-    category: string | null
-    subtype: string | null
-    product_name: string | null
-    short_description: string | null
-    primary_color: string | null
-    secondary_colors: string[]
-    fabric_estimate: string | null
-    pattern: string | null
-    embellishments: string[]
-    neck_style: string | null
-    sleeve_type: string | null
-    style: string[]
-    fabrics: string[]
-    price_range_estimate: string | null
-    design_number_visible: string | null
-    is_catalog_image: boolean
-    search_tags: string[]
-    audience?: ProductAudienceValue | null
-    kids_age_group?: KidsAgeGroupValue | null
-  }
-}
+    category: string | null;
+    subtype: string | null;
+    product_name: string | null;
+    short_description: string | null;
+    primary_color: string | null;
+    secondary_colors: string[];
+    fabric_estimate: string | null;
+    pattern: string | null;
+    embellishments: string[];
+    neck_style: string | null;
+    sleeve_type: string | null;
+    style: string[];
+    fabrics: string[];
+    price_range_estimate: string | null;
+    design_number_visible: string | null;
+    is_catalog_image: boolean;
+    search_tags: string[];
+    audience?: ProductAudienceValue | null;
+    kids_age_group?: KidsAgeGroupValue | null;
+  };
+};
 
 export const catalogImportApi = {
   /**
@@ -38,14 +38,19 @@ export const catalogImportApi = {
   getUploadUrl: (filename: string, contentType: string, sizeBytes: number) =>
     request<{
       data: {
-        upload_url: string
-        r2_key: string
-        public_url: string
-        expires_in: number
-      }
+        upload_url: string;
+        r2_key: string;
+        public_url: string;
+        expires_in: number;
+      };
     }>('/v1/catalog-import/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
+      body: JSON.stringify({
+        filename,
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        content_length: sizeBytes,
+      }),
       timeoutMs: 30_000,
     }),
 
@@ -56,10 +61,10 @@ export const catalogImportApi = {
   detectItems: (imageUrl: string) =>
     request<{
       data: {
-        source_type: 'image'
-        total_items: number
-        items: CatalogDetectedItem[]
-      }
+        source_type: 'image';
+        total_items: number;
+        items: CatalogDetectedItem[];
+      };
     }>('/v1/catalog-import/detect-items', {
       method: 'POST',
       body: JSON.stringify({ image_url: imageUrl }),
@@ -71,36 +76,36 @@ export const catalogImportApi = {
    */
   bulkCreateProducts: (
     items: {
-      cropped_r2_key: string
-      cropped_url: string
-      category?: string | null
-      primary_color?: string | null
-      fabric_estimate?: string | null
-      pattern?: string | null
-      subtype?: string | null
-      audience?: ProductAudienceValue | null
-      kids_age_group?: KidsAgeGroupValue | null
-      product_name?: string | null
-      short_description?: string | null
-      styles?: string[]
-      fabrics?: string[]
-      search_tags?: string[]
-      sizes?: string[]
-      price_min?: number | null
-      price_max?: number | null
-      section_id?: string | null
+      cropped_r2_key: string;
+      cropped_url: string;
+      category?: string | null;
+      primary_color?: string | null;
+      fabric_estimate?: string | null;
+      pattern?: string | null;
+      subtype?: string | null;
+      audience?: ProductAudienceValue | null;
+      kids_age_group?: KidsAgeGroupValue | null;
+      product_name?: string | null;
+      short_description?: string | null;
+      styles?: string[];
+      fabrics?: string[];
+      search_tags?: string[];
+      sizes?: string[];
+      price_min?: number | null;
+      price_max?: number | null;
+      section_id?: string | null;
     }[],
     default_section_id?: string | null,
   ) =>
     request<{
       data: {
-        total_requested: number
-        total_created: number
-        products: { id: string; cropped_url: string }[]
-      }
+        total_requested: number;
+        total_created: number;
+        products: { id: string; cropped_url: string }[];
+      };
     }>('/v1/catalog-import/bulk-create-products', {
       method: 'POST',
       body: JSON.stringify({ items, default_section_id }),
       timeoutMs: 60_000,
     }),
-}
+};

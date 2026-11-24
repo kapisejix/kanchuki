@@ -257,7 +257,11 @@ export default function VideosScreen() {
                     </View>
                     <View className="flex-1 mr-2">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                        style={{
+                          fontFamily: 'Marcellus_400Regular',
+                          letterSpacing: 0.32,
+                          fontWeight: '800',
+                        }}
                         className="text-base text-spaceCadet-900"
                         numberOfLines={1}
                       >

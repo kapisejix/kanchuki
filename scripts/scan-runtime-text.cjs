@@ -10,9 +10,24 @@ const parser = require('@babel/parser');
 const ROOT = process.argv[2] || 'apps/mobile';
 const TEXTISH = new Set(['Text', 'TextInput', 'Animated.Text']);
 const SKIP_PROPS = new Set([
-  'key', 'style', 'className', 'accessibilityLabel', 'placeholder',
-  'title', 'label', 'value', 'name', 'source', 'uri', 'color', 'size',
-  'testID', 'hitSlop', 'id', 'onPress', 'data',
+  'key',
+  'style',
+  'className',
+  'accessibilityLabel',
+  'placeholder',
+  'title',
+  'label',
+  'value',
+  'name',
+  'source',
+  'uri',
+  'color',
+  'size',
+  'testID',
+  'hitSlop',
+  'id',
+  'onPress',
+  'data',
 ]);
 // Expressions that are likely ReactNode (elements, numbers with validators,
 // booleans are fine in RN but strings are not; null/undefined fine).

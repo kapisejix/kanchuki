@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -40,4 +40,4 @@ export default defineConfig({
     // rotating to a new file each run instead of staying put.
     testTimeout: 15_000,
   },
-})
+});

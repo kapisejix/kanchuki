@@ -512,7 +512,8 @@ export default function CatalogImportScreen() {
             AI detected {items.length} item
             {items.length !== 1 ? 's' : ''}
           </Text>
-          <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+          <AnimatedPressable
+            className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
             onPress={() => setItems((prev) => prev.map((item) => ({ ...item, approved: true })))}
           >
             <Text className="text-xs text-ink-600 font-medium">Select All</Text>

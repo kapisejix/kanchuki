@@ -1,32 +1,32 @@
-import { request } from './client'
+import { request } from './client';
 
 export interface VerifyOtpResult {
-  access_token: string
+  access_token: string;
   // Absent for TeamMember logins — their token is a 12h team JWT with no
   // Supabase session behind it, so there is nothing to refresh.
-  refresh_token?: string
-  is_staff: boolean
+  refresh_token?: string;
+  is_staff: boolean;
   retailer?: {
-    id: string
-    shop_name?: string
-    city?: string
-    plan?: string
-    plan_status?: string
-    onboarding_completed?: boolean
-    onboarding_step?: number
-  }
+    id: string;
+    shop_name?: string;
+    city?: string;
+    plan?: string;
+    plan_status?: string;
+    onboarding_completed?: boolean;
+    onboarding_step?: number;
+  };
   staff?: {
-    id: string
-    name: string
-    role: string
-    retailer_id: string
-    retailer_shop_name: string
-    retailer_city: string
-  }
+    id: string;
+    name: string;
+    role: string;
+    retailer_id: string;
+    retailer_shop_name: string;
+    retailer_city: string;
+  };
   // Kanchuki's own field/sales/support agent (TeamMember) logged in via phone
   // OTP — access_token is a team JWT for the /team/* routes.
-  team_member?: { id: string; name: string; email: string; role: string }
-  is_new?: boolean
+  team_member?: { id: string; name: string; email: string; role: string };
+  is_new?: boolean;
 }
 
 export const authApi = {
@@ -77,4 +77,4 @@ export const authApi = {
       }),
       timeoutMs: 30_000,
     }),
-}
+};

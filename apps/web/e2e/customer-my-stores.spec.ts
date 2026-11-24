@@ -1,14 +1,14 @@
-import { test, expect } from '@playwright/test'
-import type { Server } from 'node:http'
-import { API_STUB_ORIGIN, closeStub, createStubServer, listenStub } from './support/api-stub'
-import { stubFixtureImages } from './support/images'
+import type { Server } from 'node:http';
+import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
+import { expect, test } from '@playwright/test';
+import { API_STUB_ORIGIN, closeStub, createStubServer, listenStub } from './support/api-stub';
+import { stubFixtureImages } from './support/images';
 import {
   VIEWPORTS,
   expectNoHorizontalOverflow,
   expectRenderedImage,
   watchClientErrors,
-} from './support/responsive'
-import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
+} from './support/responsive';
 
 // F-036 Phase A live verification — /my-stores tap-through + install CTA.
 //
@@ -37,27 +37,27 @@ import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 // 3. Chrome's own verdict on whether the deployed build is installable at
 //    all, which is what gates the real event.
 
-const STORE_SLUG = 'meera-sarees'
-const SECOND_SLUG = 'gupta-textiles'
-const UNPUBLISHED_NAME = 'Newly Opened Tailors'
+const STORE_SLUG = 'meera-sarees';
+const SECOND_SLUG = 'gupta-textiles';
+const UNPUBLISHED_NAME = 'Newly Opened Tailors';
 
 // ── Canned data ───────────────────────────────────────────────────
 
 type Visit = {
   retailer: {
-    id: string
-    shop_name: string
-    city: string | null
-    logo_url: string | null
-    public_slug: string | null
-  }
-  last_visited_at: string
-  visit_count: number
-  is_muted: boolean
-}
+    id: string;
+    shop_name: string;
+    city: string | null;
+    logo_url: string | null;
+    public_slug: string | null;
+  };
+  last_visited_at: string;
+  visit_count: number;
+  is_muted: boolean;
+};
 
 function minutesAgo(mins: number): string {
-  return new Date(Date.now() - mins * 60_000).toISOString()
+  return new Date(Date.now() - mins * 60_000).toISOString();
 }
 
 /** Three visits, newest first, the third with no storefront slug yet. */
@@ -99,11 +99,11 @@ function visits(): Visit[] {
       visit_count: 1,
       is_muted: false,
     },
-  ]
+  ];
 }
 
 function product(i: number): PublicProduct {
-  const n = i + 1
+  const n = i + 1;
   return {
     id: `prod-${n}`,
     name: `Festive Design ${n}`,
@@ -120,7 +120,7 @@ function product(i: number): PublicProduct {
     has_360: false,
     avg_rating: 0,
     rating_count: 0,
-  }
+  };
 }
 
 function collectionFor(slug: string): PublicCollection {
@@ -147,41 +147,41 @@ function collectionFor(slug: string): PublicCollection {
       categories: [{ value: 'Anarkali Suit', count: 2 }],
       colors: [{ value: 'Maroon', count: 2 }],
     },
-  }
+  };
 }
 
 // ── Stub API server (serves SSR fetches inside `next start`) ──────
 
 type StubState = {
   /** When false, the passport endpoints answer 401 (signed-out shopper). */
-  signedIn: boolean
+  signedIn: boolean;
   /** When false, /me matches but /stores still 401s — the page's own
    *  anonymous branch, which the layout guard otherwise prevents from
    *  ever being reached. */
-  storesAuthorized: boolean
+  storesAuthorized: boolean;
   /** Every API path the server was asked for, in order. */
-  requests: string[]
-}
+  requests: string[];
+};
 
-let apiStub: Server | null = null
-const state: StubState = { signedIn: true, storesAuthorized: true, requests: [] }
+let apiStub: Server | null = null;
+const state: StubState = { signedIn: true, storesAuthorized: true, requests: [] };
 
 function json(res: import('node:http').ServerResponse, status: number, body: unknown): void {
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json')
-  res.end(JSON.stringify(body))
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(body));
 }
 
 test.beforeAll(async () => {
   apiStub = createStubServer((req, res) => {
-    const url = new URL(req.url ?? '/', API_STUB_ORIGIN)
-    const path = url.pathname
-    state.requests.push(`${req.method} ${path}`)
+    const url = new URL(req.url ?? '/', API_STUB_ORIGIN);
+    const path = url.pathname;
+    state.requests.push(`${req.method} ${path}`);
 
     if (path === '/v1/public/passport/me') {
       if (!state.signedIn) {
-        json(res, 401, { error: { code: 'UNAUTHORIZED', message: 'No session' } })
-        return
+        json(res, 401, { error: { code: 'UNAUTHORIZED', message: 'No session' } });
+        return;
       }
       json(res, 200, {
         account: {
@@ -191,20 +191,20 @@ test.beforeAll(async () => {
           usual_size: 'M',
           city: 'Jaipur',
         },
-      })
-      return
+      });
+      return;
     }
 
     // /my-profile reads recently-viewed on mount (through the passport proxy).
     if (path === '/v1/public/passport/recently-viewed') {
-      json(res, 200, { items: [] })
-      return
+      json(res, 200, { items: [] });
+      return;
     }
 
     // /my-profile counts the wishlist for its Saved tile (RC-180).
     if (path === '/v1/public/passport/wishlist' && req.method === 'GET') {
-      json(res, 200, { items: [] })
-      return
+      json(res, 200, { items: [] });
+      return;
     }
 
     // The nominee fields /my-profile reads on mount. GET is the half RC-026
@@ -226,16 +226,16 @@ test.beforeAll(async () => {
         budget_max: null,
         nominee_name: null,
         nominee_phone: null,
-      })
-      return
+      });
+      return;
     }
 
     // The personalization opt-out. RC-026: /my-profile has always PUT to this
     // path, but the web proxy had no PUT verb and omitted `preferences` from
     // its allowlist, so the call 405'd before it ever got here.
     if (path === '/v1/public/passport/preferences' && req.method === 'PUT') {
-      json(res, 200, { ok: true })
-      return
+      json(res, 200, { ok: true });
+      return;
     }
 
     // Style chips on /my-profile, from the admin-editable taxonomy. Note what a
@@ -249,61 +249,69 @@ test.beforeAll(async () => {
       json(res, 200, {
         data: {
           names: [
-            'Casual', 'Party', 'Office', 'Wedding', 'Festive',
-            'Anarkali', 'Lehenga', 'Saree', 'Kurti', 'Gown',
+            'Casual',
+            'Party',
+            'Office',
+            'Wedding',
+            'Festive',
+            'Anarkali',
+            'Lehenga',
+            'Saree',
+            'Kurti',
+            'Gown',
           ],
         },
-      })
-      return
+      });
+      return;
     }
 
     if (path === '/v1/public/passport/stores') {
       if (!state.signedIn || !state.storesAuthorized) {
-        json(res, 401, { error: { code: 'UNAUTHORIZED', message: 'No session' } })
-        return
+        json(res, 401, { error: { code: 'UNAUTHORIZED', message: 'No session' } });
+        return;
       }
-      json(res, 200, { stores: visits() })
-      return
+      json(res, 200, { stores: visits() });
+      return;
     }
 
     // F-036 PushOptIn on /my-stores asks for the VAPID key. CI has none, and the
     // real API answers 200 with a null key then (passport-push.ts), which hides the offer.
     if (path === '/v1/public/passport/push/key') {
-      json(res, 200, { public_key: null })
-      return
+      json(res, 200, { public_key: null });
+      return;
     }
 
     // Login round trip. The real API mints the passport cookie here; the stub
     // stands in for that by flipping the flag every other handler reads, so the
     // guard's next session check succeeds exactly as it would with the cookie.
     if (path === '/v1/public/passport/otp/send' && req.method === 'POST') {
-      json(res, 200, { ok: true, masked_phone: '••••••9999' })
-      return
+      json(res, 200, { ok: true, masked_phone: '••••••9999' });
+      return;
     }
 
     if (path === '/v1/public/passport/otp/verify' && req.method === 'POST') {
-      state.signedIn = true
+      state.signedIn = true;
       json(res, 200, {
         ok: true,
         account_id: 'customer-1',
         is_new: false,
         name: 'Ananya',
         phone_masked: '••••••9999',
-      })
-      return
+      });
+      return;
     }
 
     // Store profile — what /{public_slug} renders into ContactGate.
-    const retailerMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)$/)
+    const retailerMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)$/);
     if (req.method === 'GET' && retailerMatch) {
-      const slug = decodeURIComponent(retailerMatch[1]!)
+      const slug = decodeURIComponent(retailerMatch[1]!);
       const known: Record<string, string> = {
         [STORE_SLUG]: 'Meera Sarees',
         [SECOND_SLUG]: 'Gupta Textiles',
-      }
+      };
       if (!known[slug]) {
-        json(res, 404, { error: { code: 'NOT_FOUND', message: 'Store not found' } })
-        return
+        json(res, 404, { error: { code: 'NOT_FOUND', message: 'Store not found' } });
+        return;
       }
       json(res, 200, {
         data: {
@@ -317,8 +325,8 @@ test.beforeAll(async () => {
           banner_url: null,
           storefront_slug: 'festive-edit',
         },
-      })
-      return
+      });
+      return;
     }
 
     // View tracking. RC-025: the storefront has always POSTed this, but the web
@@ -326,8 +334,8 @@ test.beforeAll(async () => {
     // 404'd and the retailer "Views" stat never counted web traffic. The stub
     // answering here is what lets the test assert the ping actually arrives.
     if (req.method === 'POST' && /^\/v1\/public\/collections\/[^/]+\/view$/.test(path)) {
-      json(res, 204, {})
-      return
+      json(res, 204, {});
+      return;
     }
 
     // Active promotions — the storefront's PromotionBanner fetches
@@ -335,8 +343,8 @@ test.beforeAll(async () => {
     // unstubbed made the proxy answer 404, which the console check below
     // (correctly) reported as a page error even though the app handled it.
     if (path.match(/^\/v1\/public\/retailers\/[^/]+\/promotions$/) && req.method === 'GET') {
-      json(res, 200, { data: [] })
-      return
+      json(res, 200, { data: [] });
+      return;
     }
 
     // Social-proof chip counts (F-037 §2 row 5) — the catalog fetches
@@ -346,41 +354,41 @@ test.beforeAll(async () => {
     if (req.method === 'GET' && path === '/v1/public/engagement-chips') {
       json(res, 200, {
         data: { products: {}, window: { today: null, week_from: null, week_to: null } },
-      })
-      return
+      });
+      return;
     }
 
     // "Picked for you" (F-037) POSTs `/api/recommendations`. Unstubbed it 404s
     // into the console check; no products = the section stays hidden.
     if (req.method === 'POST' && path === '/v1/public/recommendations') {
-      json(res, 200, { data: { personalized: false, products: [] } })
-      return
+      json(res, 200, { data: { personalized: false, products: [] } });
+      return;
     }
 
     // Storefront product listing (page 1 of the gated catalog).
-    const productsMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)\/products$/)
+    const productsMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)\/products$/);
     if (req.method === 'GET' && productsMatch) {
-      json(res, 200, { data: collectionFor(decodeURIComponent(productsMatch[1]!)) })
-      return
+      json(res, 200, { data: collectionFor(decodeURIComponent(productsMatch[1]!)) });
+      return;
     }
 
-    json(res, 404, { error: { code: 'NOT_FOUND', message: `No stub for ${path}` } })
-  })
+    json(res, 404, { error: { code: 'NOT_FOUND', message: `No stub for ${path}` } });
+  });
 
-  await listenStub(apiStub)
-})
+  await listenStub(apiStub);
+});
 
 test.afterAll(async () => {
-  await closeStub(apiStub)
-})
+  await closeStub(apiStub);
+});
 
 test.beforeEach(async ({ context }) => {
-  state.signedIn = true
-  state.storesAuthorized = true
-  state.requests = []
+  state.signedIn = true;
+  state.storesAuthorized = true;
+  state.requests = [];
   // Dismissal is per-device; start every test from a clean browser profile.
-  await context.clearCookies()
-})
+  await context.clearCookies();
+});
 
 // ── 1. Tap-through ────────────────────────────────────────────────
 
@@ -388,58 +396,58 @@ test('a signed-in shopper sees their stores newest-first and a row opens the rea
   context,
   page,
 }) => {
-  const client = watchClientErrors(page)
+  const client = watchClientErrors(page);
   // The row taps through to the storefront, which renders product photos — so
   // this test needs the fixture images served too, or its "real catalog"
   // assertion is passing over a page whose photos all failed.
-  await stubFixtureImages(context)
+  await stubFixtureImages(context);
 
-  await page.goto('/my-stores')
+  await page.goto('/my-stores');
 
-  await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
-  await expect(page.getByText("3 stores you've visited.")).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible();
+  await expect(page.getByText("3 stores you've visited.")).toBeVisible();
 
   // Newest first, and the third row honestly reports it has no catalog page.
   const hrefs = await page
     .locator('ul li a')
-    .evaluateAll((els) => els.map((el) => el.getAttribute('href')))
-  expect(hrefs).toEqual([`/${STORE_SLUG}`, `/${SECOND_SLUG}`])
-  expect(await page.getByText("This store hasn't published a catalog page yet.").count()).toBe(1)
-  expect(await page.getByText(UNPUBLISHED_NAME).count()).toBe(1)
+    .evaluateAll((els) => els.map((el) => el.getAttribute('href')));
+  expect(hrefs).toEqual([`/${STORE_SLUG}`, `/${SECOND_SLUG}`]);
+  expect(await page.getByText("This store hasn't published a catalog page yet.").count()).toBe(1);
+  expect(await page.getByText(UNPUBLISHED_NAME).count()).toBe(1);
 
   // Relative labels, not raw timestamps.
-  await expect(page.getByText('5 min ago', { exact: false })).toBeVisible()
+  await expect(page.getByText('5 min ago', { exact: false })).toBeVisible();
 
   // Tap through. This is the whole feature: the row must open the store's
   // existing catalog route, not a second browsing mechanism.
-  await page.locator(`ul li a[href="/${STORE_SLUG}"]`).click()
-  await page.waitForURL(`**/${STORE_SLUG}`)
+  await page.locator(`ul li a[href="/${STORE_SLUG}"]`).click();
+  await page.waitForURL(`**/${STORE_SLUG}`);
 
   // The catalog really rendered. ContactGate carries the store name from the
   // server-rendered profile, so seeing it proves the SSR fetch resolved this
   // store rather than 404ing into Next's not-found page.
-  await expect(page.getByText('Meera Sarees').first()).toBeVisible()
-  expect(await page.getByText('Store Not Found', { exact: false }).count()).toBe(0)
+  await expect(page.getByText('Meera Sarees').first()).toBeVisible();
+  expect(await page.getByText('Store Not Found', { exact: false }).count()).toBe(0);
 
   // …and it is the store's real catalog, not just its shell: both stubbed
   // products and the collection header come from the SSR products fetch.
-  await expect(page.getByText('Festive Design 1')).toBeVisible()
-  await expect(page.getByText('Festive Design 2')).toBeVisible()
-  await expect(page.getByText('2 curated items', { exact: false })).toBeVisible()
+  await expect(page.getByText('Festive Design 1')).toBeVisible();
+  await expect(page.getByText('Festive Design 2')).toBeVisible();
+  await expect(page.getByText('2 curated items', { exact: false })).toBeVisible();
   // …and the destination actually rendered its photos, which is what "a real
   // catalog" means to the person who tapped the row.
   await expectRenderedImage(
     page.getByRole('img', { name: 'Festive Design 1', exact: true }).first(),
     'the tapped-through catalog photo',
-  )
+  );
 
   // A shopper who already holds a passport is recognised and let straight in —
   // no re-verification prompt. (ContactGate shows the phone input only for a
   // visitor it cannot identify.)
-  expect(await page.getByPlaceholder('10-digit mobile number').count()).toBe(0)
+  expect(await page.getByPlaceholder('10-digit mobile number').count()).toBe(0);
 
   // The products listing was fetched server-side for the gated catalog.
-  expect(state.requests).toContain(`GET /v1/public/retailers/${STORE_SLUG}/products`)
+  expect(state.requests).toContain(`GET /v1/public/retailers/${STORE_SLUG}/products`);
 
   // …and the view ping reaches the API, which is the wiring RC-025 was missing:
   // the client fired it, the route did not exist, so it 404'd and no web view
@@ -454,15 +462,14 @@ test('a signed-in shopper sees their stores newest-first and a row opens the rea
         ).length,
       {
         message:
-          'the storefront view ping never reached the API — that is exactly the missing proxy route RC-025 describes',        timeout: 15_000,
+          'the storefront view ping never reached the API — that is exactly the missing proxy route RC-025 describes',
+        timeout: 15_000,
       },
     )
-    .toBeGreaterThan(0)
+    .toBeGreaterThan(0);
 
-  client.expectClean('the tapped-through catalog')
-})
-
-
+  client.expectClean('the tapped-through catalog');
+});
 
 // ── 2. Install CTA ────────────────────────────────────────────────
 
@@ -473,71 +480,73 @@ test('the install listener is attached at startup, before any CTA component moun
   // when the install event arrives — the exact timing that lost the event
   // when the listener lived in a component effect.
   await page.route('**/api/passport/stores', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 4000))
-    await route.continue()
-  })
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await route.continue();
+  });
 
-  await page.goto('/my-stores')
+  await page.goto('/my-stores');
 
   // Still loading: the skeleton is up and no CTA exists yet.
-  await expect(page.locator('[aria-busy="true"]')).toBeVisible()
-  expect(await page.getByRole('button', { name: /Add Kanchuki/ }).count()).toBe(0)
+  await expect(page.locator('[aria-busy="true"]')).toBeVisible();
+  expect(await page.getByRole('button', { name: /Add Kanchuki/ }).count()).toBe(0);
 
   // Fire the real event now. `defaultPrevented` is the observable proof that
   // a listener was already attached at this point in the page's life.
   const prevented = await page.evaluate(() => {
-    const event = new Event('beforeinstallprompt', { cancelable: true })
-    window.dispatchEvent(event)
-    return event.defaultPrevented
-  })
-  expect(prevented).toBe(true)
+    const event = new Event('beforeinstallprompt', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(prevented).toBe(true);
 
   // The list resolves and the CTA appears — the event captured before mount
   // was not lost.
-  await expect(page.getByText('Meera Sarees')).toBeVisible()
-  const cta = page.getByRole('button', { name: /Add Kanchuki to your Home Screen/ })
-  await expect(cta).toBeVisible()
-})
+  await expect(page.getByText('Meera Sarees')).toBeVisible();
+  const cta = page.getByRole('button', { name: /Add Kanchuki to your Home Screen/ });
+  await expect(cta).toBeVisible();
+});
 
 test('dismissing the CTA sticks, and it does not come back on reload', async ({ page }) => {
   await page.route('**/api/passport/stores', async (route) => {
-    await route.continue()
-  })
+    await route.continue();
+  });
 
-  await page.goto('/my-stores')
-  await expect(page.getByText('Meera Sarees')).toBeVisible()
+  await page.goto('/my-stores');
+  await expect(page.getByText('Meera Sarees')).toBeVisible();
 
   await page.evaluate(() => {
-    window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true }))
-  })
+    window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true }));
+  });
 
-  const cta = page.getByRole('button', { name: /Add Kanchuki to your Home Screen/ })
-  await expect(cta).toBeVisible()
+  const cta = page.getByRole('button', { name: /Add Kanchuki to your Home Screen/ });
+  await expect(cta).toBeVisible();
 
-  await page.getByRole('button', { name: 'Not now' }).click()
-  await expect(cta).toHaveCount(0)
+  await page.getByRole('button', { name: 'Not now' }).click();
+  await expect(cta).toHaveCount(0);
   expect(
     await page.evaluate(() => window.localStorage.getItem('kanchuki:pwa-install-dismissed')),
-  ).toBe('1')
+  ).toBe('1');
 
   // Reload and offer the event again — the device preference must win.
-  await page.reload()
-  await expect(page.getByText('Meera Sarees')).toBeVisible()
+  await page.reload();
+  await expect(page.getByText('Meera Sarees')).toBeVisible();
   await page.evaluate(() => {
-    window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true }))
-  })
-  await expect(page.getByRole('button', { name: /Add Kanchuki to your Home Screen/ })).toHaveCount(0)
-})
+    window.dispatchEvent(new Event('beforeinstallprompt', { cancelable: true }));
+  });
+  await expect(page.getByRole('button', { name: /Add Kanchuki to your Home Screen/ })).toHaveCount(
+    0,
+  );
+});
 
 // ── 3. Signed-out + installability ────────────────────────────────
 
 test('an installed-icon launch can log in and land back on the page it wanted', async ({
   page,
 }) => {
-  state.signedIn = false
+  state.signedIn = false;
   // Enter on a URL that has a query string, so the round trip has to preserve
   // it and not just the path.
-  await page.goto('/my-stores?tab=orders')
+  await page.goto('/my-stores?tab=orders');
 
   // The (shopper) layout guard owns this: unauthenticated visitors never reach
   // the list page, and are sent to the dedicated login route carrying the exact
@@ -546,22 +555,21 @@ test('an installed-icon launch can log in and land back on the page it wanted', 
   // anything — and it compares the query string too, so a guard that dropped it
   // fails here rather than silently passing on a bare path match.
   await page.waitForURL(
-    (u) =>
-      u.pathname === '/login' && u.searchParams.get('return_to') === '/my-stores?tab=orders',
-  )
+    (u) => u.pathname === '/login' && u.searchParams.get('return_to') === '/my-stores?tab=orders',
+  );
 
   // The page's own empty state is NOT what an anonymous visitor sees…
-  expect(await page.getByText("Please log in to see the stores you've visited.").count()).toBe(0)
+  expect(await page.getByText("Please log in to see the stores you've visited.").count()).toBe(0);
 
   // …they get a real login surface. (Until this shipped, `return_to` pointed at
   // `/`, the retailer marketing page, which had nowhere to enter an OTP.)
-  await expect(page.getByLabel(/whatsapp number/i)).toBeVisible()
-  await page.getByLabel(/whatsapp number/i).fill('9876543210')
-  await page.getByRole('checkbox').check()
-  await page.getByRole('button', { name: /send otp/i }).click()
+  await expect(page.getByLabel(/whatsapp number/i)).toBeVisible();
+  await page.getByLabel(/whatsapp number/i).fill('9876543210');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: /send otp/i }).click();
 
-  await page.getByLabel(/6-digit code/i).fill('123456')
-  await page.getByRole('button', { name: /verify and continue/i }).click()
+  await page.getByLabel(/6-digit code/i).fill('123456');
+  await page.getByRole('button', { name: /verify and continue/i }).click();
 
   // Back on the page they actually wanted — query string included — and signed
   // in. Landing here (rather than being bounced back to /login by the guard's
@@ -569,58 +577,60 @@ test('an installed-icon launch can log in and land back on the page it wanted', 
   // does not stick would fail on the very next line. The `tab` check is what
   // proves the query survived the trip, since a bare `/my-stores` would satisfy
   // the pathname match on its own.
-  await page.waitForURL((u) => u.pathname === '/my-stores' && u.searchParams.get('tab') === 'orders')
-  await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
-  await expect(page.getByText('Meera Sarees')).toBeVisible()
-  expect(await page.getByLabel(/whatsapp number/i).count()).toBe(0)
+  await page.waitForURL(
+    (u) => u.pathname === '/my-stores' && u.searchParams.get('tab') === 'orders',
+  );
+  await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible();
+  await expect(page.getByText('Meera Sarees')).toBeVisible();
+  expect(await page.getByLabel(/whatsapp number/i).count()).toBe(0);
 
   // Both halves of the flow really went through the API.
-  expect(state.requests).toContain('POST /v1/public/passport/otp/send')
-  expect(state.requests).toContain('POST /v1/public/passport/otp/verify')
-})
+  expect(state.requests).toContain('POST /v1/public/passport/otp/send');
+  expect(state.requests).toContain('POST /v1/public/passport/otp/verify');
+});
 
 test('a hostile return_to cannot send the shopper off-origin', async ({ page }) => {
-  state.signedIn = false
+  state.signedIn = false;
   // Exactly what an attacker would hand a shopper: an absolute URL in the
   // parameter the guard controls.
-  await page.goto(`/login?return_to=${encodeURIComponent('https://evil.example/phish')}`)
+  await page.goto(`/login?return_to=${encodeURIComponent('https://evil.example/phish')}`);
 
-  await page.getByLabel(/whatsapp number/i).fill('9876543210')
-  await page.getByRole('checkbox').check()
-  await page.getByRole('button', { name: /send otp/i }).click()
-  await page.getByLabel(/6-digit code/i).fill('123456')
-  await page.getByRole('button', { name: /verify and continue/i }).click()
+  await page.getByLabel(/whatsapp number/i).fill('9876543210');
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: /send otp/i }).click();
+  await page.getByLabel(/6-digit code/i).fill('123456');
+  await page.getByRole('button', { name: /verify and continue/i }).click();
 
-  await page.waitForURL((u) => u.pathname === '/my-stores')
+  await page.waitForURL((u) => u.pathname === '/my-stores');
 
   // Still on our own origin — never evil.example. The invalid target is
   // discarded and the shopper lands on the safe default instead.
-  const landed = new URL(page.url())
-  expect(landed.hostname).toBe('localhost')
-  expect(landed.origin).not.toContain('evil.example')
-  expect(landed.pathname).toBe('/my-stores')
-})
+  const landed = new URL(page.url());
+  expect(landed.hostname).toBe('localhost');
+  expect(landed.origin).not.toContain('evil.example');
+  expect(landed.pathname).toBe('/my-stores');
+});
 
 test('a shopper whose session expires mid-flight is bounced, never shown a partial list', async ({
   page,
 }) => {
   // /me succeeds (so the layout guard passes) but the visits call 401s —
   // the only way the page's own anonymous branch is reachable.
-  state.storesAuthorized = false
-  await page.goto('/my-stores')
+  state.storesAuthorized = false;
+  await page.goto('/my-stores');
 
-  await expect(page.getByText("Please log in to see the stores you've visited.")).toBeVisible()
-  expect(await page.locator('ul li a').count()).toBe(0)
-  expect(await page.getByText('Meera Sarees').count()).toBe(0)
-})
+  await expect(page.getByText("Please log in to see the stores you've visited.")).toBeVisible();
+  expect(await page.locator('ul li a').count()).toBe(0);
+  expect(await page.getByText('Meera Sarees').count()).toBe(0);
+});
 
 test('the production build meets the installability prerequisites (valid manifest + active SW)', async ({
   page,
   context,
 }) => {
-  test.setTimeout(60_000)
-  await page.goto('/my-stores')
-  await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
+  test.setTimeout(60_000);
+  await page.goto('/my-stores');
+  await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible();
 
   // The SW must be active for Chrome to consider the page installable.
   // Polls registrations instead of awaiting `.ready`: `.ready` never resolves if
@@ -633,24 +643,24 @@ test('the production build meets the installability prerequisites (valid manifes
         installing: r.installing?.state ?? null,
         waiting: r.waiting?.state ?? null,
         active: r.active?.state ?? null,
-      }))
-    const deadline = Date.now() + 25_000
+      }));
+    const deadline = Date.now() + 25_000;
     while (Date.now() < deadline) {
-      if ((await snapshot()).some((r) => r.active === 'activated')) return 'active'
-      await new Promise((resolve) => setTimeout(resolve, 250))
+      if ((await snapshot()).some((r) => r.active === 'activated')) return 'active';
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
-    return `not active after 25s: ${JSON.stringify(await snapshot())}`
-  })
-  expect(swState).toBe('active')
+    return `not active after 25s: ${JSON.stringify(await snapshot())}`;
+  });
+  expect(swState).toBe('active');
 
-  const cdp = await context.newCDPSession(page)
-  await cdp.send('Page.enable')
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Page.enable');
 
-  const manifest = await cdp.send('Page.getAppManifest')
-  expect(manifest.errors ?? []).toHaveLength(0)
+  const manifest = await cdp.send('Page.getAppManifest');
+  expect(manifest.errors ?? []).toHaveLength(0);
   // Whitespace-agnostic: the exact JSON spacing Chrome returns is not ours to
   // depend on.
-  expect(String(manifest.data)).toMatch(/"start_url"\s*:\s*"\/my-stores"/)
+  expect(String(manifest.data)).toMatch(/"start_url"\s*:\s*"\/my-stores"/);
 
   // Chrome's own installability verdict — the exact gate on the real
   // beforeinstallprompt. `in-incognito` is the harness, not the build:
@@ -658,8 +668,8 @@ test('the production build meets the installability prerequisites (valid manifes
   // installation there. Any OTHER error id is a real regression in the
   // shipped build (missing icons, bad start_url, no fetch handler), so it
   // still fails the test.
-  const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors')
-  const realErrors = installabilityErrors.filter((e) => e.errorId !== 'in-incognito')
+  const { installabilityErrors } = await cdp.send('Page.getInstallabilityErrors');
+  const realErrors = installabilityErrors.filter((e) => e.errorId !== 'in-incognito');
   console.log(
     '[installability] Chrome reports:',
     installabilityErrors.length === 0
@@ -669,11 +679,11 @@ test('the production build meets the installability prerequisites (valid manifes
           null,
           2,
         ),
-  )
-  expect(realErrors).toEqual([])
+  );
+  expect(realErrors).toEqual([]);
 
-  await cdp.detach()
-})
+  await cdp.detach();
+});
 
 // RC-026: the consent control on this page called a proxy verb that did not
 // exist, so every toggle answered 405 — and `fetch` does not throw on a 405, so
@@ -684,12 +694,12 @@ test('the production build meets the installability prerequisites (valid manifes
 test('the personalization opt-out reaches the API instead of failing silently', async ({
   page,
 }) => {
-  await page.goto('/my-profile')
+  await page.goto('/my-profile');
 
-  const toggle = page.getByRole('checkbox', { name: 'Personalized recommendations' })
-  await expect(toggle).toBeChecked()
+  const toggle = page.getByRole('checkbox', { name: 'Personalized recommendations' });
+  await expect(toggle).toBeChecked();
 
-  await toggle.uncheck()
+  await toggle.uncheck();
 
   // Polled, not sampled: the proxy answers the browser before the upstream
   // request is recorded, so an immediate read races the assertion.
@@ -698,11 +708,11 @@ test('the personalization opt-out reaches the API instead of failing silently', 
       message:
         'the opt-out never reached the API — the passport proxy has no PUT verb for /preferences',
     })
-    .toBeGreaterThan(0)
+    .toBeGreaterThan(0);
 
   // And it stays off, rather than rolling back the way it would on a failure.
-  await expect(toggle).not.toBeChecked()
-})
+  await expect(toggle).not.toBeChecked();
+});
 
 // ── Phone + tablet: the catalog a row actually opens ──────────────
 //
@@ -718,75 +728,77 @@ test('the personalization opt-out reaches the API instead of failing silently', 
 // through.
 for (const vp of VIEWPORTS) {
   test(`the store list holds up on ${vp.name} (${vp.width}×${vp.height})`, async ({ page }) => {
-    const client = watchClientErrors(page)
+    const client = watchClientErrors(page);
 
-    await page.setViewportSize({ width: vp.width, height: vp.height })
-    await page.goto('/my-stores')
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await page.goto('/my-stores');
 
-    await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible()
-    const row = page.locator(`ul li a[href="/${STORE_SLUG}"]`)
-    await expect(row).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'My Stores' })).toBeVisible();
+    const row = page.locator(`ul li a[href="/${STORE_SLUG}"]`);
+    await expect(row).toBeVisible();
 
-    await expectNoHorizontalOverflow(page, `the store list on ${vp.name}`)
+    await expectNoHorizontalOverflow(page, `the store list on ${vp.name}`);
 
     // The whole point of this page is tapping a row: a row that renders but is
     // a 20px sliver is unusable on the device it exists for. 44px is the
     // touch-target floor the mobile work in this repo already holds to.
-    const box = await row.boundingBox()
-    expect(box, 'the store row has no layout box').not.toBeNull()
-    expect(box!.height, `the store row on ${vp.name} is ${box!.height}px tall`).toBeGreaterThanOrEqual(
-      44,
-    )
+    const box = await row.boundingBox();
+    expect(box, 'the store row has no layout box').not.toBeNull();
+    expect(
+      box!.height,
+      `the store row on ${vp.name} is ${box!.height}px tall`,
+    ).toBeGreaterThanOrEqual(44);
 
     // The un-published store still says so, rather than vanishing at this size.
-    await expect(page.getByText("This store hasn't published a catalog page yet.")).toBeVisible()
-    client.expectClean(`the store list on ${vp.name}`)
-  })
+    await expect(page.getByText("This store hasn't published a catalog page yet.")).toBeVisible();
+    client.expectClean(`the store list on ${vp.name}`);
+  });
 
   test(`the profile page holds up on ${vp.name} (${vp.width}×${vp.height})`, async ({ page }) => {
-    const client = watchClientErrors(page)
+    const client = watchClientErrors(page);
 
-    await page.setViewportSize({ width: vp.width, height: vp.height })
-    await page.goto('/my-profile')
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await page.goto('/my-profile');
 
     // The shopper's own identity, resolved from the passport session — not an
     // empty shell wrapped around a loading state.
-    await expect(page.getByRole('heading', { name: 'Ananya' })).toBeVisible()
-    await expect(page.getByText('••••••9999')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Your Style' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Your Data' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Ananya' })).toBeVisible();
+    await expect(page.getByText('••••••9999')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your Style' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your Data' })).toBeVisible();
 
-    await expectNoHorizontalOverflow(page, `the profile page on ${vp.name}`)
+    await expectNoHorizontalOverflow(page, `the profile page on ${vp.name}`);
 
     // The style chips are this page's main control surface, and they are the
     // site's smallest interactive element (14px text in a 6px pad, against the
     // 40px pills elsewhere) — WCAG 2.2 AA asks for 24×24.
-    const chip = page.getByRole('button', { name: 'Festive', exact: true })
-    await expect(chip).toBeVisible()
-    const box = await chip.boundingBox()
-    expect(box, 'the style chip has no layout box').not.toBeNull()
-    expect(box!.height, `the style chip on ${vp.name} is ${box!.height}px tall`).toBeGreaterThanOrEqual(
-      24,
-    )
-    client.expectClean(`the profile page on ${vp.name}`)
-  })
+    const chip = page.getByRole('button', { name: 'Festive', exact: true });
+    await expect(chip).toBeVisible();
+    const box = await chip.boundingBox();
+    expect(box, 'the style chip has no layout box').not.toBeNull();
+    expect(
+      box!.height,
+      `the style chip on ${vp.name} is ${box!.height}px tall`,
+    ).toBeGreaterThanOrEqual(24);
+    client.expectClean(`the profile page on ${vp.name}`);
+  });
 
   test(`the catalog holds up on ${vp.name} (${vp.width}×${vp.height})`, async ({
     context,
     page,
   }) => {
-    const client = watchClientErrors(page)
+    const client = watchClientErrors(page);
     // Without this the product photos fail to load and the grid is measured
     // with broken images in it — see support/images.ts.
-    await stubFixtureImages(context)
+    await stubFixtureImages(context);
 
-    await page.setViewportSize({ width: vp.width, height: vp.height })
-    await page.goto(`/${STORE_SLUG}`)
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    await page.goto(`/${STORE_SLUG}`);
 
     // The store's real content renders at this size — products, not just the
     // store name banner.
-    await expect(page.getByText('Festive Design 1')).toBeVisible()
-    await expect(page.getByText('Festive Design 2')).toBeVisible()
+    await expect(page.getByText('Festive Design 1')).toBeVisible();
+    await expect(page.getByText('Festive Design 2')).toBeVisible();
 
     // The product photo is the widest fixed-width thing in a grid card, so it
     // is the most likely overflow source — and a broken image would hide that
@@ -794,9 +806,9 @@ for (const vp of VIEWPORTS) {
     await expectRenderedImage(
       page.getByRole('img', { name: 'Festive Design 1', exact: true }).first(),
       `the first product photo on ${vp.name}`,
-    )
+    );
 
-    await expectNoHorizontalOverflow(page, `the catalog on ${vp.name}`)
-    client.expectClean(`the catalog on ${vp.name}`)
-  })
+    await expectNoHorizontalOverflow(page, `the catalog on ${vp.name}`);
+    client.expectClean(`the catalog on ${vp.name}`);
+  });
 }

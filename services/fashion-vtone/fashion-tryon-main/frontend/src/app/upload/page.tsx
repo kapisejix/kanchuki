@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Navbar from "@/components/Navbar";
-import ImageUpload from "@/components/ImageUpload";
-import { Category } from "@/types";
-import { tryOnGarment } from "@/lib/api";
-import { Loader2, Sparkles } from "lucide-react";
+import ImageUpload from '@/components/ImageUpload';
+import Navbar from '@/components/Navbar';
+import { tryOnGarment } from '@/lib/api';
+import { Category } from '@/types';
+import { Loader2, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function UploadPage() {
   const router = useRouter();
   const [personImage, setPersonImage] = useState<File | null>(null);
   const [garmentImage, setGarmentImage] = useState<File | null>(null);
-  const [category, setCategory] = useState<Category>("tops");
+  const [category, setCategory] = useState<Category>('tops');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +21,7 @@ export default function UploadPage() {
     setError(null);
 
     if (!personImage || !garmentImage) {
-      setError("Please upload both person and garment images");
+      setError('Please upload both person and garment images');
       return;
     }
 
@@ -38,28 +38,28 @@ export default function UploadPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const resultUrl = reader.result as string;
-        
+
         // Create URLs for all images
         const personUrl = URL.createObjectURL(personImage);
         const garmentUrl = URL.createObjectURL(garmentImage);
 
         // Store in sessionStorage
         sessionStorage.setItem(
-          "tryOnResult",
+          'tryOnResult',
           JSON.stringify({
             resultImageUrl: resultUrl,
             personImageUrl: personUrl,
             garmentImageUrl: garmentUrl,
             category,
-          })
+          }),
         );
 
         // Navigate to result page
-        router.push("/result");
+        router.push('/result');
       };
       reader.readAsDataURL(resultBlob);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process try-on");
+      setError(err instanceof Error ? err.message : 'Failed to process try-on');
       setIsLoading(false);
     }
   };
@@ -78,22 +78,16 @@ export default function UploadPage() {
             Upload Your Images
           </h1>
           <p className="text-lg text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto">
-            Upload a photo of yourself and the garment you want to try on. 
-            Our AI will create a realistic virtual fitting.
+            Upload a photo of yourself and the garment you want to try on. Our AI will create a
+            realistic virtual fitting.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="max-w-5xl mx-auto">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-8">
             <div className="grid md:grid-cols-2 gap-8 mb-8">
-              <ImageUpload
-                label="Your Photo"
-                onImageSelect={setPersonImage}
-              />
-              <ImageUpload
-                label="Garment Image"
-                onImageSelect={setGarmentImage}
-              />
+              <ImageUpload label="Your Photo" onImageSelect={setPersonImage} />
+              <ImageUpload label="Garment Image" onImageSelect={setGarmentImage} />
             </div>
 
             {/* Category Selection */}
@@ -102,15 +96,15 @@ export default function UploadPage() {
                 Garment Category
               </label>
               <div className="grid grid-cols-3 gap-4">
-                {(["tops", "bottoms", "one-pieces"] as Category[]).map((cat) => (
+                {(['tops', 'bottoms', 'one-pieces'] as Category[]).map((cat) => (
                   <button
                     key={cat}
                     type="button"
                     onClick={() => setCategory(cat)}
                     className={`py-4 px-6 rounded-lg font-medium transition-all ${
                       category === cat
-                        ? "bg-purple-600 text-white shadow-lg shadow-purple-500/50"
-                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/50'
+                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                     }`}
                   >
                     {cat.charAt(0).toUpperCase() + cat.slice(1)}

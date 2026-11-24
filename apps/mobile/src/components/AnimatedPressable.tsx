@@ -39,7 +39,9 @@ export function AnimatedPressable({
       className={className}
       style={({ pressed }) => [
         typeof style === 'function' ? style({ pressed }) : style,
-        !reduceMotion && pressed && !disabled ? { transform: [{ scale: 0.96 }], opacity: 0.92 } : undefined,
+        !reduceMotion && pressed && !disabled
+          ? { transform: [{ scale: 0.96 }], opacity: 0.92 }
+          : undefined,
       ]}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}

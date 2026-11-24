@@ -12,7 +12,6 @@
 // Callers own the "is this shopper eligible" question (e.g. they have at least
 // one store visit); this component answers "can this browser be asked at all".
 
-import { useCallback, useEffect, useState } from 'react';
 import { BTN_SECONDARY, FOCUS } from '@/app/(shopper)/ui';
 import {
   dismissInstall,
@@ -23,6 +22,7 @@ import {
   subscribeInstallPrompt,
   wasInstallDismissed,
 } from '@/lib/install-prompt';
+import { useCallback, useEffect, useState } from 'react';
 
 function localStore(): Storage | undefined {
   if (typeof window === 'undefined') return undefined;
@@ -115,8 +115,7 @@ export function InstallPrompt({ className = '' }: { className?: string }) {
     <div className={`rounded-3xl border border-lavender-200 bg-lavender-50 p-4 ${className}`}>
       <p className="text-sm font-bold text-spaceCadet-900">One icon, all your stores</p>
       <p className="text-xs text-heliotrope-500 mt-1 leading-relaxed">
-        Add Kanchuki to your home screen and new arrivals show up there — no app to
-        download.
+        Add Kanchuki to your home screen and new arrivals show up there — no app to download.
       </p>
       <div className="flex items-center gap-2 mt-3">
         <button

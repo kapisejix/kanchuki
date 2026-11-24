@@ -1,76 +1,76 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Image as ImageIcon, Upload, Loader2, Eye, EyeOff, Trash2, Sparkles } from 'lucide-react'
-import Image from 'next/image'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
+import { Eye, EyeOff, Image as ImageIcon, Loader2, Sparkles, Trash2, Upload } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type DesignOwner = { type: 'global' } | { type: 'retailer'; id: string; shop_name: string | null }
+type DesignOwner = { type: 'global' } | { type: 'retailer'; id: string; shop_name: string | null };
 
 type DesignRow = {
-  id: string
-  name: string | null
-  image_url: string
-  category_id: string
-  category_slug: string
-  category_name: string | null
-  is_active: boolean
-  sort_order: number
-  owner: DesignOwner
-  created_at: string
-}
+  id: string;
+  name: string | null;
+  image_url: string;
+  category_id: string;
+  category_slug: string;
+  category_name: string | null;
+  is_active: boolean;
+  sort_order: number;
+  owner: DesignOwner;
+  created_at: string;
+};
 
 type DesignCategory = {
-  id: string
-  name: string
-  slug: string
-  is_active: boolean
-  sort_order: number
-  design_count: number
-}
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  sort_order: number;
+  design_count: number;
+};
 
-type Scope = 'all' | 'global' | 'retailer'
+type Scope = 'all' | 'global' | 'retailer';
 
-type RetailerOwner = { id: string; shop_name: string | null; design_count: number }
+type RetailerOwner = { id: string; shop_name: string | null; design_count: number };
 
 export default function SuitsDesignsPage() {
-  const [rows, setRows] = useState<DesignRow[]>([])
-  const [categories, setCategories] = useState<DesignCategory[]>([])
-  const [scope, setScope] = useState<Scope>('all')
+  const [rows, setRows] = useState<DesignRow[]>([]);
+  const [categories, setCategories] = useState<DesignCategory[]>([]);
+  const [scope, setScope] = useState<Scope>('all');
   // Owner filter — only meaningful in the retailer scope. Options resolve
   // server-side (GET /owners: distinct retailers owning ≥1 design); null =
   // every retailer.
-  const [owners, setOwners] = useState<RetailerOwner[]>([])
-  const [ownerId, setOwnerId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [status, setStatus] = useState('')
-  const [preview, setPreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [owners, setOwners] = useState<RetailerOwner[]>([]);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [status, setStatus] = useState('');
+  const [preview, setPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Upload form state — a category is REQUIRED (every design belongs to one);
   // the name is optional and stays blank → row.name = null.
-  const [selectedCategory, setSelectedCategory] = useState('')
-  const [designName, setDesignName] = useState('')
-  const [suggesting, setSuggesting] = useState(false)
-  const [detectedColor, setDetectedColor] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [designName, setDesignName] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
+  const [detectedColor, setDetectedColor] = useState<string | null>(null);
 
   const load = async (activeScope: Scope, activeOwner: string | null) => {
-    const params = new URLSearchParams()
-    if (activeScope !== 'all') params.set('scope', activeScope)
-    if (activeScope === 'retailer' && activeOwner) params.set('retailer_id', activeOwner)
-    const qs = params.toString()
+    const params = new URLSearchParams();
+    if (activeScope !== 'all') params.set('scope', activeScope);
+    if (activeScope === 'retailer' && activeOwner) params.set('retailer_id', activeOwner);
+    const qs = params.toString();
     const res = await fetch(
       `${API_URL}/v1/admin/showcase-designs${qs ? `?${qs}` : ''}`,
       adminGetOptions(),
-    )
-    const json = await res.json()
-    setRows(json.data ?? [])
-    setLoading(false)
-  }
+    );
+    const json = await res.json();
+    setRows(json.data ?? []);
+    setLoading(false);
+  };
 
   // The owner dropdown is server-resolved — fetch the distinct retailer list
   // once so the filter options never depend on which rows are loaded.
@@ -78,77 +78,81 @@ export default function SuitsDesignsPage() {
     fetch(`${API_URL}/v1/admin/showcase-designs/owners`, adminGetOptions())
       .then((res) => res.json())
       .then((json) => setOwners(json.data ?? []))
-      .catch(() => {})
-  }, [])
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
-    load(scope, ownerId)
+    load(scope, ownerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, ownerId])
+  }, [scope, ownerId]);
 
   // Categories drive the upload picker (required field) + row labels.
   useEffect(() => {
     fetch(`${API_URL}/v1/admin/showcase-design-categories`, adminGetOptions())
       .then((res) => res.json())
       .then((json) => {
-        const cats: DesignCategory[] = json.data ?? []
-        setCategories(cats)
+        const cats: DesignCategory[] = json.data ?? [];
+        setCategories(cats);
         // Pre-select the first ACTIVE category so the upload button is never
         // dead on arrival — inactive categories stay pickable for curation.
         if (!selectedCategory && cats.length > 0) {
-          setSelectedCategory((cats.find((c) => c.is_active) ?? cats[0])!.id)
+          setSelectedCategory((cats.find((c) => c.is_active) ?? cats[0])!.id);
         }
       })
-      .catch(() => {})
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
 
     if (!selectedCategory) {
-      setStatus('❌ Pick a category first — every design needs one')
-      return
+      setStatus('❌ Pick a category first — every design needs one');
+      return;
     }
 
-    setUploading(true)
-    setStatus('')
+    setUploading(true);
+    setStatus('');
     try {
       const presign = await fetch(`${API_URL}/v1/admin/showcase-designs/upload-url`, {
         ...(await adminMutateOptions()),
         method: 'POST',
-        body: JSON.stringify({ content_type: file.type, filename: file.name, content_length: file.size }),
-      })
-      if (!presign.ok) throw new Error('Failed to get upload URL')
-      const { data } = await presign.json()
+        body: JSON.stringify({
+          content_type: file.type,
+          filename: file.name,
+          content_length: file.size,
+        }),
+      });
+      if (!presign.ok) throw new Error('Failed to get upload URL');
+      const { data } = await presign.json();
 
       const put = await fetch(data.upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': file.type },
         body: file,
-      })
-      if (!put.ok) throw new Error('Upload to storage failed')
+      });
+      if (!put.ok) throw new Error('Upload to storage failed');
 
       // Auto-suggest a retail-ready name + color from the photo (AI, fail-open).
-      setSuggesting(true)
-      let suggestedName: string | null = null
+      setSuggesting(true);
+      let suggestedName: string | null = null;
       try {
         const sug = await fetch(`${API_URL}/v1/admin/showcase-designs/suggest`, {
           ...(await adminMutateOptions()),
           method: 'POST',
           body: JSON.stringify({ raw_r2_key: data.r2_key }),
-        })
-        const sugJson = await sug.json().catch(() => null)
-        suggestedName = sugJson?.data?.name ?? null
-        const color = sugJson?.data?.color ?? null
-        if (color) setDetectedColor(color)
-        if (suggestedName && !designName.trim()) setDesignName(suggestedName)
+        });
+        const sugJson = await sug.json().catch(() => null);
+        suggestedName = sugJson?.data?.name ?? null;
+        const color = sugJson?.data?.color ?? null;
+        if (color) setDetectedColor(color);
+        if (suggestedName && !designName.trim()) setDesignName(suggestedName);
       } catch {
         // AI unavailable — leave the name blank for manual entry.
       } finally {
-        setSuggesting(false)
+        setSuggesting(false);
       }
 
       // Server watermarks the raw upload (showcase-watermark.ts) — the admin
@@ -158,70 +162,86 @@ export default function SuitsDesignsPage() {
         method: 'POST',
         body: JSON.stringify({
           category_id: selectedCategory,
-          ...((designName.trim() || suggestedName) ? { name: (designName.trim() || suggestedName)! } : {}),
+          ...(designName.trim() || suggestedName
+            ? { name: (designName.trim() || suggestedName)! }
+            : {}),
           raw_r2_key: data.r2_key,
         }),
-      })
+      });
       if (!create.ok) {
-        const detail = await create.text().catch(() => '')
-        throw new Error(`Failed to register design (HTTP ${create.status})${detail ? ` — ${detail.slice(0, 160)}` : ''}`)
+        const detail = await create.text().catch(() => '');
+        throw new Error(
+          `Failed to register design (HTTP ${create.status})${detail ? ` — ${detail.slice(0, 160)}` : ''}`,
+        );
       }
-      const { data: created } = await create.json()
+      const { data: created } = await create.json();
 
-      setDesignName('')
-      setDetectedColor(null)
-      setStatus(`✅ Design ${created?.name ? `"${created.name}" ` : ''}added (Global)`)
-      await load(scope, ownerId)
+      setDesignName('');
+      setDetectedColor(null);
+      setStatus(`✅ Design ${created?.name ? `"${created.name}" ` : ''}added (Global)`);
+      await load(scope, ownerId);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Upload failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Upload failed'}`);
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const deleteRow = async (row: DesignRow) => {
-    const who = row.owner.type === 'global' ? 'this global design' : `this retailer design${row.owner.shop_name ? ` (${row.owner.shop_name})` : ''}`
-    if (!confirm(`Delete ${who}? Its watermarked photo is removed from R2 too.`)) return
+    const who =
+      row.owner.type === 'global'
+        ? 'this global design'
+        : `this retailer design${row.owner.shop_name ? ` (${row.owner.shop_name})` : ''}`;
+    if (!confirm(`Delete ${who}? Its watermarked photo is removed from R2 too.`)) return;
     const res = await fetch(`${API_URL}/v1/admin/showcase-designs/${row.id}`, {
       ...(await adminMutateOptions()),
       method: 'DELETE',
       // adminMutateOptions() sets Content-Type: application/json — Fastify then
       // 500s on an empty body ("body must be object"). Send an empty object.
       body: '{}',
-    })
+    });
     if (!res.ok) {
-      const detail = await res.text().catch(() => '')
-      setStatus(`❌ Delete failed (HTTP ${res.status})${detail ? ` — ${detail.slice(0, 200)}` : ''}`)
-      return
+      const detail = await res.text().catch(() => '');
+      setStatus(
+        `❌ Delete failed (HTTP ${res.status})${detail ? ` — ${detail.slice(0, 200)}` : ''}`,
+      );
+      return;
     }
-    setRows((prev) => prev.filter((r) => r.id !== row.id))
-    setStatus(`✅ ${row.name ? `"${row.name}" ` : 'Design '}deleted`)
-  }
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setStatus(`✅ ${row.name ? `"${row.name}" ` : 'Design '}deleted`);
+  };
 
   const toggleActive = async (row: DesignRow) => {
     // Optimistic flip; revert on failure.
-    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)))
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)));
     const res = await fetch(`${API_URL}/v1/admin/showcase-designs/${row.id}`, {
       ...(await adminMutateOptions()),
       method: 'PATCH',
       body: JSON.stringify({ is_active: !row.is_active }),
-    })
-    if (!res.ok) setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: row.is_active } : r)))
-  }
+    });
+    if (!res.ok)
+      setRows((prev) =>
+        prev.map((r) => (r.id === row.id ? { ...r, is_active: row.is_active } : r)),
+      );
+  };
 
   const categoryLabel = (row: DesignRow) =>
-    row.category_name ?? row.category_slug.replace(/-/g, ' ')
+    row.category_name ?? row.category_slug.replace(/-/g, ' ');
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-6xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-6xl"
+    >
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Suits Designs</h1>
@@ -229,9 +249,9 @@ export default function SuitsDesignsPage() {
         </div>
         <p className="text-sm text-gray-500">
           Suits-design library shown on storefront product pages under &ldquo;Related
-          products&rdquo;. Uploads default to <span className="font-medium">Global</span> (every store) and are
-          watermarked server-side. The retailer scope lets you moderate rows
-          stores published themselves — deactivate hides a design everywhere.
+          products&rdquo;. Uploads default to <span className="font-medium">Global</span> (every
+          store) and are watermarked server-side. The retailer scope lets you moderate rows stores
+          published themselves — deactivate hides a design everywhere.
         </p>
       </div>
 
@@ -250,7 +270,10 @@ export default function SuitsDesignsPage() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-6">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[220px]">
-            <label htmlFor="design-category" className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label
+              htmlFor="design-category"
+              className="block text-xs font-medium text-gray-500 mb-1.5"
+            >
               Category <span className="text-red-500">*</span>
             </label>
             <select
@@ -259,7 +282,9 @@ export default function SuitsDesignsPage() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-ink-500/30"
             >
-              {categories.length === 0 && <option value="">No categories — seed migration first</option>}
+              {categories.length === 0 && (
+                <option value="">No categories — seed migration first</option>
+              )}
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.is_active ? 'active' : 'inactive'})
@@ -327,11 +352,11 @@ export default function SuitsDesignsPage() {
               <button
                 key={opt.key}
                 onClick={() => {
-                  setScope(opt.key)
+                  setScope(opt.key);
                   // Owner filter only applies inside the retailer scope —
                   // leaving it (or switching retailer→retailer after a stale
                   // pick) must not silently keep narrowing.
-                  if (opt.key !== 'retailer') setOwnerId(null)
+                  if (opt.key !== 'retailer') setOwnerId(null);
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                   scope === opt.key ? 'bg-ink-600 text-white' : 'text-gray-500 hover:text-gray-800'
@@ -394,16 +419,25 @@ export default function SuitsDesignsPage() {
             </button>
             <div className="p-3 flex flex-col gap-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-gray-700 truncate" title={row.name ?? undefined}>
+                <span
+                  className="text-xs font-medium text-gray-700 truncate"
+                  title={row.name ?? undefined}
+                >
                   {row.name ?? '(unnamed)'}
                 </span>
                 <div className="flex items-center shrink-0">
                   <button
                     onClick={() => toggleActive(row)}
                     className={`p-1.5 rounded-lg transition-colors ${
-                      row.is_active ? 'text-ink-600 hover:bg-ink-50' : 'text-gray-400 hover:bg-gray-50'
+                      row.is_active
+                        ? 'text-ink-600 hover:bg-ink-50'
+                        : 'text-gray-400 hover:bg-gray-50'
                     }`}
-                    aria-label={row.is_active ? `Deactivate ${row.name ?? 'design'}` : `Activate ${row.name ?? 'design'}`}
+                    aria-label={
+                      row.is_active
+                        ? `Deactivate ${row.name ?? 'design'}`
+                        : `Activate ${row.name ?? 'design'}`
+                    }
                   >
                     {row.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
                   </button>
@@ -463,5 +497,5 @@ export default function SuitsDesignsPage() {
         </div>
       )}
     </motion.div>
-  )
+  );
 }

@@ -1,44 +1,46 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Star, MessageSquare } from 'lucide-react'
+import { MessageSquare, Star } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface Review {
-  id: string
-  rating: number
-  comment: string | null
-  created_at: string
-  customer_name: string
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  customer_name: string;
 }
 
 interface Props {
-  productId: string
-  avgRating: number
-  ratingCount: number
+  productId: string;
+  avgRating: number;
+  ratingCount: number;
 }
 
 export function ReviewList({ productId, avgRating, ratingCount }: Props) {
-  const [reviews, setReviews] = useState<Review[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showAll, setShowAll] = useState(false)
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     fetch(`/api/reviews/product/${productId}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { data: Review[] } | null) => {
-        if (!cancelled && json?.data) setReviews(json.data)
+        if (!cancelled && json?.data) setReviews(json.data);
       })
       .catch(() => undefined)
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [productId])
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
-  if (ratingCount === 0 && !loading) return null
+  if (ratingCount === 0 && !loading) return null;
 
-  const visibleReviews = showAll ? reviews : reviews.slice(0, 3)
+  const visibleReviews = showAll ? reviews : reviews.slice(0, 3);
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4">
@@ -57,8 +59,8 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
       {ratingCount > 0 && (
         <div className="space-y-1 mb-3">
           {[5, 4, 3, 2, 1].map((star) => {
-            const count = reviews.filter((r) => r.rating === star).length
-            const pct = ratingCount > 0 ? (count / ratingCount) * 100 : 0
+            const count = reviews.filter((r) => r.rating === star).length;
+            const pct = ratingCount > 0 ? (count / ratingCount) * 100 : 0;
             return (
               <div key={star} className="flex items-center gap-2">
                 <span className="text-[10px] text-gray-500 w-3 text-right">{star}</span>
@@ -71,7 +73,7 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
                 </div>
                 <span className="text-[10px] text-gray-400 w-5 text-right">{count}</span>
               </div>
-            )
+            );
           })}
         </div>
       )}
@@ -91,7 +93,9 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
                     <Star
                       key={i}
                       size={11}
-                      className={i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}
+                      className={
+                        i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
+                      }
                     />
                   ))}
                 </div>
@@ -99,7 +103,10 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
                   {review.customer_name || 'Anonymous'}
                 </span>
                 <span className="text-[10px] text-gray-400 ml-auto">
-                  {new Date(review.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                  {new Date(review.created_at).toLocaleDateString('en-IN', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
                 </span>
               </div>
               {review.comment && (
@@ -125,5 +132,5 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
         </button>
       )}
     </div>
-  )
+  );
 }

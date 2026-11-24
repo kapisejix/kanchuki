@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test'
+import { type Locator, type Page, expect } from '@playwright/test';
 
 // Shared viewport + client-error helpers for the customer specs.
 //
@@ -18,11 +18,11 @@ import { expect, type Locator, type Page } from '@playwright/test'
 //      rejected fetches — all of which a shopper sees as a broken page, and none
 //      of which fail a test that only listens for `pageerror`.
 
-export const PHONE = { name: 'phone', width: 390, height: 844 } as const
-export const TABLET = { name: 'tablet', width: 820, height: 1180 } as const
+export const PHONE = { name: 'phone', width: 390, height: 844 } as const;
+export const TABLET = { name: 'tablet', width: 820, height: 1180 } as const;
 
 /** The sizes the storefront is actually used at: a phone, and a tablet. */
-export const VIEWPORTS = [PHONE, TABLET] as const
+export const VIEWPORTS = [PHONE, TABLET] as const;
 
 /**
  * Chrome logs *any* failed resource fetch as a console error, including ones the
@@ -46,7 +46,7 @@ const IGNORED_RESOURCE_URLS: { url: RegExp; reason: string }[] = [
     url: /\/api\/passport\/(me|stores)/,
     reason: 'the session probe answers 401 for an anonymous shopper',
   },
-]
+];
 
 // Two entries have been deleted from this list, both once the underlying thing
 // was genuinely fixed rather than merely tolerated:
@@ -65,38 +65,38 @@ const IGNORED_RESOURCE_URLS: { url: RegExp; reason: string }[] = [
 // becomes the place the next bug hides.
 
 /** The message shape Chrome uses for a failed fetch of a resource. */
-const RESOURCE_LOAD_FAILURE = /Failed to load resource|net::ERR_|upstream image response failed/
+const RESOURCE_LOAD_FAILURE = /Failed to load resource|net::ERR_|upstream image response failed/;
 
 export interface ClientErrors {
   /** Uncaught exceptions — `pageerror`. */
-  pageErrors: string[]
+  pageErrors: string[];
   /** `console.error` that isn't a mocked-resource failure. */
-  consoleErrors: string[]
+  consoleErrors: string[];
   /** What the filter dropped, so a too-broad allowlist is visible in output. */
-  ignored: string[]
+  ignored: string[];
   /** Both lists empty — what every responsive assertion below ends with. */
-  expectClean(where: string): void
+  expectClean(where: string): void;
 }
 
 export function watchClientErrors(page: Page): ClientErrors {
-  const pageErrors: string[] = []
-  const consoleErrors: string[] = []
-  const ignored: string[] = []
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  const ignored: string[] = [];
 
-  page.on('pageerror', (err) => pageErrors.push(String(err)))
+  page.on('pageerror', (err) => pageErrors.push(String(err)));
   page.on('console', (msg) => {
-    if (msg.type() !== 'error') return
-    const url = msg.location()?.url ?? ''
-    const text = msg.text()
+    if (msg.type() !== 'error') return;
+    const url = msg.location()?.url ?? '';
+    const text = msg.text();
     const expected = RESOURCE_LOAD_FAILURE.test(text)
       ? IGNORED_RESOURCE_URLS.find((entry) => entry.url.test(url))
-      : undefined
+      : undefined;
     if (expected) {
-      ignored.push(`${text} @ ${url} — ${expected.reason}`)
-      return
+      ignored.push(`${text} @ ${url} — ${expected.reason}`);
+      return;
     }
-    consoleErrors.push(url ? `${text} @ ${url}` : text)
-  })
+    consoleErrors.push(url ? `${text} @ ${url}` : text);
+  });
 
   return {
     pageErrors,
@@ -105,16 +105,18 @@ export function watchClientErrors(page: Page): ClientErrors {
     expectClean(where: string) {
       // The message carries what was ignored, so a run that starts silently
       // swallowing real errors is diagnosable from the failure alone.
-      const detail = ignored.length ? `\n(ignored as mocked-resource noise: ${JSON.stringify(ignored, null, 2)})` : ''
-      expect(pageErrors, `uncaught exceptions on ${where}${detail}`).toEqual([])
-      expect(consoleErrors, `console errors on ${where}${detail}`).toEqual([])
+      const detail = ignored.length
+        ? `\n(ignored as mocked-resource noise: ${JSON.stringify(ignored, null, 2)})`
+        : '';
+      expect(pageErrors, `uncaught exceptions on ${where}${detail}`).toEqual([]);
+      expect(consoleErrors, `console errors on ${where}${detail}`).toEqual([]);
     },
-  }
+  };
 }
 
 /** Widest scroll extent vs the viewport — >1px means something overflows. */
 export async function horizontalOverflow(page: Page): Promise<number> {
-  return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 }
 
 /**
@@ -122,7 +124,7 @@ export async function horizontalOverflow(page: Page): Promise<number> {
  * broken", and a desktop-only test run cannot see it.
  */
 export async function expectNoHorizontalOverflow(page: Page, where: string): Promise<void> {
-  expect(await horizontalOverflow(page), `${where} scrolls sideways`).toBeLessThanOrEqual(1)
+  expect(await horizontalOverflow(page), `${where} scrolls sideways`).toBeLessThanOrEqual(1);
 }
 
 /**
@@ -144,7 +146,7 @@ export async function expectRenderedImage(locator: Locator, where: string): Prom
       timeout: 15_000,
       message: `${where} never decoded pixels — the <img> box renders but the photo failed to load`,
     })
-    .toBeGreaterThan(0)
+    .toBeGreaterThan(0);
 }
 
 /**
@@ -153,12 +155,16 @@ export async function expectRenderedImage(locator: Locator, where: string): Prom
  * and is visible to the test but unreachable to a thumb.
  */
 export async function expectFullyInViewport(locator: Locator, where: string): Promise<void> {
-  const box = await locator.boundingBox()
-  expect(box, `${where} has no layout box`).not.toBeNull()
-  const viewport = locator.page().viewportSize()
-  expect(viewport, `${where} needs an explicit viewport`).not.toBeNull()
-  expect(box!.x, `${where} starts off the left edge`).toBeGreaterThanOrEqual(0)
-  expect(box!.y, `${where} starts above the top edge`).toBeGreaterThanOrEqual(0)
-  expect(box!.x + box!.width, `${where} runs past the right edge`).toBeLessThanOrEqual(viewport!.width + 1)
-  expect(box!.y + box!.height, `${where} runs past the bottom edge`).toBeLessThanOrEqual(viewport!.height + 1)
+  const box = await locator.boundingBox();
+  expect(box, `${where} has no layout box`).not.toBeNull();
+  const viewport = locator.page().viewportSize();
+  expect(viewport, `${where} needs an explicit viewport`).not.toBeNull();
+  expect(box!.x, `${where} starts off the left edge`).toBeGreaterThanOrEqual(0);
+  expect(box!.y, `${where} starts above the top edge`).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width, `${where} runs past the right edge`).toBeLessThanOrEqual(
+    viewport!.width + 1,
+  );
+  expect(box!.y + box!.height, `${where} runs past the bottom edge`).toBeLessThanOrEqual(
+    viewport!.height + 1,
+  );
 }

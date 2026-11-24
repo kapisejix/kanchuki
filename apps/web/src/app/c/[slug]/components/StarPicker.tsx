@@ -1,26 +1,22 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Star } from 'lucide-react'
+import { Star } from 'lucide-react';
+import { useState } from 'react';
 
 interface StarPickerProps {
-  value: number
-  onChange: (rating: number) => void
-  size?: number
-  disabled?: boolean
+  value: number;
+  onChange: (rating: number) => void;
+  size?: number;
+  disabled?: boolean;
 }
 
 export function StarPicker({ value, onChange, size = 28, disabled = false }: StarPickerProps) {
-  const [hovered, setHovered] = useState(0)
+  const [hovered, setHovered] = useState(0);
 
   return (
-    <div
-      className="flex items-center gap-1"
-      role="radiogroup"
-      aria-label="Rating"
-    >
+    <div className="flex items-center gap-1" role="radiogroup" aria-label="Rating">
       {[1, 2, 3, 4, 5].map((star) => {
-        const isActive = star <= (hovered || value)
+        const isActive = star <= (hovered || value);
         return (
           <button
             key={star}
@@ -43,10 +39,10 @@ export function StarPicker({ value, onChange, size = 28, disabled = false }: Sta
               }`}
             />
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 const RATING_LABELS: Record<number, string> = {
@@ -55,7 +51,7 @@ const RATING_LABELS: Record<number, string> = {
   3: 'Good',
   4: 'Great',
   5: 'Excellent',
-}
+};
 
 // Canned review lines the customer can drop into the comment box, then edit.
 // {store} / {product} are filled from the retailer + product names.
@@ -66,21 +62,18 @@ export const COMMENT_TEMPLATES = [
   'Good experience shopping at {store}. {product} matches the photos.',
   '{store} helped me pick the right size. {product} fits perfectly.',
   'Recommend {store}. My {product} is exactly what I wanted.',
-]
+];
 
-export function fillTemplate(
-  tpl: string,
-  vars: { store: string; product: string },
-): string {
-  return tpl.replace(/\{store\}/g, vars.store).replace(/\{product\}/g, vars.product)
+export function fillTemplate(tpl: string, vars: { store: string; product: string }): string {
+  return tpl.replace(/\{store\}/g, vars.store).replace(/\{product\}/g, vars.product);
 }
 
 interface ReviewFormProps {
-  productName: string
-  retailerId: string
-  productId: string
-  retailerName: string
-  onSubmit?: () => void
+  productName: string;
+  retailerId: string;
+  productId: string;
+  retailerName: string;
+  onSubmit?: () => void;
 }
 
 export function ReviewForm({
@@ -90,36 +83,38 @@ export function ReviewForm({
   retailerName,
   onSubmit,
 }: ReviewFormProps) {
-  const [rating, setRating] = useState(0)
-  const [comment, setComment] = useState('')
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
   // Prefill name/phone from ContactGate localStorage if available
   const [name, setName] = useState(() => {
-    if (typeof window === 'undefined') return ''
+    if (typeof window === 'undefined') return '';
     try {
       // Extract store slug from the current URL path: /{store}/{slug}/... or /c/{slug}/...
-      const parts = window.location.pathname.split('/').filter(Boolean)
-      const slug = parts[0] === 'c' ? parts[1] : parts[0]
-      return slug ? localStorage.getItem(`kanchuki_lead_name_${slug}`) ?? '' : ''
-    } catch { return '' }
-  })
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [needsSignIn, setNeedsSignIn] = useState(false)
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      const slug = parts[0] === 'c' ? parts[1] : parts[0];
+      return slug ? (localStorage.getItem(`kanchuki_lead_name_${slug}`) ?? '') : '';
+    } catch {
+      return '';
+    }
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const [routing, setRouting] = useState<{
-    action: string
-    message?: string
-    url?: string
-    feedback_message?: string
-  } | null>(null)
+    action: string;
+    message?: string;
+    url?: string;
+    feedback_message?: string;
+  } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (rating === 0) return
+    e.preventDefault();
+    if (rating === 0) return;
 
-    setLoading(true)
-    setError(null)
-    setNeedsSignIn(false)
+    setLoading(true);
+    setError(null);
+    setNeedsSignIn(false);
 
     try {
       // Identity is the signed-in passport session (cookie), never a typed phone (RC-098).
@@ -132,31 +127,31 @@ export function ReviewForm({
           rating,
           comment: comment || undefined,
         }),
-      })
+      });
 
       if (res.status === 401) {
-        setNeedsSignIn(true)
-        return
+        setNeedsSignIn(true);
+        return;
       }
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({}));
         // API errors come back either as { error: { message } } (errorHandler)
         // or { error: "<string>" } (eligibility 403) — handle both.
-        const msg = typeof data.error === 'string' ? data.error : data.error?.message
-        throw new Error(msg || 'Failed to submit review')
+        const msg = typeof data.error === 'string' ? data.error : data.error?.message;
+        throw new Error(msg || 'Failed to submit review');
       }
 
-      const data = await res.json()
-      setRouting(data.routing)
-      setSubmitted(true)
-      onSubmit?.()
+      const data = await res.json();
+      setRouting(data.routing);
+      setSubmitted(true);
+      onSubmit?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (submitted) {
     return (
@@ -166,8 +161,8 @@ export function ReviewForm({
         </div>
         <h3 className="text-base font-semibold text-gray-900 mb-1">Thanks for your review!</h3>
         <p className="text-sm text-gray-500 mb-1">
-          You rated <span className="font-medium text-gray-700">{productName}</span>{' '}
-          {rating} star{rating > 1 ? 's' : ''}
+          You rated <span className="font-medium text-gray-700">{productName}</span> {rating} star
+          {rating > 1 ? 's' : ''}
         </p>
 
         {routing?.action === 'google_review' && routing.url && (
@@ -186,7 +181,7 @@ export function ReviewForm({
           </p>
         )}
       </div>
-    )
+    );
   }
 
   return (
@@ -195,32 +190,24 @@ export function ReviewForm({
       className="bg-white border border-gray-100 rounded-2xl p-4 space-y-4"
     >
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-1">
-          Rate this product
-        </h3>
-        <p className="text-xs text-gray-500">
-          How did you like {productName}?
-        </p>
+        <h3 className="text-sm font-semibold text-gray-900 mb-1">Rate this product</h3>
+        <p className="text-xs text-gray-500">How did you like {productName}?</p>
       </div>
 
       {/* Star picker */}
       <div className="flex items-center gap-3">
         <StarPicker value={rating} onChange={setRating} size={32} />
         {rating > 0 && (
-          <span className="text-sm font-medium text-amber-600">
-            {RATING_LABELS[rating]}
-          </span>
+          <span className="text-sm font-medium text-amber-600">{RATING_LABELS[rating]}</span>
         )}
       </div>
 
       {/* Comment templates — tap to prefill, still editable */}
       <div>
-        <p className="block text-xs font-medium text-gray-500 mb-1.5">
-          Quick templates
-        </p>
+        <p className="block text-xs font-medium text-gray-500 mb-1.5">Quick templates</p>
         <div className="flex flex-wrap gap-1.5">
           {COMMENT_TEMPLATES.map((tpl) => {
-            const filled = fillTemplate(tpl, { store: retailerName, product: productName })
+            const filled = fillTemplate(tpl, { store: retailerName, product: productName });
             return (
               <button
                 key={tpl}
@@ -232,7 +219,7 @@ export function ReviewForm({
               >
                 {filled}
               </button>
-            )
+            );
           })}
         </div>
       </div>
@@ -298,13 +285,14 @@ export function ReviewForm({
         disabled={rating === 0 || loading}
         className={`w-full font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98]
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2
-          ${rating > 0
-            ? 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft'
-            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          ${
+            rating > 0
+              ? 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft'
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
       >
         {loading ? 'Submitting...' : 'Submit Review'}
       </button>
     </form>
-  )
+  );
 }

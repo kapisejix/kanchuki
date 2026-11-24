@@ -1,76 +1,118 @@
-'use client'
+'use client';
 
-import { useState, useCallback, useRef } from 'react'
-import { Sparkles, ChevronRight, ChevronLeft, Check } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
 
 const QUESTIONS = [
   {
     key: 'occasion',
     question: 'What occasions do you shop for most?',
     icon: '🎉',
-    options: ['Daily Wear', 'Party / Festive', 'Wedding / Bridal', 'Office / Formal', 'Casual Outings'],
+    options: [
+      'Daily Wear',
+      'Party / Festive',
+      'Wedding / Bridal',
+      'Office / Formal',
+      'Casual Outings',
+    ],
     multi: true,
   },
   {
     key: 'region',
     question: 'Which region best describes your style?',
     icon: '🗺️',
-    options: ['North Indian', 'South Indian', 'East Indian', 'West Indian', 'Indo-Western / Fusion', 'No Preference'],
+    options: [
+      'North Indian',
+      'South Indian',
+      'East Indian',
+      'West Indian',
+      'Indo-Western / Fusion',
+      'No Preference',
+    ],
     multi: false,
   },
   {
     key: 'budget',
-    question: 'What\'s your typical budget per outfit?',
+    question: "What's your typical budget per outfit?",
     icon: '💰',
-    options: ['Under ₹500', '₹500 – ₹1,500', '₹1,500 – ₹3,000', '₹3,000 – ₹5,000', '₹5,000 – ₹10,000', '₹10,000+'],
+    options: [
+      'Under ₹500',
+      '₹500 – ₹1,500',
+      '₹1,500 – ₹3,000',
+      '₹3,000 – ₹5,000',
+      '₹5,000 – ₹10,000',
+      '₹10,000+',
+    ],
     multi: false,
   },
   {
     key: 'fabric',
     question: 'Which fabrics do you prefer? (pick all that apply)',
     icon: '🧵',
-    options: ['Cotton', 'Silk', 'Georgette', 'Chiffon', 'Rayon', 'Linen', 'Velvet', 'No Preference'],
+    options: [
+      'Cotton',
+      'Silk',
+      'Georgette',
+      'Chiffon',
+      'Rayon',
+      'Linen',
+      'Velvet',
+      'No Preference',
+    ],
     multi: true,
   },
   {
     key: 'color',
     question: 'What colors do you love? (pick all that apply)',
     icon: '🎨',
-    options: ['Red / Maroon', 'Blue / Navy', 'Green / Emerald', 'Pink / Rose', 'Yellow / Mustard', 'White / Cream', 'Black', 'Pastels', 'Bright / Multicolor'],
+    options: [
+      'Red / Maroon',
+      'Blue / Navy',
+      'Green / Emerald',
+      'Pink / Rose',
+      'Yellow / Mustard',
+      'White / Cream',
+      'Black',
+      'Pastels',
+      'Bright / Multicolor',
+    ],
     multi: true,
   },
-]
+];
 
 interface Props {
-  storeSlug: string
+  storeSlug: string;
   /** `onAccount`: the answers were saved to the shopper's account (not just this device). */
-  onComplete?: (onAccount: boolean) => void
+  onComplete?: (onAccount: boolean) => void;
 }
 
 export function StyleQuiz({ storeSlug, onComplete }: Props) {
-  const [step, setStep] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string[]>>({})
-  const [done, setDone] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const q = QUESTIONS[step]!
-  const currentAnswers = answers[q.key] ?? []
+  const q = QUESTIONS[step]!;
+  const currentAnswers = answers[q.key] ?? [];
 
-  const toggleOption = useCallback((option: string) => {
-    setAnswers((prev) => {
-      const current = prev[q.key] ?? []
-      if (q.multi) {
-        const next = current.includes(option)
-          ? current.filter((o) => o !== option)
-          : [...current, option]
-        return { ...prev, [q.key]: next }
-      }
-      return { ...prev, [q.key]: [option] }
-    })
-  }, [q])
+  const toggleOption = useCallback(
+    (option: string) => {
+      setAnswers((prev) => {
+        const current = prev[q.key] ?? [];
+        if (q.multi) {
+          const next = current.includes(option)
+            ? current.filter((o) => o !== option)
+            : [...current, option];
+          return { ...prev, [q.key]: next };
+        }
+        return { ...prev, [q.key]: [option] };
+      });
+    },
+    [q],
+  );
 
   // Sync guard: keyboard-submit + tap can both fire before `done` commits (RC-015).
-  const finishing = useRef(false)
+  const finishing = useRef(false);
 
   // localStorage is always written: it is the signed-out fallback and the
   // "quiz done" marker CollectionView reads. A signed-in shopper also gets the
@@ -80,36 +122,39 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
   // (My Style's feed) must see the saved answers, not race the write. `onComplete(true)`
   // means the account really has them; `false` = skipped, signed out or the save failed,
   // so only this device remembers.
-  const finish = useCallback(async (saved: Record<string, string[]>) => {
-    if (finishing.current) return
-    finishing.current = true
-    try {
-      localStorage.setItem(`kanchuki_quiz_${storeSlug}`, JSON.stringify(saved))
-    } catch {}
-    let onAccount = false
-    if (Object.keys(saved).length > 0) {
-      setSaving(true)
+  const finish = useCallback(
+    async (saved: Record<string, string[]>) => {
+      if (finishing.current) return;
+      finishing.current = true;
       try {
-        const res = await fetch('/api/passport/style-quiz', {
-          method: 'PATCH',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(saved),
-          signal: AbortSignal.timeout(10_000),
-        })
-        onAccount = res.ok
-      } catch {
-        // offline / timeout / abort: the localStorage copy stands (RC-014)
+        localStorage.setItem(`kanchuki_quiz_${storeSlug}`, JSON.stringify(saved));
+      } catch {}
+      let onAccount = false;
+      if (Object.keys(saved).length > 0) {
+        setSaving(true);
+        try {
+          const res = await fetch('/api/passport/style-quiz', {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(saved),
+            signal: AbortSignal.timeout(10_000),
+          });
+          onAccount = res.ok;
+        } catch {
+          // offline / timeout / abort: the localStorage copy stands (RC-014)
+        }
       }
-    }
-    setDone(true)
-    onComplete?.(onAccount)
-  }, [storeSlug, onComplete])
+      setDone(true);
+      onComplete?.(onAccount);
+    },
+    [storeSlug, onComplete],
+  );
 
   const handleNext = useCallback(() => {
-    if (step < QUESTIONS.length - 1) setStep(step + 1)
-    else finish(answers)
-  }, [step, answers, finish])
+    if (step < QUESTIONS.length - 1) setStep(step + 1);
+    else finish(answers);
+  }, [step, answers, finish]);
 
   // Already completed
   if (done) {
@@ -123,7 +168,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
           We&apos;ll use this to suggest outfits that match your taste.
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -144,15 +189,13 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
       <div className="mb-4">
         <span className="text-lg mr-1.5">{q.icon}</span>
         <span className="text-sm font-bold text-gray-900">{q.question}</span>
-        {!q.multi && (
-          <span className="text-[10px] text-gray-400 ml-1">(pick one)</span>
-        )}
+        {!q.multi && <span className="text-[10px] text-gray-400 ml-1">(pick one)</span>}
       </div>
 
       {/* Options */}
       <div className="flex flex-wrap gap-2 mb-4">
         {q.options.map((option) => {
-          const isActive = currentAnswers.includes(option)
+          const isActive = currentAnswers.includes(option);
           return (
             <button
               key={option}
@@ -165,7 +208,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
             >
               {option}
             </button>
-          )
+          );
         })}
       </div>
 
@@ -207,5 +250,5 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
         Skip for now
       </button>
     </div>
-  )
+  );
 }

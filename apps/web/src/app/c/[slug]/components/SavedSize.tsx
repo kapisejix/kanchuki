@@ -1,44 +1,44 @@
-'use client'
+'use client';
 
-import { SIZE_OPTIONS } from '@kanchuki/shared'
-import { useState, useEffect, useCallback } from 'react'
-import { Ruler, Check, X } from 'lucide-react'
+import { SIZE_OPTIONS } from '@kanchuki/shared';
+import { Check, Ruler, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Props {
-  storeSlug: string
+  storeSlug: string;
 }
 
 function sizeKey(storeSlug: string): string {
-  return `kanchuki_size_${storeSlug}`
+  return `kanchuki_size_${storeSlug}`;
 }
 
 export function SavedSize({ storeSlug }: Props) {
-  const [savedSize, setSavedSize] = useState<string | null>(null)
-  const [editing, setEditing] = useState(false)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [savedSize, setSavedSize] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      setSavedSize(localStorage.getItem(sizeKey(storeSlug)))
+      setSavedSize(localStorage.getItem(sizeKey(storeSlug)));
     } catch {}
-  }, [storeSlug])
+  }, [storeSlug]);
 
   const handleSave = useCallback(() => {
-    if (!selected) return
+    if (!selected) return;
     try {
-      localStorage.setItem(sizeKey(storeSlug), selected)
-      setSavedSize(selected)
-      setEditing(false)
+      localStorage.setItem(sizeKey(storeSlug), selected);
+      setSavedSize(selected);
+      setEditing(false);
     } catch {}
-  }, [selected, storeSlug])
+  }, [selected, storeSlug]);
 
   const handleClear = useCallback(() => {
     try {
-      localStorage.removeItem(sizeKey(storeSlug))
-      setSavedSize(null)
-      setEditing(false)
+      localStorage.removeItem(sizeKey(storeSlug));
+      setSavedSize(null);
+      setEditing(false);
     } catch {}
-  }, [storeSlug])
+  }, [storeSlug]);
 
   if (editing) {
     return (
@@ -82,20 +82,23 @@ export function SavedSize({ storeSlug }: Props) {
           )}
         </div>
       </div>
-    )
+    );
   }
 
   if (savedSize) {
     return (
       <button
-        onClick={() => { setSelected(savedSize); setEditing(true) }}
+        onClick={() => {
+          setSelected(savedSize);
+          setEditing(true);
+        }}
         className="flex items-center gap-2 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2 w-full hover:bg-cyan-100 transition-colors"
       >
         <Ruler size={14} className="text-cyan-600" />
         <span className="text-xs font-medium text-cyan-800">Your size: {savedSize}</span>
         <Check size={12} className="text-cyan-500 ml-auto" />
       </button>
-    )
+    );
   }
 
   return (
@@ -106,5 +109,5 @@ export function SavedSize({ storeSlug }: Props) {
       <Ruler size={14} className="text-gray-400" />
       <span className="text-xs font-medium text-gray-600">Save your usual size</span>
     </button>
-  )
+  );
 }

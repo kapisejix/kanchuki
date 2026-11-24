@@ -1,11 +1,7 @@
 'use client';
 
 import type { PublicCollection } from '@kanchuki/shared';
-import {
-  buildEnquiryMessage,
-  buildWhatsAppEnquiryLink,
-  formatPriceRange,
-} from '@kanchuki/shared';
+import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
 import { ArrowLeft, Heart, LayoutGrid, MapPin, MessageCircle, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';

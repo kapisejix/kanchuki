@@ -1,26 +1,26 @@
-'use client'
+'use client';
 
-import { Flag, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { CheckCircle2, Flag, Loader2, RefreshCw } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // Shopper "Report this AI content" queue (Google Play AI-Generated Content policy). Reports are
 // text only; the AI output itself is never stored. Retailer reports from the mobile app are in
 // Bug Reports, tagged "[AI content report: …]".
 
-type Status = 'NEW' | 'REVIEWED'
+type Status = 'NEW' | 'REVIEWED';
 type Report = {
-  id: string
-  feature: string
-  content_ref: string | null
-  description: string
-  status: Status
-  created_at: string
-  reporter: { name: string | null; phone: string } | null
-}
-type Stats = { new: number; reviewed: number; total: number }
+  id: string;
+  feature: string;
+  content_ref: string | null;
+  description: string;
+  status: Status;
+  created_at: string;
+  reporter: { name: string | null; phone: string } | null;
+};
+type Stats = { new: number; reviewed: number; total: number };
 
 const FEATURES = [
   'My Style selfie analysis',
@@ -28,62 +28,62 @@ const FEATURES = [
   'My Style complete the look',
   'AI Stylist',
   'Virtual try-on',
-]
+];
 
 export default function AiContentReportsPage() {
-  const [reports, setReports] = useState<Report[]>([])
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<'' | Status>('NEW')
-  const [feature, setFeature] = useState('')
-  const [busyId, setBusyId] = useState<string | null>(null)
+  const [reports, setReports] = useState<Report[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<'' | Status>('NEW');
+  const [feature, setFeature] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const qs = new URLSearchParams({ limit: '100' })
-      if (status) qs.set('status', status)
-      if (feature) qs.set('feature', feature)
+      const qs = new URLSearchParams({ limit: '100' });
+      if (status) qs.set('status', status);
+      if (feature) qs.set('feature', feature);
       const [list, st] = await Promise.all([
         fetch(`${API_URL}/v1/admin/ai-content-reports?${qs}`, adminGetOptions()),
         fetch(`${API_URL}/v1/admin/ai-content-reports/stats`, adminGetOptions()),
-      ])
-      if (!list.ok || !st.ok) throw new Error('load failed')
-      setReports(((await list.json()) as { data: Report[] }).data)
-      setStats(((await st.json()) as { data: Stats }).data)
+      ]);
+      if (!list.ok || !st.ok) throw new Error('load failed');
+      setReports(((await list.json()) as { data: Report[] }).data);
+      setStats(((await st.json()) as { data: Stats }).data);
     } catch {
-      setError('Could not load reports.')
+      setError('Could not load reports.');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [status, feature])
+  }, [status, feature]);
 
   useEffect(() => {
-    void load()
-  }, [load])
+    void load();
+  }, [load]);
 
   async function mark(r: Report, next: Status) {
-    setBusyId(r.id)
-    setError(null)
+    setBusyId(r.id);
+    setError(null);
     try {
       const res = await fetch(`${API_URL}/v1/admin/ai-content-reports/${r.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify({ status: next }),
-      })
-      if (!res.ok) throw new Error('update failed')
-      await load()
+      });
+      if (!res.ok) throw new Error('update failed');
+      await load();
     } catch {
-      setError('Could not update that report.')
+      setError('Could not update that report.');
     } finally {
-      setBusyId(null)
+      setBusyId(null);
     }
   }
 
   const selectClass =
-    'border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40'
+    'border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40';
 
   return (
     <div className="space-y-6">
@@ -202,5 +202,5 @@ export default function AiContentReportsPage() {
         </ul>
       )}
     </div>
-  )
+  );
 }

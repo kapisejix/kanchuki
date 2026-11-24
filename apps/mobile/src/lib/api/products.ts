@@ -1,12 +1,12 @@
-import * as LegacyFileSystem from 'expo-file-system/legacy';
 import type {
-  ProductDetail,
-  ProductSummary,
   CreateProductInput,
-  UpdateProductInput,
   Pagination,
+  ProductDetail,
   ProductStatus,
+  ProductSummary,
+  UpdateProductInput,
 } from '@kanchuki/shared';
+import * as LegacyFileSystem from 'expo-file-system/legacy';
 import { compressImageForUpload } from '../compress-image';
 import { API_URL, ApiError, getToken, request } from './client';
 
@@ -59,7 +59,12 @@ export const productApi = {
       };
     }>('/v1/products/upload-url', {
       method: 'POST',
-      body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes, content_length: sizeBytes }),
+      body: JSON.stringify({
+        filename,
+        content_type: contentType,
+        size_bytes: sizeBytes,
+        content_length: sizeBytes,
+      }),
       timeoutMs: 30_000,
     }),
 
@@ -139,7 +144,8 @@ export const productApi = {
     }),
 
   /** Owner-only "Recently Deleted" tab — see products.ts GET /deleted */
-  listDeleted: () => request<{ data: ProductSummary[] }>('/v1/products/deleted', { getCacheTtlMs: 0 }),
+  listDeleted: () =>
+    request<{ data: ProductSummary[] }>('/v1/products/deleted', { getCacheTtlMs: 0 }),
 
   /** Owner-only — undo a soft delete (staff or owner) */
   restore: (id: string) =>
@@ -223,11 +229,7 @@ export const productApi = {
   // ─── F-032: AI Studio Shoots (FLUX Kontext, async job) ─────────────
   /** Enqueue a studio-shoot generation for a photo. Returns 202 immediately
    * with a job_id — poll getStudioShootStatus until ready/failed. */
-  startStudioShoot: (
-    productId: string,
-    photoId: string,
-    template: string,
-  ) =>
+  startStudioShoot: (productId: string, photoId: string, template: string) =>
     request<{ data: { job_id: string; status: string } }>(
       `/v1/products/${productId}/photos/${photoId}/studio-shoot`,
       {
@@ -274,10 +276,11 @@ export const productApi = {
     productId: string,
     body: { photo_id: string; style_slug: string; aspect: PromoVideoAspect },
   ) =>
-    request<{ data: { job_id: string; status: string } }>(
-      `/v1/products/${productId}/promo-video`,
-      { method: 'POST', body: JSON.stringify(body), timeoutMs: 15_000 },
-    ),
+    request<{ data: { job_id: string; status: string } }>(`/v1/products/${productId}/promo-video`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      timeoutMs: 15_000,
+    }),
 
   getPromoVideoStatus: (productId: string, jobId: string) =>
     request<{

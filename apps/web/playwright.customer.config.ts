@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test';
 
 // Customer-facing PWA suite — collection pages (/c/[slug]) + offline behavior
 // (see e2e/customer-collection.spec.ts).
@@ -83,4 +83,4 @@ export default defineConfig({
       API_URL: 'http://127.0.0.1:3001',
     },
   },
-})
+});

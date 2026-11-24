@@ -1,18 +1,18 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react';
+import { useEffect } from 'react';
 
 export default function AdminError({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error('[admin]', error)
-  }, [error])
+    console.error('[admin]', error);
+  }, [error]);
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
@@ -36,5 +36,5 @@ export default function AdminError({
         </button>
       </div>
     </div>
-  )
+  );
 }

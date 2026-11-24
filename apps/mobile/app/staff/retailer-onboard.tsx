@@ -1,42 +1,34 @@
-import { useState } from 'react'
-import { isValidIndianPhone } from '@kanchuki/shared'
-import {
-  View, Text, ScrollView, TextInput,
-  Alert,
-} from 'react-native'
-import { router } from 'expo-router'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import {
-  Store, Phone, MapPin, User, CheckCircle2,
-  UserPlus,
-} from 'lucide-react-native'
-import { teamApi } from '../../src/lib/team-api'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { ScreenHeader } from '../../src/components/ScreenHeader'
-import { GradientButton } from '../../src/components/GradientButton'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
+import { isValidIndianPhone } from '@kanchuki/shared';
+import { router } from 'expo-router';
+import { CheckCircle2, MapPin, Phone, Store, User, UserPlus } from 'lucide-react-native';
+import { useState } from 'react';
+import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { teamApi } from '../../src/lib/team-api';
+import { useTheme } from '../../src/lib/theme';
 
 export default function RetailerOnboardScreen() {
-  const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const [phone, setPhone] = useState('')
-  const [shopName, setShopName] = useState('')
-  const [ownerName, setOwnerName] = useState('')
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
-  const [pincode, setPincode] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const { primaryColor, colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [phone, setPhone] = useState('');
+  const [shopName, setShopName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const isFormValid =
-    isValidIndianPhone(phone) &&
-    shopName.trim().length >= 1 &&
-    city.trim().length >= 1
+    isValidIndianPhone(phone) && shopName.trim().length >= 1 && city.trim().length >= 1;
 
   const handleSubmit = async () => {
-    if (!isFormValid) return
-    setSaving(true)
+    if (!isFormValid) return;
+    setSaving(true);
     try {
       const result = await teamApi.onboardRetailer({
         phone: phone.replace(/\D/g, ''),
@@ -45,8 +37,8 @@ export default function RetailerOnboardScreen() {
         city: city.trim(),
         state: state.trim() || undefined,
         pincode: pincode.trim() || undefined,
-      })
-      setSuccess(true)
+      });
+      setSuccess(true);
       Alert.alert(
         'Retailer Onboarded',
         `${result.data.retailer.shop_name} has been added to your territory with a 14-day trial.${result.data.over_capacity ? '\n\nYou are over your capacity limit.' : ''}`,
@@ -54,13 +46,13 @@ export default function RetailerOnboardScreen() {
           {
             text: 'Add Another',
             onPress: () => {
-              setPhone('')
-              setShopName('')
-              setOwnerName('')
-              setCity('')
-              setState('')
-              setPincode('')
-              setSuccess(false)
+              setPhone('');
+              setShopName('');
+              setOwnerName('');
+              setCity('');
+              setState('');
+              setPincode('');
+              setSuccess(false);
             },
           },
           {
@@ -68,25 +60,26 @@ export default function RetailerOnboardScreen() {
             onPress: () => router.back(),
           },
         ],
-      )
+      );
     } catch (err) {
       // errors.ts policy: never surface raw err.message on screen. Show the
       // API's curated message only when the server actually responded
       // (status > 0 — a TeamApiError with body.error?.message); for network
       // failures (status 0) fall back to the friendly generic string.
-      const apiErr = err as { status?: number } | undefined
+      const apiErr = err as { status?: number } | undefined;
       const msg =
         err instanceof Error && apiErr?.status && apiErr.status > 0
           ? err.message
-          : 'Something went wrong. Check the phone number and try again.'
-      Alert.alert('Failed to Onboard', msg)
+          : 'Something went wrong. Check the phone number and try again.';
+      Alert.alert('Failed to Onboard', msg);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
-  const inputClass = 'bg-white border border-lavender-300 rounded-xl px-4 py-3.5 text-sm text-spaceCadet-900'
-  const labelClass = 'text-xs font-semibold text-heliotrope-600 mb-1.5'
+  const inputClass =
+    'bg-white border border-lavender-300 rounded-xl px-4 py-3.5 text-sm text-spaceCadet-900';
+  const labelClass = 'text-xs font-semibold text-heliotrope-600 mb-1.5';
 
   if (success) {
     return (
@@ -94,7 +87,9 @@ export default function RetailerOnboardScreen() {
         <View className="w-20 h-20 bg-turmeric-100 rounded-full items-center justify-center mb-4">
           <CheckCircle2 size={40} color={colors.turmeric[500]} />
         </View>
-        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Retailer onboarded</Text>
+        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">
+          Retailer onboarded
+        </Text>
         <Text className="text-heliotrope-500 text-sm mt-2 text-center">
           {shopName} has been added with a 14-day free trial.
         </Text>
@@ -105,7 +100,7 @@ export default function RetailerOnboardScreen() {
           <Text className="text-white font-semibold">Back to Dashboard</Text>
         </AnimatedPressable>
       </View>
-    )
+    );
   }
 
   return (
@@ -223,8 +218,9 @@ export default function RetailerOnboardScreen() {
           {/* Info note */}
           <View className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
             <Text className="text-xs text-amber-900">
-              The retailer will receive a 14-day free trial and can log in via OTP on their own phone.
-              A placeholder account is created now; it links to their phone number on first login.
+              The retailer will receive a 14-day free trial and can log in via OTP on their own
+              phone. A placeholder account is created now; it links to their phone number on first
+              login.
             </Text>
           </View>
         </View>
@@ -236,7 +232,8 @@ export default function RetailerOnboardScreen() {
         className="bg-white border-t border-lavender-200 px-4 py-4"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
-        <GradientButton variant="web"
+        <GradientButton
+          variant="web"
           label="Onboard Retailer"
           onPress={() => void handleSubmit()}
           disabled={!isFormValid}
@@ -245,5 +242,5 @@ export default function RetailerOnboardScreen() {
         />
       </View>
     </KeyboardScreen>
-  )
+  );
 }

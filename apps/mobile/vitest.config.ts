@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config'
-import { resolve } from 'path'
+import { resolve } from 'path';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
@@ -18,10 +18,7 @@ export default defineConfig({
       ),
       // LinearGradient mock — real vendor build ships JSX in a .js file,
       // which Rolldown's SSR transform can't parse. Aliased the same way.
-      'expo-linear-gradient': resolve(
-        __dirname,
-        'src/test/__mocks__/expo-linear-gradient.ts',
-      ),
+      'expo-linear-gradient': resolve(__dirname, 'src/test/__mocks__/expo-linear-gradient.ts'),
     },
   },
   test: {
@@ -38,4 +35,4 @@ export default defineConfig({
     },
     css: true,
   },
-})
+});

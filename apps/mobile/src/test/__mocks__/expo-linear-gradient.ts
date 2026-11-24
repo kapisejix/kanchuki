@@ -9,12 +9,14 @@
  * react-native/react-native-reanimated mocks in vitest.config.ts.
  */
 
-import React from 'react'
+import React from 'react';
 
-export const LinearGradient = React.forwardRef<unknown, Record<string, unknown>>(
-  (props, ref) => {
-    const { children, colors, ...rest } = props
-    return React.createElement('LinearGradient' as never, { ...rest, ref }, children as React.ReactNode)
-  },
-)
-LinearGradient.displayName = 'LinearGradient'
+export const LinearGradient = React.forwardRef<unknown, Record<string, unknown>>((props, ref) => {
+  const { children, colors, ...rest } = props;
+  return React.createElement(
+    'LinearGradient' as never,
+    { ...rest, ref },
+    children as React.ReactNode,
+  );
+});
+LinearGradient.displayName = 'LinearGradient';

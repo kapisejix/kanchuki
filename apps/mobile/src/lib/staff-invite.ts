@@ -1,4 +1,4 @@
-import { normalizeIndianPhone } from '@kanchuki/shared'
+import { normalizeIndianPhone } from '@kanchuki/shared';
 
 /**
  * Tokenized staff invite (docs/tasks/done/staff-invite-tokens.md §6.4) — the share
@@ -13,10 +13,10 @@ export function buildStaffInviteMessage(
   shopName?: string | null,
   url?: string | null,
 ): string {
-  const shop = shopName?.trim() ? shopName.trim() : 'store'
-  const link = url?.trim() ? url.trim() : ''
-  const roleLabel = role === 'manager' ? 'manager' : 'team member'
-  return `${name}, you've been added to ${shop} as ${roleLabel}. Tap to join: ${link}`
+  const shop = shopName?.trim() ? shopName.trim() : 'store';
+  const link = url?.trim() ? url.trim() : '';
+  const roleLabel = role === 'manager' ? 'manager' : 'team member';
+  return `${name}, you've been added to ${shop} as ${roleLabel}. Tap to join: ${link}`;
 }
 
 /**
@@ -29,6 +29,6 @@ export function buildStaffInviteMessage(
  * Same pattern as collection/[id].tsx openChat.
  */
 export function buildWhatsAppInviteUrl(phone: string, message: string): string {
-  const digits = `91${normalizeIndianPhone(phone)}`
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
+  const digits = `91${normalizeIndianPhone(phone)}`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }

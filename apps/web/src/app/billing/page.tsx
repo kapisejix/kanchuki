@@ -275,9 +275,7 @@ function LoginCard({
         // our API re-confirms it with MSG91 before issuing a session.
         const result = await verifyOtpViaWidget(otp.trim(), reqId || undefined);
         if (!result.ok || !result.token) {
-          throw new Error(
-            widgetErrorMessage(result.error, 'Verification failed. Try again.'),
-          );
+          throw new Error(widgetErrorMessage(result.error, 'Verification failed. Try again.'));
         }
         await completeLoginWithToken(result.token);
       } else {
@@ -460,9 +458,7 @@ function PlanCard({
         )}
       </div>
 
-      <p className="mt-3 text-2xl font-bold text-ink-900">
-        {planPriceLabel(pricing.monthly)}
-      </p>
+      <p className="mt-3 text-2xl font-bold text-ink-900">{planPriceLabel(pricing.monthly)}</p>
       <p className="mt-0.5 text-xs text-ink-500">billed monthly</p>
 
       <ul className="mt-4 flex-1 space-y-1.5 text-xs text-ink-600">
@@ -819,7 +815,6 @@ function Dashboard({
                 : 'The first charge lands when your free trial ends.'}
             </p>
           </div>
-
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -891,7 +886,8 @@ function Dashboard({
 
       <div className="mt-10 flex flex-col items-center gap-2 border-t border-sand-100 pt-6 pb-4">
         <p className="flex items-center gap-1.5 text-xs text-sand-500">
-          <ShieldCheck size={13} /> Secured by Razorpay · Prices shown are ex-GST; 18% GST added at checkout
+          <ShieldCheck size={13} /> Secured by Razorpay · Prices shown are ex-GST; 18% GST added at
+          checkout
         </p>
         <a
           href={`mailto:${SUPPORT_EMAIL}?subject=Billing%20help`}

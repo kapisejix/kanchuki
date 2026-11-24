@@ -42,7 +42,8 @@ function feed(over: { data?: unknown[]; meta?: Record<string, unknown> } = {}, s
   );
 }
 
-const bodyOf = (n: number) => JSON.parse((fetchMock.mock.calls[n]![1] as RequestInit).body as string);
+const bodyOf = (n: number) =>
+  JSON.parse((fetchMock.mock.calls[n]![1] as RequestInit).body as string);
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
@@ -126,7 +127,10 @@ describe('My Style feed', () => {
     const getCurrentPosition = vi.fn((ok: (p: unknown) => void) =>
       ok({ coords: { latitude: 21.17, longitude: 72.83 } }),
     );
-    Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition }, configurable: true });
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition },
+      configurable: true,
+    });
     render(<MyStylePage />);
     await screen.findByText('Wine Silk Suit');
 
@@ -171,7 +175,9 @@ describe('My Style feed', () => {
     expect(container.querySelector('input[type="file"]')).toBeNull();
     fireEvent.change(screen.getByLabelText('Who is it for?'), { target: { value: 'Girl' } });
     fireEvent.change(screen.getByLabelText('Age'), { target: { value: '6–8 yrs' } });
-    fireEvent.change(screen.getByLabelText('Kids occasion'), { target: { value: 'Party / Festive' } });
+    fireEvent.change(screen.getByLabelText('Kids occasion'), {
+      target: { value: 'Party / Festive' },
+    });
     fireEvent.change(screen.getByLabelText('Kids budget'), { target: { value: '100000' } });
     fireEvent.click(screen.getByRole('button', { name: /Show outfits/ }));
 
@@ -186,7 +192,9 @@ describe('My Style feed', () => {
   });
 
   it('an aborted request is not an error state (RC-014)', async () => {
-    fetchMock.mockRejectedValueOnce(new DOMException('aborted', 'AbortError')).mockResolvedValue(feed());
+    fetchMock
+      .mockRejectedValueOnce(new DOMException('aborted', 'AbortError'))
+      .mockResolvedValue(feed());
     render(<MyStylePage />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(screen.queryByRole('button', { name: /Try again/i })).toBeNull();

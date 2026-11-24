@@ -1,18 +1,18 @@
-import React from 'react'
-import { View, Text, ActivityIndicator } from 'react-native'
-import { Trash2 } from 'lucide-react-native'
-import { STATUS_OPTIONS } from './types'
-import { AnimatedPressable } from '../AnimatedPressable'
-import type { ProductDetail, ProductStatus } from '@kanchuki/shared'
+import type { ProductDetail, ProductStatus } from '@kanchuki/shared';
+import { Trash2 } from 'lucide-react-native';
+import React from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { AnimatedPressable } from '../AnimatedPressable';
+import { STATUS_OPTIONS } from './types';
 
 interface ProductActionsBarProps {
-  product: ProductDetail
-  statusUpdating: boolean
-  handleStatusChange: (status: ProductStatus) => void
-  deleting: boolean
-  handleDelete: () => void
-  primaryColor: string
-  colors: any
+  product: ProductDetail;
+  statusUpdating: boolean;
+  handleStatusChange: (status: ProductStatus) => void;
+  deleting: boolean;
+  handleDelete: () => void;
+  primaryColor: string;
+  colors: any;
 }
 
 export function ProductActionsBar({
@@ -33,7 +33,7 @@ export function ProductActionsBar({
         </Text>
         <View className="flex-row gap-2">
           {STATUS_OPTIONS.map((opt) => {
-            const isSelected = product.status === opt.value
+            const isSelected = product.status === opt.value;
             return (
               <AnimatedPressable
                 key={opt.value}
@@ -57,7 +57,7 @@ export function ProductActionsBar({
                   </Text>
                 )}
               </AnimatedPressable>
-            )
+            );
           })}
         </View>
       </View>
@@ -74,10 +74,11 @@ export function ProductActionsBar({
           ) : (
             <Trash2 size={16} color="#dc2626" />
           )}
-          <Text className="text-red-700 text-xs font-bold uppercase tracking-wider">Delete Product</Text>
+          <Text className="text-red-700 text-xs font-bold uppercase tracking-wider">
+            Delete Product
+          </Text>
         </AnimatedPressable>
       </View>
     </View>
-  )
+  );
 }
-

@@ -2,10 +2,10 @@
 // kids' wear request, quiz save + "Your style" summary, quota copy.
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import MyStylePage from '../page';
 import { StyleCard } from '../StyleCard';
 import { TasteCard } from '../TasteCard';
 import { resetDay, startAnalysis } from '../analyze';
+import MyStylePage from '../page';
 
 const fetchMock = vi.fn();
 
@@ -24,7 +24,14 @@ const feed = (meta: Record<string, unknown> = {}) =>
   new Response(
     JSON.stringify({
       data: [card()],
-      meta: { total: 1, page: 1, limit: 12, location_scope: 'city', rationale_source: 'none', ...meta },
+      meta: {
+        total: 1,
+        page: 1,
+        limit: 12,
+        location_scope: 'city',
+        rationale_source: 'none',
+        ...meta,
+      },
     }),
     { status: 200, headers: { 'Content-Type': 'application/json' } },
   );
@@ -90,7 +97,9 @@ describe("kids' wear (problem 4)", () => {
     fireEvent.click(screen.getByRole('button', { name: /For my child/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Show outfits' }));
 
-    await waitFor(() => expect(fetchMock.mock.calls.some((_, i) => feedBody(i).kids === true)).toBe(true));
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some((_, i) => feedBody(i).kids === true)).toBe(true),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
     await waitFor(() => expect(feedBody(fetchMock.mock.calls.length - 1).kids).toBeUndefined());
@@ -98,11 +107,17 @@ describe("kids' wear (problem 4)", () => {
 });
 
 describe('quiz result (problem 6)', () => {
-  const taste = { colors: ['red', 'navy'], occasions: ['party wear'], fabrics: ['cotton'], budget_max: 150000 };
+  const taste = {
+    colors: ['red', 'navy'],
+    occasions: ['party wear'],
+    fabrics: ['cotton'],
+    budget_max: 150000,
+  };
 
   function takeQuiz() {
     fireEvent.click(screen.getByRole('button', { name: /Take the quick quiz/ }));
-    const pick = () => screen.getAllByRole('button').find((b) => b.className.includes('rounded-full'))!;
+    const pick = () =>
+      screen.getAllByRole('button').find((b) => b.className.includes('rounded-full'))!;
     for (let i = 0; i < 4; i++) {
       fireEvent.click(pick());
       fireEvent.click(screen.getByRole('button', { name: /^Next/ }));
@@ -133,11 +148,14 @@ describe('quiz result (problem 6)', () => {
   it('refetches the feed only after the quiz save finished', async () => {
     let finishSave!: (r: Response) => void;
     fetchMock.mockImplementation((url: string) =>
-      url === '/api/passport/style-quiz' ? new Promise<Response>((r) => (finishSave = r)) : Promise.resolve(feed()),
+      url === '/api/passport/style-quiz'
+        ? new Promise<Response>((r) => (finishSave = r))
+        : Promise.resolve(feed()),
     );
     render(<MyStylePage />);
     await screen.findByText('Wine Silk Suit');
-    const feedCalls = () => fetchMock.mock.calls.filter((c) => c[0] === '/api/my-style/feed').length;
+    const feedCalls = () =>
+      fetchMock.mock.calls.filter((c) => c[0] === '/api/my-style/feed').length;
     expect(feedCalls()).toBe(1);
 
     takeQuiz();
@@ -150,7 +168,9 @@ describe('quiz result (problem 6)', () => {
 
   it('says so when the save did not reach the account', async () => {
     fetchMock.mockImplementation((url: string) =>
-      url === '/api/passport/style-quiz' ? Promise.resolve(new Response('{}', { status: 500 })) : Promise.resolve(feed()),
+      url === '/api/passport/style-quiz'
+        ? Promise.resolve(new Response('{}', { status: 500 }))
+        : Promise.resolve(feed()),
     );
     render(<MyStylePage />);
     await screen.findByText('Wine Silk Suit');
@@ -159,7 +179,12 @@ describe('quiz result (problem 6)', () => {
   });
 
   it('TasteCard hides empty rows', () => {
-    render(<TasteCard taste={{ colors: ['red'], occasions: [], fabrics: [], budget_max: null }} onChange={() => {}} />);
+    render(
+      <TasteCard
+        taste={{ colors: ['red'], occasions: [], fabrics: [], budget_max: null }}
+        onChange={() => {}}
+      />,
+    );
     expect(screen.getByText('Colours')).toBeTruthy();
     expect(screen.queryByText('Fabrics')).toBeNull();
     expect(screen.queryByText('Budget')).toBeNull();
@@ -194,7 +219,10 @@ describe('suggested size on the card', () => {
 
   it('says so when two sizes are in play, and that it is approximate', () => {
     render(
-      <StyleCard card={card({ suggested_size: { size: 'L', between: ['M', 'L'] } }) as never} {...props} />,
+      <StyleCard
+        card={card({ suggested_size: { size: 'L', between: ['M', 'L'] } }) as never}
+        {...props}
+      />,
     );
     const t = screen.getByTestId('suggested-size').textContent!;
     expect(t).toMatch(/Your size: L/);

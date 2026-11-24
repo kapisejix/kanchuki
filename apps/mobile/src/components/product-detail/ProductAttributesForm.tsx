@@ -1,68 +1,60 @@
-import React from 'react'
-import { View, Text, TextInput } from 'react-native'
-import { Image } from 'expo-image'
-import {
-  Check,
-  Tag,
-  Sparkles,
-} from 'lucide-react-native'
-import {
-  PATTERN_TYPES,
-  SIZE_OPTIONS,
-  resolveFashionColor,
-} from '@kanchuki/shared'
-import { AnimatedPressable } from '../AnimatedPressable'
-import { StockEditor } from './StockEditor'
-import { AudienceChips, type AudiencePick } from './AudienceChips'
-import type { KidsAgeGroupValue, ProductAudienceValue, ProductDetail } from '@kanchuki/shared'
+import { PATTERN_TYPES, SIZE_OPTIONS, resolveFashionColor } from '@kanchuki/shared';
+import type { KidsAgeGroupValue, ProductAudienceValue, ProductDetail } from '@kanchuki/shared';
+import { Image } from 'expo-image';
+import { Check, Sparkles, Tag } from 'lucide-react-native';
+import React from 'react';
+import { Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../AnimatedPressable';
+import { AudienceChips, type AudiencePick } from './AudienceChips';
+import { StockEditor } from './StockEditor';
 
 interface ProductAttributesFormProps {
-  product: ProductDetail
-  price: string
-  setPrice: (p: string) => void
-  location: string
-  setLocation: (l: string) => void
-  notes: string
-  setNotes: (n: string) => void
-  selectedStyles: string[]
-  setSelectedStyles: React.Dispatch<React.SetStateAction<string[]>>
-  selectedFabrics: string[]
-  setSelectedFabrics: React.Dispatch<React.SetStateAction<string[]>>
-  selectedSizes: string[]
-  setSelectedSizes: React.Dispatch<React.SetStateAction<string[]>>
-  stockQty: Record<string, number>
-  setStock: (size: string, quantity: number) => void
-  selectedCategoryIds: string[]
-  setSelectedCategoryIds: React.Dispatch<React.SetStateAction<string[]>>
-  editedCategory: string | null
-  setEditedCategory: (c: string | null) => void
-  editedColor: string
-  setEditedColor: (c: string) => void
-  editedPattern: string | null
-  setEditedPattern: (p: string | null) => void
-  editedCategoryId: string | null
-  setEditedCategoryId: (id: string | null) => void
-  editedName: string
-  setEditedName: (n: string) => void
-  editedSku: string
-  setEditedSku: (s: string) => void
-  editedDescription: string
-  setEditedDescription: (d: string) => void
-  editedSubtype: string
-  setEditedSubtype: (s: string) => void
-  audience: ProductAudienceValue | null
-  kidsAge: KidsAgeGroupValue | null
-  onAudienceChange: (p: AudiencePick) => void
-  dirty: <T>(setter: (v: T) => void) => (val: T) => void
-  primaryColor: string
-  colors: any
-  categories: any[]
-  availableStyles: any[]
-  availableFabrics: any[]
-  displayPhotos: any[]
-  selectedPhotoIndex: number
-  goToPhoto: (idx: number) => void
-  onOpenSkuTagModal: () => void
+  product: ProductDetail;
+  price: string;
+  setPrice: (p: string) => void;
+  location: string;
+  setLocation: (l: string) => void;
+  notes: string;
+  setNotes: (n: string) => void;
+  selectedStyles: string[];
+  setSelectedStyles: React.Dispatch<React.SetStateAction<string[]>>;
+  selectedFabrics: string[];
+  setSelectedFabrics: React.Dispatch<React.SetStateAction<string[]>>;
+  selectedSizes: string[];
+  setSelectedSizes: React.Dispatch<React.SetStateAction<string[]>>;
+  stockQty: Record<string, number>;
+  setStock: (size: string, quantity: number) => void;
+  selectedCategoryIds: string[];
+  setSelectedCategoryIds: React.Dispatch<React.SetStateAction<string[]>>;
+  editedCategory: string | null;
+  setEditedCategory: (c: string | null) => void;
+  editedColor: string;
+  setEditedColor: (c: string) => void;
+  editedPattern: string | null;
+  setEditedPattern: (p: string | null) => void;
+  editedCategoryId: string | null;
+  setEditedCategoryId: (id: string | null) => void;
+  editedName: string;
+  setEditedName: (n: string) => void;
+  editedSku: string;
+  setEditedSku: (s: string) => void;
+  editedDescription: string;
+  setEditedDescription: (d: string) => void;
+  editedSubtype: string;
+  setEditedSubtype: (s: string) => void;
+  audience: ProductAudienceValue | null;
+  kidsAge: KidsAgeGroupValue | null;
+  onAudienceChange: (p: AudiencePick) => void;
+  dirty: <T>(setter: (v: T) => void) => (val: T) => void;
+  primaryColor: string;
+  colors: any;
+  categories: any[];
+  availableStyles: any[];
+  availableFabrics: any[];
+  displayPhotos: any[];
+  selectedPhotoIndex: number;
+  goToPhoto: (idx: number) => void;
+  onOpenSkuTagModal: () => void;
 }
 
 export function ProductAttributesForm({
@@ -113,34 +105,34 @@ export function ProductAttributesForm({
   goToPhoto,
   onOpenSkuTagModal,
 }: ProductAttributesFormProps) {
-  const createdDate = product.created_at ? new Date(product.created_at) : new Date()
-  const daysAgo = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
-  const isNewArrival = daysAgo >= 0 && daysAgo <= 21
-  const daysLeft = Math.max(0, 21 - daysAgo)
+  const createdDate = product.created_at ? new Date(product.created_at) : new Date();
+  const daysAgo = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+  const isNewArrival = daysAgo >= 0 && daysAgo <= 21;
+  const daysLeft = Math.max(0, 21 - daysAgo);
 
   const toggleStyle = (s: string) => {
     dirty(setSelectedStyles)(
       selectedStyles.includes(s)
         ? selectedStyles.filter((item) => item !== s)
         : [...selectedStyles, s],
-    )
-  }
+    );
+  };
 
   const toggleFabric = (f: string) => {
     dirty(setSelectedFabrics)(
       selectedFabrics.includes(f)
         ? selectedFabrics.filter((item) => item !== f)
         : [...selectedFabrics, f],
-    )
-  }
+    );
+  };
 
   const toggleSize = (size: string) => {
     dirty(setSelectedSizes)(
       selectedSizes.includes(size)
         ? selectedSizes.filter((s) => s !== size)
         : [...selectedSizes, size],
-    )
-  }
+    );
+  };
 
   return (
     <View className="px-4 py-4 gap-4">
@@ -153,7 +145,9 @@ export function ProductAttributesForm({
               {editedName || product.name || 'Luxury Ensemble'}
             </Text>
             <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
-              {[product.subtype ?? product.category, product.fabric_estimate].filter(Boolean).join(' · ') || 'Handcrafted Design'}
+              {[product.subtype ?? product.category, product.fabric_estimate]
+                .filter(Boolean)
+                .join(' · ') || 'Handcrafted Design'}
             </Text>
           </View>
           <View className="items-end">
@@ -176,7 +170,7 @@ export function ProductAttributesForm({
       </View>
 
       {/* ── AI Generated Product Summary Card ── */}
-      {(editedDescription || product.description) ? (
+      {editedDescription || product.description ? (
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm gap-2">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-1.5">
@@ -283,23 +277,23 @@ export function ProductAttributesForm({
               const isSelected =
                 selectedCategoryIds.includes(c.id) ||
                 editedCategoryId === c.id ||
-                (!editedCategoryId && editedCategory === c.name)
+                (!editedCategoryId && editedCategory === c.name);
               return (
                 <AnimatedPressable
                   key={c.id}
                   onPress={() => {
                     const newIds = isSelected
                       ? selectedCategoryIds.filter((id) => id !== c.id)
-                      : [...selectedCategoryIds, c.id]
-                    dirty(setSelectedCategoryIds)(newIds)
+                      : [...selectedCategoryIds, c.id];
+                    dirty(setSelectedCategoryIds)(newIds);
                     if (newIds.length > 0) {
-                      dirty(setEditedCategoryId)(newIds[0]!)
+                      dirty(setEditedCategoryId)(newIds[0]!);
                       dirty(setEditedCategory)(
                         categories.find((cat) => cat.id === newIds[0])?.name ?? null,
-                      )
+                      );
                     } else {
-                      dirty(setEditedCategoryId)(null)
-                      dirty(setEditedCategory)(null)
+                      dirty(setEditedCategoryId)(null);
+                      dirty(setEditedCategory)(null);
                     }
                   }}
                   className={`px-3 py-1.5 rounded-2xl border flex-row items-center gap-1.5 ${
@@ -317,7 +311,7 @@ export function ProductAttributesForm({
                     {c.name}
                   </Text>
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </View>
@@ -347,8 +341,8 @@ export function ProductAttributesForm({
                 <AnimatedPressable
                   key={photo.id}
                   onPress={() => {
-                    const idx = displayPhotos.findIndex((p) => p.id === photo.id)
-                    if (idx >= 0) goToPhoto(idx)
+                    const idx = displayPhotos.findIndex((p) => p.id === photo.id);
+                    if (idx >= 0) goToPhoto(idx);
                   }}
                   className="w-12 h-14 rounded-xl overflow-hidden border border-lavender-200"
                 >
@@ -369,11 +363,43 @@ export function ProductAttributesForm({
           </Text>
           <View className="flex-row flex-wrap gap-2">
             {PATTERN_TYPES.map((p) => {
-                const isSelected = editedPattern === p
+              const isSelected = editedPattern === p;
+              return (
+                <AnimatedPressable
+                  key={p}
+                  onPress={() => dirty(setEditedPattern)(isSelected ? null : p)}
+                  className={`px-3.5 py-2 rounded-2xl border ${
+                    isSelected
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                      : 'bg-lavender-50 border-lavender-200'
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold ${
+                      isSelected ? 'text-white' : 'text-spaceCadet-900'
+                    }`}
+                  >
+                    {p}
+                  </Text>
+                </AnimatedPressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Style Silhouettes */}
+        {availableStyles.length > 0 && (
+          <View>
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+              Styles / Silhouettes
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {availableStyles.map((s) => {
+                const isSelected = selectedStyles.includes(s.name);
                 return (
                   <AnimatedPressable
-                    key={p}
-                    onPress={() => dirty(setEditedPattern)(isSelected ? null : p)}
+                    key={s.id}
+                    onPress={() => toggleStyle(s.name)}
                     className={`px-3.5 py-2 rounded-2xl border ${
                       isSelected
                         ? 'bg-spaceCadet-900 border-spaceCadet-900'
@@ -385,43 +411,11 @@ export function ProductAttributesForm({
                         isSelected ? 'text-white' : 'text-spaceCadet-900'
                       }`}
                     >
-                      {p}
+                      {s.name}
                     </Text>
                   </AnimatedPressable>
-                )
+                );
               })}
-          </View>
-        </View>
-
-        {/* Style Silhouettes */}
-        {availableStyles.length > 0 && (
-          <View>
-            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
-              Styles / Silhouettes
-            </Text>
-            <View className="flex-row flex-wrap gap-2">
-                {availableStyles.map((s) => {
-                  const isSelected = selectedStyles.includes(s.name)
-                  return (
-                    <AnimatedPressable
-                      key={s.id}
-                      onPress={() => toggleStyle(s.name)}
-                      className={`px-3.5 py-2 rounded-2xl border ${
-                        isSelected
-                          ? 'bg-spaceCadet-900 border-spaceCadet-900'
-                          : 'bg-lavender-50 border-lavender-200'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-bold ${
-                          isSelected ? 'text-white' : 'text-spaceCadet-900'
-                        }`}
-                      >
-                        {s.name}
-                      </Text>
-                    </AnimatedPressable>
-                  )
-                })}
             </View>
           </View>
         )}
@@ -433,28 +427,28 @@ export function ProductAttributesForm({
               Fabrics
             </Text>
             <View className="flex-row flex-wrap gap-2">
-                {availableFabrics.map((f) => {
-                  const isSelected = selectedFabrics.includes(f.name)
-                  return (
-                    <AnimatedPressable
-                      key={f.id}
-                      onPress={() => toggleFabric(f.name)}
-                      className={`px-3.5 py-2 rounded-2xl border ${
-                        isSelected
-                          ? 'bg-spaceCadet-900 border-spaceCadet-900'
-                          : 'bg-lavender-50 border-lavender-200'
+              {availableFabrics.map((f) => {
+                const isSelected = selectedFabrics.includes(f.name);
+                return (
+                  <AnimatedPressable
+                    key={f.id}
+                    onPress={() => toggleFabric(f.name)}
+                    className={`px-3.5 py-2 rounded-2xl border ${
+                      isSelected
+                        ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                        : 'bg-lavender-50 border-lavender-200'
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold ${
+                        isSelected ? 'text-white' : 'text-spaceCadet-900'
                       }`}
                     >
-                      <Text
-                        className={`text-xs font-bold ${
-                          isSelected ? 'text-white' : 'text-spaceCadet-900'
-                        }`}
-                      >
-                        {f.name}
-                      </Text>
-                    </AnimatedPressable>
-                  )
-                })}
+                      {f.name}
+                    </Text>
+                  </AnimatedPressable>
+                );
+              })}
             </View>
           </View>
         )}
@@ -474,7 +468,7 @@ export function ProductAttributesForm({
           </Text>
           <View className="flex-row flex-wrap gap-2.5">
             {SIZE_OPTIONS.map((size) => {
-              const isSelected = selectedSizes.includes(size)
+              const isSelected = selectedSizes.includes(size);
               return (
                 <AnimatedPressable
                   key={size}
@@ -493,7 +487,7 @@ export function ProductAttributesForm({
                     {size}
                   </Text>
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </View>
@@ -566,6 +560,5 @@ export function ProductAttributesForm({
         </View>
       </View>
     </View>
-  )
+  );
 }
-

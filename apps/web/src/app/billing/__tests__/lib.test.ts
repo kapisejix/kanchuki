@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  formatDate,
-  planLabel,
-  planPriceLabel,
-  planStatusLabel,
-} from '../lib';
+import { formatDate, planLabel, planPriceLabel, planStatusLabel } from '../lib';
 
 describe('billing plan helpers', () => {
   it('labels plans from enum keys', () => {

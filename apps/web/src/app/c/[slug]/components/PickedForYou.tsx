@@ -62,10 +62,7 @@ export function PickedForYou({ storeSlug, onProductTap }: Props) {
     <section className="mb-5" aria-labelledby="picked-for-you-heading" aria-busy={loading}>
       <div className="mb-2 flex items-center justify-between px-1">
         <div>
-          <h2
-            id="picked-for-you-heading"
-            className="text-sm font-bold text-[#231F48] font-sans"
-          >
+          <h2 id="picked-for-you-heading" className="text-sm font-bold text-[#231F48] font-sans">
             {isPersonalized ? 'Picked for you' : 'From this store'}
           </h2>
           <p className="text-[10px] text-[#6B4773]">

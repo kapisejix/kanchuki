@@ -1,83 +1,87 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
-  Shield,
-  Clock,
-  GitBranch,
+  Activity,
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  XCircle,
-  Activity,
+  Clock,
+  GitBranch,
   Loader2,
-  AlertTriangle,
-  RefreshCw,
   type LucideIcon,
-} from 'lucide-react'
-import Link from 'next/link'
-import { adminGetOptions } from '@/lib/admin-fetch'
+  RefreshCw,
+  Shield,
+  XCircle,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type OperationCounts = {
-  pending_count: number
-  recent_activity: Array<{ id: string; action: string; time: string; type: string }>
+  pending_count: number;
+  recent_activity: Array<{ id: string; action: string; time: string; type: string }>;
   gate_status: {
-    all_passed: boolean
-    summary: string
-    checked_at: string | null
-  } | null
-  deployment_totals: { total: number; last24h: number; failed24h: number }
-}
+    all_passed: boolean;
+    summary: string;
+    checked_at: string | null;
+  } | null;
+  deployment_totals: { total: number; last24h: number; failed24h: number };
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } },
-}
+};
 
 export default function OperationsPage() {
-  const [counts, setCounts] = useState<OperationCounts | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [counts, setCounts] = useState<OperationCounts | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function load() {
-      setLoading(true)
+      setLoading(true);
       try {
-        const opts = adminGetOptions()
+        const opts = adminGetOptions();
 
         // Fetch pending count, gate status, and deployment totals in parallel
         const [pendingRes, gateRes, deployRes] = await Promise.allSettled([
           fetch(`${API_URL}/v1/admin/operations/pending`, opts),
           fetch(`${API_URL}/v1/admin/deployment-gate/check`, opts),
           fetch(`${API_URL}/v1/admin/deployments?limit=50`, opts),
-        ])
+        ]);
 
-        const pendingData = pendingRes.status === 'fulfilled' ? await pendingRes.value.json() : { data: [] }
-        const gateData = gateRes.status === 'fulfilled' ? await gateRes.value.json() : null
-        const deployData = deployRes.status === 'fulfilled' ? await deployRes.value.json() : { data: [] }
+        const pendingData =
+          pendingRes.status === 'fulfilled' ? await pendingRes.value.json() : { data: [] };
+        const gateData = gateRes.status === 'fulfilled' ? await gateRes.value.json() : null;
+        const deployData =
+          deployRes.status === 'fulfilled' ? await deployRes.value.json() : { data: [] };
 
-        const ops = pendingData.data ?? []
-        const deploys = deployData.data ?? []
+        const ops = pendingData.data ?? [];
+        const deploys = deployData.data ?? [];
 
-        const last24h = deploys.filter((d: { created_at: string }) =>
-          new Date(d.created_at).getTime() > Date.now() - 86400000
-        )
+        const last24h = deploys.filter(
+          (d: { created_at: string }) => new Date(d.created_at).getTime() > Date.now() - 86400000,
+        );
 
         setCounts({
           pending_count: ops.length,
-          recent_activity: ops.slice(0, 5).map((op: { id: string; type: string; description: string; requested_at: string }) => ({
-            id: op.id,
-            action: `PENDING_${op.type}`,
-            time: op.requested_at,
-            type: op.type,
-          })),
+          recent_activity: ops
+            .slice(0, 5)
+            .map((op: { id: string; type: string; description: string; requested_at: string }) => ({
+              id: op.id,
+              action: `PENDING_${op.type}`,
+              time: op.requested_at,
+              type: op.type,
+            })),
           gate_status: gateData?.data
             ? {
                 all_passed: gateData.data.all_passed,
@@ -90,18 +94,23 @@ export default function OperationsPage() {
             last24h: last24h.length,
             failed24h: last24h.filter((d: { status: string }) => d.status === 'failed').length,
           },
-        })
+        });
       } catch {
-        setError('Failed to load operations data')
+        setError('Failed to load operations data');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-    load()
-  }, [])
+    load();
+  }, []);
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8"
+    >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>
@@ -109,7 +118,9 @@ export default function OperationsPage() {
             <Shield size={24} className="text-gray-700" />
             <h1 className="text-2xl font-bold text-gray-900">Operations Center</h1>
           </div>
-          <p className="text-sm text-gray-500">Manage platform operations, deployments, and configuration</p>
+          <p className="text-sm text-gray-500">
+            Manage platform operations, deployments, and configuration
+          </p>
         </div>
         {!loading && (
           <Link
@@ -125,7 +136,10 @@ export default function OperationsPage() {
       {loading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white/80 rounded-2xl border border-gray-200/80 p-6 animate-pulse">
+            <div
+              key={i}
+              className="bg-white/80 rounded-2xl border border-gray-200/80 p-6 animate-pulse"
+            >
               <div className="h-12 bg-gray-200/60 rounded-xl mb-4" />
               <div className="h-4 bg-gray-200/60 rounded w-3/4 mb-2" />
               <div className="h-3 bg-gray-200/60 rounded w-1/2" />
@@ -136,7 +150,10 @@ export default function OperationsPage() {
 
       {/* Error state */}
       {error && (
-        <motion.div variants={itemVariants} className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl px-5 py-4">
+        <motion.div
+          variants={itemVariants}
+          className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl px-5 py-4"
+        >
           {error}
         </motion.div>
       )}
@@ -174,7 +191,10 @@ export default function OperationsPage() {
 
       {/* Quick activity feed */}
       {counts && counts.recent_activity.length > 0 && (
-        <motion.div variants={itemVariants} className="bg-white rounded-2xl border border-gray-200/80 p-5">
+        <motion.div
+          variants={itemVariants}
+          className="bg-white rounded-2xl border border-gray-200/80 p-5"
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <Activity size={16} className="text-gray-400" />
@@ -189,12 +209,20 @@ export default function OperationsPage() {
           </div>
           <div className="space-y-2">
             {counts.recent_activity.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-gray-50/50 transition-colors">
+              <div
+                key={item.id}
+                className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-gray-50/50 transition-colors"
+              >
                 <div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-700 truncate">{item.action}</p>
                   <p className="text-[10px] text-gray-400">
-                    {new Date(item.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(item.time).toLocaleString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </p>
                 </div>
                 <Link
@@ -227,14 +255,22 @@ export default function OperationsPage() {
                 <AlertTriangle size={22} className="text-amber-500 shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold ${counts.gate_status.all_passed ? 'text-emerald-800' : 'text-amber-800'}`}>
+                <p
+                  className={`text-sm font-semibold ${counts.gate_status.all_passed ? 'text-emerald-800' : 'text-amber-800'}`}
+                >
                   Deployment Gate: {counts.gate_status.all_passed ? 'All Clear' : 'Blocked'}
                 </p>
-                <p className={`text-xs mt-0.5 ${counts.gate_status.all_passed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                <p
+                  className={`text-xs mt-0.5 ${counts.gate_status.all_passed ? 'text-emerald-600' : 'text-amber-600'}`}
+                >
                   {counts.gate_status.summary}
                   {counts.gate_status.checked_at && (
                     <span className="ml-2 opacity-70">
-                      · Checked {new Date(counts.gate_status.checked_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      · Checked{' '}
+                      {new Date(counts.gate_status.checked_at).toLocaleTimeString('en-IN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
                   )}
                 </p>
@@ -253,14 +289,20 @@ export default function OperationsPage() {
         >
           <div className="flex items-start justify-between mb-4 relative">
             <Shield size={18} strokeWidth={1.5} className="text-gray-500" />
-            <ArrowRight size={16} strokeWidth={1.5} className="text-gray-400 transition-colors group-hover:text-gray-900" />
+            <ArrowRight
+              size={16}
+              strokeWidth={1.5}
+              className="text-gray-400 transition-colors group-hover:text-gray-900"
+            />
           </div>
           <h3 className="text-sm font-medium text-gray-900 mb-1">Platform Settings</h3>
-          <p className="text-xs text-gray-500">Configure rate limits, AI models, notifications, and other platform settings</p>
+          <p className="text-xs text-gray-500">
+            Configure rate limits, AI models, notifications, and other platform settings
+          </p>
         </Link>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 // ── Operation Card ─────────────────────────────────────────────
@@ -274,20 +316,20 @@ function OperationCard({
   countLabel,
   countColor,
 }: {
-  title: string
-  description: string
-  href: string
-  icon: LucideIcon
-  count: number | null
-  countLabel: string
-  countColor: string
+  title: string;
+  description: string;
+  href: string;
+  icon: LucideIcon;
+  count: number | null;
+  countLabel: string;
+  countColor: string;
 }) {
   const countBgColor = {
     amber: 'bg-amber-100 text-amber-700',
     blue: 'bg-blue-100 text-blue-700',
     green: 'bg-emerald-100 text-emerald-700',
     red: 'bg-red-100 text-red-700',
-  }[countColor]
+  }[countColor];
 
   return (
     <motion.div variants={itemVariants}>
@@ -299,19 +341,27 @@ function OperationCard({
           <Icon size={18} strokeWidth={1.5} className="text-gray-500" />
           <div className="flex items-center gap-2">
             {count !== null && (
-              <span className={`text-xs font-medium tabular-nums px-2 py-0.5 rounded ${countBgColor}`}>
+              <span
+                className={`text-xs font-medium tabular-nums px-2 py-0.5 rounded ${countBgColor}`}
+              >
                 {count}
               </span>
             )}
-            <ArrowRight size={16} strokeWidth={1.5} className="text-gray-400 transition-colors group-hover:text-gray-900" />
+            <ArrowRight
+              size={16}
+              strokeWidth={1.5}
+              className="text-gray-400 transition-colors group-hover:text-gray-900"
+            />
           </div>
         </div>
         <h3 className="text-sm font-medium text-gray-900 mb-1">{title}</h3>
         <p className="text-xs text-gray-500">{description}</p>
         {count !== null && (
-          <p className="text-xs text-gray-500 mt-2">{count} {countLabel}</p>
+          <p className="text-xs text-gray-500 mt-2">
+            {count} {countLabel}
+          </p>
         )}
       </Link>
     </motion.div>
-  )
+  );
 }

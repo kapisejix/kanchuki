@@ -1,25 +1,25 @@
 // F-045 PR-10b: the "Complete the look" tab body. Honest empty states: an unmapped garment or
 // an empty neighbourhood says so, it is never padded with unrelated pieces (RC-059).
-'use client'
+'use client';
 
-import { AlertCircle, PackageX, Sparkles, UserRound } from 'lucide-react'
-import Link from 'next/link'
-import { ReportAiContent } from '@/components/ReportAiContent'
-import { BTN_SECONDARY, CARD, Notice, SKELETON } from '../ui'
-import { StyleCard } from './StyleCard'
-import { LOGIN_HREF, type FeedCard, type LookResult } from './lib'
-import { MAX_PER_STORE, type ShortItem } from './shortlist'
+import { ReportAiContent } from '@/components/ReportAiContent';
+import { AlertCircle, PackageX, Sparkles, UserRound } from 'lucide-react';
+import Link from 'next/link';
+import { BTN_SECONDARY, CARD, Notice, SKELETON } from '../ui';
+import { StyleCard } from './StyleCard';
+import { type FeedCard, LOGIN_HREF, type LookResult } from './lib';
+import { MAX_PER_STORE, type ShortItem } from './shortlist';
 
-export type LookView = { kind: 'loading' } | LookResult
+export type LookView = { kind: 'loading' } | LookResult;
 
 interface Props {
-  view: LookView
-  shortlist: ShortItem[]
-  busy: boolean
-  onToggle: (c: FeedCard) => void
-  onEnquire: (c: FeedCard) => void
-  onRetry: () => void
-  onBack: () => void
+  view: LookView;
+  shortlist: ShortItem[];
+  busy: boolean;
+  onToggle: (c: FeedCard) => void;
+  onEnquire: (c: FeedCard) => void;
+  onRetry: () => void;
+  onBack: () => void;
 }
 
 export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry, onBack }: Props) {
@@ -30,36 +30,48 @@ export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry,
           <CardSkeleton key={i} />
         ))}
       </div>
-    )
+    );
   }
   if (view.kind === 'unauthorized') {
     return (
       <Notice icon={UserRound}>
         <p>
-          Your session ended. <Link href={LOGIN_HREF} className="text-fuchsia-600 font-semibold underline">Please log in</Link> to continue.
+          Your session ended.{' '}
+          <Link href={LOGIN_HREF} className="text-fuchsia-600 font-semibold underline">
+            Please log in
+          </Link>{' '}
+          to continue.
         </p>
       </Notice>
-    )
+    );
   }
   if (view.kind === 'unavailable') {
     return (
       <Notice
         icon={PackageX}
-        action={<button type="button" onClick={onBack} className={BTN_SECONDARY}>Back to your feed</button>}
+        action={
+          <button type="button" onClick={onBack} className={BTN_SECONDARY}>
+            Back to your feed
+          </button>
+        }
       >
         <p>That piece is no longer available.</p>
       </Notice>
-    )
+    );
   }
   if (view.kind === 'error') {
     return (
       <Notice
         icon={AlertCircle}
-        action={<button type="button" onClick={onRetry} className={BTN_SECONDARY}>Try again</button>}
+        action={
+          <button type="button" onClick={onRetry} className={BTN_SECONDARY}>
+            Try again
+          </button>
+        }
       >
         <p>We could not load this look.</p>
       </Notice>
-    )
+    );
   }
 
   return (
@@ -67,7 +79,10 @@ export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry,
       <p className={`${CARD} px-4 py-3 text-sm text-heliotrope-500 flex items-center gap-2`}>
         <Sparkles aria-hidden className="h-4 w-4 shrink-0 text-fuchsia-600" />
         <span className="min-w-0">
-          Goes with: <span className="font-semibold text-spaceCadet-900">{view.anchor.name ?? 'this piece'}</span>
+          Goes with:{' '}
+          <span className="font-semibold text-spaceCadet-900">
+            {view.anchor.name ?? 'this piece'}
+          </span>
         </span>
       </p>
       {view.slots.length === 0 && (
@@ -95,7 +110,7 @@ export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry,
       ))}
       {view.slots.length > 0 && <ReportAiContent feature="My Style complete the look" />}
     </div>
-  )
+  );
 }
 
 /** Same shape as a StyleCard, so the grid does not jump when results land. */
@@ -109,5 +124,5 @@ export function CardSkeleton() {
         <div className={`h-11 rounded-2xl ${SKELETON}`} />
       </div>
     </div>
-  )
+  );
 }

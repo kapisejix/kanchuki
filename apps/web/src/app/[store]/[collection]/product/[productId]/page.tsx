@@ -108,15 +108,17 @@ export default async function SharedProductPageRoute({ params }: Props) {
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD, '<' escaped by ldJson
-        dangerouslySetInnerHTML={{ __html: ldJson(productLd(product, collection.retailer.shop_name, productUrl)) }}
+        dangerouslySetInnerHTML={{
+          __html: ldJson(productLd(product, collection.retailer.shop_name, productUrl)),
+        }}
       />
       <SharedProductPage
-      collection={collection}
-      product={product}
-      // Real collection → back to the collection; pseudo-slug → back to the
-      // browse page the customer was on (All Products / category), never the
-      // pseudo-slug URL itself (no page behind it).
-      collectionPath={backHref}
+        collection={collection}
+        product={product}
+        // Real collection → back to the collection; pseudo-slug → back to the
+        // browse page the customer was on (All Products / category), never the
+        // pseudo-slug URL itself (no page behind it).
+        collectionPath={backHref}
       />
     </>
   );

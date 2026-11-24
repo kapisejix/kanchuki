@@ -1,35 +1,35 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { motion } from 'framer-motion';
 import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
   GitBranch,
   Loader2,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Clock,
-  RotateCcw,
-  ExternalLink,
   type LucideIcon,
-} from 'lucide-react'
-import { adminGetOptions } from '@/lib/admin-fetch'
+  RefreshCw,
+  RotateCcw,
+  XCircle,
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type Deployment = {
-  id: string
-  action: string
-  service: string
-  commit_hash: string | null
-  commit_message: string | null
-  author: string | null
-  status: string
-  duration_seconds: number | null
-  ip_address: string | null
-  created_at: string
-}
+  id: string;
+  action: string;
+  service: string;
+  commit_hash: string | null;
+  commit_message: string | null;
+  author: string | null;
+  status: string;
+  duration_seconds: number | null;
+  ip_address: string | null;
+  created_at: string;
+};
 
 const STATUS_COLORS: Record<string, string> = {
   success: 'text-green-600 bg-green-50 border-green-200',
@@ -37,7 +37,7 @@ const STATUS_COLORS: Record<string, string> = {
   running: 'text-blue-600 bg-blue-50 border-blue-200',
   pending: 'text-amber-600 bg-amber-50 border-amber-200',
   rolled_back: 'text-purple-600 bg-purple-50 border-purple-200',
-}
+};
 
 const STATUS_ICONS: Record<string, LucideIcon> = {
   success: CheckCircle2,
@@ -45,42 +45,47 @@ const STATUS_ICONS: Record<string, LucideIcon> = {
   running: Loader2,
   pending: Clock,
   rolled_back: RotateCcw,
-}
+};
 
 export default function DeploymentsPage() {
-  const [deployments, setDeployments] = useState<Deployment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [hasMore, setHasMore] = useState(false)
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [filter, setFilter] = useState<string>('')
+  const [deployments, setDeployments] = useState<Deployment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>('');
 
-  const loadDeployments = useCallback(async (reset = false) => {
-    setLoading(true)
-    setError('')
-    try {
-      const params = new URLSearchParams()
-      if (!reset && cursor) params.set('cursor', cursor)
-      if (filter) params.set('status', filter)
-      params.set('limit', '50')
+  const loadDeployments = useCallback(
+    async (reset = false) => {
+      setLoading(true);
+      setError('');
+      try {
+        const params = new URLSearchParams();
+        if (!reset && cursor) params.set('cursor', cursor);
+        if (filter) params.set('status', filter);
+        params.set('limit', '50');
 
-      const res = await fetch(`${API_URL}/v1/admin/deployments?${params}`, adminGetOptions())
-      if (!res.ok) throw new Error('Failed to load')
-      const json = await res.json()
-      const data = json.data ?? []
+        const res = await fetch(`${API_URL}/v1/admin/deployments?${params}`, adminGetOptions());
+        if (!res.ok) throw new Error('Failed to load');
+        const json = await res.json();
+        const data = json.data ?? [];
 
-      setDeployments((prev) => (reset ? data : [...prev, ...data]))
-      setHasMore(json.pagination?.has_more ?? false)
-      setCursor(json.pagination?.cursor ?? null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load')
-    } finally {
-      setLoading(false)
-    }
-  }, [cursor, filter])
+        setDeployments((prev) => (reset ? data : [...prev, ...data]));
+        setHasMore(json.pagination?.has_more ?? false);
+        setCursor(json.pagination?.cursor ?? null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [cursor, filter],
+  );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- run on mount + filter change only; loadDeployments also depends on cursor and re-adding it would reload on pagination
-  useEffect(() => { loadDeployments(true) }, [filter])
+  useEffect(() => {
+    loadDeployments(true);
+  }, [filter]);
 
   return (
     <motion.div
@@ -129,8 +134,8 @@ export default function DeploymentsPage() {
 
       <div className="space-y-2">
         {deployments.map((d) => {
-          const StatusIcon = STATUS_ICONS[d.status] ?? AlertCircle
-          const statusColor = STATUS_COLORS[d.status] ?? 'text-gray-600 bg-gray-50 border-gray-200'
+          const StatusIcon = STATUS_ICONS[d.status] ?? AlertCircle;
+          const statusColor = STATUS_COLORS[d.status] ?? 'text-gray-600 bg-gray-50 border-gray-200';
 
           return (
             <motion.div
@@ -142,8 +147,13 @@ export default function DeploymentsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusColor}`}>
-                      <StatusIcon size={10} className={d.status === 'running' ? 'animate-spin' : ''} />
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${statusColor}`}
+                    >
+                      <StatusIcon
+                        size={10}
+                        className={d.status === 'running' ? 'animate-spin' : ''}
+                      />
                       {d.status}
                     </span>
                     <span className="text-xs font-medium text-gray-700">{d.service}</span>
@@ -159,9 +169,7 @@ export default function DeploymentsPage() {
                   <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                     <span>{d.author ?? 'Unknown'}</span>
                     <span>{new Date(d.created_at).toLocaleString('en-IN')}</span>
-                    {d.duration_seconds != null && (
-                      <span>{d.duration_seconds.toFixed(1)}s</span>
-                    )}
+                    {d.duration_seconds != null && <span>{d.duration_seconds.toFixed(1)}s</span>}
                   </div>
                 </div>
                 {d.status === 'failed' && (
@@ -172,7 +180,7 @@ export default function DeploymentsPage() {
                 )}
               </div>
             </motion.div>
-          )
+          );
         })}
       </div>
 
@@ -194,9 +202,11 @@ export default function DeploymentsPage() {
         <div className="text-center py-16">
           <GitBranch size={40} className="text-gray-300 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-gray-900">No deployments yet</h3>
-          <p className="text-sm text-gray-500">Deployment history will appear here after CI/CD runs</p>
+          <p className="text-sm text-gray-500">
+            Deployment history will appear here after CI/CD runs
+          </p>
         </div>
       )}
     </motion.div>
-  )
+  );
 }

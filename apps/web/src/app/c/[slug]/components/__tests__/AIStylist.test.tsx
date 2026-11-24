@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AIStylist } from '../AIStylist'
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AIStylist } from '../AIStylist';
 
 // The AI Stylist sheet is a `position: fixed` overlay whose input sits in a
 // footer *outside* the scrollable body. iOS Safari does not reflow fixed
@@ -17,58 +17,58 @@ vi.mock('next/image', () => ({
     // eslint-disable-next-line @next/next/no-img-element -- test mock of next/image
     <img src={src} alt={alt ?? ''} className={className} />
   ),
-}))
+}));
 
-type Listener = () => void
+type Listener = () => void;
 
-const VIEWPORT_HEIGHT = 844
-const KEYBOARD_HEIGHT = 336
+const VIEWPORT_HEIGHT = 844;
+const KEYBOARD_HEIGHT = 336;
 
-const originalInnerHeight = window.innerHeight
+const originalInnerHeight = window.innerHeight;
 
 /** A stand-in `window.visualViewport` whose keyboard can be opened and closed. */
 function installVisualViewport() {
-  const listeners = new Map<string, Set<Listener>>()
-  const state = { height: VIEWPORT_HEIGHT, offsetTop: 0 }
+  const listeners = new Map<string, Set<Listener>>();
+  const state = { height: VIEWPORT_HEIGHT, offsetTop: 0 };
 
   const viewport = {
     get height() {
-      return state.height
+      return state.height;
     },
     get offsetTop() {
-      return state.offsetTop
+      return state.offsetTop;
     },
     scale: 1,
     addEventListener: (type: string, listener: Listener) => {
-      const set = listeners.get(type) ?? new Set<Listener>()
-      set.add(listener)
-      listeners.set(type, set)
+      const set = listeners.get(type) ?? new Set<Listener>();
+      set.add(listener);
+      listeners.set(type, set);
     },
     removeEventListener: (type: string, listener: Listener) => {
-      listeners.get(type)?.delete(listener)
+      listeners.get(type)?.delete(listener);
     },
-  }
+  };
 
   Object.defineProperty(window, 'innerHeight', {
     configurable: true,
     writable: true,
     value: VIEWPORT_HEIGHT,
-  })
+  });
   Object.defineProperty(window, 'visualViewport', {
     configurable: true,
     writable: true,
     value: viewport,
-  })
+  });
 
   return {
     count: (type: string) => listeners.get(type)?.size ?? 0,
     setKeyboard(open: boolean) {
-      state.height = open ? VIEWPORT_HEIGHT - KEYBOARD_HEIGHT : VIEWPORT_HEIGHT
+      state.height = open ? VIEWPORT_HEIGHT - KEYBOARD_HEIGHT : VIEWPORT_HEIGHT;
       act(() => {
-        for (const listener of Array.from(listeners.get('resize') ?? [])) listener()
-      })
+        for (const listener of Array.from(listeners.get('resize') ?? [])) listener();
+      });
     },
-  }
+  };
 }
 
 /**
@@ -77,89 +77,89 @@ function installVisualViewport() {
  * child — see `@/components/Sheet`.
  */
 function sheet() {
-  const overlay = document.querySelector<HTMLElement>('[role="dialog"]')
-  const panel = overlay?.firstElementChild ?? null
-  if (!overlay || !(panel instanceof HTMLElement)) throw new Error('AI Stylist sheet is not open')
-  return { panel, overlay }
+  const overlay = document.querySelector<HTMLElement>('[role="dialog"]');
+  const panel = overlay?.firstElementChild ?? null;
+  if (!overlay || !(panel instanceof HTMLElement)) throw new Error('AI Stylist sheet is not open');
+  return { panel, overlay };
 }
 
 function openSheet() {
-  fireEvent.click(screen.getByLabelText('Open AI Stylist'))
+  fireEvent.click(screen.getByLabelText('Open AI Stylist'));
 }
 
 describe('AIStylist keyboard inset', () => {
-  let fake: ReturnType<typeof installVisualViewport>
+  let fake: ReturnType<typeof installVisualViewport>;
 
   beforeEach(() => {
-    fake = installVisualViewport()
+    fake = installVisualViewport();
     // The sheet fetches catalog-derived suggestions once it opens; stub it
     // so that async state update doesn't race these tests' assertions.
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({ json: () => Promise.resolve({ data: { suggestions: [] } }) }),
-    )
-  })
+    );
+  });
 
   afterEach(() => {
-    vi.unstubAllGlobals()
+    vi.unstubAllGlobals();
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,
       writable: true,
       value: originalInnerHeight,
-    })
-    delete (window as unknown as { visualViewport?: unknown }).visualViewport
-  })
+    });
+    delete (window as unknown as { visualViewport?: unknown }).visualViewport;
+  });
 
   it('lifts the sheet and caps the panel by the keyboard height', () => {
-    render(<AIStylist storeSlug="meera-sarees" storeName="Meera Sarees" />)
-    openSheet()
+    render(<AIStylist storeSlug="meera-sarees" storeName="Meera Sarees" />);
+    openSheet();
 
-    const { panel, overlay } = sheet()
-    expect(overlay.style.paddingBottom).toBe('')
-    expect(panel.style.maxHeight).toBe('')
+    const { panel, overlay } = sheet();
+    expect(overlay.style.paddingBottom).toBe('');
+    expect(panel.style.maxHeight).toBe('');
 
-    fake.setKeyboard(true)
+    fake.setKeyboard(true);
 
     // The footer input cannot be scrolled into view by the panel's own
     // scrolling, so the overlay itself has to move.
-    expect(sheet().overlay.style.paddingBottom).toBe(`${KEYBOARD_HEIGHT}px`)
+    expect(sheet().overlay.style.paddingBottom).toBe(`${KEYBOARD_HEIGHT}px`);
     // 85vh is measured against the full layout viewport; keeping it as-is would
     // push the header (and the close button) off the top of the screen.
-    expect(sheet().panel.style.maxHeight).toBe(`calc(85vh - ${KEYBOARD_HEIGHT}px)`)
-  })
+    expect(sheet().panel.style.maxHeight).toBe(`calc(85vh - ${KEYBOARD_HEIGHT}px)`);
+  });
 
   it('restores the untouched layout when the keyboard closes', () => {
-    render(<AIStylist storeSlug="meera-sarees" storeName="Meera Sarees" />)
-    openSheet()
+    render(<AIStylist storeSlug="meera-sarees" storeName="Meera Sarees" />);
+    openSheet();
 
-    fake.setKeyboard(true)
-    fake.setKeyboard(false)
+    fake.setKeyboard(true);
+    fake.setKeyboard(false);
 
-    const { panel, overlay } = sheet()
-    expect(overlay.style.paddingBottom).toBe('')
-    expect(panel.style.maxHeight).toBe('')
-    expect(panel.className).toContain('max-h-[85vh]')
-  })
+    const { panel, overlay } = sheet();
+    expect(overlay.style.paddingBottom).toBe('');
+    expect(panel.style.maxHeight).toBe('');
+    expect(panel.className).toContain('max-h-[85vh]');
+  });
 
   it('subscribes to the visual viewport only while the sheet is open', () => {
-    render(<AIStylist storeSlug="meera-sarees" storeName="Meera Sarees" />)
+    render(<AIStylist storeSlug="meera-sarees" storeName="Meera Sarees" />);
 
     // Closed: the host button is mounted on every storefront page view, and a
     // shopper who never opens the sheet should cost the page no listeners.
-    expect(fake.count('resize')).toBe(0)
-    expect(fake.count('scroll')).toBe(0)
+    expect(fake.count('resize')).toBe(0);
+    expect(fake.count('scroll')).toBe(0);
 
-    openSheet()
+    openSheet();
 
-    expect(fake.count('resize')).toBe(1)
-    expect(fake.count('scroll')).toBe(1)
-  })
-})
+    expect(fake.count('resize')).toBe(1);
+    expect(fake.count('scroll')).toBe(1);
+  });
+});
 
 // RC-055: the API sends `price` in paise (same as every catalog surface).
 // The card used to print it raw with a literal ₹ — ₹2,100 showed as ₹2,10,000.
 describe('AIStylist price', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => vi.unstubAllGlobals());
 
   it('renders paise as rupees via formatPrice', async () => {
     vi.stubGlobal(
@@ -190,13 +190,13 @@ describe('AIStylist price', () => {
             ),
         }),
       ),
-    )
-    render(<AIStylist storeSlug="s" storeName="S" />)
-    openSheet()
-    const input = screen.getByPlaceholderText('e.g. Pink silk suit for a wedding')
-    fireEvent.change(input, { target: { value: 'kurta' } })
-    fireEvent.keyDown(input, { key: 'Enter' })
-    expect(await screen.findByText('₹2,100/-')).toBeTruthy()
-    expect(screen.queryByText(/2,10,000/)).toBeNull()
-  })
-})
+    );
+    render(<AIStylist storeSlug="s" storeName="S" />);
+    openSheet();
+    const input = screen.getByPlaceholderText('e.g. Pink silk suit for a wedding');
+    fireEvent.change(input, { target: { value: 'kurta' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(await screen.findByText('₹2,100/-')).toBeTruthy();
+    expect(screen.queryByText(/2,10,000/)).toBeNull();
+  });
+});

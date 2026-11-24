@@ -1,94 +1,95 @@
-import { useRef, useState } from 'react'
-import { View, Text, ActivityIndicator, ScrollView, Alert } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { CameraView, useCameraPermissions } from 'expo-camera'
-import * as ImagePicker from 'expo-image-picker'
-import * as ImageManipulator from 'expo-image-manipulator'
-import { Image } from 'expo-image'
-import { useScreenInsets } from '../../../src/lib/safe-area'
-import { X, ImagePlus, Check } from 'lucide-react-native'
-import { productApi, uploadImageToR2, prepareImageForUpload } from '../../../src/lib/api'
-import { showError } from '../../../src/lib/errors'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { WhiteButton } from '../../../src/components/WhiteButton'
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Image } from 'expo-image';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Check, ImagePlus, X } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { WhiteButton } from '../../../src/components/WhiteButton';
+import { prepareImageForUpload, productApi, uploadImageToR2 } from '../../../src/lib/api';
+import { showError } from '../../../src/lib/errors';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
-const PHOTO_LIMIT = 10
-const MAX_SHOTS_PER_SESSION = 4
+const PHOTO_LIMIT = 10;
+const MAX_SHOTS_PER_SESSION = 4;
 
 export default function AddPhotosScreen() {
-  const { insets } = useScreenInsets()
-  const { id, existingCount } = useLocalSearchParams<{ id: string; existingCount?: string }>()
-  const remainingSlots = Math.max(0, PHOTO_LIMIT - Number(existingCount ?? '0'))
-  const maxShots = Math.min(MAX_SHOTS_PER_SESSION, remainingSlots || MAX_SHOTS_PER_SESSION)
+  const { insets } = useScreenInsets();
+  const { id, existingCount } = useLocalSearchParams<{ id: string; existingCount?: string }>();
+  const remainingSlots = Math.max(0, PHOTO_LIMIT - Number(existingCount ?? '0'));
+  const maxShots = Math.min(MAX_SHOTS_PER_SESSION, remainingSlots || MAX_SHOTS_PER_SESSION);
 
-  const [permission, requestPermission] = useCameraPermissions()
-  const [shots, setShots] = useState<string[]>([])
-  const [uploading, setUploading] = useState(false)
-  const cameraRef = useRef<CameraView>(null)
+  const [permission, requestPermission] = useCameraPermissions();
+  const [shots, setShots] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
 
   const addShot = async (uri: string) => {
-    const compressed = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1200 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-    )
-    setShots((prev) => (prev.length >= maxShots ? prev : [...prev, compressed.uri]))
-  }
+    const compressed = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1200 } }], {
+      compress: 0.8,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    setShots((prev) => (prev.length >= maxShots ? prev : [...prev, compressed.uri]));
+  };
 
   const handleCapture = async () => {
-    if (!cameraRef.current || shots.length >= maxShots) return
+    if (!cameraRef.current || shots.length >= maxShots) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
-      if (photo?.uri) await addShot(photo.uri)
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
+      if (photo?.uri) await addShot(photo.uri);
     } catch (err) {
-      showError(err, 'Could not capture photo')
+      showError(err, 'Could not capture photo');
     }
-  }
+  };
 
   const handlePickFromGallery = async () => {
-    const remaining = maxShots - shots.length
-    if (remaining <= 0) return
+    const remaining = maxShots - shots.length;
+    if (remaining <= 0) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.85,
       allowsMultipleSelection: true,
       selectionLimit: remaining,
-    })
-    if (result.canceled) return
+    });
+    if (result.canceled) return;
     for (const asset of result.assets.slice(0, remaining)) {
-      await addShot(asset.uri)
+      await addShot(asset.uri);
     }
-  }
+  };
 
-  const removeShot = (idx: number) => setShots((prev) => prev.filter((_, i) => i !== idx))
+  const removeShot = (idx: number) => setShots((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSave = async () => {
-    if (shots.length === 0) return
-    setUploading(true)
+    if (shots.length === 0) return;
+    setUploading(true);
     try {
       for (const uri of shots) {
-        const prep = await prepareImageForUpload(uri, 'image/jpeg')
-        const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', prep.size)
-        const { upload_url, r2_key, public_url } = uploadResult.data
-        await uploadImageToR2(prep.uri, upload_url, 'image/jpeg', undefined, undefined, { compress: false })
-        await productApi.addPhoto(id, { r2_key, url: public_url, content_type: 'image/jpeg' })
+        const prep = await prepareImageForUpload(uri, 'image/jpeg');
+        const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', prep.size);
+        const { upload_url, r2_key, public_url } = uploadResult.data;
+        await uploadImageToR2(prep.uri, upload_url, 'image/jpeg', undefined, undefined, {
+          compress: false,
+        });
+        await productApi.addPhoto(id, { r2_key, url: public_url, content_type: 'image/jpeg' });
       }
-      router.back()
+      router.back();
     } catch (err) {
-      showError(err, 'Failed to add photos')
+      showError(err, 'Failed to add photos');
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   if (remainingSlots <= 0) {
     Alert.alert('Photo limit reached', `Maximum ${PHOTO_LIMIT} photos per product.`, [
       { text: 'OK', onPress: () => router.back() },
-    ])
-    return <View className="flex-1 bg-black" />
+    ]);
+    return <View className="flex-1 bg-black" />;
   }
 
-  if (!permission) return <View className="flex-1 bg-black" />
+  if (!permission) return <View className="flex-1 bg-black" />;
 
   if (!permission.granted) {
     return (
@@ -98,10 +99,10 @@ export default function AddPhotosScreen() {
         </Text>
         <WhiteButton compact label="Allow Camera" onPress={() => void requestPermission()} />
       </View>
-    )
+    );
   }
 
-  const atLimit = shots.length >= maxShots
+  const atLimit = shots.length >= maxShots;
 
   return (
     <View className="flex-1 bg-black">
@@ -138,7 +139,11 @@ export default function AddPhotosScreen() {
               onPress={() => removeShot(idx)}
               className="w-16 h-16 rounded-lg overflow-hidden border-2 border-white/70"
             >
-              <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              <Image
+                source={{ uri }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+              />
             </AnimatedPressable>
           ))}
         </ScrollView>
@@ -170,8 +175,10 @@ export default function AddPhotosScreen() {
             {uploading ? <ActivityIndicator color="white" /> : <Check size={24} color="white" />}
           </AnimatedPressable>
         </View>
-        <Text className="text-white/50 text-xs">Tap shutter for each angle · gallery to import · check to save</Text>
+        <Text className="text-white/50 text-xs">
+          Tap shutter for each angle · gallery to import · check to save
+        </Text>
       </View>
     </View>
-  )
+  );
 }

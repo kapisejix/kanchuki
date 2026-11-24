@@ -9,7 +9,10 @@ const cache = new Map<string, string | null>();
 // getToken() (auth on every API request) routes through here too, so
 // without this race a hung read stalls every screen forever with no error.
 function withTimeout<T>(promise: Promise<T>, fallback: T, ms = 3000): Promise<T> {
-  return Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
 }
 
 export async function getItem(key: string): Promise<string | null> {

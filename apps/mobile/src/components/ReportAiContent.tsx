@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Text } from "react-native";
-import { Flag } from "lucide-react-native";
-import { AnimatedPressable } from "./AnimatedPressable";
-import { ReportProblem } from "./ReportProblem";
+import { Flag } from 'lucide-react-native';
+import { useState } from 'react';
+import { Text } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
+import { ReportProblem } from './ReportProblem';
 
 type Props = {
   /** Which AI feature produced the content, e.g. "AI Studio Shoot". */
@@ -21,7 +21,7 @@ type Props = {
  */
 export function ReportAiContent({ feature, contentRef, dark }: Props) {
   const [open, setOpen] = useState(false);
-  const color = dark ? "#ffffffcc" : "#6b7280";
+  const color = dark ? '#ffffffcc' : '#6b7280';
   return (
     <>
       <AnimatedPressable
@@ -32,9 +32,7 @@ export function ReportAiContent({ feature, contentRef, dark }: Props) {
         className="flex-row items-center justify-center gap-1.5 py-2"
       >
         <Flag size={13} color={color} />
-        <Text style={{ color, fontSize: 12, fontWeight: "600" }}>
-          Report this AI content
-        </Text>
+        <Text style={{ color, fontSize: 12, fontWeight: '600' }}>Report this AI content</Text>
       </AnimatedPressable>
       {open ? (
         <ReportProblem

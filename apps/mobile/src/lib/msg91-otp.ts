@@ -18,53 +18,53 @@
 // undefined!" on every module evaluation — which fires on EVERY app boot in
 // Expo Go, where the native module isn't linked, even though the widget is
 // never used there (isMsg91OtpConfigured() is false). The module scope only
-import { NativeModules } from 'react-native'
+import { NativeModules } from 'react-native';
 
-type Msg91Sdk = typeof import('@msg91comm/sendotp-react-native')
-let sdk: Msg91Sdk | null = null
+type Msg91Sdk = typeof import('@msg91comm/sendotp-react-native');
+let sdk: Msg91Sdk | null = null;
 
 function hasNativeMsg91Module(): boolean {
   return Boolean(
     NativeModules &&
-    (NativeModules.BiometricAuth || NativeModules.OTPWidget || NativeModules.SendOTP)
-  )
+      (NativeModules.BiometricAuth || NativeModules.OTPWidget || NativeModules.SendOTP),
+  );
 }
 
 function getSdk(): Msg91Sdk | null {
   if (!sdk) {
     if (!hasNativeMsg91Module()) {
-      return null
+      return null;
     }
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      sdk = require('@msg91comm/sendotp-react-native') as Msg91Sdk
+      sdk = require('@msg91comm/sendotp-react-native') as Msg91Sdk;
     } catch (e) {
-      console.warn('[msg91] Native module load failed, falling back to API:', e)
-      return null
+      console.warn('[msg91] Native module load failed, falling back to API:', e);
+      return null;
     }
   }
-  return sdk
+  return sdk;
 }
 
 // EXPO_PUBLIC_* vars are statically inlined at build time (dot access keeps
 // expo lint's no-dynamic-env-var rule happy — the API_URL client uses the
 // same pattern).
-const WIDGET_ID = process.env.EXPO_PUBLIC_MSG91_WIDGET_ID || '366871673575383335383835'
-const TOKEN_AUTH = process.env.EXPO_PUBLIC_MSG91_TOKEN_AUTH || '505769TIAaX1pQa6a649a52P1'
+const WIDGET_ID = process.env.EXPO_PUBLIC_MSG91_WIDGET_ID || '366871673575383335383835';
+const TOKEN_AUTH = process.env.EXPO_PUBLIC_MSG91_TOKEN_AUTH || '505769TIAaX1pQa6a649a52P1';
 
-let initialized = false
+let initialized = false;
 
 /** True when the build was compiled with real MSG91 widget credentials AND native module is linked. */
 export function isMsg91OtpConfigured(): boolean {
-  return Boolean(hasNativeMsg91Module() && WIDGET_ID && TOKEN_AUTH)
+  return Boolean(hasNativeMsg91Module() && WIDGET_ID && TOKEN_AUTH);
 }
 
 function initWidget(): void {
-  if (initialized || !WIDGET_ID || !TOKEN_AUTH) return
-  const s = getSdk()
-  if (!s?.OTPWidget) return
-  s.OTPWidget.initializeWidget(WIDGET_ID, TOKEN_AUTH)
-  initialized = true
+  if (initialized || !WIDGET_ID || !TOKEN_AUTH) return;
+  const s = getSdk();
+  if (!s?.OTPWidget) return;
+  s.OTPWidget.initializeWidget(WIDGET_ID, TOKEN_AUTH);
+  initialized = true;
 }
 
 // MSG91 has returned reqId as a NUMBER in some widget API versions — coerce
@@ -73,29 +73,29 @@ function initWidget(): void {
 // no SMS behind it).
 function firstString(...values: unknown[]): string | undefined {
   for (const v of values) {
-    if (v === undefined || v === null) continue
-    const s = String(v)
-    if (s.length > 0) return s
+    if (v === undefined || v === null) continue;
+    const s = String(v);
+    if (s.length > 0) return s;
   }
-  return undefined
+  return undefined;
 }
 
 function asRecord(v: unknown): Record<string, unknown> | null {
-  return v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+  return v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
 }
 
 /** Extract the widget request id from a sendOTP/verifyOTP response. */
 export function extractMsg91ReqId(response: unknown): string | undefined {
-  const r = asRecord(response)
-  if (!r) return undefined
-  const data = asRecord(r.data) ?? asRecord(r.result)
+  const r = asRecord(response);
+  if (!r) return undefined;
+  const data = asRecord(r.data) ?? asRecord(r.result);
   // SDK sendOTP success is { type: 'success', message: '<reqId>' }. The format
   // check keeps a plain status message from being mistaken for an id.
   const messageId =
     r.type === 'success' && typeof r.message === 'string' && /^[A-Za-z0-9]{16,}$/.test(r.message)
       ? r.message
-      : undefined
-  return firstString(r.reqId, data?.reqId, r.req_id, data?.req_id, messageId)
+      : undefined;
+  return firstString(r.reqId, data?.reqId, r.req_id, data?.req_id, messageId);
 }
 
 /**
@@ -103,9 +103,9 @@ export function extractMsg91ReqId(response: unknown): string | undefined {
  * response. The token is what our backend re-verifies with MSG91.
  */
 export function extractMsg91AccessToken(response: unknown): string | undefined {
-  const r = asRecord(response)
-  if (!r) return undefined
-  const data = asRecord(r.data) ?? asRecord(r.result)
+  const r = asRecord(response);
+  if (!r) return undefined;
+  const data = asRecord(r.data) ?? asRecord(r.result);
   const candidates = [
     r.message,
     r.token,
@@ -115,12 +115,10 @@ export function extractMsg91AccessToken(response: unknown): string | undefined {
     data?.accessToken,
     data?.access_token,
     data?.message,
-  ]
+  ];
   // A JWT is header.payload.signature — require all three segments so a
   // plain status message like "OTP verified" is never mistaken for a token.
-  return candidates.find(
-    (c): c is string => typeof c === 'string' && c.split('.').length >= 3,
-  )
+  return candidates.find((c): c is string => typeof c === 'string' && c.split('.').length >= 3);
 }
 
 /**
@@ -129,22 +127,22 @@ export function extractMsg91AccessToken(response: unknown): string | undefined {
  * code and no '+'.
  */
 export function sendMsg91Otp(phoneDigits: string): Promise<unknown> {
-  const s = getSdk()
+  const s = getSdk();
   if (!s?.OTPWidget) {
-    return Promise.reject(new Error('MSG91 native module not available in this build'))
+    return Promise.reject(new Error('MSG91 native module not available in this build'));
   }
-  initWidget()
-  return s.OTPWidget.sendOTP({ identifier: `91${phoneDigits}` })
+  initWidget();
+  return s.OTPWidget.sendOTP({ identifier: `91${phoneDigits}` });
 }
 
 /** Resend the OTP on the same channel (11 = SMS). */
 export function retryMsg91Otp(reqId: string): Promise<unknown> {
-  const s = getSdk()
+  const s = getSdk();
   if (!s?.OTPWidget) {
-    return Promise.reject(new Error('MSG91 native module not available in this build'))
+    return Promise.reject(new Error('MSG91 native module not available in this build'));
   }
-  initWidget()
-  return s.OTPWidget.retryOTP({ reqId, retryChannel: 11 })
+  initWidget();
+  return s.OTPWidget.retryOTP({ reqId, retryChannel: 11 });
 }
 
 /**
@@ -152,11 +150,11 @@ export function retryMsg91Otp(reqId: string): Promise<unknown> {
  * invisible mode (carrier-side verification) — pass just the reqId.
  */
 export function verifyMsg91Otp(reqId: string, otp?: string): Promise<unknown> {
-  const s = getSdk()
+  const s = getSdk();
   if (!s?.OTPWidget) {
-    return Promise.reject(new Error('MSG91 native module not available in this build'))
+    return Promise.reject(new Error('MSG91 native module not available in this build'));
   }
-  initWidget()
-  const body = otp ? { reqId, otp } : { reqId }
-  return s.OTPWidget.verifyOTP(body)
+  initWidget();
+  const body = otp ? { reqId, otp } : { reqId };
+  return s.OTPWidget.verifyOTP(body);
 }

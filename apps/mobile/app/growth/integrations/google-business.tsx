@@ -1,50 +1,50 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import * as Clipboard from 'expo-clipboard'
-import { router } from 'expo-router'
-import { Check, ChevronLeft, Copy } from 'lucide-react-native'
-import { useState } from 'react'
-import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { GradientButton } from '../../../src/components/GradientButton'
-import { googleBusinessApi } from '../../../src/lib/api'
-import { showError } from '../../../src/lib/errors'
-import { gbpCountLabel } from '../../../src/lib/gbp-summary'
-import { useScreenInsets } from '../../../src/lib/safe-area'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Clipboard from 'expo-clipboard';
+import { router } from 'expo-router';
+import { Check, ChevronLeft, Copy } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { GradientButton } from '../../../src/components/GradientButton';
+import { googleBusinessApi } from '../../../src/lib/api';
+import { showError } from '../../../src/lib/errors';
+import { gbpCountLabel } from '../../../src/lib/gbp-summary';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
 // One screen, five honest states. Every state comes from the server (GET /status); this
 // screen never decides "connected" on its own and has NO success path that skips the server
 // answering LINKED (RC-056/058/060). UNAVAILABLE shows no action button at all.
 export default function GoogleBusinessScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const queryClient = useQueryClient()
-  const [consent, setConsent] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const queryClient = useQueryClient();
+  const [consent, setConsent] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['google-business', 'status'],
     queryFn: () => googleBusinessApi.status(),
-  })
-  const status = data?.data
+  });
+  const status = data?.data;
 
-  const refresh = () => void queryClient.invalidateQueries({ queryKey: ['google-business'] })
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ['google-business'] });
 
   const requestLink = useMutation({
     mutationFn: () => googleBusinessApi.requestLink(),
     onSuccess: refresh,
     onError: (e) => showError(e, 'Could not send your request'),
-  })
+  });
   const unlink = useMutation({
     mutationFn: () => googleBusinessApi.unlink(),
     onSuccess: refresh,
     onError: (e) => showError(e, 'Could not disconnect'),
-  })
+  });
 
   const copyEmail = async () => {
-    if (!status?.manager_email) return
-    await Clipboard.setStringAsync(status.manager_email)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    if (!status?.manager_email) return;
+    await Clipboard.setStringAsync(status.manager_email);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const confirmUnlink = () =>
     Alert.alert(
@@ -54,7 +54,7 @@ export default function GoogleBusinessScreen() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Disconnect', style: 'destructive', onPress: () => unlink.mutate() },
       ],
-    )
+    );
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -114,9 +114,7 @@ export default function GoogleBusinessScreen() {
             <Text className="text-sm font-semibold text-spaceCadet-900">
               Connected{status.location_title ? ` — ${status.location_title}` : ''}
             </Text>
-            <Text className="text-xs text-heliotrope-500">
-              {gbpCountLabel(status)}
-            </Text>
+            <Text className="text-xs text-heliotrope-500">{gbpCountLabel(status)}</Text>
             <GradientButton
               label="See your Google reviews"
               onPress={() => router.push('/growth/ratings' as never)}
@@ -171,7 +169,9 @@ export default function GoogleBusinessScreen() {
             {(status.state === 'REQUESTED' || status.state === 'NEEDS_ACCESS') && (
               <>
                 <Text className="text-sm font-semibold text-spaceCadet-900">
-                  {status.state === 'REQUESTED' ? 'One step for you' : 'Kanchuki no longer has access'}
+                  {status.state === 'REQUESTED'
+                    ? 'One step for you'
+                    : 'Kanchuki no longer has access'}
                 </Text>
                 {status.steps?.map((s, i) => (
                   <Text key={s} className="text-xs text-heliotrope-600 leading-5">
@@ -206,5 +206,5 @@ export default function GoogleBusinessScreen() {
         )}
       </ScrollView>
     </View>
-  )
+  );
 }

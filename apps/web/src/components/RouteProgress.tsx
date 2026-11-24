@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 /**
  * RouteProgress — Slim animated progress bar at the top of the viewport.
@@ -18,7 +18,7 @@ export function RouteProgress() {
     <Suspense fallback={null}>
       <RouteProgressInner />
     </Suspense>
-  )
+  );
 }
 
 /**
@@ -26,37 +26,37 @@ export function RouteProgress() {
  * per Next.js requirement for client-side search params access.
  */
 function RouteProgressInner() {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const [isNavigating, setIsNavigating] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const prevPathRef = useRef(pathname)
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const prevPathRef = useRef(pathname);
 
   // Detect route changes by watching pathname
   useEffect(() => {
-    const prev = prevPathRef.current
-    prevPathRef.current = pathname
+    const prev = prevPathRef.current;
+    prevPathRef.current = pathname;
 
     if (prev !== pathname) {
-      setIsNavigating(true)
-      setProgress(0)
+      setIsNavigating(true);
+      setProgress(0);
 
-      const t1 = setTimeout(() => setProgress(30), 50)
-      const t2 = setTimeout(() => setProgress(60), 200)
-      const t3 = setTimeout(() => setProgress(100), 500)
+      const t1 = setTimeout(() => setProgress(30), 50);
+      const t2 = setTimeout(() => setProgress(60), 200);
+      const t3 = setTimeout(() => setProgress(100), 500);
       const hideTimeout = setTimeout(() => {
-        setIsNavigating(false)
-        setProgress(0)
-      }, 900)
+        setIsNavigating(false);
+        setProgress(0);
+      }, 900);
 
       return () => {
-        clearTimeout(t1)
-        clearTimeout(t2)
-        clearTimeout(t3)
-        clearTimeout(hideTimeout)
-      }
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        clearTimeout(hideTimeout);
+      };
     }
-  }, [pathname])
+  }, [pathname]);
 
   return (
     <AnimatePresence>
@@ -88,7 +88,7 @@ function RouteProgressInner() {
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 }
 
-export default RouteProgress
+export default RouteProgress;

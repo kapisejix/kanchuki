@@ -1,36 +1,36 @@
-import React, { useState } from 'react'
 import {
-  Download,
-  Copy,
-  Check,
   AlertCircle,
-  Clock,
-  Rows,
-  Layers,
+  Check,
   ChevronDown,
   ChevronRight,
-} from 'lucide-react'
-import type { QueryResult } from './types'
+  Clock,
+  Copy,
+  Download,
+  Layers,
+  Rows,
+} from 'lucide-react';
+import React, { useState } from 'react';
+import type { QueryResult } from './types';
 
 interface QueryResultsTableProps {
-  result: QueryResult | null
-  loading: boolean
-  error: string
-  onDownloadCsv: () => void
-  onCopyJson: () => void
+  result: QueryResult | null;
+  loading: boolean;
+  error: string;
+  onDownloadCsv: () => void;
+  onCopyJson: () => void;
 }
 
 function formatCellValue(val: unknown): { display: string; isJson: boolean; isNull: boolean } {
   if (val === null || val === undefined) {
-    return { display: 'NULL', isJson: false, isNull: true }
+    return { display: 'NULL', isJson: false, isNull: true };
   }
   if (typeof val === 'boolean') {
-    return { display: val ? 'TRUE' : 'FALSE', isJson: false, isNull: false }
+    return { display: val ? 'TRUE' : 'FALSE', isJson: false, isNull: false };
   }
   if (typeof val === 'object') {
-    return { display: JSON.stringify(val, null, 2), isJson: true, isNull: false }
+    return { display: JSON.stringify(val, null, 2), isJson: true, isNull: false };
   }
-  return { display: String(val), isJson: false, isNull: false }
+  return { display: String(val), isJson: false, isNull: false };
 }
 
 export function QueryResultsTable({
@@ -40,14 +40,14 @@ export function QueryResultsTable({
   onDownloadCsv,
   onCopyJson,
 }: QueryResultsTableProps) {
-  const [copiedCell, setCopiedCell] = useState<string | null>(null)
-  const [expandedJson, setExpandedJson] = useState<Record<string, boolean>>({})
+  const [copiedCell, setCopiedCell] = useState<string | null>(null);
+  const [expandedJson, setExpandedJson] = useState<Record<string, boolean>>({});
 
   const copyValue = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedCell(id)
-    setTimeout(() => setCopiedCell(null), 1500)
-  }
+    navigator.clipboard.writeText(text);
+    setCopiedCell(id);
+    setTimeout(() => setCopiedCell(null), 1500);
+  };
 
   if (loading) {
     return (
@@ -58,7 +58,7 @@ export function QueryResultsTable({
         <h4 className="text-sm font-semibold text-gray-800">Executing Query...</h4>
         <p className="text-xs text-gray-500 mt-1">Connecting to PostgreSQL and running statement</p>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -76,7 +76,7 @@ export function QueryResultsTable({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!result) {
@@ -88,7 +88,7 @@ export function QueryResultsTable({
           Write an SQL query above and press &quot;Run Query&quot; (Ctrl+Enter)
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -142,7 +142,10 @@ export function QueryResultsTable({
                 #
               </th>
               {result.columns.map((col) => (
-                <th key={col} className="px-3 py-2 font-semibold select-all border-r border-gray-200">
+                <th
+                  key={col}
+                  className="px-3 py-2 font-semibold select-all border-r border-gray-200"
+                >
                   {col}
                 </th>
               ))}
@@ -155,10 +158,10 @@ export function QueryResultsTable({
                   {rowIdx + 1}
                 </td>
                 {result.columns.map((col) => {
-                  const val = row[col]
-                  const cellId = `${rowIdx}-${col}`
-                  const { display, isJson, isNull } = formatCellValue(val)
-                  const isExpanded = expandedJson[cellId]
+                  const val = row[col];
+                  const cellId = `${rowIdx}-${col}`;
+                  const { display, isJson, isNull } = formatCellValue(val);
+                  const isExpanded = expandedJson[cellId];
 
                   return (
                     <td
@@ -201,7 +204,7 @@ export function QueryResultsTable({
                         </div>
                       )}
                     </td>
-                  )
+                  );
                 })}
               </tr>
             ))}
@@ -209,5 +212,5 @@ export function QueryResultsTable({
         </table>
       </div>
     </div>
-  )
+  );
 }

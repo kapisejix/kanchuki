@@ -14,5 +14,5 @@ export function SuspendedNotice({ shopName }: { shopName: string }) {
         </p>
       </div>
     </div>
-  )
+  );
 }

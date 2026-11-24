@@ -87,10 +87,13 @@ export function ProductGallery({ photos, variants, videos, alt, isSold, isReserv
   const sold = isSold;
   const reserved = isReserved;
 
-  const goTo = useCallback((i: number) => {
-    const clamped = Math.max(0, Math.min(i, slides.length - 1));
-    mainSwiperRef.current?.slideTo(clamped);
-  }, [slides.length]);
+  const goTo = useCallback(
+    (i: number) => {
+      const clamped = Math.max(0, Math.min(i, slides.length - 1));
+      mainSwiperRef.current?.slideTo(clamped);
+    },
+    [slides.length],
+  );
 
   // Jump to the slide carrying this variant's photo (color chip tap).
   const goToVariant = useCallback(
@@ -124,7 +127,9 @@ export function ProductGallery({ photos, variants, videos, alt, isSold, isReserv
             <Swiper
               modules={[Thumbs]}
               thumbs={{ swiper: thumbsSwiper }}
-              onSwiper={(s) => { mainSwiperRef.current = s; }}
+              onSwiper={(s) => {
+                mainSwiperRef.current = s;
+              }}
               onSlideChange={(s) => setIndex(s.activeIndex)}
               className="w-full h-full"
             >
@@ -201,13 +206,7 @@ export function ProductGallery({ photos, variants, videos, alt, isSold, isReserv
                     {slide.video ? (
                       <Play size={14} className="text-white" />
                     ) : (
-                      <Image
-                        src={slide.url}
-                        alt=""
-                        fill
-                        sizes="44px"
-                        className="object-cover"
-                      />
+                      <Image src={slide.url} alt="" fill sizes="44px" className="object-cover" />
                     )}
                   </button>
                 ))}
@@ -386,7 +385,9 @@ export function ProductGallery({ photos, variants, videos, alt, isSold, isReserv
               modules={[Zoom]}
               zoom
               initialSlide={index}
-              onSwiper={(s) => { fullscreenSwiperRef.current = s; }}
+              onSwiper={(s) => {
+                fullscreenSwiperRef.current = s;
+              }}
               onSlideChange={(s) => setIndex(s.activeIndex)}
               className="w-full h-full"
             >

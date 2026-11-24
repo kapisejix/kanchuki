@@ -19,9 +19,7 @@ afterEach(() => {
 describe('extractReqId', () => {
   it('extracts a string reqId from the top level', async () => {
     const { extractReqId } = await import('../msg91-widget');
-    expect(extractReqId({ reqId: '336870744532313134323444' })).toBe(
-      '336870744532313134323444',
-    );
+    expect(extractReqId({ reqId: '336870744532313134323444' })).toBe('336870744532313134323444');
   });
 
   it('coerces a numeric reqId (MSG91 has returned numbers in some versions)', async () => {

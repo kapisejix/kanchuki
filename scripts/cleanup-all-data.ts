@@ -61,7 +61,9 @@ const WIPE_ORDER = [
 
 async function cleanup(): Promise<void> {
   if (!process.argv.includes('--yes')) {
-    console.error('❌ Refusing to run: pass --yes to confirm you want to hard-delete ALL retail data.');
+    console.error(
+      '❌ Refusing to run: pass --yes to confirm you want to hard-delete ALL retail data.',
+    );
     console.error('   (Run scripts/backup-database.ts first.)');
     process.exit(1);
   }

@@ -1,81 +1,81 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { adminGetOptions } from '@/lib/admin-fetch'
+import { adminGetOptions } from '@/lib/admin-fetch';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Database,
-  Search,
-  Shield,
   AlertCircle,
-  Loader2,
+  Archive,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
   Clock,
-  Trash2,
-  HardDrive,
-  Archive,
+  Database,
   Filter,
+  HardDrive,
+  Loader2,
+  RefreshCw,
+  Search,
+  Shield,
+  Trash2,
   X,
-} from 'lucide-react'
+} from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────
 
 type VaultEntry = {
-  id: string
-  source_table: string
-  source_id: string
-  retailer_id: string | null
-  payload: Record<string, unknown>
-  delete_reason: string | null
-  deleted_by: string | null
-  deleted_at: string
-}
+  id: string;
+  source_table: string;
+  source_id: string;
+  retailer_id: string | null;
+  payload: Record<string, unknown>;
+  delete_reason: string | null;
+  deleted_by: string | null;
+  deleted_at: string;
+};
 
 type VaultResponse = {
   data: {
-    entries: VaultEntry[]
-    total_count: number
-    vault_configured: boolean
-  }
+    entries: VaultEntry[];
+    total_count: number;
+    vault_configured: boolean;
+  };
   pagination?: {
-    cursor: string | null
-    has_more: boolean
-  }
-}
+    cursor: string | null;
+    has_more: boolean;
+  };
+};
 
 // ─── Helpers ───────────────────────────────────────────────────
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
+  if (!iso) return '—';
+  const d = new Date(iso);
   return d.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  })
+  });
 }
 
 function formatDateShort(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffHours = diffMs / (1000 * 60 * 60)
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
 
   if (diffHours < 1) {
-    const mins = Math.round(diffMs / (1000 * 60))
-    return `${mins}m ago`
+    const mins = Math.round(diffMs / (1000 * 60));
+    return `${mins}m ago`;
   }
   if (diffHours < 24) {
-    return `${Math.round(diffHours)}h ago`
+    return `${Math.round(diffHours)}h ago`;
   }
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
 const SOURCE_TABLES = [
@@ -84,7 +84,7 @@ const SOURCE_TABLES = [
   { value: 'customers', label: 'Customers' },
   { value: 'collections', label: 'Collections' },
   { value: 'retailers', label: 'Retailers' },
-]
+];
 
 // ─── Animations ────────────────────────────────────────────────
 
@@ -94,7 +94,7 @@ const containerVariants = {
     opacity: 1,
     transition: { staggerChildren: 0.05, delayChildren: 0.1 },
   },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 10 },
@@ -103,7 +103,7 @@ const itemVariants = {
     y: 0,
     transition: { type: 'spring', stiffness: 200, damping: 20 },
   },
-}
+};
 
 // ─── Payload Preview ───────────────────────────────────────────
 
@@ -112,17 +112,17 @@ const TABLE_PREVIEW_KEYS: Record<string, string[]> = {
   customers: ['name', 'phone', 'city', 'gender'],
   collections: ['title', 'slug', 'status'],
   retailers: ['shop_name', 'owner_name', 'city', 'phone', 'plan', 'plan_status'],
-}
+};
 
 function getPayloadPreview(entry: VaultEntry): Record<string, unknown> {
-  const keys = TABLE_PREVIEW_KEYS[entry.source_table] ?? ['id']
-  const preview: Record<string, unknown> = {}
+  const keys = TABLE_PREVIEW_KEYS[entry.source_table] ?? ['id'];
+  const preview: Record<string, unknown> = {};
   for (const key of keys) {
     if (key in entry.payload) {
-      preview[key] = entry.payload[key]
+      preview[key] = entry.payload[key];
     }
   }
-  return preview
+  return preview;
 }
 
 // ─── Table Badge Component ────────────────────────────────────
@@ -132,111 +132,113 @@ const TABLE_COLORS: Record<string, string> = {
   customers: 'bg-blue-50 text-blue-600 border-blue-200',
   collections: 'bg-purple-50 text-purple-600 border-purple-200',
   retailers: 'bg-amber-50 text-amber-600 border-amber-200',
-}
+};
 
 function TableBadge({ table }: { table: string }) {
-  const colorClass = TABLE_COLORS[table] ?? 'bg-gray-50 text-gray-600 border-gray-200'
+  const colorClass = TABLE_COLORS[table] ?? 'bg-gray-50 text-gray-600 border-gray-200';
   return (
-    <span className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${colorClass}`}>
+    <span
+      className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${colorClass}`}
+    >
       {table}
     </span>
-  )
+  );
 }
 
 // ─── Main Page ─────────────────────────────────────────────────
 
 export default function DeletionVaultPage() {
-  const [entries, setEntries] = useState<VaultEntry[]>([])
-  const [totalCount, setTotalCount] = useState(0)
-  const [vaultConfigured, setVaultConfigured] = useState(true)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState('')
+  const [entries, setEntries] = useState<VaultEntry[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [vaultConfigured, setVaultConfigured] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
 
   // Search / filter state
-  const [sourceTable, setSourceTable] = useState('')
-  const [sourceId, setSourceId] = useState('')
-  const [retailerId, setRetailerId] = useState('')
+  const [sourceTable, setSourceTable] = useState('');
+  const [sourceId, setSourceId] = useState('');
+  const [retailerId, setRetailerId] = useState('');
 
   // Pagination
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Expanded payload rows
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   // ── Fetch ────────────────────────────────────────────────────
   const fetchEntries = useCallback(
     async (isRefresh = false, append = false) => {
-      if (append) setLoadingMore(true)
-      else if (isRefresh) setRefreshing(true)
-      else setLoading(true)
-      setError('')
+      if (append) setLoadingMore(true);
+      else if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError('');
 
       try {
-        const params = new URLSearchParams()
-        if (append && cursor) params.set('cursor', cursor)
-        if (sourceTable) params.set('source_table', sourceTable)
-        if (sourceId) params.set('source_id', sourceId)
-        if (retailerId) params.set('retailer_id', retailerId)
+        const params = new URLSearchParams();
+        if (append && cursor) params.set('cursor', cursor);
+        if (sourceTable) params.set('source_table', sourceTable);
+        if (sourceId) params.set('source_id', sourceId);
+        if (retailerId) params.set('retailer_id', retailerId);
 
         const res = await fetch(
           `${API_URL}/v1/admin/deletion-vault?${params.toString()}`,
           adminGetOptions(),
-        )
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
 
-        const json = (await res.json()) as VaultResponse
-        const newEntries = json.data.entries
+        const json = (await res.json()) as VaultResponse;
+        const newEntries = json.data.entries;
 
         if (append) {
-          setEntries((prev) => [...prev, ...newEntries])
+          setEntries((prev) => [...prev, ...newEntries]);
         } else {
-          setEntries(newEntries)
+          setEntries(newEntries);
         }
-        setTotalCount(json.data.total_count)
-        setVaultConfigured(json.data.vault_configured)
-        setHasMore(json.pagination?.has_more ?? false)
-        setCursor(json.pagination?.cursor ?? null)
+        setTotalCount(json.data.total_count);
+        setVaultConfigured(json.data.vault_configured);
+        setHasMore(json.pagination?.has_more ?? false);
+        setCursor(json.pagination?.cursor ?? null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load vault entries')
+        setError(err instanceof Error ? err.message : 'Failed to load vault entries');
       } finally {
-        setLoading(false)
-        setRefreshing(false)
-        setLoadingMore(false)
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
       }
     },
     [cursor, sourceTable, sourceId, retailerId],
-  )
+  );
 
   useEffect(() => {
-    setCursor(null)
-  }, [sourceTable, sourceId, retailerId])
+    setCursor(null);
+  }, [sourceTable, sourceId, retailerId]);
 
   useEffect(() => {
-    fetchEntries()
+    fetchEntries();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceTable, sourceId, retailerId])
+  }, [sourceTable, sourceId, retailerId]);
 
   // ── Reset filters ────────────────────────────────────────────
   const resetFilters = () => {
-    setSourceTable('')
-    setSourceId('')
-    setRetailerId('')
-  }
+    setSourceTable('');
+    setSourceId('');
+    setRetailerId('');
+  };
 
-  const hasFilters = sourceTable || sourceId || retailerId
+  const hasFilters = sourceTable || sourceId || retailerId;
 
   // ── Toggle payload expansion ─────────────────────────────────
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <motion.div
@@ -315,7 +317,10 @@ export default function DeletionVaultPage() {
             <div>
               <label className="text-[10px] text-gray-400 block mb-1">Source ID</label>
               <div className="relative">
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search
+                  size={12}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
                 <input
                   type="text"
                   value={sourceId}
@@ -330,7 +335,10 @@ export default function DeletionVaultPage() {
             <div>
               <label className="text-[10px] text-gray-400 block mb-1">Retailer ID</label>
               <div className="relative">
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search
+                  size={12}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
                 <input
                   type="text"
                   value={retailerId}
@@ -349,11 +357,14 @@ export default function DeletionVaultPage() {
         <motion.div variants={itemVariants}>
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
             <HardDrive size={40} className="mx-auto text-amber-300 mb-3" />
-            <h2 className="text-sm font-semibold text-amber-800 mb-1">Vault Database Not Configured</h2>
+            <h2 className="text-sm font-semibold text-amber-800 mb-1">
+              Vault Database Not Configured
+            </h2>
             <p className="text-xs text-amber-600 max-w-md mx-auto">
               The Deletion Vault requires a separate Postgres instance configured via{' '}
-              <code className="font-mono text-amber-700">VAULT_DATABASE_URL</code>.
-              Once set up, run <code className="font-mono text-amber-700">pnpm db:generate:vault</code> to generate the vault client.
+              <code className="font-mono text-amber-700">VAULT_DATABASE_URL</code>. Once set up, run{' '}
+              <code className="font-mono text-amber-700">pnpm db:generate:vault</code> to generate
+              the vault client.
             </p>
           </div>
         </motion.div>
@@ -463,7 +474,9 @@ export default function DeletionVaultPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                       <div>
                         <span className="text-gray-400 block mb-0.5">Entry ID</span>
-                        <code className="text-gray-700 font-mono text-[10px] break-all">{entry.id}</code>
+                        <code className="text-gray-700 font-mono text-[10px] break-all">
+                          {entry.id}
+                        </code>
                       </div>
                       <div>
                         <span className="text-gray-400 block mb-0.5">Source Table</span>
@@ -471,7 +484,9 @@ export default function DeletionVaultPage() {
                       </div>
                       <div>
                         <span className="text-gray-400 block mb-0.5">Source ID</span>
-                        <code className="text-gray-700 font-mono text-[10px] break-all">{entry.source_id}</code>
+                        <code className="text-gray-700 font-mono text-[10px] break-all">
+                          {entry.source_id}
+                        </code>
                       </div>
                       <div>
                         <span className="text-gray-400 block mb-0.5">Deleted At</span>
@@ -562,9 +577,10 @@ export default function DeletionVaultPage() {
       <motion.div variants={itemVariants} className="text-center">
         <p className="text-[10px] text-gray-400 flex items-center justify-center gap-1">
           <Shield size={10} />
-          The vault DB has INSERT-only credentials — entries cannot be modified or deleted by the application (F-016)
+          The vault DB has INSERT-only credentials — entries cannot be modified or deleted by the
+          application (F-016)
         </p>
       </motion.div>
     </motion.div>
-  )
+  );
 }

@@ -13,7 +13,10 @@ function envValue(filePath, key) {
     const raw = readFileSync(filePath, 'utf8');
     const line = raw.split(/\r?\n/).find((l) => l.startsWith(`${key}=`));
     if (!line) return null;
-    return line.slice(key.length + 1).trim().replace(/^["']|["']$/g, '');
+    return line
+      .slice(key.length + 1)
+      .trim()
+      .replace(/^["']|["']$/g, '');
   } catch {
     return null;
   }
@@ -60,9 +63,30 @@ const monthSummary = {
 };
 
 const overview = [
-  { period: '2026-08', total_payment_inr: 10000000, commission_inr: 300000, spent_inr: 170000, remaining_inr: 130000, expense_count: 2 },
-  { period: '2026-07', total_payment_inr: 8000000, commission_inr: 240000, spent_inr: 240000, remaining_inr: 0, expense_count: 1 },
-  { period: '2026-06', total_payment_inr: 5000000, commission_inr: 150000, spent_inr: 0, remaining_inr: 150000, expense_count: 0 },
+  {
+    period: '2026-08',
+    total_payment_inr: 10000000,
+    commission_inr: 300000,
+    spent_inr: 170000,
+    remaining_inr: 130000,
+    expense_count: 2,
+  },
+  {
+    period: '2026-07',
+    total_payment_inr: 8000000,
+    commission_inr: 240000,
+    spent_inr: 240000,
+    remaining_inr: 0,
+    expense_count: 1,
+  },
+  {
+    period: '2026-06',
+    total_payment_inr: 5000000,
+    commission_inr: 150000,
+    spent_inr: 0,
+    remaining_inr: 150000,
+    expense_count: 0,
+  },
 ];
 
 const browser = await chromium.launch({ channel: 'chrome' });
@@ -81,7 +105,11 @@ let deleted = null;
 
 // ── Mock the commission API contract ──
 await page.route('**/v1/admin/commission/overview**', (route) =>
-  route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: overview }) }),
+  route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: overview }),
+  }),
 );
 await page.route('**/v1/admin/commission/expenses?month=*', (route) => {
   const summary = { ...monthSummary.summary, expense_count: monthExpenses.length };
@@ -92,7 +120,11 @@ await page.route('**/v1/admin/commission/expenses?month=*', (route) => {
   });
 });
 await page.route('**/v1/admin/csrf-token', (route) =>
-  route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { csrf_token: 'mock-csrf' } }) }),
+  route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ data: { csrf_token: 'mock-csrf' } }),
+  }),
 );
 await page.route('**/v1/admin/commission/expenses', (route) => {
   if (route.request().method() === 'POST') {
@@ -135,9 +167,15 @@ await page.route('**/v1/admin/commission/expenses/*', (route) => {
 });
 
 // ── Authenticate + load ──
-await page.goto('http://localhost:3000/admin/commission', { waitUntil: 'domcontentloaded', timeout: 60000 });
+await page.goto('http://localhost:3000/admin/commission', {
+  waitUntil: 'domcontentloaded',
+  timeout: 60000,
+});
 await page.evaluate((key) => sessionStorage.setItem('admin_key', key), adminKey);
-await page.goto('http://localhost:3000/admin/commission', { waitUntil: 'networkidle', timeout: 60000 });
+await page.goto('http://localhost:3000/admin/commission', {
+  waitUntil: 'networkidle',
+  timeout: 60000,
+});
 await page.waitForSelector('text=Commission Pool', { timeout: 20000 });
 
 const report = {};
@@ -155,14 +193,18 @@ report.cards = await page.evaluate(() => {
 
 // 2. Monthly Summary tab table
 report.summaryRows = await page.evaluate(() =>
-  [...document.querySelectorAll('table tbody tr')].map((tr) => tr.innerText.replace(/\s+/g, ' ').trim()),
+  [...document.querySelectorAll('table tbody tr')].map((tr) =>
+    tr.innerText.replace(/\s+/g, ' ').trim(),
+  ),
 );
 
 // 3. Switch to Expenditure tab
 await page.getByRole('button', { name: 'Expenditure' }).click();
 await page.waitForSelector('text=Expenditure · August 2026', { timeout: 10000 });
 report.expenseGridRows = await page.evaluate(() =>
-  [...document.querySelectorAll('.divide-y > button')].map((b) => b.innerText.replace(/\s+/g, ' ').trim()),
+  [...document.querySelectorAll('.divide-y > button')].map((b) =>
+    b.innerText.replace(/\s+/g, ' ').trim(),
+  ),
 );
 
 // 4. Row click → detail popup

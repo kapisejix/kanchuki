@@ -1,34 +1,34 @@
-import { useState, useCallback, memo } from 'react'
-import { formatPrice, buildGoogleReviewUrl } from '@kanchuki/shared'
-import { View, Text, FlatList, TextInput, Linking, Alert } from 'react-native'
-import { router } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { Plus, Search, ChevronRight, MapPin, Users, Star } from 'lucide-react-native'
-import { customerApi, retailerApi } from '../../src/lib/api'
-import { useAuth } from '../../src/lib/auth-context'
-import { buildWhatsAppInviteUrl } from '../../src/lib/staff-invite'
-import { buildGoogleReviewAskMessage, canAskGoogleReview } from '../../src/lib/google-review-ask'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { CustomerListSkeleton } from '../../src/components/Skeleton'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
+import { buildGoogleReviewUrl, formatPrice } from '@kanchuki/shared';
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ChevronRight, MapPin, Plus, Search, Star, Users } from 'lucide-react-native';
+import { memo, useCallback, useState } from 'react';
+import { Alert, FlatList, Linking, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { CustomerListSkeleton } from '../../src/components/Skeleton';
+import { customerApi, retailerApi } from '../../src/lib/api';
+import { useAuth } from '../../src/lib/auth-context';
+import { buildGoogleReviewAskMessage, canAskGoogleReview } from '../../src/lib/google-review-ask';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { buildWhatsAppInviteUrl } from '../../src/lib/staff-invite';
 
 type Customer = {
-  id: string
-  name: string
-  phone: string
-  email: string | null
-  city: string | null
-  state: string | null
-  address_line1: string | null
-  pref_colors: string[]
-  pref_styles: string[]
-  pref_fabrics: string[]
-  budget_min: number | null
-  budget_max: number | null
-  last_visit_at: string | null
-  consent_given?: boolean
-}
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  city: string | null;
+  state: string | null;
+  address_line1: string | null;
+  pref_colors: string[];
+  pref_styles: string[];
+  pref_fabrics: string[];
+  budget_min: number | null;
+  budget_max: number | null;
+  last_visit_at: string | null;
+  consent_given?: boolean;
+};
 
 // ── Memoized Customer Card ─────────────────────────────────────────
 
@@ -39,18 +39,18 @@ const CustomerCard = memo(function CustomerCard({
   shopName,
   isOwner,
 }: {
-  item: Customer
-  onPress: () => void
-  placeId: string | null
-  shopName: string
-  isOwner: boolean
+  item: Customer;
+  onPress: () => void;
+  placeId: string | null;
+  shopName: string;
+  isOwner: boolean;
 }) {
   const canAsk = canAskGoogleReview({
     consentGiven: item.consent_given,
     phone: item.phone,
     isOwner,
     placeId,
-  })
+  });
   const askForReview = () => {
     const url = buildWhatsAppInviteUrl(
       item.phone,
@@ -59,15 +59,17 @@ const CustomerCard = memo(function CustomerCard({
         shopName,
         reviewUrl: buildGoogleReviewUrl(placeId ?? ''),
       }),
-    )
-    Linking.openURL(url).catch(() => Alert.alert('Could not open WhatsApp', 'Please check WhatsApp is installed.'))
-  }
+    );
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Could not open WhatsApp', 'Please check WhatsApp is installed.'),
+    );
+  };
   // Build a location string from available address fields
-  const locationParts = [item.city, item.state].filter(Boolean)
-  const locationStr = locationParts.length > 0 ? locationParts.join(', ') : null
+  const locationParts = [item.city, item.state].filter(Boolean);
+  const locationStr = locationParts.length > 0 ? locationParts.join(', ') : null;
 
   // Build a preference summary line (style + fabric)
-  const prefSummary = [...item.pref_styles.slice(0, 2)].filter(Boolean)
+  const prefSummary = [...item.pref_styles.slice(0, 2)].filter(Boolean);
 
   return (
     <AnimatedPressable
@@ -91,13 +93,13 @@ const CustomerCard = memo(function CustomerCard({
             letterSpacing: 0.32,
             fontWeight: '800',
             fontSize: 16,
-            lineHeight: 24
+            lineHeight: 24,
           }}
           className="text-base leading-6 text-spaceCadet-900"
         >
           {item.name}
         </Text>
-        
+
         {/* City / State */}
         {locationStr && (
           <View className="flex-row items-center gap-1 mt-0.5">
@@ -122,7 +124,9 @@ const CustomerCard = memo(function CustomerCard({
             ))}
             {!!item.budget_max && (
               <View className="bg-lavender-100 px-2 py-0.5 rounded-md">
-                <Text className="text-spaceCadet-900 font-medium text-[11px]">≤{formatPrice(item.budget_max)}</Text>
+                <Text className="text-spaceCadet-900 font-medium text-[11px]">
+                  ≤{formatPrice(item.budget_max)}
+                </Text>
               </View>
             )}
           </View>
@@ -142,34 +146,36 @@ const CustomerCard = memo(function CustomerCard({
 
       <ChevronRight size={18} color="#928EB2" />
     </AnimatedPressable>
-  )
-})
+  );
+});
 
 // ── Customers Screen ───────────────────────────────────────────────
 
 export default function CustomersScreen() {
-  const { tabScrollPaddingBottom } = useScreenInsets()
-  const [search, setSearch] = useState('')
+  const { tabScrollPaddingBottom } = useScreenInsets();
+  const [search, setSearch] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['customers', search],
     queryFn: () => customerApi.list(search || undefined),
     staleTime: 30_000,
     gcTime: 300_000,
-  })
+  });
 
-  const { staffRole } = useAuth()
+  const { staffRole } = useAuth();
   const { data: meData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 300_000,
-  })
-  const me = (meData as { data: { google_place_id?: string | null; shop_name?: string | null } } | undefined)?.data
-  const placeId = me?.google_place_id ?? null
-  const shopName = me?.shop_name ?? 'our store'
-  const isOwner = staffRole === null
+  });
+  const me = (
+    meData as { data: { google_place_id?: string | null; shop_name?: string | null } } | undefined
+  )?.data;
+  const placeId = me?.google_place_id ?? null;
+  const shopName = me?.shop_name ?? 'our store';
+  const isOwner = staffRole === null;
 
-  const customers = ((data as { data: Customer[] } | undefined)?.data ?? [])
+  const customers = (data as { data: Customer[] } | undefined)?.data ?? [];
 
   const renderItem = useCallback(
     ({ item }: { item: Customer }) => (
@@ -182,9 +188,9 @@ export default function CustomersScreen() {
       />
     ),
     [placeId, shopName, isOwner],
-  )
+  );
 
-  const keyExtractor = useCallback((item: Customer) => item.id, [])
+  const keyExtractor = useCallback((item: Customer) => item.id, []);
 
   const listEmpty = useCallback(
     () => (
@@ -217,7 +223,7 @@ export default function CustomersScreen() {
       </View>
     ),
     [search],
-  )
+  );
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -242,7 +248,12 @@ export default function CustomersScreen() {
           data={customers}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 14, gap: 10, flexGrow: 1, paddingBottom: tabScrollPaddingBottom }}
+          contentContainerStyle={{
+            padding: 14,
+            gap: 10,
+            flexGrow: 1,
+            paddingBottom: tabScrollPaddingBottom,
+          }}
           ListEmptyComponent={listEmpty}
           // ── Performance props ──
           windowSize={5}
@@ -263,5 +274,5 @@ export default function CustomersScreen() {
         <Plus size={26} color="white" />
       </AnimatedPressable>
     </View>
-  )
+  );
 }

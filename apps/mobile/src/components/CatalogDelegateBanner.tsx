@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
-import { router, usePathname } from 'expo-router'
-import { Store, LogOut, ShieldCheck } from 'lucide-react-native'
+import { router, usePathname } from 'expo-router';
+import { LogOut, ShieldCheck, Store } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import {
+  type CatalogDelegateInfo,
   exitCatalogSession,
   getCatalogDelegateInfo,
   onDelegateChange,
-  type CatalogDelegateInfo,
-} from '../lib/catalog-delegate'
-import { teamApi } from '../lib/team-api'
-import { showError } from '../lib/errors'
+} from '../lib/catalog-delegate';
+import { showError } from '../lib/errors';
+import { teamApi } from '../lib/team-api';
 
-const SCOPE_LABEL = { DEMO: 'Demo', GROWTH: 'Growth', MAINTENANCE: 'Maintenance' } as const
+const SCOPE_LABEL = { DEMO: 'Demo', GROWTH: 'Growth', MAINTENANCE: 'Maintenance' } as const;
 
 /**
  * F-020: persistent banner shown across the whole app whenever a team
@@ -22,36 +22,36 @@ const SCOPE_LABEL = { DEMO: 'Demo', GROWTH: 'Growth', MAINTENANCE: 'Maintenance'
  * scope", spec §6).
  */
 export function CatalogDelegateBanner() {
-  const pathname = usePathname()
-  const [info, setInfo] = useState<CatalogDelegateInfo | null>(null)
+  const pathname = usePathname();
+  const [info, setInfo] = useState<CatalogDelegateInfo | null>(null);
 
   useEffect(() => {
-    const load = () => void getCatalogDelegateInfo().then(setInfo)
-    load()
-    return onDelegateChange(load)
-  }, [pathname])
+    const load = () => void getCatalogDelegateInfo().then(setInfo);
+    load();
+    return onDelegateChange(load);
+  }, [pathname]);
 
-  if (!info) return null
+  if (!info) return null;
 
-  const support = info.support
+  const support = info.support;
 
   const handleExit = async () => {
     // Restore the team login FIRST — ending the session server-side is a team
     // request and must not run under the support token being ended.
-    await exitCatalogSession()
-    setInfo(null)
+    await exitCatalogSession();
+    setInfo(null);
     if (support) {
       try {
-        await teamApi.endSupportSession(support.grant_id)
+        await teamApi.endSupportSession(support.grant_id);
       } catch (err) {
         showError(
           err,
           'Session closed on this phone, but we could not end it on the server. It expires on its own.',
-        )
+        );
       }
     }
-    router.replace('/staff')
-  }
+    router.replace('/staff');
+  };
 
   return (
     <View className="flex-row items-center justify-between gap-2 px-4 py-2 bg-ink-700">
@@ -72,5 +72,5 @@ export function CatalogDelegateBanner() {
         <Text className="text-white text-[11px] font-semibold">End Session</Text>
       </TouchableOpacity>
     </View>
-  )
+  );
 }

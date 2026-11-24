@@ -1,28 +1,28 @@
-import { View, Text, FlatList } from 'react-native'
-import { router } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { Plus, FolderKanban } from 'lucide-react-native'
-import { Image } from 'expo-image'
-import { ProductGridSkeleton } from '../../src/components/Skeleton'
-import { categoryApi, retailerApi, type ProductCategory } from '../../src/lib/api'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
+import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { FolderKanban, Plus } from 'lucide-react-native';
+import { FlatList, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { ProductGridSkeleton } from '../../src/components/Skeleton';
+import { type ProductCategory, categoryApi, retailerApi } from '../../src/lib/api';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 export default function CategoryListScreen() {
-  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets()
-  const columns = 2
+  const { headerPaddingTop, tabScrollPaddingBottom } = useScreenInsets();
+  const columns = 2;
   const { data, isLoading } = useQuery({
     queryKey: ['categories', 'list'],
     queryFn: () => categoryApi.list(),
-  })
-  const categories = data?.data ?? []
+  });
+  const categories = data?.data ?? [];
   const { data: retailerData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
-  })
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data
+  });
+  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -34,7 +34,11 @@ export default function CategoryListScreen() {
         <View className="flex-row items-center gap-3">
           <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
             {retailerProfile?.logo_url ? (
-              <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              <Image
+                source={{ uri: retailerProfile.logo_url }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+              />
             ) : (
               <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
@@ -42,9 +46,12 @@ export default function CategoryListScreen() {
             )}
           </View>
           <View>
-            <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
+            <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">
+              {retailerProfile?.shop_name ?? 'Store'}
+            </Text>
             <Text className="text-xs text-heliotrope-500">
-              {retailerProfile?.city ?? 'Categories'} · {categories.length} {categories.length === 1 ? 'category' : 'categories'}
+              {retailerProfile?.city ?? 'Categories'} · {categories.length}{' '}
+              {categories.length === 1 ? 'category' : 'categories'}
             </Text>
           </View>
         </View>
@@ -59,7 +66,12 @@ export default function CategoryListScreen() {
           keyExtractor={(item) => item.id}
           numColumns={columns}
           columnWrapperStyle={{ gap: 14 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: tabScrollPaddingBottom, gap: 14, flexGrow: 1 }}
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: tabScrollPaddingBottom,
+            gap: 14,
+            flexGrow: 1,
+          }}
           renderItem={({ item }: { item: ProductCategory }) => (
             <AnimatedPressable
               onPress={() => router.push(`/category/${item.id}`)}
@@ -88,7 +100,10 @@ export default function CategoryListScreen() {
               </View>
 
               <View className="px-3.5 pb-3.5 pt-1 bg-white">
-                <Text className="text-sm text-spaceCadet-900 font-extrabold font-marcellus truncate" numberOfLines={1}>
+                <Text
+                  className="text-sm text-spaceCadet-900 font-extrabold font-marcellus truncate"
+                  numberOfLines={1}
+                >
                   {item.name}
                 </Text>
                 <Text className="text-xs text-heliotrope-500 mt-0.5">Browse collection</Text>
@@ -100,12 +115,15 @@ export default function CategoryListScreen() {
               <View className="w-16 h-16 rounded-2xl bg-lavender-100 items-center justify-center mb-4 border border-lavender-200">
                 <FolderKanban size={28} color="#6B4773" />
               </View>
-              <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">No categories yet</Text>
+              <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">
+                No categories yet
+              </Text>
               <Text className="text-xs text-heliotrope-500 mt-1 text-center mb-6">
                 Group your products so they are easy to browse
               </Text>
               <View className="w-full max-w-xs">
-                <GradientButton variant="web"
+                <GradientButton
+                  variant="web"
                   label="+ Add First Category"
                   onPress={() => router.push('/category/new')}
                 />
@@ -132,5 +150,5 @@ export default function CategoryListScreen() {
         <Plus size={24} color="white" strokeWidth={2.5} />
       </AnimatedPressable>
     </View>
-  )
+  );
 }

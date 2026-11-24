@@ -63,7 +63,9 @@ describe('getPassport', () => {
     // What an aborted fetch looks like: a rejected promise. The caller must get
     // a definite "not signed in" — an unhandled rejection here would surface in
     // Sentry and, worse, leave a component stuck in its unknown state.
-    fetchMock.mockRejectedValue(Object.assign(new Error('The operation was aborted'), { name: 'TimeoutError' }));
+    fetchMock.mockRejectedValue(
+      Object.assign(new Error('The operation was aborted'), { name: 'TimeoutError' }),
+    );
 
     await expect(getPassport()).resolves.toBeNull();
     await expect(getPassportSession()).resolves.toBeNull();

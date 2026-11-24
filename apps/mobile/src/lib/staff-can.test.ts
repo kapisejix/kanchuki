@@ -1,45 +1,45 @@
-import { describe, expect, it } from 'vitest'
-import { staffCan } from './staff-can'
+import { describe, expect, it } from 'vitest';
+import { staffCan } from './staff-can';
 
 describe('staffCan mirrors the server allowlist', () => {
   it('owner can do everything', () => {
     for (const f of ['catalog.edit', 'collections', 'growth', 'analytics', 'social'] as const) {
-      expect(staffCan(null, f)).toBe(true)
+      expect(staffCan(null, f)).toBe(true);
     }
-  })
+  });
   it('manager gets growth, analytics and social', () => {
-    expect(staffCan('manager', 'growth')).toBe(true)
-    expect(staffCan('manager', 'analytics')).toBe(true)
-    expect(staffCan('manager', 'social')).toBe(true)
-  })
+    expect(staffCan('manager', 'growth')).toBe(true);
+    expect(staffCan('manager', 'analytics')).toBe(true);
+    expect(staffCan('manager', 'social')).toBe(true);
+  });
   it('enquiries inbox: every role; reassign: owner + manager (F-044 D2)', () => {
     for (const role of [null, 'manager', 'salesperson']) {
-      expect(staffCan(role, 'enquiries')).toBe(true)
+      expect(staffCan(role, 'enquiries')).toBe(true);
     }
-    expect(staffCan(null, 'enquiries.assign')).toBe(true)
-    expect(staffCan('manager', 'enquiries.assign')).toBe(true)
-    expect(staffCan('salesperson', 'enquiries.assign')).toBe(false)
-  })
+    expect(staffCan(null, 'enquiries.assign')).toBe(true);
+    expect(staffCan('manager', 'enquiries.assign')).toBe(true);
+    expect(staffCan('salesperson', 'enquiries.assign')).toBe(false);
+  });
   it('enquiries.tryon: owner + manager only (F-044 R2)', () => {
-    expect(staffCan(null, 'enquiries.tryon')).toBe(true)
-    expect(staffCan('manager', 'enquiries.tryon')).toBe(true)
-    expect(staffCan('salesperson', 'enquiries.tryon')).toBe(false)
-  })
+    expect(staffCan(null, 'enquiries.tryon')).toBe(true);
+    expect(staffCan('manager', 'enquiries.tryon')).toBe(true);
+    expect(staffCan('salesperson', 'enquiries.tryon')).toBe(false);
+  });
   it('setup checklist is owner-only (mirrors the server: no allowlist entry)', () => {
-    expect(staffCan(null, 'setup')).toBe(true)
-    expect(staffCan('manager', 'setup')).toBe(false)
-    expect(staffCan('salesperson', 'setup')).toBe(false)
-  })
+    expect(staffCan(null, 'setup')).toBe(true);
+    expect(staffCan('manager', 'setup')).toBe(false);
+    expect(staffCan('salesperson', 'setup')).toBe(false);
+  });
   it('Google reviews: owner + manager read and reply; a salesperson does not (mirrors the manager allowlist)', () => {
-    expect(staffCan(null, 'google.reviews')).toBe(true)
-    expect(staffCan('manager', 'google.reviews')).toBe(true)
-    expect(staffCan('salesperson', 'google.reviews')).toBe(false)
-  })
+    expect(staffCan(null, 'google.reviews')).toBe(true);
+    expect(staffCan('manager', 'google.reviews')).toBe(true);
+    expect(staffCan('salesperson', 'google.reviews')).toBe(false);
+  });
   it('salesperson gets view + add customer only', () => {
-    expect(staffCan('salesperson', 'catalog.view')).toBe(true)
-    expect(staffCan('salesperson', 'customers.add')).toBe(true)
+    expect(staffCan('salesperson', 'catalog.view')).toBe(true);
+    expect(staffCan('salesperson', 'customers.add')).toBe(true);
     for (const f of ['catalog.edit', 'collections', 'growth', 'analytics', 'social'] as const) {
-      expect(staffCan('salesperson', f)).toBe(false)
+      expect(staffCan('salesperson', f)).toBe(false);
     }
-  })
-})
+  });
+});

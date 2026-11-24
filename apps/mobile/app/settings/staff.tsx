@@ -1,42 +1,63 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Clipboard from 'expo-clipboard';
 import {
-  View, Text, FlatList, TextInput,
-  Alert, Modal, Pressable, Share, Platform, Linking,
-} from 'react-native'
-import * as Clipboard from 'expo-clipboard'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+  Check,
+  Copy,
+  MessageCircle,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  Plus, Trash2, X, User, Pencil, RotateCcw, Check, MessageCircle, Copy,
-} from 'lucide-react-native'
-import { CustomerListSkeleton } from '../../src/components/Skeleton'
+  Alert,
+  FlatList,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  Share,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { DangerButton } from '../../src/components/DangerButton';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { ScreenHeader } from '../../src/components/ScreenHeader';
+import { CustomerListSkeleton } from '../../src/components/Skeleton';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton';
 import {
-  retailerApi, staffApi,
-  type StaffMember, type StaffCreateResult, type StaffInvitePayload,
-} from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { ScreenHeader } from '../../src/components/ScreenHeader'
-import { DangerButton } from '../../src/components/DangerButton'
-import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
-import { GradientButton } from '../../src/components/GradientButton'
-import { ROLE_SUMMARY } from '../../src/lib/staff-can'
-import { buildStaffInviteMessage, buildWhatsAppInviteUrl } from '../../src/lib/staff-invite'
+  type StaffCreateResult,
+  type StaffInvitePayload,
+  type StaffMember,
+  retailerApi,
+  staffApi,
+} from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { ROLE_SUMMARY } from '../../src/lib/staff-can';
+import { buildStaffInviteMessage, buildWhatsAppInviteUrl } from '../../src/lib/staff-invite';
+import { useTheme } from '../../src/lib/theme';
 
 const ROLE_OPTIONS: { value: 'manager' | 'salesperson'; label: string; description: string }[] = [
   {
     value: 'manager',
     label: 'Manager',
-    description: 'Can add & edit products, categories, collections, size charts, and add customers.',
+    description:
+      'Can add & edit products, categories, collections, size charts, and add customers.',
   },
   {
     value: 'salesperson',
     label: 'Salesperson',
-    description: 'Can view the catalog and add customers. Cannot edit products or create collections.',
+    description:
+      'Can view the catalog and add customers. Cannot edit products or create collections.',
   },
-]
+];
 
 // ─── Add / Edit Staff Modal (FR-1) ────────────────────────────────
 
@@ -46,32 +67,32 @@ function AddStaffModal({
   editing,
   onCreated,
 }: {
-  visible: boolean
-  onClose: () => void
-  editing?: StaffMember | null
+  visible: boolean;
+  onClose: () => void;
+  editing?: StaffMember | null;
   /** FR-6.1 — fired with the created member (+ tokenized invite when one was
    * minted) so the screen can show the invite prompt. */
-  onCreated?: (member: StaffCreateResult) => void
+  onCreated?: (member: StaffCreateResult) => void;
 }) {
-  const { colors } = useTheme()
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [role, setRole] = useState<'manager' | 'salesperson'>('salesperson')
-  const queryClient = useQueryClient()
+  const { colors } = useTheme();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<'manager' | 'salesperson'>('salesperson');
+  const queryClient = useQueryClient();
 
   // When switching into edit mode, prefill from the member being edited.
-  const [lastEditingId, setLastEditingId] = useState<string | null>(null)
+  const [lastEditingId, setLastEditingId] = useState<string | null>(null);
   if (editing && editing.id !== lastEditingId) {
-    setLastEditingId(editing.id)
-    setName(editing.name)
-    setPhone(editing.phone)
-    setRole(editing.role === 'manager' ? 'manager' : 'salesperson')
+    setLastEditingId(editing.id);
+    setName(editing.name);
+    setPhone(editing.phone);
+    setRole(editing.role === 'manager' ? 'manager' : 'salesperson');
   } else if (!editing && lastEditingId !== null) {
     // Modal closed/reopened for a fresh add — reset.
-    setLastEditingId(null)
-    setName('')
-    setPhone('')
-    setRole('salesperson')
+    setLastEditingId(null);
+    setName('');
+    setPhone('');
+    setRole('salesperson');
   }
 
   const save = useMutation<{ data: StaffCreateResult }, Error, void>({
@@ -80,30 +101,30 @@ function AddStaffModal({
         name: name.trim(),
         phone: phone.replace(/\D/g, ''),
         role,
-      }
+      };
       // Edit-path response is the member row (invite omitted by the server) —
       // onCreated only fires on the create path, so the edit result's invite
       // field is never read. The cast keeps the mutation's return type single.
       return editing
         ? (staffApi.update(editing.id, payload) as unknown as Promise<{ data: StaffCreateResult }>)
-        : staffApi.create(payload)
+        : staffApi.create(payload);
     },
     onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: ['staff'] })
-      onClose()
-      setName('')
-      setPhone('')
-      setRole('salesperson')
-      setLastEditingId(null)
+      void queryClient.invalidateQueries({ queryKey: ['staff'] });
+      onClose();
+      setName('');
+      setPhone('');
+      setRole('salesperson');
+      setLastEditingId(null);
       // FR-6.1: invite signal — only on the CREATE path (edits of an existing
       // member don't need a "please log in" prompt).
-      if (!editing && onCreated && result?.data) onCreated(result.data)
+      if (!editing && onCreated && result?.data) onCreated(result.data);
     },
     // showError surfaces the server reason for a 4xx (duplicate phone, seat limit reached,
     // phone already a retailer account) — RC-009: without it every failure read as the same
     // dead "Failed to add team member".
     onError: (err: Error) => showError(err, 'Failed to save team member'),
-  })
+  });
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -113,7 +134,11 @@ function AddStaffModal({
             <Text className="text-lg font-semibold text-spaceCadet-900">
               {editing ? 'Edit Team Member' : 'Add Team Member'}
             </Text>
-            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable
+              onPress={onClose}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
               <X size={20} color={colors.sand[400]} />
             </AnimatedPressable>
           </View>
@@ -131,9 +156,7 @@ function AddStaffModal({
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
-              Phone
-            </Text>
+            <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Phone</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
@@ -153,12 +176,10 @@ function AddStaffModal({
 
           {/* FR-1.1 — role picker (previously hardcoded salesperson) */}
           <View>
-            <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
-              Access level
-            </Text>
+            <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Access level</Text>
             <View className="gap-2">
               {ROLE_OPTIONS.map((option) => {
-                const selected = role === option.value
+                const selected = role === option.value;
                 return (
                   <Pressable
                     key={option.value}
@@ -173,12 +194,16 @@ function AddStaffModal({
                     accessibilityLabel={`${option.label} role`}
                   >
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-sm font-semibold text-spaceCadet-900">{option.label}</Text>
+                      <Text className="text-sm font-semibold text-spaceCadet-900">
+                        {option.label}
+                      </Text>
                       {selected && <Check size={16} color={colors.ink[600]} />}
                     </View>
-                    <Text className="text-xs text-heliotrope-500 mt-1 leading-4">{option.description}</Text>
+                    <Text className="text-xs text-heliotrope-500 mt-1 leading-4">
+                      {option.description}
+                    </Text>
                   </Pressable>
-                )
+                );
               })}
             </View>
           </View>
@@ -188,7 +213,8 @@ function AddStaffModal({
               <WhiteButton label="Cancel" disabled={save.isPending} onPress={onClose} />
             </View>
             <View className="flex-1">
-              <GradientButton variant="web"
+              <GradientButton
+                variant="web"
                 label={editing ? 'Save' : 'Add'}
                 onPress={() => save.mutate()}
                 disabled={!name.trim() || phone.replace(/\D/g, '').length !== 10}
@@ -199,7 +225,7 @@ function AddStaffModal({
         </View>
       </KeyboardScreen>
     </Modal>
-  )
+  );
 }
 
 // ─── Permanent-delete (DPDP) confirm modal (FR-4.4) ───────────────
@@ -209,36 +235,36 @@ function PurgeModal({
   onClose,
   onPurged,
 }: {
-  member: StaffMember | null
-  onClose: () => void
-  onPurged: () => void
+  member: StaffMember | null;
+  onClose: () => void;
+  onPurged: () => void;
 }) {
-  const { colors } = useTheme()
-  const [confirm, setConfirm] = useState('')
-  const [deleting, setDeleting] = useState(false)
-  const isConfirmed = confirm.trim().toUpperCase() === 'DELETE'
+  const { colors } = useTheme();
+  const [confirm, setConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const isConfirmed = confirm.trim().toUpperCase() === 'DELETE';
 
   // The modal stays mounted (visible toggles) — clear the typed confirmation
   // every time it closes so the "type DELETE" gate can't be pre-satisfied on
   // the next member's permanent-delete.
   useEffect(() => {
     if (!member) {
-      setConfirm('')
-      setDeleting(false)
+      setConfirm('');
+      setDeleting(false);
     }
-  }, [member])
+  }, [member]);
 
   const handlePurge = async () => {
-    if (!member || !isConfirmed) return
-    setDeleting(true)
+    if (!member || !isConfirmed) return;
+    setDeleting(true);
     try {
-      await staffApi.purge(member.id)
-      onPurged()
+      await staffApi.purge(member.id);
+      onPurged();
     } catch (err) {
-      showError(err, 'Failed to delete permanently')
-      setDeleting(false)
+      showError(err, 'Failed to delete permanently');
+      setDeleting(false);
     }
-  }
+  };
 
   return (
     <Modal visible={Boolean(member)} transparent animationType="fade" onRequestClose={onClose}>
@@ -274,7 +300,7 @@ function PurgeModal({
         </View>
       </KeyboardScreen>
     </Modal>
-  )
+  );
 }
 
 // ─── Invite prompt (staff-invite-tokens.md §5.1/§3.1) ──────────────
@@ -289,57 +315,57 @@ function InvitePromptModal({
   shopName,
   onClose,
 }: {
-  member: StaffCreateResult | null
+  member: StaffCreateResult | null;
   // Tokenized invite (staff-invite-tokens.md §5.1) — the shareable link +
   // expiry from the POST /v1/staff / resend response.
-  invite?: StaffInvitePayload | null
-  shopName: string | null
-  onClose: () => void
+  invite?: StaffInvitePayload | null;
+  shopName: string | null;
+  onClose: () => void;
 }) {
-  const { colors } = useTheme()
+  const { colors } = useTheme();
   const message =
     member && invite?.url
       ? buildStaffInviteMessage(member.name, member.role, shopName, invite.url)
-      : ''
+      : '';
 
   const handleCopy = async () => {
-    if (!message) return
-    await Clipboard.setStringAsync(message)
-    Alert.alert('Copied', 'Invite message copied. Share it with your team member.')
-  }
+    if (!message) return;
+    await Clipboard.setStringAsync(message);
+    Alert.alert('Copied', 'Invite message copied. Share it with your team member.');
+  };
 
   const handleShare = async () => {
-    if (!message) return
+    if (!message) return;
     try {
       if (Platform.OS === 'web') {
         if (typeof navigator !== 'undefined' && navigator.share) {
-          await navigator.share({ text: message })
-          return
+          await navigator.share({ text: message });
+          return;
         }
-        await Clipboard.setStringAsync(message)
-        Alert.alert('Copied', 'Invite message copied. Share it with your team member.')
-        return
+        await Clipboard.setStringAsync(message);
+        Alert.alert('Copied', 'Invite message copied. Share it with your team member.');
+        return;
       }
-      await Share.share({ message })
+      await Share.share({ message });
     } catch {
       // Share sheet dismissed by the user is not an error.
     }
-  }
+  };
 
   // Free, client-side WhatsApp delivery (no MSG91 / Meta API / DLT): open the
   // retailer's own WhatsApp app with the invite pre-filled to the member's
   // number — they just tap send. wa.me falls back to WhatsApp Web when the
   // app isn't installed.
   const handleWhatsApp = () => {
-    if (!message || !member) return
-    const waLink = buildWhatsAppInviteUrl(member.phone, message)
+    if (!message || !member) return;
+    const waLink = buildWhatsAppInviteUrl(member.phone, message);
     void Linking.openURL(waLink).catch(() => {
       Alert.alert(
         'Could not open WhatsApp',
         'Copy the invite message and send it on WhatsApp instead.',
-      )
-    })
-  }
+      );
+    });
+  };
 
   return (
     <Modal visible={Boolean(member)} transparent animationType="fade" onRequestClose={onClose}>
@@ -347,15 +373,19 @@ function InvitePromptModal({
         <View className="bg-white rounded-2xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-semibold text-spaceCadet-900">Team member added</Text>
-            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable
+              onPress={onClose}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
               <X size={20} color={colors.sand[400]} />
             </AnimatedPressable>
           </View>
-          <Text className="text-sm text-heliotrope-600 leading-relaxed">
-            {message}
-          </Text>
+          <Text className="text-sm text-heliotrope-600 leading-relaxed">{message}</Text>
           <Text className="text-xs text-heliotrope-500 leading-relaxed">
-            {member ? `${member.name} can open the Kanchuki app and log in with ${member.phone} — no link needed. ` : ''}
+            {member
+              ? `${member.name} can open the Kanchuki app and log in with ${member.phone} — no link needed. `
+              : ''}
             {invite
               ? `You can also share the link below; it expires ${new Date(invite.expires_at).toLocaleDateString()}.`
               : ''}
@@ -396,26 +426,26 @@ function InvitePromptModal({
         </View>
       </View>
     </Modal>
-  )
+  );
 }
 
 // ─── Main Staff Screen ─────────────────────────────────────────────
 
 export default function StaffScreen() {
-  const { colors } = useTheme()
-  const [showAdd, setShowAdd] = useState(false)
-  const [editing, setEditing] = useState<StaffMember | null>(null)
-  const [showRemoved, setShowRemoved] = useState(false)
-  const [purgeTarget, setPurgeTarget] = useState<StaffMember | null>(null)
-  const [inviteTarget, setInviteTarget] = useState<StaffCreateResult | null>(null)
-  const queryClient = useQueryClient()
-  const { screenPaddingBottom } = useScreenInsets()
+  const { colors } = useTheme();
+  const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<StaffMember | null>(null);
+  const [showRemoved, setShowRemoved] = useState(false);
+  const [purgeTarget, setPurgeTarget] = useState<StaffMember | null>(null);
+  const [inviteTarget, setInviteTarget] = useState<StaffCreateResult | null>(null);
+  const queryClient = useQueryClient();
+  const { screenPaddingBottom } = useScreenInsets();
 
   const { data, isLoading } = useQuery({
     queryKey: ['staff'],
     queryFn: () => staffApi.list(),
     staleTime: 30_000,
-  })
+  });
 
   // FR-6.1: shop name for the invite message. GET /v1/retailers/me is on the
   // staff allowlist (staffCanAccess), so this works for manager sessions too.
@@ -423,17 +453,17 @@ export default function StaffScreen() {
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
-  })
+  });
   const shopName =
-    ((meData as { data?: { shop_name?: string } } | undefined)?.data?.shop_name ?? null)
+    (meData as { data?: { shop_name?: string } } | undefined)?.data?.shop_name ?? null;
 
-  const all = ((data as { data: StaffMember[] } | undefined)?.data ?? [])
-  const staff = all.filter((s) => s.is_active)
-  const removed = all.filter((s) => !s.is_active)
+  const all = (data as { data: StaffMember[] } | undefined)?.data ?? [];
+  const staff = all.filter((s) => s.is_active);
+  const removed = all.filter((s) => !s.is_active);
 
   const invalidate = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ['staff'] })
-  }, [queryClient])
+    void queryClient.invalidateQueries({ queryKey: ['staff'] });
+  }, [queryClient]);
 
   // Delete is permanent and immediate: access ends, the seat is freed and the
   // member's name + phone are erased from the database (DPDP), so the number is
@@ -450,39 +480,43 @@ export default function StaffScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                await staffApi.purge(member.id)
-                invalidate()
+                await staffApi.purge(member.id);
+                invalidate();
               } catch (err) {
-                showError(err, 'Failed to delete')
+                showError(err, 'Failed to delete');
               }
             },
           },
         ],
-      )
+      );
     },
     [invalidate],
-  )
+  );
 
   // FR-4.2 — restore an inactive member (seat-checked server-side).
   const handleRestore = useCallback(
     (member: StaffMember) => {
-      Alert.alert('Restore team member', `Restore "${member.name}"? They get app access back and the seat is used again.`, [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Restore',
-          onPress: async () => {
-            try {
-              await staffApi.update(member.id, { is_active: true })
-              invalidate()
-            } catch (err) {
-              showError(err, 'Failed to restore')
-            }
+      Alert.alert(
+        'Restore team member',
+        `Restore "${member.name}"? They get app access back and the seat is used again.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Restore',
+            onPress: async () => {
+              try {
+                await staffApi.update(member.id, { is_active: true });
+                invalidate();
+              } catch (err) {
+                showError(err, 'Failed to restore');
+              }
+            },
           },
-        },
-      ])
+        ],
+      );
     },
     [invalidate],
-  )
+  );
 
   // staff-invite-tokens.md §6.3 — one-tap WhatsApp delivery from the member
   // row: resend mints a fresh link (D5 replaces the token server-side), then
@@ -493,30 +527,30 @@ export default function StaffScreen() {
     async (member: StaffMember) => {
       try {
         // Mint a fresh link first (D5 replaces the token server-side).
-        const res = await staffApi.resendInvite(member.id)
-        invalidate()
-        const url = res.data.invite.url
-        const message = buildStaffInviteMessage(member.name, member.role, shopName, url)
-        const waLink = buildWhatsAppInviteUrl(member.phone, message)
+        const res = await staffApi.resendInvite(member.id);
+        invalidate();
+        const url = res.data.invite.url;
+        const message = buildStaffInviteMessage(member.name, member.role, shopName, url);
+        const waLink = buildWhatsAppInviteUrl(member.phone, message);
         // Open the retailer's OWN WhatsApp app pre-filled. wa.me falls back to
         // WhatsApp Web when the app isn't installed, so this rarely fails —
         // but if it does, the link was still minted (chip flipped to pending)
         // and the retailer can Copy/Share instead.
-        await Linking.openURL(waLink)
+        await Linking.openURL(waLink);
       } catch (err) {
-        const isLinkingFailure = err instanceof Error && !('status' in (err as object))
+        const isLinkingFailure = err instanceof Error && !('status' in (err as object));
         if (isLinkingFailure) {
           Alert.alert(
             'Could not open WhatsApp',
             'Copy the invite message and send it on WhatsApp instead.',
-          )
+          );
         } else {
-          showError(err, 'Failed to send invite')
+          showError(err, 'Failed to send invite');
         }
       }
     },
     [invalidate, shopName],
-  )
+  );
 
   // Invite chip row (staff-invite-tokens.md §6.3): a member who has never
   // logged in (auth_user_id null) carries a live invite — "Invite sent ·
@@ -524,12 +558,12 @@ export default function StaffScreen() {
   // members get no chip (they log in by phone alone).
   const renderInviteChip = useCallback(
     (member: StaffMember) => {
-      if (member.auth_user_id) return null
+      if (member.auth_user_id) return null;
       // ponytail: invite links off → API sends invite: null → no chip. Re-enable
       // with STAFF_INVITE_LINKS_ENABLED=true (server) and restore the
       // "Send on WhatsApp" fallback button here if you want it back.
-      if (!member.invite) return null
-      const isExpired = member.invite.status === 'expired'
+      if (!member.invite) return null;
+      const isExpired = member.invite.status === 'expired';
       return (
         <View className="mt-2 flex-row items-center gap-2">
           <View className={`px-2.5 py-1 rounded-lg ${isExpired ? 'bg-rust-50' : 'bg-emerald-50'}`}>
@@ -551,13 +585,13 @@ export default function StaffScreen() {
             <Text className="text-[11px] font-semibold text-white">WhatsApp</Text>
           </AnimatedPressable>
         </View>
-      )
+      );
     },
     [handleSendWhatsApp],
-  )
+  );
 
   const roleLabel = (role: string) =>
-    role === 'manager' ? 'Manager' : role === 'salesperson' ? 'Salesperson' : role
+    role === 'manager' ? 'Manager' : role === 'salesperson' ? 'Salesperson' : role;
 
   const renderActive = useCallback(
     ({ item }: { item: StaffMember }) => (
@@ -574,8 +608,8 @@ export default function StaffScreen() {
           </View>
           <AnimatedPressable
             onPress={() => {
-              setEditing(item)
-              setShowAdd(true)
+              setEditing(item);
+              setShowAdd(true);
             }}
             className="w-9 h-9 rounded-full bg-sand-100 items-center justify-center mr-2"
             accessibilityLabel={`Edit ${item.name}`}
@@ -593,11 +627,10 @@ export default function StaffScreen() {
           </AnimatedPressable>
         </View>
         {/* FR-1.5 — role label + one-line capability summary */}
-        <View
-          className="mt-3 rounded-xl px-3 py-2"
-          style={{ backgroundColor: colors.ink[50] }}
-        >
-          <Text className="text-[11px] font-semibold text-spaceCadet-900">{roleLabel(item.role)}</Text>
+        <View className="mt-3 rounded-xl px-3 py-2" style={{ backgroundColor: colors.ink[50] }}>
+          <Text className="text-[11px] font-semibold text-spaceCadet-900">
+            {roleLabel(item.role)}
+          </Text>
           <Text className="text-[11px] text-heliotrope-500 mt-0.5 leading-4">
             {ROLE_SUMMARY[item.role] ?? ''}
           </Text>
@@ -607,7 +640,7 @@ export default function StaffScreen() {
       </View>
     ),
     [handleRemove, renderInviteChip, colors.rust, colors.sand, colors.ink],
-  )
+  );
 
   const renderRemoved = useCallback(
     ({ item }: { item: StaffMember }) => (
@@ -640,7 +673,7 @@ export default function StaffScreen() {
       </View>
     ),
     [handleRestore, colors.rust, colors.sand],
-  )
+  );
 
   return (
     <View className="flex-1 bg-ink-50">
@@ -705,8 +738,8 @@ export default function StaffScreen() {
         {/* FAB */}
         <AnimatedPressable
           onPress={() => {
-            setEditing(null)
-            setShowAdd(true)
+            setEditing(null);
+            setShowAdd(true);
           }}
           className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
           style={{ elevation: 6 }}
@@ -732,11 +765,11 @@ export default function StaffScreen() {
           member={purgeTarget}
           onClose={() => setPurgeTarget(null)}
           onPurged={() => {
-            setPurgeTarget(null)
-            invalidate()
+            setPurgeTarget(null);
+            invalidate();
           }}
         />
       </View>
     </View>
-  )
-}
+  );
+}

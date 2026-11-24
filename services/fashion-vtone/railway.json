@@ -3,10 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "services/fashion-vtone/Dockerfile",
-    "watchPatterns": [
-      "services/fashion-vtone/**",
-      "pnpm-lock.yaml"
-    ]
+    "watchPatterns": ["services/fashion-vtone/**", "pnpm-lock.yaml"]
   },
   "deploy": {
     "startCommand": "",

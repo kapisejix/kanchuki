@@ -1,18 +1,18 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { Gauge, Cpu, ArrowRight, Bell } from 'lucide-react'
-import Link from 'next/link'
+import { motion } from 'framer-motion';
+import { ArrowRight, Bell, Cpu, Gauge } from 'lucide-react';
+import Link from 'next/link';
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
-}
+};
 
 const SETTINGS = [
   {
@@ -33,11 +33,16 @@ const SETTINGS = [
     href: '/admin/settings/notifications',
     icon: Bell,
   },
-]
+];
 
 export default function SettingsPage() {
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-8"
+    >
       <motion.div variants={itemVariants}>
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-sm text-gray-500">Configure platform-wide settings and integrations</p>
@@ -52,7 +57,11 @@ export default function SettingsPage() {
             >
               <div className="flex items-start justify-between mb-4 relative">
                 <s.icon size={18} strokeWidth={1.5} className="text-gray-500" />
-                <ArrowRight size={16} strokeWidth={1.5} className="text-gray-400 transition-colors group-hover:text-gray-900" />
+                <ArrowRight
+                  size={16}
+                  strokeWidth={1.5}
+                  className="text-gray-400 transition-colors group-hover:text-gray-900"
+                />
               </div>
               <h3 className="text-sm font-medium text-gray-900 mb-1">{s.title}</h3>
               <p className="text-xs text-gray-500">{s.description}</p>
@@ -61,5 +70,5 @@ export default function SettingsPage() {
         ))}
       </div>
     </motion.div>
-  )
+  );
 }

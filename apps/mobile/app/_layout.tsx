@@ -1,52 +1,38 @@
-import "../global.css";
+import '../global.css';
 import {
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
   useFonts,
-} from "@expo-google-fonts/inter";
-import { Marcellus_400Regular } from "@expo-google-fonts/marcellus";
-import type { PlatformTheme } from "@kanchuki/shared";
-import {
-  QueryClient,
-  QueryClientProvider,
-  focusManager,
-} from "@tanstack/react-query";
-import * as Linking from "expo-linking";
-import { Stack } from "expo-router";
-import * as ExpoSplashScreen from "expo-splash-screen";
-import { vars } from "nativewind";
-import { useEffect, useRef, useState } from "react";
-import { AppState, Platform, StatusBar, Text, TextInput, View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+} from '@expo-google-fonts/inter';
+import { Marcellus_400Regular } from '@expo-google-fonts/marcellus';
+import type { PlatformTheme } from '@kanchuki/shared';
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
+import { Stack } from 'expo-router';
+import * as ExpoSplashScreen from 'expo-splash-screen';
+import { vars } from 'nativewind';
+import { useEffect, useRef, useState } from 'react';
+import { AppState, Platform, StatusBar, Text, TextInput, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { CatalogDelegateBanner } from "../src/components/CatalogDelegateBanner";
-import { ErrorBoundary } from "../src/components/ErrorBoundary";
-import { NetworkBanner } from "../src/components/NetworkBanner";
-import { SupportSessionPrompt } from "../src/components/SupportSessionPrompt";
-import {
-  getCatalogDelegateInfo,
-  onDelegateChange,
-} from "../src/lib/catalog-delegate";
-import { useSyncQueue } from "../src/hooks/useSyncQueue";
-import { AuthProvider, useAuth } from "../src/lib/auth-context";
-import { usePushRegistration } from "../src/lib/use-push-registration";
-import {
-  persistQueryCache,
-  restoreQueryCache,
-} from "../src/lib/offline-persister";
-import { setupOnlineManager } from "../src/lib/online-manager";
-import { Sentry, initSentry } from "../src/lib/sentry";
-import { captureReferralFromUrl } from "../src/lib/referral-capture";
-import { getItem } from "../src/lib/storage";
-import {
-  loadPersistedPalette,
-  ThemeProvider,
-  useTheme,
-} from "../src/lib/theme";
-import { CATALOG_UPLOAD_ENABLED } from "../src/lib/catalog-upload-flag";
+import { CatalogDelegateBanner } from '../src/components/CatalogDelegateBanner';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import { NetworkBanner } from '../src/components/NetworkBanner';
+import { SupportSessionPrompt } from '../src/components/SupportSessionPrompt';
+import { useSyncQueue } from '../src/hooks/useSyncQueue';
+import { AuthProvider, useAuth } from '../src/lib/auth-context';
+import { getCatalogDelegateInfo, onDelegateChange } from '../src/lib/catalog-delegate';
+import { CATALOG_UPLOAD_ENABLED } from '../src/lib/catalog-upload-flag';
+import { persistQueryCache, restoreQueryCache } from '../src/lib/offline-persister';
+import { setupOnlineManager } from '../src/lib/online-manager';
+import { captureReferralFromUrl } from '../src/lib/referral-capture';
+import { Sentry, initSentry } from '../src/lib/sentry';
+import { getItem } from '../src/lib/storage';
+import { ThemeProvider, loadPersistedPalette, useTheme } from '../src/lib/theme';
+import { usePushRegistration } from '../src/lib/use-push-registration';
 
 // Initialize Sentry crash reporting as early as possible — must run
 // before any component renders so it can capture startup crashes.
@@ -64,39 +50,29 @@ ExpoSplashScreen.preventAutoHideAsync();
 // default here is the one-place fix instead of adding font-sans to every Text
 // in the app; individual screens can still override with className="font-sans-*".
 (Text as unknown as { defaultProps: Record<string, unknown> }).defaultProps = {
-  ...(Text as unknown as { defaultProps?: Record<string, unknown> })
-    .defaultProps,
-  style: [
-    { fontFamily: "Inter_400Regular" },
-    (Text as any).defaultProps?.style,
-  ],
+  ...(Text as unknown as { defaultProps?: Record<string, unknown> }).defaultProps,
+  style: [{ fontFamily: 'Inter_400Regular' }, (Text as any).defaultProps?.style],
 };
-(
-  TextInput as unknown as { defaultProps: Record<string, unknown> }
-).defaultProps = {
-  ...(TextInput as unknown as { defaultProps?: Record<string, unknown> })
-    .defaultProps,
-  style: [
-    { fontFamily: "Inter_400Regular" },
-    (TextInput as any).defaultProps?.style,
-  ],
+(TextInput as unknown as { defaultProps: Record<string, unknown> }).defaultProps = {
+  ...(TextInput as unknown as { defaultProps?: Record<string, unknown> }).defaultProps,
+  style: [{ fontFamily: 'Inter_400Regular' }, (TextInput as any).defaultProps?.style],
 };
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       // A-1: serve stale cache immediately when offline instead of pausing queries
-      networkMode: "offlineFirst",
+      networkMode: 'offlineFirst',
       // ── Reduce network churn on slow connections ──
       staleTime: 60_000, // 1 min — don't refetch immediately on mount
       gcTime: 24 * 60 * 60 * 1000, // 24h — survive background kill for offline use
       retry: (failureCount, error) => {
-        const status = (error as any)?.status ?? (error as any)?.response?.status
-        const code = (error as any)?.code
+        const status = (error as any)?.status ?? (error as any)?.response?.status;
+        const code = (error as any)?.code;
         if (status === 401 || status === 403 || status === 404 || code === 'UNAUTHORIZED') {
-          return false
+          return false;
         }
-        return failureCount < 2
+        return failureCount < 2;
       },
       retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 10_000),
       refetchOnWindowFocus: false, // mobile doesn't need this — AppState handles it
@@ -104,7 +80,7 @@ const queryClient = new QueryClient({
     },
     mutations: {
       // A-1: mutations queue (don't fail immediately) when offline
-      networkMode: "offlineFirst",
+      networkMode: 'offlineFirst',
     },
   },
 });
@@ -138,34 +114,33 @@ function AppShell() {
   // !isTeamMember-only. The server still enforces the scope allowlist.
   const [inSupportSession, setInSupportSession] = useState(false);
   useEffect(() => {
-    const sync = () =>
-      void getCatalogDelegateInfo().then((i) => setInSupportSession(!!i?.support));
+    const sync = () => void getCatalogDelegateInfo().then((i) => setInSupportSession(!!i?.support));
     sync();
     return onDelegateChange(sync);
   }, []);
 
   // F-046: new-enquiry push for the shop's owner and staff. Not for Kanchuki's own
   // TeamMembers (they have no shop inbox). Must sit above the early return below.
-  usePushRegistration(status === "authenticated" && !isTeamMember);
+  usePushRegistration(status === 'authenticated' && !isTeamMember);
 
   // Never mount the Stack before the session is hydrated: with every
   // Stack.Protected guard still false the navigator has zero routeNames and
   // crashes on getInitialState. The native splash stays up until then (see
   // AppContent's hide gate).
-  if (status === "loading") return null;
+  if (status === 'loading') return null;
 
-  const isAuthed = status === "authenticated";
+  const isAuthed = status === 'authenticated';
 
   return (
     <View
       className="flex-1 bg-cotton"
       style={vars({
-        "--color-ink-600": primaryColor,
-        "--color-rust-600": accentColor,
-        "--color-turmeric-600": tertiaryColor,
-        "--color-cotton": backgroundColor,
-        "--color-charcoal": textColor,
-        "--color-sand-100": surfaceColor,
+        '--color-ink-600': primaryColor,
+        '--color-rust-600': accentColor,
+        '--color-turmeric-600': tertiaryColor,
+        '--color-cotton': backgroundColor,
+        '--color-charcoal': textColor,
+        '--color-sand-100': surfaceColor,
       })}
     >
       {/* App chrome is light — default status bar icons render white-on-white. */}
@@ -180,9 +155,9 @@ function AppShell() {
           headerStyle: { backgroundColor: colors.cotton },
           headerTintColor: colors.charcoal,
           headerTitleStyle: {
-            fontWeight: "700",
+            fontWeight: '700',
             fontSize: 17,
-            fontFamily: "Inter_700Bold",
+            fontFamily: 'Inter_700Bold',
           },
           headerShadowVisible: false,
         }}
@@ -210,16 +185,10 @@ function AppShell() {
           <Stack.Screen name="social/schedule/[id]" />
           <Stack.Screen name="growth/index" />
           <Stack.Screen name="growth/campaigns" />
-          <Stack.Screen
-            name="growth/campaign-new"
-            options={{ presentation: "modal" }}
-          />
+          <Stack.Screen name="growth/campaign-new" options={{ presentation: 'modal' }} />
           <Stack.Screen name="growth/campaign/[id]" />
           <Stack.Screen name="growth/promotions" />
-          <Stack.Screen
-            name="growth/promotion-form"
-            options={{ presentation: "modal" }}
-          />
+          <Stack.Screen name="growth/promotion-form" options={{ presentation: 'modal' }} />
           <Stack.Screen name="growth/inventory" />
           <Stack.Screen name="growth/videos" />
           <Stack.Screen name="growth/translate" />
@@ -247,10 +216,7 @@ function AppShell() {
           <Stack.Screen name="settings/help-support" />
           <Stack.Screen name="settings/whatsapp-catalog" />
           <Stack.Screen name="showcase-designs/index" />
-          <Stack.Screen
-            name="showcase-designs/new"
-            options={{ presentation: "modal" }}
-          />
+          <Stack.Screen name="showcase-designs/new" options={{ presentation: 'modal' }} />
           <Stack.Screen name="showcase-designs/[id]" />
         </Stack.Protected>
 
@@ -267,9 +233,9 @@ function AppShell() {
             these (staff run delegated on-site catalog uploads from
             staff/catalog-tickets → product/add | product/bulk-onboard). */}
         <Stack.Protected guard={isAuthed}>
-          <Stack.Screen name="product/add" options={{ presentation: "modal" }} />
-          <Stack.Screen name="product/scan" options={{ presentation: "modal" }} />
-          <Stack.Screen name="product/bulk" options={{ presentation: "modal" }} />
+          <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="product/scan" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="product/bulk" options={{ presentation: 'modal' }} />
           <Stack.Screen name="product/bulk-onboard" />
           <Stack.Screen name="product/catalog-import" />
           <Stack.Screen name="product/[id]" />
@@ -278,14 +244,14 @@ function AppShell() {
           {/* F-040 — in-store try-on. Full-screen because it owns the
               camera. Its entry point is gated on the VIRTUAL_TRY_ON_V2 plan
               feature, but the route 404s without that flag regardless. */}
-          <Stack.Screen name="product/try-on" options={{ presentation: "fullScreenModal" }} />
-          <Stack.Screen name="enquiry-try-on" options={{ presentation: "fullScreenModal" }} />
+          <Stack.Screen name="product/try-on" options={{ presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="enquiry-try-on" options={{ presentation: 'fullScreenModal' }} />
           <Stack.Screen name="collection/new" />
           <Stack.Screen name="collection/[id]" />
           <Stack.Screen name="category/new" />
           <Stack.Screen name="category/[id]" />
           <Stack.Screen name="category/[id]/add-products" />
-          <Stack.Screen name="customer/add" options={{ presentation: "modal" }} />
+          <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
           <Stack.Screen name="customer/[id]" />
           <Stack.Screen name="showcase-designs/browse" />
           <Stack.Screen name="showcase-designs/view/[id]" />
@@ -324,21 +290,17 @@ function RootLayoutInner() {
   // ThemeProvider also re-syncs in the background and reacts to account
   // switches on shared devices.
   const [paletteReady, setPaletteReady] = useState(false);
-  const [initialPalette, setInitialPalette] = useState<PlatformTheme | null>(
-    null,
-  );
+  const [initialPalette, setInitialPalette] = useState<PlatformTheme | null>(null);
   useEffect(() => {
     let cancelled = false;
     const boot = (async () => {
-      const retailerId = await getItem("retailer_id").catch(() => null);
+      const retailerId = await getItem('retailer_id').catch(() => null);
       return loadPersistedPalette(retailerId).catch(() => null);
     })();
     // ponytail: SecureStore.getItemAsync can hang indefinitely on some Android
     // Keystore states (no reject, just never settles) — without this timeout
     // the fontsLoaded/paletteReady render gate below stays blank white forever.
-    const timeout = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), 3000),
-    );
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
     Promise.race([boot, timeout]).then((cached) => {
       if (!cancelled) {
         setInitialPalette(cached);
@@ -359,16 +321,16 @@ function RootLayoutInner() {
 
   // ── Persist cache on background + pause/resume queries ────────
   useEffect(() => {
-    if (Platform.OS === "web") return;
+    if (Platform.OS === 'web') return;
 
-    const sub = AppState.addEventListener("change", (nextState) => {
+    const sub = AppState.addEventListener('change', (nextState) => {
       // Pause/resume focus for React Query
-      focusManager.setFocused(nextState === "active");
+      focusManager.setFocused(nextState === 'active');
 
       // Save cache when app goes to background/inactive
       if (
-        appStateRef.current === "active" &&
-        (nextState === "background" || nextState === "inactive")
+        appStateRef.current === 'active' &&
+        (nextState === 'background' || nextState === 'inactive')
       ) {
         // Debounce: clear any pending save timer
         if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
@@ -398,10 +360,7 @@ function RootLayoutInner() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <AuthProvider>
-          <AppContent
-            appReady={fontsLoaded && paletteReady}
-            initialPalette={initialPalette}
-          />
+          <AppContent appReady={fontsLoaded && paletteReady} initialPalette={initialPalette} />
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -415,8 +374,8 @@ function AppContent({
   appReady,
   initialPalette,
 }: {
-  appReady: boolean
-  initialPalette: PlatformTheme | null
+  appReady: boolean;
+  initialPalette: PlatformTheme | null;
 }) {
   const { status } = useAuth();
 
@@ -434,7 +393,7 @@ function AppContent({
   }, [incomingUrl]);
 
   useEffect(() => {
-    if (appReady && status !== "loading") {
+    if (appReady && status !== 'loading') {
       ExpoSplashScreen.hideAsync();
     }
   }, [appReady, status]);

@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
-import { LinearGradient } from 'expo-linear-gradient'
-import { router } from 'expo-router'
+import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import {
+  CalendarClock,
   CalendarHeart,
   ChevronLeft,
   ChevronRight,
@@ -11,99 +12,158 @@ import {
   Megaphone,
   PackageSearch,
   Percent,
-  CalendarClock,
   Share2,
   Star,
   TrendingUp,
   Users,
   Video,
   Wand2,
-} from 'lucide-react-native'
-import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { growthApi, retailerApi, type CampaignType } from '../../src/lib/api'
-import { ApiError } from '../../src/lib/api/client'
-import { SchedulerBanner } from '../../src/components/social/SchedulerBanner'
-import { MyStyleRankingNote } from '../../src/components/growth/MyStyleRankingNote'
+} from 'lucide-react-native';
+import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { MyStyleRankingNote } from '../../src/components/growth/MyStyleRankingNote';
+import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
+import { type CampaignType, growthApi, retailerApi } from '../../src/lib/api';
+import { ApiError } from '../../src/lib/api/client';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 const TYPE_LABEL: Record<CampaignType, string> = {
   FESTIVAL: 'Festival',
   REACTIVATION: 'Reactivation',
   PROMOTION: 'Promotion',
   AB_TEST: 'A/B Test',
-}
+};
 
 // Growth modules — marketing, store/catalog management and customer insight.
 // GST, Integrations and Marketplace Sync live under Settings (owner-only).
 const ALL_GROWTH_MODULES = [
-  { icon: Share2, label: 'Create Social Post', hint: 'Post to Facebook & Instagram', href: '/social/create?source=growth' as const },
-  { icon: LayoutTemplate, label: 'Design a Post', hint: 'Festival & sale designs with your products', href: '/social/design' as const },
-  { icon: ImagePlus, label: 'AI Design', hint: 'Describe a scene, AI makes the picture', href: '/social/ai-design' as const },
-  { icon: CalendarClock, label: 'Post Scheduler', hint: 'Auto-post daily to Facebook & Instagram', href: '/social/schedule' as const },
-  { icon: Megaphone, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
-  { icon: Users, label: 'Customer List', hint: 'Manage your customers', href: '/customers' as const },
-  { icon: TrendingUp, label: 'Engagement', hint: 'Dwell time, top products & searches', href: '/growth/engagement' as const },
-  { icon: Percent, label: 'Promotions', hint: 'Discount codes & offers', href: '/growth/promotions' as const },
-  { icon: PackageSearch, label: 'Inventory Alerts', hint: 'Dead stock & reorders', href: '/growth/inventory' as const },
-  { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog', href: '/growth/videos' as const },
-  { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions', href: '/growth/translate' as const },
-  { icon: Star, label: 'Ratings & Reviews', hint: 'Customer feedback & Google reviews', href: '/growth/ratings' as const },
-]
+  {
+    icon: Share2,
+    label: 'Create Social Post',
+    hint: 'Post to Facebook & Instagram',
+    href: '/social/create?source=growth' as const,
+  },
+  {
+    icon: LayoutTemplate,
+    label: 'Design a Post',
+    hint: 'Festival & sale designs with your products',
+    href: '/social/design' as const,
+  },
+  {
+    icon: ImagePlus,
+    label: 'AI Design',
+    hint: 'Describe a scene, AI makes the picture',
+    href: '/social/ai-design' as const,
+  },
+  {
+    icon: CalendarClock,
+    label: 'Post Scheduler',
+    hint: 'Auto-post daily to Facebook & Instagram',
+    href: '/social/schedule' as const,
+  },
+  {
+    icon: Megaphone,
+    label: 'AI Campaign Assistant',
+    hint: 'Type a command, get a campaign',
+    href: '/growth/ai-campaign' as const,
+  },
+  {
+    icon: Users,
+    label: 'Customer List',
+    hint: 'Manage your customers',
+    href: '/customers' as const,
+  },
+  {
+    icon: TrendingUp,
+    label: 'Engagement',
+    hint: 'Dwell time, top products & searches',
+    href: '/growth/engagement' as const,
+  },
+  {
+    icon: Percent,
+    label: 'Promotions',
+    hint: 'Discount codes & offers',
+    href: '/growth/promotions' as const,
+  },
+  {
+    icon: PackageSearch,
+    label: 'Inventory Alerts',
+    hint: 'Dead stock & reorders',
+    href: '/growth/inventory' as const,
+  },
+  {
+    icon: Video,
+    label: 'Product Videos',
+    hint: '5–10s clips on your catalog',
+    href: '/growth/videos' as const,
+  },
+  {
+    icon: Languages,
+    label: 'AI Translate',
+    hint: 'Hindi & regional descriptions',
+    href: '/growth/translate' as const,
+  },
+  {
+    icon: Star,
+    label: 'Ratings & Reviews',
+    hint: 'Customer feedback & Google reviews',
+    href: '/growth/ratings' as const,
+  },
+];
 
 // Every /social/* module ends in the Meta composer.
 const GROWTH_MODULES = ALL_GROWTH_MODULES.filter(
   (m) => META_SOCIAL_ENABLED || !m.href.startsWith('/social/'),
-)
+);
 
 function isFeatureUnavailable(err: unknown): boolean {
-  return err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE'
+  return err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE';
 }
 
 export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) {
-  const { headerPaddingTop, tabScrollPaddingBottom, screenPaddingBottom } = useScreenInsets()
+  const { headerPaddingTop, tabScrollPaddingBottom, screenPaddingBottom } = useScreenInsets();
 
-  const bodyBottomPad = isTab ? tabScrollPaddingBottom : screenPaddingBottom
+  const bodyBottomPad = isTab ? tabScrollPaddingBottom : screenPaddingBottom;
 
   const retailerQuery = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
     enabled: isTab,
-  })
-  const retailerProfile = (retailerQuery.data as { data: Record<string, any> } | undefined)?.data
+  });
+  const retailerProfile = (retailerQuery.data as { data: Record<string, any> } | undefined)?.data;
 
   const campaignsQuery = useQuery({
     queryKey: ['growth', 'campaigns'],
     queryFn: () => growthApi.campaigns(),
-  })
+  });
   const statsQuery = useQuery({
     queryKey: ['growth', 'campaign-stats'],
     queryFn: () => growthApi.campaignStats(),
-  })
+  });
   const reactivationQuery = useQuery({
     queryKey: ['growth', 'reactivation-suggestions'],
     queryFn: () => growthApi.reactivationSuggestions(60),
-  })
+  });
 
   const featureLocked =
     isFeatureUnavailable(campaignsQuery.error) ||
     isFeatureUnavailable(statsQuery.error) ||
-    isFeatureUnavailable(reactivationQuery.error)
+    isFeatureUnavailable(reactivationQuery.error);
 
-  const campaigns = campaignsQuery.data?.data ?? []
-  const stats = statsQuery.data?.data
+  const campaigns = campaignsQuery.data?.data ?? [];
+  const stats = statsQuery.data?.data;
   const sentTotal = stats?.by_type
     ? Object.values(stats.by_type).reduce((s, t) => s + t.sent, 0)
-    : campaigns.reduce((s, c) => s + c.sent_count, 0)
+    : campaigns.reduce((s, c) => s + c.sent_count, 0);
   const openedTotal = stats?.by_type
     ? Object.values(stats.by_type).reduce((s, t) => s + t.opened, 0)
-    : campaigns.reduce((s, c) => s + c.opened_count, 0)
-  const ctrPct = sentTotal > 0 ? ((openedTotal / sentTotal) * 100).toFixed(1) : null
-  const inactive = reactivationQuery.data?.data.total_inactive ?? 0
-  const loading = campaignsQuery.isLoading || statsQuery.isLoading
+    : campaigns.reduce((s, c) => s + c.opened_count, 0);
+  const ctrPct = sentTotal > 0 ? ((openedTotal / sentTotal) * 100).toFixed(1) : null;
+  const inactive = reactivationQuery.data?.data.total_inactive ?? 0;
+  const loading = campaignsQuery.isLoading || statsQuery.isLoading;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -115,7 +175,11 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         >
           <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200">
             {retailerProfile?.logo_url ? (
-              <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image
+                source={{ uri: retailerProfile.logo_url }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
             ) : (
               <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
@@ -123,7 +187,12 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
             )}
           </View>
           <View>
-            <Text style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }} className="text-base text-spaceCadet-900">{retailerProfile?.shop_name ?? 'Store'}</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+              className="text-base text-spaceCadet-900"
+            >
+              {retailerProfile?.shop_name ?? 'Store'}
+            </Text>
             <Text className="text-[11px] text-heliotrope-500 font-medium">
               {retailerProfile?.city ? `${retailerProfile.city} · Growth` : 'Growth'}
             </Text>
@@ -155,7 +224,10 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         </View>
       )}
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: bodyBottomPad }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: bodyBottomPad }}
+      >
         {/* Hero Campaign Performance Card */}
         <LinearGradient
           colors={['#231F48', '#560A39']}
@@ -199,17 +271,13 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
             }}
           >
             <View className="flex-1 items-center">
-              <Text className="text-[11px] text-lavender-200/70 font-semibold block">
-                Sent
-              </Text>
+              <Text className="text-[11px] text-lavender-200/70 font-semibold block">Sent</Text>
               <Text className="text-white font-semibold text-xs mt-0.5">
                 {sentTotal.toLocaleString('en-IN')}
               </Text>
             </View>
             <View className="flex-1 items-center">
-              <Text className="text-[11px] text-lavender-200/70 font-semibold block">
-                Opened
-              </Text>
+              <Text className="text-[11px] text-lavender-200/70 font-semibold block">Opened</Text>
               <Text className="text-white font-semibold text-xs mt-0.5">
                 {openedTotal.toLocaleString('en-IN')}
               </Text>
@@ -224,9 +292,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         </LinearGradient>
 
         {/* AI Campaigns */}
-        <Text className="text-xs text-heliotrope-600 font-semibold mb-3 px-1">
-          Campaign tools
-        </Text>
+        <Text className="text-xs text-heliotrope-600 font-semibold mb-3 px-1">Campaign tools</Text>
         <View className="gap-3 mb-5">
           <AnimatedPressable
             onPress={() => router.push('/growth/ai-campaign')}
@@ -250,11 +316,10 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         {/* Live Campaigns Overview */}
         <View className="mb-5">
           <View className="flex-row items-center justify-between mb-3 px-1">
-            <Text className="text-xs font-semibold text-spaceCadet-900">
-              Live campaigns
-            </Text>
+            <Text className="text-xs font-semibold text-spaceCadet-900">Live campaigns</Text>
             <View className="flex-row items-center gap-3">
-              <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+              <AnimatedPressable
+                className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 onPress={() => router.push('/growth/analytics')}
                 hitSlop={8}
                 accessibilityRole="button"
@@ -262,7 +327,8 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 <Text className="text-xs font-semibold text-fuchsia-700">Analytics</Text>
               </AnimatedPressable>
               {campaigns.length > 0 && (
-                <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+                <AnimatedPressable
+                  className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                   onPress={() => router.push('/growth/campaigns')}
                   hitSlop={8}
                   accessibilityRole="button"
@@ -298,8 +364,8 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                     </Text>
                   </View>
                   <Text className="text-xs text-heliotrope-500 mt-0.5 leading-relaxed font-medium">
-                    Festival greetings, reactivation offers, or a simple new-arrivals blast to
-                    your consented customers.
+                    Festival greetings, reactivation offers, or a simple new-arrivals blast to your
+                    consented customers.
                   </Text>
                   <View className="mt-4">
                     <GradientButton
@@ -312,13 +378,16 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               ) : (
                 <>
                   <View className="flex-row items-center gap-3 mb-3">
-                    <View className="w-6 items-center justify-center"
-                    >
+                    <View className="w-6 items-center justify-center">
                       <Megaphone size={20} color="#6B4773" />
                     </View>
                     <View className="flex-1">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+                        style={{
+                          fontFamily: 'Marcellus_400Regular',
+                          letterSpacing: 0.32,
+                          fontWeight: '800',
+                        }}
                         className="text-base text-spaceCadet-900"
                       >
                         {campaigns.length} {campaigns.length === 1 ? 'Campaign' : 'Campaigns'}
@@ -335,7 +404,10 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                         key={c.id}
                         className="flex-row items-center justify-between bg-lavender-50 rounded-2xl px-3.5 py-2.5 border border-lavender-200"
                       >
-                        <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                        <Text
+                          className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2"
+                          numberOfLines={1}
+                        >
                           {c.name}
                         </Text>
                         <Text className="text-[11px] font-semibold text-heliotrope-500">
@@ -367,11 +439,13 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           >
             <View className="flex-row items-center gap-2 mb-1.5">
               <CalendarHeart size={18} color="#6B4773" />
-              <Text className="text-sm font-semibold text-spaceCadet-900">Bring customers back</Text>
+              <Text className="text-sm font-semibold text-spaceCadet-900">
+                Bring customers back
+              </Text>
             </View>
             <Text className="text-xs text-heliotrope-500 mt-0.5 leading-relaxed font-medium">
-              {inactive} {inactive === 1 ? 'customer hasn\'t' : 'customers haven\'t'} interacted in
-              60 days. One tap builds a reactivation campaign for them.
+              {inactive} {inactive === 1 ? "customer hasn't" : "customers haven't"} interacted in 60
+              days. One tap builds a reactivation campaign for them.
             </Text>
           </AnimatedPressable>
         )}
@@ -393,8 +467,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               accessibilityLabel={label}
               className="flex-row items-center bg-white rounded-2xl p-4 border border-lavender-200"
             >
-              <View className="w-6 items-center justify-center mr-3.5"
-              >
+              <View className="w-6 items-center justify-center mr-3.5">
                 <Icon size={20} color="#6B4773" />
               </View>
               <View className="flex-1">
@@ -409,5 +482,5 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         <MyStyleRankingNote />
       </ScrollView>
     </View>
-  )
+  );
 }

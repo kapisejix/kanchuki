@@ -1,27 +1,27 @@
-'use client'
+'use client';
 
-import { useState, useCallback } from 'react'
-import { Bell, BellOff, Check, Loader2 } from 'lucide-react'
-import { ConsentCheckbox } from '@/components/ConsentCheckbox'
+import { ConsentCheckbox } from '@/components/ConsentCheckbox';
+import { Bell, BellOff, Check, Loader2 } from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 interface Props {
-  productId: string
-  storeSlug: string
-  productName: string
+  productId: string;
+  storeSlug: string;
+  productName: string;
 }
 
 export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props) {
-  const [phone, setPhone] = useState('')
-  const [consent, setConsent] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(false)
+  const [phone, setPhone] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const handleSubmit = useCallback(async () => {
-    if (phone.trim().length < 10 || !consent) return
-    setLoading(true)
-    setError(null)
+    if (phone.trim().length < 10 || !consent) return;
+    setLoading(true);
+    setError(null);
 
     try {
       const res = await fetch(`/api/${storeSlug}/leads`, {
@@ -33,25 +33,25 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
           gender: 'FEMALE',
           consent,
         }),
-      })
+      });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error?.message ?? 'Failed to register interest')
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error?.message ?? 'Failed to register interest');
       }
 
       // Store locally so we don't ask again
       try {
-        const key = `kanchuki_notify_${productId}`
-        localStorage.setItem(key, '1')
+        const key = `kanchuki_notify_${productId}`;
+        localStorage.setItem(key, '1');
       } catch {}
-      setSubmitted(true)
+      setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [phone, consent, productId, storeSlug])
+  }, [phone, consent, productId, storeSlug]);
 
   // Already submitted or stored locally
   if (submitted) {
@@ -62,7 +62,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
           We&apos;ll let you know when {productName} is back!
         </p>
       </div>
-    )
+    );
   }
 
   // Check localStorage
@@ -76,7 +76,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
               You&apos;re already on the notify list!
             </p>
           </div>
-        )
+        );
       }
     } catch {}
   }
@@ -90,7 +90,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
         <Bell size={14} />
         Notify When Available
       </button>
-    )
+    );
   }
 
   return (
@@ -117,9 +117,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
         </button>
       </div>
       <ConsentCheckbox checked={consent} onChange={setConsent} />
-      {error && (
-        <p className="text-[10px] text-red-500">{error}</p>
-      )}
+      {error && <p className="text-[10px] text-red-500">{error}</p>}
     </div>
-  )
+  );
 }

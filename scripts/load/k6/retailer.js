@@ -24,9 +24,15 @@
 // run the two against the same host at the same time.
 
 import { check, fail } from 'k6';
-import { Counter } from 'k6/metrics';
 import http from 'k6/http';
-import { assertSafeBaseUrl, buildRetailerMix, chooseEndpoint, parseRate, requireToken } from './mix.js';
+import { Counter } from 'k6/metrics';
+import {
+  assertSafeBaseUrl,
+  buildRetailerMix,
+  chooseEndpoint,
+  parseRate,
+  requireToken,
+} from './mix.js';
 
 const BASE_URL = assertSafeBaseUrl(__ENV.LOADTEST_BASE_URL);
 const RATE = parseRate(__ENV.LOADTEST_RATE);
@@ -95,9 +101,7 @@ export default function () {
   };
 
   const res =
-    entry.method === 'POST'
-      ? http.post(url, entry.body ?? '{}', params)
-      : http.get(url, params);
+    entry.method === 'POST' ? http.post(url, entry.body ?? '{}', params) : http.get(url, params);
 
   if (res.status === 429) rateLimited.add(1, { endpoint: entry.name });
 

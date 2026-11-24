@@ -1,81 +1,81 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { Gauge, IndianRupee, Save, Loader2, Users } from 'lucide-react'
-import { PLAN_LIMIT_RESOURCE_TYPES, type PlanLimitResource } from '@kanchuki/shared'
-import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { PLAN_LIMIT_RESOURCE_TYPES, type PlanLimitResource } from '@kanchuki/shared';
+import { motion } from 'framer-motion';
+import { Gauge, IndianRupee, Loader2, Save, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
-type Plan = 'STARTER' | 'GROWTH' | 'PRO'
+type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 // From the shared constant — this page used to carry its own union AND array,
 // which is how `TRY_ON_GENERATION` ended up settable nowhere (see the note on
 // PLAN_LIMIT_RESOURCE_TYPES). Adding a resource is now one edit in one file.
-type ResourceType = PlanLimitResource
-type Period = 'DAY' | 'MONTH' | 'LIFETIME'
+type ResourceType = PlanLimitResource;
+type Period = 'DAY' | 'MONTH' | 'LIFETIME';
 
 type PlanLimit = {
-  id: string
-  plan: Plan
-  resource_type: ResourceType
-  limit_per_period: number
-  period: Period
-}
+  id: string;
+  plan: Plan;
+  resource_type: ResourceType;
+  limit_per_period: number;
+  period: Period;
+};
 
 type PlanPricing = {
-  id: string
-  plan: Plan
-  monthly_paise: number
-}
+  id: string;
+  plan: Plan;
+  monthly_paise: number;
+};
 
-const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO']
-const RESOURCE_TYPES = PLAN_LIMIT_RESOURCE_TYPES
-const PERIODS: Period[] = ['DAY', 'MONTH', 'LIFETIME']
+const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO'];
+const RESOURCE_TYPES = PLAN_LIMIT_RESOURCE_TYPES;
+const PERIODS: Period[] = ['DAY', 'MONTH', 'LIFETIME'];
 
 // Customer-side rows come from the API, NOT from a list here: `GET
 // /plan-limits/customer` returns one entry per resource with a customer-side
 // writer (whether or not a row exists yet), so the screen can never offer a
 // number the server would reject, nor hide one it would accept.
 type CustomerLimitRow = {
-  resource_type: string
-  limit_per_period: number | null
-  period: Period
-  configured: boolean
-}
+  resource_type: string;
+  limit_per_period: number | null;
+  period: Period;
+  configured: boolean;
+};
 
 // Blank while editing = "no row", which the server reads as unlimited — same
 // convention as the plan cells above.
-type CustomerCell = { limit_per_period: string; period: Period }
+type CustomerCell = { limit_per_period: string; period: Period };
 
 // One editable cell per (plan, resource_type) pair. A missing row means
 // "unlimited" (checkQuota fails open) — shown as blank, not zero.
-type CellState = { limit_per_period: string; period: Period }
+type CellState = { limit_per_period: string; period: Period };
 
 // Rupees as strings while editing — paise only at the API boundary.
-type PriceCellState = { monthly: string }
-const paiseToRupees = (paise: number) => String(paise / 100)
-const rupeesToPaise = (rupees: string) => Math.round(Number(rupees) * 100)
+type PriceCellState = { monthly: string };
+const paiseToRupees = (paise: number) => String(paise / 100);
+const rupeesToPaise = (rupees: string) => Math.round(Number(rupees) * 100);
 
 export default function PlanLimitsPage() {
-  const [rows, setRows] = useState<PlanLimit[]>([])
-  const [cells, setCells] = useState<Record<string, CellState>>({})
-  const [saving, setSaving] = useState<string | null>(null)
-  const [status, setStatus] = useState<string>('')
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState<PlanLimit[]>([]);
+  const [cells, setCells] = useState<Record<string, CellState>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
   const [priceCells, setPriceCells] = useState<Record<Plan, PriceCellState>>({
     STARTER: { monthly: '' },
     GROWTH: { monthly: '' },
     PRO: { monthly: '' },
-  })
-  const [savingPrice, setSavingPrice] = useState<Plan | null>(null)
+  });
+  const [savingPrice, setSavingPrice] = useState<Plan | null>(null);
 
-  const [customerRows, setCustomerRows] = useState<CustomerLimitRow[]>([])
-  const [customerCells, setCustomerCells] = useState<Record<string, CustomerCell>>({})
-  const [savingCustomer, setSavingCustomer] = useState<string | null>(null)
+  const [customerRows, setCustomerRows] = useState<CustomerLimitRow[]>([]);
+  const [customerCells, setCustomerCells] = useState<Record<string, CustomerCell>>({});
+  const [savingCustomer, setSavingCustomer] = useState<string | null>(null);
 
-  const key = (plan: Plan, resourceType: ResourceType) => `${plan}:${resourceType}`
+  const key = (plan: Plan, resourceType: ResourceType) => `${plan}:${resourceType}`;
 
   useEffect(() => {
     async function load() {
@@ -83,59 +83,59 @@ export default function PlanLimitsPage() {
         fetch(`${API_URL}/v1/admin/plan-limits`, adminGetOptions()),
         fetch(`${API_URL}/v1/admin/plan-pricing`, adminGetOptions()),
         fetch(`${API_URL}/v1/admin/plan-limits/customer`, adminGetOptions()),
-      ])
-      const limitsJson = await limitsRes.json()
-      const data: PlanLimit[] = limitsJson.data ?? []
-      setRows(data)
+      ]);
+      const limitsJson = await limitsRes.json();
+      const data: PlanLimit[] = limitsJson.data ?? [];
+      setRows(data);
 
-      const next: Record<string, CellState> = {}
+      const next: Record<string, CellState> = {};
       for (const row of data) {
         next[key(row.plan, row.resource_type)] = {
           limit_per_period: String(row.limit_per_period),
           period: row.period,
-        }
+        };
       }
-      setCells(next)
+      setCells(next);
 
-      const pricingJson = await pricingRes.json()
-      const pricingData: PlanPricing[] = pricingJson.data ?? []
+      const pricingJson = await pricingRes.json();
+      const pricingData: PlanPricing[] = pricingJson.data ?? [];
       setPriceCells((prev) => {
-        const next: Record<Plan, PriceCellState> = { ...prev }
+        const next: Record<Plan, PriceCellState> = { ...prev };
         for (const row of pricingData) {
           next[row.plan] = {
             monthly: paiseToRupees(row.monthly_paise),
-          }
+          };
         }
-        return next
-      })
+        return next;
+      });
 
-      const customerJson = await customerRes.json()
-      const customerData: CustomerLimitRow[] = customerJson.data ?? []
-      setCustomerRows(customerData)
-      const nextCustomer: Record<string, CustomerCell> = {}
+      const customerJson = await customerRes.json();
+      const customerData: CustomerLimitRow[] = customerJson.data ?? [];
+      setCustomerRows(customerData);
+      const nextCustomer: Record<string, CustomerCell> = {};
       for (const row of customerData) {
         nextCustomer[row.resource_type] = {
           // An unconfigured row shows BLANK, not "0" — 0 would read as a cap of
           // zero generations, the opposite of what a missing row means.
           limit_per_period: row.limit_per_period === null ? '' : String(row.limit_per_period),
           period: row.period,
-        }
+        };
       }
-      setCustomerCells(nextCustomer)
+      setCustomerCells(nextCustomer);
 
-      setLoading(false)
+      setLoading(false);
     }
-    load()
-  }, [])
+    load();
+  }, []);
 
   const savePrice = async (plan: Plan) => {
-    const cell = priceCells[plan]
+    const cell = priceCells[plan];
     if (cell.monthly.trim() === '') {
-      setStatus('❌ Enter monthly price')
-      return
+      setStatus('❌ Enter monthly price');
+      return;
     }
-    setSavingPrice(plan)
-    setStatus('')
+    setSavingPrice(plan);
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/plan-pricing`, {
         ...(await adminMutateOptions()),
@@ -144,26 +144,26 @@ export default function PlanLimitsPage() {
           plan,
           monthly_paise: rupeesToPaise(cell.monthly),
         }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      setStatus(`✅ ${plan} pricing saved`)
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setStatus(`✅ ${plan} pricing saved`);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setSavingPrice(null)
+      setSavingPrice(null);
     }
-  }
+  };
 
   const saveCustomer = async (resourceType: string) => {
-    const cell = customerCells[resourceType] ?? { limit_per_period: '', period: 'MONTH' as Period }
-    const limit = cell.limit_per_period.trim()
+    const cell = customerCells[resourceType] ?? { limit_per_period: '', period: 'MONTH' as Period };
+    const limit = cell.limit_per_period.trim();
     if (limit === '') {
-      setStatus('❌ Enter a number, or -1 for unlimited')
-      return
+      setStatus('❌ Enter a number, or -1 for unlimited');
+      return;
     }
 
-    setSavingCustomer(resourceType)
-    setStatus('')
+    setSavingCustomer(resourceType);
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/plan-limits/customer`, {
         ...(await adminMutateOptions()),
@@ -173,9 +173,9 @@ export default function PlanLimitsPage() {
           limit_per_period: Number(limit),
           period: cell.period,
         }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      const json = await res.json()
+      });
+      if (!res.ok) throw new Error('Save failed');
+      const json = await res.json();
       setCustomerRows((prev) =>
         prev.map((row) =>
           row.resource_type === resourceType
@@ -187,7 +187,7 @@ export default function PlanLimitsPage() {
               }
             : row,
         ),
-      )
+      );
       // Re-seed the editable cell from the response as well. The field renders
       // from `customerCells`, not from the row, so without this the stored value
       // never reaches the screen: a number the API normalises (or bounds) would
@@ -200,36 +200,36 @@ export default function PlanLimitsPage() {
             json.data.limit_per_period === null ? '' : String(json.data.limit_per_period),
           period: json.data.period as Period,
         },
-      }))
-      setStatus(`✅ Customer ${resourceType} saved`)
+      }));
+      setStatus(`✅ Customer ${resourceType} saved`);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setSavingCustomer(null)
+      setSavingCustomer(null);
     }
-  }
+  };
 
   const cellFor = (plan: Plan, resourceType: ResourceType): CellState =>
-    cells[key(plan, resourceType)] ?? { limit_per_period: '', period: 'MONTH' }
+    cells[key(plan, resourceType)] ?? { limit_per_period: '', period: 'MONTH' };
 
   const updateCell = (plan: Plan, resourceType: ResourceType, patch: Partial<CellState>) => {
     setCells((prev) => ({
       ...prev,
       [key(plan, resourceType)]: { ...cellFor(plan, resourceType), ...patch },
-    }))
-  }
+    }));
+  };
 
   const save = async (plan: Plan, resourceType: ResourceType) => {
-    const cell = cellFor(plan, resourceType)
-    const limit = cell.limit_per_period.trim()
+    const cell = cellFor(plan, resourceType);
+    const limit = cell.limit_per_period.trim();
     if (limit === '') {
-      setStatus('❌ Enter a number, or -1 for unlimited')
-      return
+      setStatus('❌ Enter a number, or -1 for unlimited');
+      return;
     }
 
-    const k = key(plan, resourceType)
-    setSaving(k)
-    setStatus('')
+    const k = key(plan, resourceType);
+    setSaving(k);
+    setStatus('');
     try {
       const res = await fetch(`${API_URL}/v1/admin/plan-limits`, {
         ...(await adminMutateOptions()),
@@ -240,39 +240,43 @@ export default function PlanLimitsPage() {
           limit_per_period: Number(limit),
           period: cell.period,
         }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      const json = await res.json()
+      });
+      if (!res.ok) throw new Error('Save failed');
+      const json = await res.json();
       setRows((prev) => {
-        const others = prev.filter((r) => !(r.plan === plan && r.resource_type === resourceType))
-        return [...others, json.data]
-      })
-      setStatus(`✅ ${plan} / ${resourceType} saved`)
+        const others = prev.filter((r) => !(r.plan === plan && r.resource_type === resourceType));
+        return [...others, json.data];
+      });
+      setStatus(`✅ ${plan} / ${resourceType} saved`);
     } catch (err) {
-      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 size={24} className="animate-spin text-ink-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-5xl"
+    >
       <div>
         <div className="flex items-center gap-3 mb-1">
           <h1 className="text-2xl font-bold text-gray-900">Plan Limits &amp; Pricing</h1>
           <Gauge size={20} className="text-ink-500" />
         </div>
         <p className="text-sm text-gray-500">
-          Quota per plan/resource (F-010). Blank = unlimited — no row means checkQuota() never blocks it.
-          Set <span className="font-mono">-1</span> for explicit unlimited.
+          Quota per plan/resource (F-010). Blank = unlimited — no row means checkQuota() never
+          blocks it. Set <span className="font-mono">-1</span> for explicit unlimited.
         </p>
       </div>
 
@@ -294,28 +298,35 @@ export default function PlanLimitsPage() {
           <h2 className="text-sm font-semibold text-gray-900">Plan Pricing</h2>
         </div>
         <p className="text-xs text-gray-500 mb-4">
-          Base price per month (ex-GST). Razorpay charges base + 18% GST. Changing this does not re-price
-          existing Razorpay subscription plans — re-run &quot;Setup Razorpay Plans&quot; and update the
-          RAZORPAY_PLAN_* env vars after editing.
+          Base price per month (ex-GST). Razorpay charges base + 18% GST. Changing this does not
+          re-price existing Razorpay subscription plans — re-run &quot;Setup Razorpay Plans&quot;
+          and update the RAZORPAY_PLAN_* env vars after editing.
         </p>
         <table className="w-full text-sm mb-2">
           <thead>
             <tr className="border-b border-gray-100">
               <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Plan</th>
-              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Monthly (₹, base ex-GST)</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">
+                Monthly (₹, base ex-GST)
+              </th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
             {PLANS.map((plan) => (
               <tr key={plan} className="border-b border-gray-50">
-                <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">{plan}</td>
+                <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
+                  {plan}
+                </td>
                 <td className="px-3 py-2">
                   <input
                     type="number"
                     value={priceCells[plan].monthly}
                     onChange={(e) =>
-                      setPriceCells((prev) => ({ ...prev, [plan]: { ...prev[plan], monthly: e.target.value } }))
+                      setPriceCells((prev) => ({
+                        ...prev,
+                        [plan]: { ...prev[plan], monthly: e.target.value },
+                      }))
                     }
                     className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                   />
@@ -328,7 +339,11 @@ export default function PlanLimitsPage() {
                     className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
                     aria-label={`Save ${plan} pricing`}
                   >
-                    {savingPrice === plan ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    {savingPrice === plan ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Save size={14} />
+                    )}
                   </button>
                 </td>
               </tr>
@@ -355,25 +370,31 @@ export default function PlanLimitsPage() {
                 <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
                   {resourceType}
                   {resourceType === 'AI_VIDEO' && (
-                    <p className="font-sans text-[10px] text-gray-400 whitespace-normal">No row = feature is off (metered)</p>
+                    <p className="font-sans text-[10px] text-gray-400 whitespace-normal">
+                      No row = feature is off (metered)
+                    </p>
                   )}
                 </td>
                 {PLANS.map((plan) => {
-                  const cell = cellFor(plan, resourceType)
-                  const k = key(plan, resourceType)
+                  const cell = cellFor(plan, resourceType);
+                  const k = key(plan, resourceType);
                   return (
                     <td key={plan} className="px-3 py-2">
                       <div className="flex items-center gap-1.5">
                         <input
                           type="number"
                           value={cell.limit_per_period}
-                          onChange={(e) => updateCell(plan, resourceType, { limit_per_period: e.target.value })}
+                          onChange={(e) =>
+                            updateCell(plan, resourceType, { limit_per_period: e.target.value })
+                          }
                           placeholder="unlimited"
                           className="w-20 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                         />
                         <select
                           value={cell.period}
-                          onChange={(e) => updateCell(plan, resourceType, { period: e.target.value as Period })}
+                          onChange={(e) =>
+                            updateCell(plan, resourceType, { period: e.target.value as Period })
+                          }
                           className="px-1.5 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
                         >
                           {PERIODS.map((p) => (
@@ -396,7 +417,7 @@ export default function PlanLimitsPage() {
                         </button>
                       </div>
                     </td>
-                  )
+                  );
                 })}
               </tr>
             ))}
@@ -411,9 +432,9 @@ export default function PlanLimitsPage() {
         </div>
         <p className="text-xs text-gray-500 mb-4">
           Per-SHOPPER caps (F-040). A shopper has no plan, so this is one number for the whole
-          platform rather than a column per tier. A try-on counts against the shopper&apos;s cap AND the
-          store&apos;s own TRY_ON_GENERATION limit above — the two are separate on purpose, and whichever
-          runs out first is the one the shopper is told about. Blank = no row = unlimited.
+          platform rather than a column per tier. A try-on counts against the shopper&apos;s cap AND
+          the store&apos;s own TRY_ON_GENERATION limit above — the two are separate on purpose, and
+          whichever runs out first is the one the shopper is told about. Blank = no row = unlimited.
         </p>
         {customerRows.length === 0 ? (
           <p className="text-xs text-gray-400">No customer-metered resources yet.</p>
@@ -421,8 +442,12 @@ export default function PlanLimitsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Resource</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Per shopper</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">
+                  Resource
+                </th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">
+                  Per shopper
+                </th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Period</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -432,7 +457,7 @@ export default function PlanLimitsPage() {
                 const cell = customerCells[row.resource_type] ?? {
                   limit_per_period: '',
                   period: 'MONTH' as Period,
-                }
+                };
                 return (
                   <tr key={row.resource_type} className="border-b border-gray-50">
                     <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">
@@ -441,9 +466,7 @@ export default function PlanLimitsPage() {
                           unseeded resource fails open, so "blank" here means
                           no cap in force, not a cap of zero. */}
                       {!row.configured && (
-                        <span className="ml-2 text-xs text-amber-600">
-                          not set
-                        </span>
+                        <span className="ml-2 text-xs text-amber-600">not set</span>
                       )}
                     </td>
                     <td className="px-3 py-2">
@@ -495,12 +518,12 @@ export default function PlanLimitsPage() {
                       </button>
                     </td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
         )}
       </div>
     </motion.div>
-  )
+  );
 }

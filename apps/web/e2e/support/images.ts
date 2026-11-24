@@ -1,4 +1,4 @@
-import type { BrowserContext } from '@playwright/test'
+import type { BrowserContext } from '@playwright/test';
 
 // ── Fixture photos ────────────────────────────────────────────────
 //
@@ -31,9 +31,9 @@ import type { BrowserContext } from '@playwright/test'
 const TINY_PNG: Buffer = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAEAAAABQCAIAAAAm3eQSAAAAkElEQVR4nO3PUQkAIBTAwBfROEY0liH8OITBAtzmrP11wwUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjx2AbehQdI93DrPAAAAAElFTkSuQmCC',
   'base64',
-)
+);
 
-const FX_HOST = 'https://cdn-e2e.r2.dev'
+const FX_HOST = 'https://cdn-e2e.r2.dev';
 
 /**
  * Make every fixture photo load: the Next optimizer, and the raw host the
@@ -41,10 +41,10 @@ const FX_HOST = 'https://cdn-e2e.r2.dev'
  */
 export async function stubFixtureImages(context: BrowserContext): Promise<void> {
   const png = async (route: Parameters<Parameters<BrowserContext['route']>[1]>[0]) => {
-    await route.fulfill({ status: 200, contentType: 'image/png', body: TINY_PNG })
-  }
-  await context.route('**/_next/image*', png)
+    await route.fulfill({ status: 200, contentType: 'image/png', body: TINY_PNG });
+  };
+  await context.route('**/_next/image*', png);
   // Match the fixture host only — a broader `**/*.jpg` would also swallow the
   // app's own assets and hide a genuinely missing one.
-  await context.route(`${FX_HOST}/**`, png)
+  await context.route(`${FX_HOST}/**`, png);
 }
