@@ -742,3 +742,10 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | api lint (#340) | Last 4 Biome errors in `apps/api` cleared. api tsc 0, tests 3550 passed. Merged after #339. |
 | console.log | Owner chose a `biome.jsonc` override: `noConsoleLog` off for `scripts/`, `*/scripts/`, `packages/db/prisma/`, `services/fashion-vtone/test-tryon.mjs`, test/spec files and `__mocks__`. These print to the terminal on purpose. App code stays guarded. |
 | Local runs | Biome: 855 errors, 243 warnings (was 772). One `noConsoleLog` left, `packages/db/src/client.ts`, for the db PR. Config only, no code changed. |
+
+## 2026-11-24 — Biome: packages/shared clean (this PR)
+
+| Area | Change |
+|---|---|
+| shared | `normalizeIndianPhone`: dropped two needless `!` on `slice()` and a dead `if` that returned the same value. Same behaviour. |
+| Local runs | `packages/shared`: Biome 0 errors, 0 warnings. tsc 0, tests 276 passed. |
