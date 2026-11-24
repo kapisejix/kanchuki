@@ -11,6 +11,7 @@ import {
   Package,
   PackagePlus,
   QrCode,
+  ScanBarcode,
   ScanLine,
   Settings,
 } from 'lucide-react-native';
@@ -131,7 +132,7 @@ export default function HomeScreen() {
             className="w-10 h-10 rounded-2xl bg-lavender-100 border border-lavender-200 items-center justify-center"
           >
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-spaceCadet-900 text-sm"
             >
               {(me?.shop_name ?? 'R').slice(0, 2).toUpperCase()}
@@ -141,6 +142,8 @@ export default function HomeScreen() {
             <Text
               style={{
                 fontFamily: 'Marcellus_400Regular',
+                letterSpacing: 0.32,
+                fontWeight: '800',
                 fontSize: 16,
                 lineHeight: 24
               }}
@@ -188,7 +191,7 @@ export default function HomeScreen() {
 
           <View className="flex-row items-baseline gap-2 mb-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-4xl text-white"
             >
               {stats?.views_this_month ?? 0}
@@ -296,7 +299,7 @@ export default function HomeScreen() {
                 onPress={() => router.push(`/product/${r.product.id}`)}
                 className="bg-white rounded-2xl p-3.5 border border-lavender-200 flex-row items-center justify-between shadow-sm"
               >
-                <Text className="text-xs text-spaceCadet-900 font-marcellus">
+                <Text className="text-xs text-spaceCadet-900 font-extrabold font-marcellus">
                   {r.product.category ?? 'Product'} · {r.product.primary_color ?? '—'}
                 </Text>
                 <Text className="text-xs text-heliotrope-500">{r.count} views</Text>
@@ -360,6 +363,16 @@ export default function HomeScreen() {
               sublabel="Scan and mark sold"
               onPress={() => router.push('/product/sell')}
             />
+          </View>
+          {/* F-025 single scan — moved from the Catalog header (owner, 2026-11-24); same route, no staffCan gate there either. */}
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<ScanBarcode size={18} color="#5A3962" />}
+              label="Scan product"
+              sublabel="Find by SKU, mark sold"
+              onPress={() => router.push('/product/scan')}
+            />
+            <View className="flex-1" />
           </View>
           {/* Suits Designs — retailer entry hidden by owner decision
               (2026-09-07). Only admin-uploaded (global) designs show to
@@ -438,7 +451,12 @@ function QuickAction({
       className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200"
     >
       <View className="mb-2">{icon}</View>
-      <Text className="text-[13px] font-semibold text-spaceCadet-900">{label}</Text>
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+        className="text-[13px] text-spaceCadet-900"
+      >
+        {label}
+      </Text>
       <Text className="text-xs text-heliotrope-500 mt-0.5">{sublabel}</Text>
       {badge > 0 && (
         <View

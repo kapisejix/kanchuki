@@ -16,8 +16,6 @@ import {
   MapPin,
   SlidersHorizontal,
   X,
-  ScanLine,
-  ShoppingBag,
   Camera,
   Search,
   CheckSquare,
@@ -135,7 +133,7 @@ const CatalogCard = memo(function CatalogCard({
             {product.category ?? 'Product'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
           </Text>
-          <Text className="text-sm text-spaceCadet-900 font-marcellus">
+          <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
           {product.total_quantity != null && (
@@ -154,7 +152,7 @@ const CatalogCard = memo(function CatalogCard({
             </View>
           )}
           {product.status === 'AVAILABLE' && (
-            <GradientButton variant="web" label="Mark Sold" onPress={onMarkSold} style={{ marginTop: 8 }} />
+            <GradientButton variant="web" compact label="Mark Sold" onPress={onMarkSold} style={{ marginTop: 8 }} />
           )}
         </View>
       }
@@ -384,7 +382,7 @@ export default function CatalogScreen() {
               <Camera size={24} color="#5A3962" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-spaceCadet-900 text-lg text-center"
             >
               No products yet
@@ -407,7 +405,7 @@ export default function CatalogScreen() {
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
-      {/* Header — Discovery Greeting + Scan/Filter icons */}
+      {/* Header — Discovery Greeting + Select/Filter icons */}
       <View
         className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center justify-between"
         style={{ paddingTop: headerPaddingTop }}
@@ -421,13 +419,13 @@ export default function CatalogScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <Text className="text-spaceCadet-900 font-marcellus text-sm">
+              <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
               </Text>
             )}
           </View>
           <View>
-            <Text className="text-base text-spaceCadet-900 font-marcellus">
+            <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">
               {retailerProfile?.shop_name ?? 'Store'}
             </Text>
             <Text className="text-xs text-heliotrope-500">
@@ -446,22 +444,6 @@ export default function CatalogScreen() {
             accessibilityRole="button"
           >
             {selectionMode ? <X size={18} color="white" /> : <CheckSquare size={18} color="#231F48" />}
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => router.push('/product/scan')}
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-white border border-lavender-200 shadow-sm"
-            accessibilityLabel="Scan product SKU to mark sold"
-            accessibilityRole="button"
-          >
-            <ScanLine size={18} color="#231F48" />
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => router.push('/product/sell')}
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-white border border-lavender-200 shadow-sm"
-            accessibilityLabel="Sell items: scan and mark several articles sold"
-            accessibilityRole="button"
-          >
-            <ShoppingBag size={18} color="#231F48" />
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => setShowFilters((v) => !v)}
@@ -515,14 +497,7 @@ export default function CatalogScreen() {
                   >
                     <X size={14} color="#231F48" />
                   </AnimatedPressable>
-                ) : (
-                  <AnimatedPressable
-                    onPress={() => setShowFilters((v) => !v)}
-                    className="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center absolute right-3 border border-lavender-200"
-                  >
-                    <SlidersHorizontal size={14} color="#231F48" />
-                  </AnimatedPressable>
-                )}
+                ) : null}
               </View>
 
               {(categoryImages.length > 0 || showFilters || waSyncStatusByProduct.size > 0) && (
@@ -584,7 +559,7 @@ export default function CatalogScreen() {
                       <Text className="text-xs font-semibold text-heliotrope-600">Filters</Text>
                       <View className="flex-row items-center gap-3">
                         {activeFilterCount > 0 && (
-                          <AnimatedPressable onPress={clearFilters}>
+                          <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center" onPress={clearFilters}>
                             <Text className="text-fuchsia-600 text-xs font-semibold">Clear all</Text>
                           </AnimatedPressable>
                         )}
@@ -641,10 +616,10 @@ export default function CatalogScreen() {
             zIndex: 50,
           }}
         >
-          <AnimatedPressable onPress={clearSelection} disabled={deleting}>
+          <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center" onPress={clearSelection} disabled={deleting}>
             <Text className="text-lavender-200 text-xs font-semibold">Cancel</Text>
           </AnimatedPressable>
-          <Text className="text-white text-sm font-marcellus">
+          <Text className="text-white text-sm font-extrabold font-marcellus">
             {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Tap products to select'}
           </Text>
           <DangerButton
