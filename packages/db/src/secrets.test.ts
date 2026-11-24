@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { decryptSecret, encryptSecret, maskSecret } from './secrets.js';
 
 beforeEach(() => {
-  process.env['ENCRYPTION_MASTER_KEY'] = 'test-master-key-do-not-use-in-prod';
+  process.env.ENCRYPTION_MASTER_KEY = 'test-master-key-do-not-use-in-prod';
 });
 
 describe('encryptSecret / decryptSecret', () => {

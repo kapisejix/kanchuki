@@ -8,7 +8,7 @@
 // Full requirements: docs/PRO-REQUIREMENTS.md §12.4
 // Guardrail design: docs/SECURITY.md §19
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: vault client is generated only when VAULT_DATABASE_URL is set, so no static type exists
 type VaultClient = any;
 
 let _vaultClient: VaultClient | null = null;
@@ -25,8 +25,8 @@ async function getVaultClient(): Promise<VaultClient | null> {
   if (_initAttempted) return null; // Don't retry a failed init
   _initAttempted = true;
 
-  if (!process.env['VAULT_DATABASE_URL']) {
-    if (process.env['NODE_ENV'] !== 'production') {
+  if (!process.env.VAULT_DATABASE_URL) {
+    if (process.env.NODE_ENV !== 'production') {
       console.warn('[vault] VAULT_DATABASE_URL not set — vault writes will be skipped');
     }
     return null;
@@ -41,8 +41,8 @@ async function getVaultClient(): Promise<VaultClient | null> {
     const vaultModulePath = './generated/vault/index.js';
     const { PrismaClient } = await import(vaultModulePath);
     _vaultClient = new PrismaClient({
-      datasources: { db: { url: process.env['VAULT_DATABASE_URL'] } },
-      log: process.env['NODE_ENV'] === 'development' ? ['error', 'warn'] : ['error'],
+      datasources: { db: { url: process.env.VAULT_DATABASE_URL } },
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
     });
     return _vaultClient;
   } catch (err) {
