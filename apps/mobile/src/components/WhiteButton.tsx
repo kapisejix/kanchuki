@@ -64,14 +64,18 @@ export function WhiteButton({
           elevation: 2,
         }}
       >
+        {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
         {loading ? (
-          <ActivityIndicator color={WHITE_BUTTON_INK} size="small" />
-        ) : (
+          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={WHITE_BUTTON_INK} size="small" />
+          </View>
+        ) : null}
           <>
-            {icon}
+            {icon ? <View style={{ opacity: loading ? 0 : 1 }}>{icon}</View> : null}
             {/* No numberOfLines: full label always shows. */}
             <Text
               style={{
+                opacity: loading ? 0 : 1,
                 color: WHITE_BUTTON_INK,
                 fontSize: 12, // owner 2026-10-16: -2px from web text-sm; sentence case
                 fontWeight: '700',
@@ -83,7 +87,6 @@ export function WhiteButton({
               {label}
             </Text>
           </>
-        )}
       </View>
     </AnimatedPressable>
   )

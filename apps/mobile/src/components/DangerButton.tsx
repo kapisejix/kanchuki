@@ -1,4 +1,4 @@
-import { ActivityIndicator, Text, type ViewStyle } from 'react-native'
+import { ActivityIndicator, Text, View, type ViewStyle } from 'react-native'
 import { AnimatedPressable } from './AnimatedPressable'
 
 /** Destructive action (Disconnect / Delete) — keeps its red colour but shares the button
@@ -48,11 +48,15 @@ export function DangerButton({
         style,
       ]}
     >
+      {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
       {loading ? (
-        <ActivityIndicator size="small" color="#FFFFFF" />
-      ) : (
+        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        </View>
+      ) : null}
         <Text
           style={{
+            opacity: loading ? 0 : 1,
             color: '#FFFFFF',
             fontSize: 10,
             fontWeight: '800',
@@ -63,7 +67,6 @@ export function DangerButton({
         >
           {label}
         </Text>
-      )}
     </AnimatedPressable>
   )
 }
