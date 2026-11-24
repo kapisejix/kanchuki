@@ -134,7 +134,7 @@ export default function PhoneScreen() {
 
           {/* Headline in Marcellus font */}
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-2xl text-spaceCadet-900 text-center mb-2"
           >
             Aap ki Dukan, AI ki Takat

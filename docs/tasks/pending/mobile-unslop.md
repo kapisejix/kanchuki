@@ -1,6 +1,6 @@
 # Mobile unslop: direction, rules and screen checklist
 
-**Status:** Task 1 built on `design/mobile-unslop-task-1`. Not merged and not checked in Expo Go. Tasks 2-4 must not start until Task 1 is merged.
+**Status:** Task 1 merged (PR #332). Task 2 built on `design/mobile-unslop-task-2`, not merged. Neither is checked in Expo Go. The owner will check all four tasks together after Task 4.
 
 ## Direction
 
@@ -27,6 +27,7 @@ Use the existing tokens in `apps/mobile/tailwind.config.js`. Add no dependencies
 | Surfaces | Cards use `rounded-2xl` with a `lavender-200` hairline. No colored glow. Floating buttons use a soft navy shadow. |
 | Gradient | Navy to plum only on `GradientButton` and at most one key panel per screen. |
 | Copy | No greetings, exclamation marks, "luxury", "seamless" or "AI-powered". Do not invent claims. |
+| Theme variables | `ink-600`, `rust-600`, `turmeric-600` and `sand-100` are set from the admin theme. Keep them. Other `sand` and `ink` tints may move to `lavender`, `heliotrope` and `spaceCadet`, but check the surface first: camera screens are black. |
 | Buttons | `button-styles.md` still applies: owner-approved gradient, radius 16, uppercase labels and navy icons. Do not restyle the three shared buttons without owner approval. |
 
 ## Open owner decisions
@@ -61,26 +62,28 @@ Shared components changed: `ProductCard`, `ScreenHeader`, `UsageCard`, `SetupChe
 
 ### Task 2: products, categories, collections, customers (20)
 
-- [ ] `product/[id]`
-- [ ] `product/[id]/add-color`
-- [ ] `product/[id]/add-photos`
-- [ ] `product/add`
-- [ ] `product/bulk`
-- [ ] `product/bulk-onboard`
-- [ ] `product/catalog-import`
-- [ ] `product/scan`
-- [ ] `product/sell`
-- [ ] `product/try-on`
-- [ ] `category/[id]`
-- [ ] `category/[id]/add-products`
-- [ ] `category/new`
-- [ ] `collection/[id]`
-- [ ] `collection/new`
-- [ ] `customer/[id]`
-- [ ] `customer/add`
-- [ ] `enquiries`
-- [ ] `enquiry-try-on`
-- [ ] `ai-search`
+Expo Go check: **pending owner**.
+
+- [x] `product/[id]`
+- [x] `product/[id]/add-color`
+- [x] `product/[id]/add-photos` (no visual issues found)
+- [x] `product/add`
+- [x] `product/bulk`
+- [x] `product/bulk-onboard`
+- [x] `product/catalog-import`
+- [x] `product/scan` (no visual issues found)
+- [x] `product/sell`
+- [x] `product/try-on`
+- [x] `category/[id]`
+- [x] `category/[id]/add-products`
+- [x] `category/new`
+- [x] `collection/[id]`
+- [x] `collection/new`
+- [x] `customer/[id]`
+- [x] `customer/add`
+- [x] `enquiries`
+- [x] `enquiry-try-on`
+- [x] `ai-search`
 
 ### Task 3: growth and social (28)
 

@@ -1,97 +1,85 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { SIZE_OPTIONS } from '@kanchuki/shared'
+import { SIZE_OPTIONS } from '@kanchuki/shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { AlertTriangle, Check, Edit3, FileText, ImagePlus, Save, X } from 'lucide-react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  TextInput,
-  Alert,
-  Switch,
-} from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import * as ImagePicker from 'expo-image-picker'
-import * as ImageManipulator from 'expo-image-manipulator'
-import { Image } from 'expo-image'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+  AudienceChips,
+  type AudiencePick,
+  addAudience,
+  audienceFromTags,
+} from '../../src/components/product-detail/AudienceChips';
 import {
-  X,
-  Check,
-  Sparkles,
-  Edit3,
-  Save,
-  ImagePlus,
-  AlertTriangle,
-  FileText,
-} from 'lucide-react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import {
+  type CatalogDetectedItem,
   catalogImportApi,
-  uploadImageToR2,
   prepareImageForUpload,
   productAttributeApi,
-  type CatalogDetectedItem,
-} from '../../src/lib/api'
-import { apiMessage, showError, logError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { AudienceChips, addAudience, audienceFromTags, type AudiencePick } from '../../src/components/product-detail/AudienceChips'
+  uploadImageToR2,
+} from '../../src/lib/api';
+import { apiMessage, logError, showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { useTheme } from '../../src/lib/theme';
 
 // ─── Types ────────────────────────────────────────────────────────
 
-type SourceType = 'image' | 'pdf'
-type Step = 'source' | 'uploading' | 'detecting' | 'reviewing' | 'saving' | 'done'
+type SourceType = 'image' | 'pdf';
+type Step = 'source' | 'uploading' | 'detecting' | 'reviewing' | 'saving' | 'done';
 
 type ReviewItem = {
-  original: CatalogDetectedItem
-  approved: boolean
+  original: CatalogDetectedItem;
+  approved: boolean;
   // null until the retailer taps a chip; until then a keyword guess (see audienceOf).
-  audience: AudiencePick | null
+  audience: AudiencePick | null;
   edits: {
-    product_name: string
-    subtype: string
-    short_description: string
-    category: string
-    primary_color: string
-    fabric_estimate: string
-    pattern: string
-    search_tags: string
-    styles: string[]
-    fabrics: string[]
-    sizes: string[]
-    price: string
-  }
-}
+    product_name: string;
+    subtype: string;
+    short_description: string;
+    category: string;
+    primary_color: string;
+    fabric_estimate: string;
+    pattern: string;
+    search_tags: string;
+    styles: string[];
+    fabrics: string[];
+    sizes: string[];
+    price: string;
+  };
+};
 
 // What a row sends: the retailer's pick, else a keyword guess (null = leave it to the AI tagger).
 const audienceOf = (item: ReviewItem) =>
-  addAudience(item.audience, [item.edits.category, item.edits.subtype, item.edits.product_name])
+  addAudience(item.audience, [item.edits.category, item.edits.subtype, item.edits.product_name]);
 
 // ─── Screen ───────────────────────────────────────────────────────
 
 export default function CatalogImportScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { insets, headerPaddingTop } = useScreenInsets()
-  const queryClient = useQueryClient()
+  const { primaryColor, colors } = useTheme();
+  const { insets, headerPaddingTop } = useScreenInsets();
+  const queryClient = useQueryClient();
   const params = useLocalSearchParams<{
-    sourceUrl?: string
-    sourceR2Key?: string
-  }>()
+    sourceUrl?: string;
+    sourceR2Key?: string;
+  }>();
 
-  const [step, setStep] = useState<Step>('source')
-  const [, setSourceType] = useState<SourceType>('image')
-  const [sourceUrl, setSourceUrl] = useState(params.sourceUrl ?? '')
-  const [, setSourceR2Key] = useState(params.sourceR2Key ?? '')
-  const [items, setItems] = useState<ReviewItem[]>([])
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [step, setStep] = useState<Step>('source');
+  const [, setSourceType] = useState<SourceType>('image');
+  const [sourceUrl, setSourceUrl] = useState(params.sourceUrl ?? '');
+  const [, setSourceR2Key] = useState(params.sourceR2Key ?? '');
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   // Asked once per import batch — most catalogs don't list sizes, so default off.
-  const [wantSizes, setWantSizes] = useState(false)
+  const [wantSizes, setWantSizes] = useState(false);
   const [batchResult, setBatchResult] = useState<{
-    requested: number
-    created: number
-  } | null>(null)
-  const [error, setError] = useState<string | null>(null)
+    requested: number;
+    created: number;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, seeded from
   // the admin default template) — same queries as the product add/edit
@@ -99,13 +87,13 @@ export default function CatalogImportScreen() {
   const { data: stylesData } = useQuery({
     queryKey: ['attributes', 'STYLE'],
     queryFn: () => productAttributeApi.list('STYLE'),
-  })
-  const styleOptions = stylesData?.data ?? []
+  });
+  const styleOptions = stylesData?.data ?? [];
   const { data: fabricsData } = useQuery({
     queryKey: ['attributes', 'FABRIC'],
     queryFn: () => productAttributeApi.list('FABRIC'),
-  })
-  const fabricOptions = fabricsData?.data ?? []
+  });
+  const fabricOptions = fabricsData?.data ?? [];
 
   // ── Pick photo from gallery ───────────────────────────────────
 
@@ -116,73 +104,75 @@ export default function CatalogImportScreen() {
         quality: 0.85,
         allowsMultipleSelection: true,
         selectionLimit: 20,
-      })
+      });
 
-      if (result.canceled || result.assets.length === 0) return
+      if (result.canceled || result.assets.length === 0) return;
 
       if (result.assets.length === 1) {
-        const uri = result.assets[0]!.uri
+        const uri = result.assets[0]!.uri;
         const compressed = await ImageManipulator.manipulateAsync(
           uri,
           [{ resize: { width: 1400 } }],
           { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-        )
-        setSourceUrl(compressed.uri)
-        setSourceType('image')
-        await uploadSource(compressed.uri, 'image/jpeg')
-        return
+        );
+        setSourceUrl(compressed.uri);
+        setSourceType('image');
+        await uploadSource(compressed.uri, 'image/jpeg');
+        return;
       }
 
       // Multiple pages picked at once (e.g. screenshots of a wholesaler PDF
       // catalog) — detect on each, merge into one review/select queue below.
-      await uploadAndDetectMultiple(result.assets.map((a) => a.uri))
+      await uploadAndDetectMultiple(result.assets.map((a) => a.uri));
     } catch (err) {
-      showError(err, 'Could not pick those photos.', 'Photo Error')
+      showError(err, 'Could not pick those photos.', 'Photo Error');
     }
     // uploadAndDetectMultiple / uploadSource are stable useCallbacks defined below
     // (forward reference) — intentionally omitted to avoid a TDZ + re-register loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   // ── Upload + detect multiple source photos, merge into one queue ─
 
   const uploadAndDetectMultiple = useCallback(async (uris: string[]) => {
-    setStep('uploading')
-    setError(null)
+    setStep('uploading');
+    setError(null);
     try {
-      const uploadedUrls: string[] = []
+      const uploadedUrls: string[] = [];
       for (const uri of uris) {
         const compressed = await ImageManipulator.manipulateAsync(
           uri,
           [{ resize: { width: 1400 } }],
           { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-        )
-        const prep = await prepareImageForUpload(compressed.uri, 'image/jpeg')
+        );
+        const prep = await prepareImageForUpload(compressed.uri, 'image/jpeg');
         const uploadResult = await catalogImportApi.getUploadUrl(
           'catalog-source.jpg',
           'image/jpeg',
           prep.size,
-        )
-        const info = uploadResult.data
-        await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
-        uploadedUrls.push(info.public_url)
+        );
+        const info = uploadResult.data;
+        await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+          compress: false,
+        });
+        uploadedUrls.push(info.public_url);
       }
-      setSourceUrl(uploadedUrls[0] ?? '')
-      setSourceType('image')
+      setSourceUrl(uploadedUrls[0] ?? '');
+      setSourceType('image');
 
-      setStep('detecting')
-      const merged: CatalogDetectedItem[] = []
+      setStep('detecting');
+      const merged: CatalogDetectedItem[] = [];
       for (let i = 0; i < uploadedUrls.length; i++) {
         try {
-          const detected = await catalogImportApi.detectItems(uploadedUrls[i]!)
+          const detected = await catalogImportApi.detectItems(uploadedUrls[i]!);
           for (const item of detected.data.items) {
             merged.push({
               ...item,
               description: `Page ${i + 1}: ${item.description}`,
-            })
+            });
           }
         } catch (err) {
-          console.error(`Detection failed for page ${i + 1}:`, err)
+          console.error(`Detection failed for page ${i + 1}:`, err);
         }
       }
 
@@ -197,7 +187,8 @@ export default function CatalogImportScreen() {
             short_description: item.tags.short_description ?? '',
             category: item.tags.category ?? '',
             primary_color: item.tags.primary_color ?? '',
-            fabric_estimate: item.tags.fabric_estimate ?? '',            pattern: item.tags.pattern ?? '',
+            fabric_estimate: item.tags.fabric_estimate ?? '',
+            pattern: item.tags.pattern ?? '',
             search_tags: (item.tags.search_tags ?? []).join(', '),
             styles: item.tags.style ?? [],
             fabrics: item.tags.fabrics ?? [],
@@ -205,58 +196,56 @@ export default function CatalogImportScreen() {
             price: '',
           },
         })),
-      )
+      );
 
-      setStep('reviewing')
+      setStep('reviewing');
     } catch (err) {
-      logError(err)
-      setError(apiMessage(err, 'Upload failed. Try again.'))
-      setStep('source')
+      logError(err);
+      setError(apiMessage(err, 'Upload failed. Try again.'));
+      setStep('source');
     }
-  }, [])
+  }, []);
 
   // ── Upload source to R2 ───────────────────────────────────────
 
   const uploadSource = useCallback(async (uri: string, contentType: string) => {
-    setStep('uploading')
+    setStep('uploading');
 
     try {
-      const prep = await prepareImageForUpload(uri, contentType)
-      const ext = contentType === 'application/pdf' ? '.pdf' : '.jpg'
-      const filename = `catalog-source${ext}`
+      const prep = await prepareImageForUpload(uri, contentType);
+      const ext = contentType === 'application/pdf' ? '.pdf' : '.jpg';
+      const filename = `catalog-source${ext}`;
 
-      const uploadResult = await catalogImportApi.getUploadUrl(
-        filename,
-        contentType,
-        prep.size,
-      )
-      const info = uploadResult.data
+      const uploadResult = await catalogImportApi.getUploadUrl(filename, contentType, prep.size);
+      const info = uploadResult.data;
 
-      await uploadImageToR2(prep.uri, info.upload_url, contentType, undefined, undefined, { compress: false })
+      await uploadImageToR2(prep.uri, info.upload_url, contentType, undefined, undefined, {
+        compress: false,
+      });
 
-      setSourceUrl(info.public_url)
-      setSourceR2Key(info.r2_key)
+      setSourceUrl(info.public_url);
+      setSourceR2Key(info.r2_key);
 
       // Now run detection
-      await runDetection(info.public_url)
+      await runDetection(info.public_url);
     } catch (err) {
-      logError(err)
-      setError(apiMessage(err, 'Upload failed. Try again.'))
-      setStep('source')
+      logError(err);
+      setError(apiMessage(err, 'Upload failed. Try again.'));
+      setStep('source');
     }
     // runDetection is a stable useCallback defined below (forward reference) —
     // intentionally omitted to avoid a TDZ + re-register loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   // ── Run AI detection ──────────────────────────────────────────
 
   const runDetection = useCallback(async (url: string) => {
-    setStep('detecting')
-    setError(null)
+    setStep('detecting');
+    setError(null);
 
     try {
-      const result = await catalogImportApi.detectItems(url)
+      const result = await catalogImportApi.detectItems(url);
 
       setItems(
         result.data.items.map((item) => ({
@@ -278,38 +267,36 @@ export default function CatalogImportScreen() {
             price: '',
           },
         })),
-      )
+      );
 
-      setStep('reviewing')
+      setStep('reviewing');
     } catch (err) {
-      logError(err)
-      setError(apiMessage(err, 'Detection failed. Try again.'))
-      setStep('source')
+      logError(err);
+      setError(apiMessage(err, 'Detection failed. Try again.'));
+      setStep('source');
     }
-  }, [])
+  }, []);
 
   // If source URL passed via params (from catalog screen), run detection once.
   // detectionStartedRef (not state) guards this — a state-only guard can still
   // let a re-render before the state update commits schedule runDetection twice.
-  const detectionStartedRef = useRef(false)
+  const detectionStartedRef = useRef(false);
   useEffect(() => {
-    if (!params.sourceUrl || detectionStartedRef.current) return
-    detectionStartedRef.current = true
-    setSourceUrl(params.sourceUrl)
-    setSourceR2Key(params.sourceR2Key ?? '')
-    setStep('detecting')
-    runDetection(params.sourceUrl).catch(() => {})
-  }, [params.sourceUrl, params.sourceR2Key, runDetection])
+    if (!params.sourceUrl || detectionStartedRef.current) return;
+    detectionStartedRef.current = true;
+    setSourceUrl(params.sourceUrl);
+    setSourceR2Key(params.sourceR2Key ?? '');
+    setStep('detecting');
+    runDetection(params.sourceUrl).catch(() => {});
+  }, [params.sourceUrl, params.sourceR2Key, runDetection]);
 
   // ── Toggle approval ───────────────────────────────────────────
 
   const toggleApproval = useCallback((index: number) => {
     setItems((prev) =>
-      prev.map((item, i) =>
-        i === index ? { ...item, approved: !item.approved } : item,
-      ),
-    )
-  }, [])
+      prev.map((item, i) => (i === index ? { ...item, approved: !item.approved } : item)),
+    );
+  }, []);
 
   // ── Edit field update ─────────────────────────────────────────
 
@@ -317,28 +304,26 @@ export default function CatalogImportScreen() {
     (index: number, field: keyof ReviewItem['edits'], value: string) => {
       setItems((prev) =>
         prev.map((item, i) =>
-          i === index
-            ? { ...item, edits: { ...item.edits, [field]: value } }
-            : item,
+          i === index ? { ...item, edits: { ...item.edits, [field]: value } } : item,
         ),
-      )
+      );
     },
     [],
-  )
+  );
 
   // ── Toggle a size checkbox for one item ─────────────────────────
 
   const toggleItemSize = useCallback((index: number, size: string) => {
     setItems((prev) =>
       prev.map((item, i) => {
-        if (i !== index) return item
+        if (i !== index) return item;
         const sizes = item.edits.sizes.includes(size)
           ? item.edits.sizes.filter((s) => s !== size)
-          : [...item.edits.sizes, size]
-        return { ...item, edits: { ...item.edits, sizes } }
+          : [...item.edits.sizes, size];
+        return { ...item, edits: { ...item.edits, sizes } };
       }),
-    )
-  }, [])
+    );
+  }, []);
 
   // ── Toggle a Style/Fabric chip for one item (multi-select) ──────
 
@@ -346,34 +331,34 @@ export default function CatalogImportScreen() {
     (index: number, field: 'styles' | 'fabrics', value: string) => {
       setItems((prev) =>
         prev.map((item, i) => {
-          if (i !== index) return item
+          if (i !== index) return item;
           const list = item.edits[field].includes(value)
             ? item.edits[field].filter((v) => v !== value)
-            : [...item.edits[field], value]
-          return { ...item, edits: { ...item.edits, [field]: list } }
+            : [...item.edits[field], value];
+          return { ...item, edits: { ...item.edits, [field]: list } };
         }),
-      )
+      );
     },
     [],
-  )
+  );
 
   // ── Save selected items ───────────────────────────────────────
 
   // Synchronous double-tap guard — the Save button's disabled state only
   // reflects step==='saving' after a render commits, same class of bug as
   // add.tsx's saveRunningRef.
-  const saveRunningRef = useRef(false)
+  const saveRunningRef = useRef(false);
 
   const handleSaveSelected = useCallback(async () => {
-    const approved = items.filter((item) => item.approved)
+    const approved = items.filter((item) => item.approved);
     if (approved.length === 0) {
-      Alert.alert('No items selected', 'Approve at least one item to import.')
-      return
+      Alert.alert('No items selected', 'Approve at least one item to import.');
+      return;
     }
-    if (saveRunningRef.current) return
-    saveRunningRef.current = true
+    if (saveRunningRef.current) return;
+    saveRunningRef.current = true;
 
-    setStep('saving')
+    setStep('saving');
 
     try {
       const result = await catalogImportApi.bulkCreateProducts(
@@ -398,46 +383,40 @@ export default function CatalogImportScreen() {
             : undefined,
           sizes: wantSizes && item.edits.sizes.length > 0 ? item.edits.sizes : undefined,
           ...(item.edits.price
-            ? { price_min: Math.round(parseFloat(item.edits.price) * 100) }
+            ? { price_min: Math.round(Number.parseFloat(item.edits.price) * 100) }
             : {}),
         })),
-      )
+      );
 
       setBatchResult({
         requested: approved.length,
         created: result.data.total_created,
-      })
+      });
 
-      void queryClient.invalidateQueries({ queryKey: ['products'] })
-      void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
-      setStep('done')
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] });
+      setStep('done');
     } catch (err) {
-      setStep('reviewing')
-      showError(err, 'Could not save products.', 'Save failed')
+      setStep('reviewing');
+      showError(err, 'Could not save products.', 'Save failed');
     } finally {
-      saveRunningRef.current = false
+      saveRunningRef.current = false;
     }
-  }, [items, queryClient, wantSizes])
+  }, [items, queryClient, wantSizes]);
 
   // ── Render Source Selection ───────────────────────────────────
 
   const renderSourceStep = () => (
     <>
-      <ScrollView
-        className="flex-1 px-4 pt-8"
-        contentContainerStyle={{ paddingBottom: 120 }}
-      >
+      <ScrollView className="flex-1 px-4 pt-8" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="items-center pt-8 gap-4">
-          <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
-            <Sparkles size={36} color={primaryColor} />
-          </View>
-          <Text className="text-lg font-bold text-sand-900 text-center">
+          <ImagePlus size={32} color="#6B4773" />
+          <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
             Import products from photos
           </Text>
-          <Text className="text-sand-500 text-sm text-center px-8 leading-5">
-            Upload a catalog photo (rack shot, catalog page with multiple
-            designs) or a PDF catalog. AI detects each garment, crops, and
-            tags it.
+          <Text className="text-heliotrope-500 text-sm text-center px-8 leading-5">
+            Upload a catalog photo (rack shot, catalog page with multiple designs) or a PDF catalog.
+            AI detects each garment, crops, and tags it.
           </Text>
         </View>
 
@@ -446,9 +425,7 @@ export default function CatalogImportScreen() {
           <View className="bg-rust-50 border border-rust-200 rounded-2xl p-4 mt-6 flex-row items-start gap-3">
             <AlertTriangle size={18} color={colors.rust[500]} className="mt-0.5" />
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-rust-800">
-                Detection failed
-              </Text>
+              <Text className="text-sm font-semibold text-rust-800">Detection failed</Text>
               <Text className="text-xs text-rust-600 mt-1">{error}</Text>
             </View>
           </View>
@@ -457,21 +434,17 @@ export default function CatalogImportScreen() {
         {/* Option cards */}
         <AnimatedPressable
           onPress={() => void handlePickPhoto()}
-          className="bg-white rounded-2xl border border-sand-100 p-4 flex-row items-center gap-4 mt-6"
+          className="bg-white rounded-2xl border border-lavender-200 p-4 flex-row items-center gap-4 mt-6"
         >
-          <View className="w-14 h-14 bg-ink-50 rounded-2xl items-center justify-center">
-            <ImagePlus size={28} color={primaryColor} />
-          </View>
+          <ImagePlus size={24} color="#6B4773" />
           <View className="flex-1">
-            <Text className="text-base font-bold text-sand-900">
-              Catalog Photo
-            </Text>
-            <Text className="text-xs text-sand-500 mt-0.5">
-              Rack shot, catalog page, or multi-product display photo — pick
-              several pages at once, then choose which products to import
+            <Text className="text-base font-semibold text-spaceCadet-900">Catalog Photo</Text>
+            <Text className="text-xs text-heliotrope-500 mt-0.5">
+              Rack shot, catalog page, or multi-product display photo — pick several pages at once,
+              then choose which products to import
             </Text>
           </View>
-          <Text className="text-sand-300">→</Text>
+          <Text className="text-heliotrope-500">→</Text>
         </AnimatedPressable>
 
         <AnimatedPressable
@@ -481,64 +454,50 @@ export default function CatalogImportScreen() {
               'Select a PDF catalog file. Each page will be analyzed for garments. ' +
                 'For best results, render each page to an image on your device first, ' +
                 'then upload the page images using the "Catalog Photo" option.',
-            )
+            );
           }}
-          className="bg-white rounded-2xl border border-sand-100 p-4 flex-row items-center gap-4"
+          className="bg-white rounded-2xl border border-lavender-200 p-4 flex-row items-center gap-4"
         >
-          <View className="w-14 h-14 bg-turmeric-50 rounded-2xl items-center justify-center">
-            <FileText size={28} color={colors.turmeric[600]} />
-          </View>
+          <FileText size={24} color="#6B4773" />
           <View className="flex-1">
-            <Text className="text-base font-bold text-sand-900">
-              PDF Catalog
-            </Text>
-            <Text className="text-xs text-sand-500 mt-0.5">
+            <Text className="text-base font-semibold text-spaceCadet-900">PDF Catalog</Text>
+            <Text className="text-xs text-heliotrope-500 mt-0.5">
               Manufacturer/wholesaler PDF catalog
             </Text>
           </View>
-          <Text className="text-sand-300">→</Text>
+          <Text className="text-heliotrope-500">→</Text>
         </AnimatedPressable>
       </ScrollView>
 
       {/* Tip */}
       <View
-        className="bg-white border-t border-sand-100 px-4 pt-4"
+        className="bg-white border-t border-lavender-200 px-4 pt-4"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
-        <Text className="text-xs text-sand-400 text-center leading-5">
-          💡 Tip: For best results, use a well-lit, front-facing photo with
-          garments clearly separated.
+        <Text className="text-xs text-heliotrope-500 text-center leading-5">
+          Tip: For best results, use a well-lit, front-facing photo with garments clearly separated.
         </Text>
       </View>
     </>
-  )
+  );
 
   // ── Render Uploading / Detecting ──────────────────────────────
 
   const renderProgressStep = (label: string, sublabel: string) => (
     <View className="flex-1 items-center justify-center px-8">
-      <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center mb-6">
-        <Sparkles size={36} color={primaryColor} />
-      </View>
       <ActivityIndicator size="large" color={primaryColor} className="mb-4" />
-      <Text className="text-lg font-bold text-sand-900 text-center">
-        {label}
-      </Text>
-      <Text className="text-sand-500 text-sm text-center mt-2 leading-5">
-        {sublabel}
-      </Text>
+      <Text className="text-lg font-semibold text-spaceCadet-900 text-center">{label}</Text>
+      <Text className="text-heliotrope-500 text-sm text-center mt-2 leading-5">{sublabel}</Text>
     </View>
-  )
+  );
 
   // ── Render Review ─────────────────────────────────────────────
 
   const renderReviewStep = () => (
     <>
       {/* Source image preview */}
-      <View className="bg-white px-4 py-3 border-b border-sand-100">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
-          Source Photo
-        </Text>
+      <View className="bg-white px-4 py-3 border-b border-lavender-200">
+        <Text className="text-xs font-semibold text-heliotrope-500 mb-2">Source Photo</Text>
         <Image
           source={{ uri: sourceUrl }}
           className="w-full h-36 rounded-xl bg-sand-100"
@@ -547,34 +506,26 @@ export default function CatalogImportScreen() {
       </View>
 
       {/* Items */}
-      <ScrollView
-        className="flex-1 px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: 180 }}
-      >
+      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 180 }}>
         <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-sm font-semibold text-sand-700">
+          <Text className="text-sm font-semibold text-heliotrope-600">
             AI detected {items.length} item
             {items.length !== 1 ? 's' : ''}
           </Text>
-          <AnimatedPressable
-            onPress={() =>
-              setItems((prev) =>
-                prev.map((item) => ({ ...item, approved: true })),
-              )
-            }
+          <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+            onPress={() => setItems((prev) => prev.map((item) => ({ ...item, approved: true })))}
           >
-            <Text className="text-xs text-ink-600 font-medium">
-              Select All
-            </Text>
+            <Text className="text-xs text-ink-600 font-medium">Select All</Text>
           </AnimatedPressable>
         </View>
 
         {/* Ask once per batch — most catalogs don't list sizes */}
-        <View className="bg-white rounded-2xl border border-sand-100 p-3 mb-3 flex-row items-center justify-between">
+        <View className="bg-white rounded-2xl border border-lavender-200 p-3 mb-3 flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-sm font-semibold text-sand-900">Add sizes?</Text>
-            <Text className="text-xs text-sand-500 mt-0.5">
-              Turn on to pick S/M/L/XL/XXL/XXXL for each item below. Leave off if the catalog doesn&apos;t list sizes.
+            <Text className="text-sm font-semibold text-spaceCadet-900">Add sizes?</Text>
+            <Text className="text-xs text-heliotrope-500 mt-0.5">
+              Turn on to pick S/M/L/XL/XXL/XXXL for each item below. Leave off if the catalog
+              doesn&apos;t list sizes.
             </Text>
           </View>
           <Switch value={wantSizes} onValueChange={setWantSizes} />
@@ -584,7 +535,7 @@ export default function CatalogImportScreen() {
           <View
             key={`${item.original.description}-${index}`}
             className={`bg-white rounded-2xl border mb-3 overflow-hidden ${
-              item.approved ? 'border-turmeric-200' : 'border-sand-200 opacity-60'
+              item.approved ? 'border-turmeric-200' : 'border-lavender-200 opacity-60'
             }`}
           >
             {/* Item header */}
@@ -595,33 +546,32 @@ export default function CatalogImportScreen() {
                 contentFit="cover"
               />
               <View className="flex-1 justify-center gap-0.5">
-                <Text className="text-sm font-semibold text-sand-900">
+                <Text className="text-sm font-semibold text-spaceCadet-900">
                   {item.original.description}
                 </Text>
                 {item.original.tags.category && (
                   <View className="flex-row flex-wrap gap-1 mt-1">
-                    <Text className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full">
+                    <Text className="text-xs bg-lavender-50 text-ink-700 px-2 py-0.5 rounded-full">
                       {item.original.tags.category}
                     </Text>
                     {item.original.tags.subtype && (
-                      <Text className="text-xs bg-turmeric-50 text-turmeric-700 px-2 py-0.5 rounded-full">
+                      <Text className="text-xs bg-lavender-100 text-heliotrope-600 px-2 py-0.5 rounded-full">
                         {item.original.tags.subtype}
                       </Text>
                     )}
                     {item.original.tags.primary_color && (
-                      <Text className="text-xs bg-sand-100 text-sand-600 px-2 py-0.5 rounded-full">
+                      <Text className="text-xs bg-sand-100 text-heliotrope-600 px-2 py-0.5 rounded-full">
                         {item.original.tags.primary_color}
                       </Text>
                     )}
                   </View>
                 )}
-                {(item.original.tags.style.length > 0 ||
-                  item.original.tags.fabrics.length > 0) && (
+                {(item.original.tags.style.length > 0 || item.original.tags.fabrics.length > 0) && (
                   <View className="flex-row flex-wrap gap-1 mt-1">
                     {item.original.tags.style.map((s) => (
                       <Text
                         key={`style-${s}`}
-                        className="text-xs bg-turmeric-50 text-turmeric-700 px-2 py-0.5 rounded-full"
+                        className="text-xs bg-lavender-100 text-heliotrope-600 px-2 py-0.5 rounded-full"
                       >
                         {s}
                       </Text>
@@ -629,7 +579,7 @@ export default function CatalogImportScreen() {
                     {item.original.tags.fabrics.map((f) => (
                       <Text
                         key={`fabric-${f}`}
-                        className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full"
+                        className="text-xs bg-lavender-50 text-ink-700 px-2 py-0.5 rounded-full"
                       >
                         {f}
                       </Text>
@@ -637,20 +587,16 @@ export default function CatalogImportScreen() {
                   </View>
                 )}
                 {item.original.tags.fabric_estimate && (
-                  <Text className="text-xs text-sand-400 mt-1">
+                  <Text className="text-xs text-heliotrope-500 mt-1">
                     {item.original.tags.fabric_estimate}
-                    {item.original.tags.pattern
-                      ? ` · ${item.original.tags.pattern}`
-                      : ''}
+                    {item.original.tags.pattern ? ` · ${item.original.tags.pattern}` : ''}
                   </Text>
                 )}
               </View>
               <AnimatedPressable
                 onPress={() => toggleApproval(index)}
                 className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
-                  item.approved
-                    ? 'bg-turmeric-500 border-turmeric-500'
-                    : 'border-sand-300'
+                  item.approved ? 'bg-turmeric-500 border-turmeric-500' : 'border-lavender-300'
                 }`}
               >
                 {item.approved && <Check size={18} color="white" />}
@@ -659,7 +605,7 @@ export default function CatalogImportScreen() {
 
             {/* Expandable editor */}
             {editingIndex === index && (
-              <View className="px-3 pb-3 gap-2.5 border-t border-sand-100 pt-3">
+              <View className="px-3 pb-3 gap-2.5 border-t border-lavender-200 pt-3">
                 <EditField
                   label="Name"
                   value={item.edits.product_name}
@@ -681,12 +627,16 @@ export default function CatalogImportScreen() {
                   onChange={(v) => updateEdit(index, 'category', v)}
                 />
                 <View>
-                  <Text className="text-xs font-medium text-sand-500 mb-1">Who is it for?</Text>
+                  <Text className="text-xs font-medium text-heliotrope-500 mb-1">
+                    Who is it for?
+                  </Text>
                   <AudienceChips
                     audience={audienceOf(item).audience}
                     ageGroup={audienceOf(item).kids_age_group}
                     onChange={(p) =>
-                      setItems((prev) => prev.map((it, i) => (i === index ? { ...it, audience: p } : it)))
+                      setItems((prev) =>
+                        prev.map((it, i) => (i === index ? { ...it, audience: p } : it)),
+                      )
                     }
                   />
                 </View>
@@ -696,10 +646,10 @@ export default function CatalogImportScreen() {
                   onChange={(v) => updateEdit(index, 'primary_color', v)}
                 />
                 <View>
-                  <Text className="text-xs font-medium text-sand-500 mb-1">Style</Text>
+                  <Text className="text-xs font-medium text-heliotrope-500 mb-1">Style</Text>
                   <View className="flex-row flex-wrap gap-2">
                     {styleOptions.map((s) => {
-                      const selected = item.edits.styles.includes(s.name)
+                      const selected = item.edits.styles.includes(s.name);
                       return (
                         <AnimatedPressable
                           key={s.id}
@@ -707,25 +657,25 @@ export default function CatalogImportScreen() {
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
                           className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                           }`}
                         >
                           {selected && <Check size={12} color="white" />}
                           <Text
-                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}
+                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}
                           >
                             {s.name}
                           </Text>
                         </AnimatedPressable>
-                      )
+                      );
                     })}
                   </View>
                 </View>
                 <View>
-                  <Text className="text-xs font-medium text-sand-500 mb-1">Fabric</Text>
+                  <Text className="text-xs font-medium text-heliotrope-500 mb-1">Fabric</Text>
                   <View className="flex-row flex-wrap gap-2">
                     {fabricOptions.map((f) => {
-                      const selected = item.edits.fabrics.includes(f.name)
+                      const selected = item.edits.fabrics.includes(f.name);
                       return (
                         <AnimatedPressable
                           key={f.id}
@@ -733,17 +683,17 @@ export default function CatalogImportScreen() {
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
                           className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                           }`}
                         >
                           {selected && <Check size={12} color="white" />}
                           <Text
-                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}
+                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}
                           >
                             {f.name}
                           </Text>
                         </AnimatedPressable>
-                      )
+                      );
                     })}
                   </View>
                 </View>
@@ -765,10 +715,10 @@ export default function CatalogImportScreen() {
                 />
                 {wantSizes && (
                   <View>
-                    <Text className="text-xs font-medium text-sand-500 mb-1">Sizes</Text>
+                    <Text className="text-xs font-medium text-heliotrope-500 mb-1">Sizes</Text>
                     <View className="flex-row flex-wrap gap-2">
                       {SIZE_OPTIONS.map((size) => {
-                        const selected = item.edits.sizes.includes(size)
+                        const selected = item.edits.sizes.includes(size);
                         return (
                           <AnimatedPressable
                             key={size}
@@ -776,15 +726,19 @@ export default function CatalogImportScreen() {
                             accessibilityRole="button"
                             accessibilityState={{ selected }}
                             className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                              selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                              selected
+                                ? 'bg-ink-600 border-ink-600'
+                                : 'bg-white border-lavender-200'
                             }`}
                           >
                             {selected && <Check size={12} color="white" />}
-                            <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                            <Text
+                              className={`text-xs font-medium ${selected ? 'text-white' : 'text-heliotrope-600'}`}
+                            >
                               {size}
                             </Text>
                           </AnimatedPressable>
-                        )
+                        );
                       })}
                     </View>
                   </View>
@@ -793,9 +747,7 @@ export default function CatalogImportScreen() {
                   onPress={() => setEditingIndex(null)}
                   className="bg-sand-100 py-2.5 rounded-xl items-center mt-1"
                 >
-                  <Text className="text-sm text-sand-600 font-medium">
-                    Done Editing
-                  </Text>
+                  <Text className="text-sm text-heliotrope-600 font-medium">Done Editing</Text>
                 </AnimatedPressable>
               </View>
             )}
@@ -803,12 +755,10 @@ export default function CatalogImportScreen() {
             {editingIndex !== index && (
               <AnimatedPressable
                 onPress={() => setEditingIndex(index)}
-                className="border-t border-sand-100 py-2.5 flex-row items-center justify-center gap-1.5"
+                className="border-t border-lavender-200 py-2.5 flex-row items-center justify-center gap-1.5"
               >
                 <Edit3 size={14} color={colors.sand[600]} />
-                <Text className="text-xs text-sand-500 font-medium">
-                  Edit details
-                </Text>
+                <Text className="text-xs text-heliotrope-500 font-medium">Edit details</Text>
               </AnimatedPressable>
             )}
           </View>
@@ -816,7 +766,7 @@ export default function CatalogImportScreen() {
 
         {items.length === 0 && !error && (
           <View className="items-center py-12">
-            <Text className="text-sand-400 text-sm">
+            <Text className="text-heliotrope-500 text-sm">
               No garments detected. Try a different photo.
             </Text>
           </View>
@@ -825,59 +775,59 @@ export default function CatalogImportScreen() {
 
       {/* Save bar */}
       <View
-        className="bg-white border-t border-sand-100 px-4 pt-4"
+        className="bg-white border-t border-lavender-200 px-4 pt-4"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
         <AnimatedPressable
           onPress={() => void handleSaveSelected()}
           disabled={items.filter((i) => i.approved).length === 0}
           className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
-            items.filter((i) => i.approved).length > 0
-              ? 'bg-ink-600'
-              : 'bg-sand-200'
+            items.filter((i) => i.approved).length > 0 ? 'bg-ink-600' : 'bg-lavender-200'
           }`}
         >
           <Save size={18} color="white" />
-          <Text className="text-white font-bold text-base">
+          <Text className="text-white font-semibold text-base">
             Save {items.filter((i) => i.approved).length} Product
             {items.filter((i) => i.approved).length !== 1 ? 's' : ''}
           </Text>
         </AnimatedPressable>
       </View>
     </>
-  )
+  );
 
   // ── Render Saving ─────────────────────────────────────────────
 
   const renderSavingStep = () => (
     <View className="flex-1 items-center justify-center px-8">
       <ActivityIndicator size="large" color={primaryColor} className="mb-4" />
-      <Text className="text-lg font-bold text-sand-900 text-center">
+      <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
         Creating products...
       </Text>
-      <Text className="text-sand-500 text-sm text-center mt-2">
+      <Text className="text-heliotrope-500 text-sm text-center mt-2">
         AI tagging will continue in the background
       </Text>
     </View>
-  )
+  );
 
   // ── Render Done ───────────────────────────────────────────────
 
   const renderDoneStep = () =>
     batchResult && (
       <View className="flex-1 items-center justify-center px-8">
-        <View className="w-24 h-24 bg-turmeric-100 rounded-3xl items-center justify-center mb-6">
-          <Text className="text-5xl">
-            {batchResult.created === batchResult.requested ? '🎉' : '⚠️'}
-          </Text>
+        <View className="mb-6">
+          {batchResult.created === batchResult.requested ? (
+            <Check size={40} color="#231F48" />
+          ) : (
+            <AlertTriangle size={40} color="#B45309" />
+          )}
         </View>
 
-        <Text className="text-2xl font-bold text-sand-900 text-center">
+        <Text className="text-2xl font-semibold text-spaceCadet-900 text-center">
           {batchResult.created === batchResult.requested
-            ? 'All items imported!'
+            ? 'All items imported'
             : 'Import complete with errors'}
         </Text>
-        <Text className="text-sand-500 text-base mt-2 text-center leading-5">
+        <Text className="text-heliotrope-500 text-base mt-2 text-center leading-5">
           {batchResult.created} of {batchResult.requested} items saved.
           {'\n'}AI is tagging them in the background.
         </Text>
@@ -885,30 +835,28 @@ export default function CatalogImportScreen() {
         <View className="mt-8 w-full gap-3">
           <AnimatedPressable
             onPress={() => {
-              void queryClient.invalidateQueries({ queryKey: ['products'] })
-              void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
-              router.replace('/')
+              void queryClient.invalidateQueries({ queryKey: ['products'] });
+              void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] });
+              router.replace('/');
             }}
             className="py-4 rounded-2xl items-center bg-ink-600"
           >
-            <Text className="text-white font-bold">View Catalog</Text>
+            <Text className="text-white font-semibold">View Catalog</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => {
-              setItems([])
-              setBatchResult(null)
-              setError(null)
-              setStep('source')
+              setItems([]);
+              setBatchResult(null);
+              setError(null);
+              setStep('source');
             }}
-            className="py-4 rounded-2xl items-center border-2 border-sand-200"
+            className="py-4 rounded-2xl items-center border-2 border-lavender-200"
           >
-            <Text className="text-sand-700 font-semibold">
-              Import Another Photo
-            </Text>
+            <Text className="text-heliotrope-600 font-semibold">Import Another Photo</Text>
           </AnimatedPressable>
         </View>
       </View>
-    )
+    );
 
   // ── Main Render ───────────────────────────────────────────────
 
@@ -919,21 +867,21 @@ export default function CatalogImportScreen() {
     reviewing: `Review Items${items.length > 0 ? ` (${items.length})` : ''}`,
     saving: 'Saving Products...',
     done: 'Import Complete',
-  }
+  };
 
   return (
-    <KeyboardScreen className="flex-1 bg-sand-50">
+    <KeyboardScreen className="flex-1 bg-lavender-50">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: headerPaddingTop }}
       >
         <AnimatedPressable
           onPress={() => {
             if (step === 'source' || step === 'done') {
-              router.back()
+              router.back();
             } else {
-              setStep('source')
+              setStep('source');
             }
           }}
           accessibilityLabel="Go back"
@@ -941,15 +889,12 @@ export default function CatalogImportScreen() {
         >
           <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">
-          {stepTitles[step]}
-        </Text>
+        <Text className="text-base font-semibold text-spaceCadet-900">{stepTitles[step]}</Text>
         <View className="w-6" />
       </View>
 
       {step === 'source' && renderSourceStep()}
-      {step === 'uploading' &&
-        renderProgressStep('Uploading...', 'Sending to cloud...')}
+      {step === 'uploading' && renderProgressStep('Uploading...', 'Sending to cloud...')}
       {step === 'detecting' &&
         renderProgressStep(
           'AI is analyzing your photo',
@@ -959,7 +904,7 @@ export default function CatalogImportScreen() {
       {step === 'saving' && renderSavingStep()}
       {step === 'done' && renderDoneStep()}
     </KeyboardScreen>
-  )
+  );
 }
 
 // ─── Edit Field Component ─────────────────────────────────────────
@@ -970,22 +915,22 @@ function EditField({
   onChange,
   keyboardType,
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  keyboardType?: 'default' | 'numeric'
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  keyboardType?: 'default' | 'numeric';
 }) {
-  const { colors } = useTheme()
+  const { colors } = useTheme();
   return (
     <View>
-      <Text className="text-xs font-medium text-sand-500 mb-1">{label}</Text>
+      <Text className="text-xs font-medium text-heliotrope-500 mb-1">{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChange}
-        className="bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900"
+        className="bg-lavender-50 border border-lavender-200 rounded-xl px-3 py-2.5 text-sm text-spaceCadet-900"
         placeholderTextColor={colors.sand[400]}
         keyboardType={keyboardType}
       />
     </View>
-  )
+  );
 }

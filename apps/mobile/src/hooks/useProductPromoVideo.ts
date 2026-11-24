@@ -139,6 +139,7 @@ export function useProductPromoVideo({
     setOpen,
     styles,
     available: meta?.available ?? false,
+    unavailableReason: meta?.unavailable_reason ?? null,
     quota: meta?.quota,
     stylesLoading: stylesQuery.isLoading,
     starting,

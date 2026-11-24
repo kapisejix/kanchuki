@@ -89,7 +89,7 @@ function EditCollectionModal({
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-lg text-spaceCadet-900"
           >
             Edit Collection
@@ -169,7 +169,7 @@ const CollectionCard = memo(function CollectionCard({
       <View className="flex-row items-start justify-between mb-2">
         <View className="flex-1 mr-3">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base text-spaceCadet-900"
           >
             {item.title}
@@ -347,7 +347,7 @@ export default function CollectionsScreen() {
           <Link2 size={24} color="#5A3962" />
         </View>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-spaceCadet-900 text-lg text-center"
         >
           No collections yet
@@ -377,13 +377,13 @@ export default function CollectionsScreen() {
           {retailerProfile?.logo_url ? (
             <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           ) : (
-            <Text className="text-spaceCadet-900 font-marcellus text-sm">
+            <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
               {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
             </Text>
           )}
         </View>
         <View>
-          <Text className="text-base text-spaceCadet-900 font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
+          <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
           <Text className="text-xs text-heliotrope-500">
             {retailerProfile?.city ?? 'Collections'} · {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
           </Text>

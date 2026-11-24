@@ -778,7 +778,7 @@ export default function OnboardingScreen() {
               disabled={saving || showConfetti}
               accessibilityLabel="Skip — continue without a GST number"
               accessibilityRole="button"
-              className="items-center justify-center py-2.5"
+              className="items-center justify-center py-2.5 border border-lavender-200 rounded-lg px-3 min-h-[36px]"
             >
               <Text className="text-sm font-semibold text-fuchsia-600">
                 Skip — I don&apos;t have a GST number
@@ -856,7 +856,7 @@ export default function OnboardingScreen() {
               className="w-full rounded-2xl p-6 items-center shadow-lg mb-5"
             >
               <CheckCircle2 size={28} color="#FFFFFF" style={{ marginBottom: 12 }} />
-              <Text className="text-3xl text-white font-marcellus text-center">
+              <Text className="text-3xl text-white font-extrabold font-marcellus text-center">
                 You&apos;re all set
               </Text>
               <Text className="text-xs text-lavender-200 mt-1 text-center font-medium">
@@ -946,7 +946,7 @@ export default function OnboardingScreen() {
               </AnimatedPressable>
             )}
           </View>
-          <Text className="text-base text-spaceCadet-900 font-marcellus">
+          <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">
             {STEP_META[step].title}
           </Text>
           <View className="w-10" />

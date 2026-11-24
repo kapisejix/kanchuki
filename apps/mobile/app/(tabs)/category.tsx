@@ -36,13 +36,13 @@ export default function CategoryListScreen() {
             {retailerProfile?.logo_url ? (
               <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             ) : (
-              <Text className="text-spaceCadet-900 font-marcellus text-sm">
+              <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
               </Text>
             )}
           </View>
           <View>
-            <Text className="text-base text-spaceCadet-900 font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
+            <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">{retailerProfile?.shop_name ?? 'Store'}</Text>
             <Text className="text-xs text-heliotrope-500">
               {retailerProfile?.city ?? 'Categories'} · {categories.length} {categories.length === 1 ? 'category' : 'categories'}
             </Text>
@@ -88,7 +88,7 @@ export default function CategoryListScreen() {
               </View>
 
               <View className="px-3.5 pb-3.5 pt-1 bg-white">
-                <Text className="text-sm text-spaceCadet-900 font-marcellus truncate" numberOfLines={1}>
+                <Text className="text-sm text-spaceCadet-900 font-extrabold font-marcellus truncate" numberOfLines={1}>
                   {item.name}
                 </Text>
                 <Text className="text-xs text-heliotrope-500 mt-0.5">Browse collection</Text>
@@ -100,7 +100,7 @@ export default function CategoryListScreen() {
               <View className="w-16 h-16 rounded-2xl bg-lavender-100 items-center justify-center mb-4 border border-lavender-200">
                 <FolderKanban size={28} color="#6B4773" />
               </View>
-              <Text className="text-base text-spaceCadet-900 font-marcellus">No categories yet</Text>
+              <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus">No categories yet</Text>
               <Text className="text-xs text-heliotrope-500 mt-1 text-center mb-6">
                 Group your products so they are easy to browse
               </Text>
