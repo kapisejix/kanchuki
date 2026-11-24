@@ -38,14 +38,7 @@
     }
   },
   "files": {
-    "ignore": [
-      "node_modules",
-      "dist",
-      "build",
-      ".next",
-      "*.generated.ts",
-      "packages/db/generated"
-    ]
+    "ignore": ["node_modules", "dist", "build", ".next", "*.generated.ts", "packages/db/generated"]
   },
   // Test files legitimately use three patterns the rules above flag, so the
   // three rules are scoped off for them rather than satisfied with worse code:
@@ -67,6 +60,18 @@
           "performance": { "noDelete": "off" }
         }
       }
+    },
+    {
+      "include": [
+        "scripts/**",
+        "**/scripts/**",
+        "packages/db/prisma/**",
+        "services/fashion-vtone/test-tryon.mjs",
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "**/__mocks__/**"
+      ],
+      "linter": { "rules": { "suspicious": { "noConsoleLog": "off" } } }
     }
   ]
 }

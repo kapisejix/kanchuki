@@ -734,3 +734,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Biome format | `biome check --write --linter-enabled=false` over apps, packages, services, scripts, supabase, docs: 620 files, format and import order only. `biome.jsonc` and editor config folders untouched. Two test files where import sorting merged a `;(globalThis…)` line into the import were fixed by hand. |
 | Local runs | tsc 0 in api, web, mobile, shared. Tests: api 3550, web 779, mobile 725, shared 276 passed. Biome left: 865 lint errors and 777 warnings, fixed per package in follow-up PRs. |
 | Not verified | Phone OTP login and home header not checked on a device yet. Reaches phones only with a new app build. |
+
+## 2026-11-24 — Biome: api lint (#340) and console.log in CLI scripts (this PR)
+
+| Area | Change |
+|---|---|
+| api lint (#340) | Last 4 Biome errors in `apps/api` cleared. api tsc 0, tests 3550 passed. Merged after #339. |
+| console.log | Owner chose a `biome.jsonc` override: `noConsoleLog` off for `scripts/`, `*/scripts/`, `packages/db/prisma/`, `services/fashion-vtone/test-tryon.mjs`, test/spec files and `__mocks__`. These print to the terminal on purpose. App code stays guarded. |
+| Local runs | Biome: 855 errors, 243 warnings (was 772). One `noConsoleLog` left, `packages/db/src/client.ts`, for the db PR. Config only, no code changed. |
