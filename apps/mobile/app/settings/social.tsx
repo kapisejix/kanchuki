@@ -212,7 +212,7 @@ export default function SocialSettingsScreen() {
               <>
                 {accounts.map((account) => (
                   <View key={account.id} className="bg-white rounded-2xl p-4 border border-lavender-200 mb-3">
-                    <View className="flex-row items-center mb-2">
+                    <View className="flex-row items-center">
                       <View className="mr-3">
                         <BrandIcon brand="facebook" size={40} />
                       </View>
@@ -225,14 +225,15 @@ export default function SocialSettingsScreen() {
                           {new Date(account.connected_at).toLocaleDateString()}
                         </Text>
                       </View>
+                    </View>
+                    <View className="mt-3">
                       <GradientButton
                         variant="web"
-                        compact
                         label="Post"
                         onPress={() => router.push('/social/create')}
                       />
                     </View>
-                    <View className="flex-row gap-3 mt-3 pb-2">
+                    <View className="flex-row gap-3 mt-3">
                       <View className="flex-1">
                         <WhiteButton
                           label="History"
@@ -358,7 +359,7 @@ function HistoryModal({
                         onPress={() => void Linking.openURL(post.external_post_url!)}
                         hitSlop={6}
                       >
-                        <Text className="text-[11px] font-semibold text-ink-700 underline">
+                        <Text className="text-[11px] font-semibold text-ink-700">
                           View on Facebook
                         </Text>
                       </AnimatedPressable>
