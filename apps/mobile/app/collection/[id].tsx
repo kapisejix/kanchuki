@@ -127,7 +127,7 @@ function EditModal({
       <KeyboardScreen className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-2xl w-full p-6 gap-4 border border-lavender-200">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-lg text-spaceCadet-900"
           >
             Edit Collection
@@ -303,7 +303,7 @@ function ShareModal({
           {bulkResult ? (
             <View className="items-center py-6 gap-3">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base text-spaceCadet-900"
               >
                 Sent via WhatsApp Business API
@@ -324,7 +324,7 @@ function ShareModal({
           ) : queue ? (
             <View className="items-center py-6 gap-3">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base text-spaceCadet-900"
               >
                 Message {queueIndex + 1} of {queue.length}
@@ -344,14 +344,14 @@ function ShareModal({
                   {queueIndex + 1 >= queue.length ? 'Done' : 'Next Customer'}
                 </Text>
               </AnimatedPressable>
-              <AnimatedPressable onPress={handleClose} className="mt-1">
+              <AnimatedPressable onPress={handleClose} className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center">
                 <Text className="text-heliotrope-500 text-xs">Cancel</Text>
               </AnimatedPressable>
             </View>
           ) : (
             <>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-lg text-spaceCadet-900 mb-3"
               >
                 Share with Customers
@@ -444,7 +444,7 @@ function ShareModal({
                   {apiConfigured ? 'Or send one-by-one' : 'Share via WhatsApp'} ({selected.size})
                 </Text>
               </AnimatedPressable>
-              <AnimatedPressable onPress={handleClose} className="items-center py-3">
+              <AnimatedPressable onPress={handleClose} className="items-center py-3 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center">
                 <Text className="text-heliotrope-500 text-xs font-semibold">Cancel</Text>
               </AnimatedPressable>
             </>
@@ -525,7 +525,7 @@ export default function CollectionDetailScreen() {
         </AnimatedPressable>
 
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg text-spaceCadet-900 truncate max-w-[200px]"
           numberOfLines={1}
         >
@@ -692,7 +692,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
     <View className="bg-white rounded-2xl p-3 border border-lavender-200 flex-1">
       <View className="mb-1">{icon}</View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-base text-spaceCadet-900"
       >
         {value.toLocaleString('en-IN')}

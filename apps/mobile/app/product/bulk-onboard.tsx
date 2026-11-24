@@ -317,7 +317,7 @@ export default function BulkOnboardScreen() {
 
       <AnimatedPressable
         onPress={() => router.push('/product/catalog-import')}
-        className="flex-row items-center justify-center gap-2 mt-4 py-2"
+        className="flex-row items-center justify-center gap-2 mt-4 py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px]"
       >
         <FileText size={16} color={colors.sand[600]} />
         <Text className="text-heliotrope-500 text-sm">Restocking from a supplier PDF instead?</Text>

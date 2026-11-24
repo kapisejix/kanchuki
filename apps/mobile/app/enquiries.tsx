@@ -164,7 +164,7 @@ export default function EnquiriesScreen() {
         {canAssign && assignees.length > 0 && (
           <AnimatedPressable
             onPress={() => setReassigning(reassigning === e.id ? null : e.id)}
-            className="px-3 py-2"
+            className="px-3 py-2 border border-lavender-200 rounded-lg min-h-[36px] items-center justify-center"
             accessibilityRole="button"
             accessibilityLabel="Reassign"
           >
@@ -240,7 +240,7 @@ export default function EnquiriesScreen() {
         >
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-lg font-semibold text-spaceCadet-900 font-marcellus">Enquiries</Text>
+        <Text className="text-lg text-spaceCadet-900 font-extrabold font-marcellus">Enquiries</Text>
         <View className="w-10" />
       </View>
       {isLoading ? (

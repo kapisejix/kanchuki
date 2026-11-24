@@ -578,7 +578,7 @@ export default function SellScreen() {
               <AnimatedPressable
                 testID="size-cancel"
                 onPress={() => dispatch({ type: 'remove', key: pending.key })}
-                className="mt-4 py-3 items-center"
+                className="mt-4 py-3 items-center border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
                 accessibilityLabel="Cancel, do not add this item"
               >
                 <Text className="text-sm font-semibold text-heliotrope-600">Cancel</Text>

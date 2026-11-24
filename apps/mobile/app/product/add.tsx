@@ -1126,7 +1126,7 @@ export default function AddProductScreen() {
                   New Arrivals auto-checked (21 days) · Choose category below
                 </Text>
               </View>
-              <AnimatedPressable onPress={() => router.push('/category/new')}>
+              <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center" onPress={() => router.push('/category/new')}>
                 <Text className="text-ink-600 text-xs font-semibold">+ New</Text>
               </AnimatedPressable>
             </View>

@@ -45,7 +45,9 @@ export function StockEditor({ selectedSizes, qty, onChange }: Props) {
                 keyboardType="number-pad"
                 maxLength={5}
                 accessibilityLabel={`${label}quantity`}
-                className="w-14 h-9 text-center text-sm font-bold text-spaceCadet-900 border border-lavender-200 rounded-lg"
+                // Android TextInput keeps ~10px default vertical padding, which clipped the digits in a 36px box.
+                style={{ paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' }}
+                className="w-16 h-10 text-center text-sm font-bold text-spaceCadet-900 border border-lavender-200 rounded-lg"
               />
               <AnimatedPressable
                 onPress={() => onChange(size, clamp(value + 1))}
