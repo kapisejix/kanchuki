@@ -161,9 +161,8 @@ export const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/;
 
 export function normalizeIndianPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('91') && digits.length === 12) return digits.slice(2)!;
-  if (digits.startsWith('0') && digits.length === 11) return digits.slice(1)!;
-  if (digits.length === 10) return digits;
+  if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
+  if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
   return digits;
 }
 
