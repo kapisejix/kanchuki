@@ -4,12 +4,11 @@ import { router } from 'expo-router';
 import { CheckCircle2, ChevronLeft, Lock, RefreshCw, Zap } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
-import { useScreenInsets } from '../../../src/lib/safe-area';
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { BrandIcon } from '../../../src/components/BrandIcon';
 import { DangerButton } from '../../../src/components/DangerButton';
 import { GradientButton } from '../../../src/components/GradientButton';
-import { WhiteButton, WHITE_BUTTON_INK } from '../../../src/components/WhiteButton';
+import { WHITE_BUTTON_INK, WhiteButton } from '../../../src/components/WhiteButton';
 import { type SocialAccountInfo, socialApi } from '../../../src/lib/api/social';
 import { showError } from '../../../src/lib/errors';
 import {
@@ -17,6 +16,7 @@ import {
   FacebookAuthUnavailable,
   loginWithFacebook,
 } from '../../../src/lib/facebook-auth';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
 const ACCOUNTS_KEY = ['social', 'accounts'];
 
@@ -54,7 +54,7 @@ export default function FacebookConfigScreen() {
         if (res?.data?.connected) {
           void queryClient.invalidateQueries({ queryKey: ACCOUNTS_KEY });
           Alert.alert(
-            'Connected!',
+            'Connected',
             `Linked ${res.data.account_name || res.data.handle || 'your Page'}.`,
           );
         }
@@ -93,7 +93,7 @@ export default function FacebookConfigScreen() {
       if (res.data?.connected) {
         void invalidate();
         Alert.alert(
-          'Connected!',
+          'Connected',
           `Facebook Page ${res.data.account_name || res.data.handle || ''} connected.`,
         );
       }
@@ -158,7 +158,7 @@ export default function FacebookConfigScreen() {
           <View>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               Facebook Page Integration
             </Text>
@@ -169,13 +169,16 @@ export default function FacebookConfigScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
+      >
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2.5">
               <BrandIcon brand="facebook" size={48} />
               <View>
-                <Text className="text-base font-bold text-spaceCadet-900">
+                <Text className="text-base font-semibold text-spaceCadet-900">
                   Facebook Page Connect
                 </Text>
                 <Text className="text-xs text-heliotrope-500 font-medium">
@@ -186,7 +189,7 @@ export default function FacebookConfigScreen() {
             {isConnected && (
               <View className="flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                 <CheckCircle2 size={12} color="#059669" />
-                <Text className="text-[11px] font-bold text-emerald-700">Connected</Text>
+                <Text className="text-[11px] font-semibold text-emerald-700">Connected</Text>
               </View>
             )}
           </View>
@@ -201,13 +204,15 @@ export default function FacebookConfigScreen() {
           ) : isConnected ? (
             <View className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200 gap-2 mb-3">
               <View className="flex-row items-center justify-between">
-                <Text className="text-xs font-bold text-heliotrope-500 uppercase">Linked Page</Text>
-                <Text className="text-sm font-bold text-[#1877F2]">{fbAccount?.account_name}</Text>
+                <Text className="text-xs font-semibold text-heliotrope-500">Linked page</Text>
+                <Text className="text-sm font-semibold text-[#1877F2]">
+                  {fbAccount?.account_name}
+                </Text>
               </View>
               {fbAccount?.account_id ? (
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-xs font-bold text-heliotrope-500 uppercase">Page ID</Text>
-                  <Text className="text-xs font-semibold text-spaceCadet-700">
+                  <Text className="text-xs font-semibold text-heliotrope-500">Page ID</Text>
+                  <Text className="text-xs font-semibold text-heliotrope-600">
                     {fbAccount.account_id}
                   </Text>
                 </View>
@@ -215,7 +220,7 @@ export default function FacebookConfigScreen() {
               <View className="flex-row gap-3 mt-2 pt-3 pb-2 border-t border-lavender-200">
                 <View className="flex-1">
                   <WhiteButton
-                    label="Verify Status"
+                    label="Verify status"
                     icon={<RefreshCw size={14} color={WHITE_BUTTON_INK} />}
                     loading={isRefetching}
                     onPress={() => void refetch()}
@@ -233,7 +238,7 @@ export default function FacebookConfigScreen() {
           ) : (
             <GradientButton
               variant="web"
-              label="1-Click Connect Facebook Page"
+              label="Connect Facebook Page"
               icon={<Zap size={16} color="white" strokeWidth={2.5} />}
               loading={connecting}
               onPress={() => void handleConnect()}
@@ -242,14 +247,14 @@ export default function FacebookConfigScreen() {
 
           {connectError && !isConnected && (
             <View className="mt-3 rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3">
-              <Text className="text-xs font-bold text-rose-700 mb-0.5">Could not connect</Text>
+              <Text className="text-xs font-semibold text-rose-700 mb-0.5">Could not connect</Text>
               <Text className="text-[11px] text-rose-600 leading-relaxed">{connectError}</Text>
             </View>
           )}
 
           <View className="flex-row items-center gap-1.5 mt-3 justify-center">
-            <Lock size={11} color="#928EB2" />
-            <Text className="text-[11px] text-heliotrope-400 font-medium">
+            <Lock size={11} color="#6B4773" />
+            <Text className="text-[11px] text-heliotrope-500 font-medium">
               Official Meta Graph API OAuth • Tokens encrypted via 256-bit AES
             </Text>
           </View>

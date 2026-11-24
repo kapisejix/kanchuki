@@ -1,4 +1,4 @@
-import { Sparkles } from 'lucide-react-native';
+import { Info } from 'lucide-react-native';
 import { Text, View } from 'react-native';
 
 /**
@@ -17,12 +17,14 @@ export const MY_STYLE_RANKING_POINTS = [
 export function MyStyleRankingNote() {
   return (
     <View
-      className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mt-5"
+      className="bg-white rounded-2xl p-5 border border-lavender-200 mt-5"
       accessibilityLabel="How My Style ranks stores"
     >
       <View className="flex-row items-center gap-2 mb-2">
-        <Sparkles size={18} color="#BB3F95" />
-        <Text className="text-sm font-bold text-spaceCadet-900">How My Style ranks your store</Text>
+        <Info size={18} color="#6B4773" />
+        <Text className="text-sm font-semibold text-spaceCadet-900">
+          How My Style ranks your store
+        </Text>
       </View>
       {MY_STYLE_RANKING_POINTS.map((point) => (
         <Text key={point} className="text-xs text-heliotrope-500 mt-1 leading-relaxed font-medium">

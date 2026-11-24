@@ -87,34 +87,44 @@ Expo Go check: **pending owner**.
 
 ### Task 3: growth and social (28)
 
-- [ ] `growth/index`
-- [ ] `growth/aggregators`
-- [ ] `growth/ai-campaign`
-- [ ] `growth/analytics`
-- [ ] `growth/campaign/[id]`
-- [ ] `growth/campaign-new`
-- [ ] `growth/campaigns`
-- [ ] `growth/engagement`
-- [ ] `growth/gst`
-- [ ] `growth/integrations`
-- [ ] `growth/integrations/facebook`
-- [ ] `growth/integrations/fb-ads`
-- [ ] `growth/integrations/google-ads`
-- [ ] `growth/integrations/google-business`
-- [ ] `growth/integrations/instagram`
-- [ ] `growth/integrations/whatsapp`
-- [ ] `growth/inventory`
-- [ ] `growth/promotion-form`
-- [ ] `growth/promotions`
-- [ ] `growth/ratings`
-- [ ] `growth/translate`
-- [ ] `growth/videos`
-- [ ] `social/ai-design`
-- [ ] `social/create`
-- [ ] `social/design`
-- [ ] `social/schedule/index`
-- [ ] `social/schedule/new`
-- [ ] `social/schedule/[id]`
+Built on `design/mobile-unslop-task-3`. Expo Go check: **pending owner**.
+
+Left alone on purpose:
+
+- Campaign message templates keep their emoji because customers receive that text.
+- `PostPreview` is unchanged because it must match the published post.
+- Owner approved rewording 9 button labels on Translate, Videos and the integration screens (2026-11-23).
+- `social/ai-design` keeps its own gradient button, which matches `GradientButton`.
+- `settings/social` still says `Connected!`. Task 4 should change it and its test together.
+
+- [x] `growth/index`
+- [x] `growth/aggregators`
+- [x] `growth/ai-campaign`
+- [x] `growth/analytics`
+- [x] `growth/campaign/[id]`
+- [x] `growth/campaign-new`
+- [x] `growth/campaigns`
+- [x] `growth/engagement`
+- [x] `growth/gst`
+- [x] `growth/integrations`
+- [x] `growth/integrations/facebook`
+- [x] `growth/integrations/fb-ads`
+- [x] `growth/integrations/google-ads`
+- [x] `growth/integrations/google-business`
+- [x] `growth/integrations/instagram`
+- [x] `growth/integrations/whatsapp`
+- [x] `growth/inventory`
+- [x] `growth/promotion-form`
+- [x] `growth/promotions`
+- [x] `growth/ratings`
+- [x] `growth/translate`
+- [x] `growth/videos`
+- [x] `social/ai-design`
+- [x] `social/create`
+- [x] `social/design`
+- [x] `social/schedule/index`
+- [x] `social/schedule/new`
+- [x] `social/schedule/[id]`
 
 ### Task 4: settings, staff, billing, analytics, store profile, showcase (21)
 

@@ -47,7 +47,7 @@ export function SchedulerBanner() {
     >
       <AlertTriangle size={18} color="#B45309" />
       <View className="flex-1">
-        <Text className="text-xs font-bold text-amber-900">Post scheduler needs attention</Text>
+        <Text className="text-xs font-semibold text-amber-900">Post scheduler needs attention</Text>
         <Text className="text-[11px] text-amber-800 mt-0.5" numberOfLines={2}>
           {message}
         </Text>

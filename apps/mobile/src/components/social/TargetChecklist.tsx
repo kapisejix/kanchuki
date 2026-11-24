@@ -54,14 +54,14 @@ export function TargetChecklist({
               )}
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-bold text-sand-900">{account.account_name}</Text>
-              <Text className="text-[10px] text-sand-400">
+              <Text className="text-sm font-semibold text-sand-900">{account.account_name}</Text>
+              <Text className="text-[11px] text-sand-400">
                 {isIg ? 'Instagram' : 'Facebook Page'}
               </Text>
               {disabled && reason ? (
                 <View className="flex-row items-center gap-1 mt-1">
                   <Lock size={10} color={colors.sand[500]} />
-                  <Text className="text-[10px] text-sand-500 flex-1" numberOfLines={2}>
+                  <Text className="text-[11px] text-sand-500 flex-1" numberOfLines={2}>
                     {reason}
                   </Text>
                 </View>

@@ -400,7 +400,7 @@ describe('social composer (T3.2-a #6)', () => {
       const t = await mount()
       await pressLabel(t, 'pick p1')
       await publish(t)
-      expect(text(t)).toContain('Posted!')
+      expect(text(t)).toContain('Posted')
       await pressLabel(t, 'Done')
       expect(router.back).toHaveBeenCalledTimes(1)
 

@@ -73,7 +73,7 @@ export default function GoogleBusinessScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <View className="flex-1">
-            <Text className="text-xl font-bold text-spaceCadet-900">Google reviews</Text>
+            <Text className="text-xl font-semibold text-spaceCadet-900">Google reviews</Text>
             <Text className="text-xs text-heliotrope-500 font-medium">
               Read and reply to your Google reviews here
             </Text>
@@ -86,32 +86,32 @@ export default function GoogleBusinessScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: screenPaddingBottom }}
       >
         {isLoading ? (
-          <ActivityIndicator color="#BB3F95" className="mt-10" />
+          <ActivityIndicator color="#6B4773" className="mt-10" />
         ) : isError || !status ? (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200">
-            <Text className="text-sm font-bold text-spaceCadet-900">Could not load this</Text>
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200">
+            <Text className="text-sm font-semibold text-spaceCadet-900">Could not load this</Text>
             <Text className="text-xs text-heliotrope-500 mt-1">
               Check your connection and try again.
             </Text>
             <AnimatedPressable
               onPress={() => void refetch()}
               accessibilityRole="button"
-              className="mt-3 self-start py-2"
+              className="mt-3 self-start py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
             >
-              <Text className="text-xs font-bold text-fuchsia-600">Try again</Text>
+              <Text className="text-xs font-semibold text-fuchsia-600">Try again</Text>
             </AnimatedPressable>
           </View>
         ) : status.state === 'UNAVAILABLE' ? (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200">
-            <Text className="text-sm font-bold text-spaceCadet-900">Coming soon</Text>
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200">
+            <Text className="text-sm font-semibold text-spaceCadet-900">Coming soon</Text>
             <Text className="text-xs text-heliotrope-500 mt-1 leading-5">
               Google reviews are not available for your shop yet. We will let you know when they
               are.
             </Text>
           </View>
         ) : status.state === 'LINKED' ? (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200 gap-3">
-            <Text className="text-sm font-bold text-spaceCadet-900">
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200 gap-3">
+            <Text className="text-sm font-semibold text-spaceCadet-900">
               Connected{status.location_title ? ` — ${status.location_title}` : ''}
             </Text>
             <Text className="text-xs text-heliotrope-500">
@@ -125,16 +125,16 @@ export default function GoogleBusinessScreen() {
               onPress={confirmUnlink}
               disabled={unlink.isPending}
               accessibilityRole="button"
-              className="self-start py-2"
+              className="self-start py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
             >
-              <Text className="text-xs font-bold text-heliotrope-600">Disconnect</Text>
+              <Text className="text-xs font-semibold text-heliotrope-600">Disconnect</Text>
             </AnimatedPressable>
           </View>
         ) : (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200 gap-3">
+          <View className="bg-white rounded-2xl p-5 border border-lavender-200 gap-3">
             {status.state === 'NOT_REQUESTED' && (
               <>
-                <Text className="text-sm font-bold text-spaceCadet-900">
+                <Text className="text-sm font-semibold text-spaceCadet-900">
                   Bring your Google reviews into Kanchuki
                 </Text>
                 <Text className="text-xs text-heliotrope-500 leading-5">
@@ -170,7 +170,7 @@ export default function GoogleBusinessScreen() {
 
             {(status.state === 'REQUESTED' || status.state === 'NEEDS_ACCESS') && (
               <>
-                <Text className="text-sm font-bold text-spaceCadet-900">
+                <Text className="text-sm font-semibold text-spaceCadet-900">
                   {status.state === 'REQUESTED' ? 'One step for you' : 'Kanchuki no longer has access'}
                 </Text>
                 {status.steps?.map((s, i) => (
@@ -185,11 +185,11 @@ export default function GoogleBusinessScreen() {
                     accessibilityLabel="Copy the Kanchuki email"
                     className="flex-row items-center justify-between bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 min-h-[44px]"
                   >
-                    <Text className="text-sm font-bold text-spaceCadet-900 flex-1" selectable>
+                    <Text className="text-sm font-semibold text-spaceCadet-900 flex-1" selectable>
                       {status.manager_email}
                     </Text>
                     {copied ? (
-                      <Check size={16} color="#BB3F95" />
+                      <Check size={16} color="#6B4773" />
                     ) : (
                       <Copy size={16} color="#560A39" />
                     )}

@@ -82,7 +82,7 @@ export function TemplatePicker({ templates, selectedId, onSelect, colors }: Temp
                 >
                   <View className="flex-row items-start justify-between gap-2">
                     <Text
-                      className={`text-sm font-bold flex-1 ${selected ? 'text-ink-800' : 'text-sand-900'}`}
+                      className={`text-sm font-semibold flex-1 ${selected ? 'text-ink-800' : 'text-sand-900'}`}
                       numberOfLines={1}
                     >
                       {t.name}
@@ -97,12 +97,12 @@ export function TemplatePicker({ templates, selectedId, onSelect, colors }: Temp
                   <View className="flex-row gap-1.5 mt-2">
                     {t.occasion ? (
                       <View className="bg-fuchsia-50 rounded-full px-2 py-0.5">
-                        <Text className="text-[10px] font-semibold text-fuchsia-700">{t.occasion}</Text>
+                        <Text className="text-[11px] font-semibold text-fuchsia-700">{t.occasion}</Text>
                       </View>
                     ) : null}
                     {t.post_type ? (
                       <View className="bg-sand-100 rounded-full px-2 py-0.5">
-                        <Text className="text-[10px] font-semibold text-sand-500">
+                        <Text className="text-[11px] font-semibold text-sand-500">
                           {t.post_type.replace(/_/g, ' ')}
                         </Text>
                       </View>

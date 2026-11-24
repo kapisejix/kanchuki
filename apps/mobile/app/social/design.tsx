@@ -104,7 +104,7 @@ export default function DesignPostScreen() {
                   ) : null}
                   {d.ai ? (
                     <View className="absolute top-1 left-1 rounded-full bg-white px-2 py-0.5">
-                      <Text className="text-[10px] font-bold text-sand-900">AI</Text>
+                      <Text className="text-[11px] font-semibold text-sand-900">AI</Text>
                     </View>
                   ) : null}
                 </View>
@@ -112,7 +112,7 @@ export default function DesignPostScreen() {
                   {d.name}
                 </Text>
                 {d.occasion ? (
-                  <Text className="text-[10px] text-sand-400" numberOfLines={1}>
+                  <Text className="text-[11px] text-sand-400" numberOfLines={1}>
                     {d.occasion}
                   </Text>
                 ) : null}
@@ -123,7 +123,7 @@ export default function DesignPostScreen() {
 
         {design ? (
           <View className="mt-5">
-            <Text className="text-sm font-bold mb-2 text-sand-900">
+            <Text className="text-sm font-semibold mb-2 text-sand-900">
               {design.product_slots === 1
                 ? 'Pick a product'
                 : `Pick up to ${design.product_slots} products`}
@@ -138,7 +138,7 @@ export default function DesignPostScreen() {
               }}
             />
 
-            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">Optional text</Text>
+            <Text className="text-sm font-semibold mt-5 mb-2 text-sand-900">Optional text</Text>
             <TextInput
               value={customText}
               onChangeText={(t) => {

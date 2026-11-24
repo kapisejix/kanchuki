@@ -65,7 +65,7 @@ export default function PromotionsScreen() {
             </AnimatedPressable>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               Promotions & Offers
             </Text>
@@ -74,7 +74,7 @@ export default function PromotionsScreen() {
             onPress={() => router.push('/growth/promotion-form')}
             accessibilityLabel="New promotion"
             accessibilityRole="button"
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-spaceCadet-900"
           >
             <Plus size={20} color="white" />
           </AnimatedPressable>
@@ -83,19 +83,19 @@ export default function PromotionsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : promotions.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
+              className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Percent size={28} color="#BB3F95" />
+              <Percent size={28} color="#6B4773" />
             </View>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               No Promotions Yet
             </Text>
@@ -115,18 +115,17 @@ export default function PromotionsScreen() {
         >
           <View className="gap-3.5">
             {promotions.map((p) => (
-              <View key={p.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+              <View key={p.id} className="bg-white rounded-2xl p-5 border border-lavender-200">
                 <View className="flex-row items-center justify-between mb-2">
                   <View className="flex-row items-center gap-3 flex-1 mr-2">
-                    <View
-                      className="w-11 h-11 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
+                    <View className="w-6 items-center justify-center"
                     >
-                      <Tag size={18} color="#BB3F95" />
+                      <Tag size={18} color="#6B4773" />
                     </View>
                     <View className="flex-1">
                       <Text
                         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                        className="text-lg font-bold text-spaceCadet-900"
+                        className="text-lg text-spaceCadet-900"
                         numberOfLines={1}
                       >
                         {p.code}
@@ -148,7 +147,7 @@ export default function PromotionsScreen() {
                 </View>
                 <View className="flex-row items-center gap-2 mt-2 pt-3 border-t border-lavender-200">
                   <View className={`rounded-full px-3 py-1 ${p.is_active ? 'bg-fuchsia-500/15 border border-fuchsia-500/30' : 'bg-lavender-100 border border-lavender-200'}`}>
-                    <Text className={`text-[10px] font-bold uppercase tracking-wider ${p.is_active ? 'text-fuchsia-700' : 'text-heliotrope-500'}`}>
+                    <Text className={`text-[11px] font-semibold ${p.is_active ? 'text-emerald-700' : 'text-heliotrope-500'}`}>
                       {p.is_active ? 'Active' : 'Inactive'}
                     </Text>
                   </View>

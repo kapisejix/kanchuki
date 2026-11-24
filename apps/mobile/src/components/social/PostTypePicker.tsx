@@ -43,12 +43,12 @@ export function PostTypePicker({
           >
             <View className="flex-row items-center gap-1.5 mb-1">
               <Icon size={14} color={active ? '#fff' : colors.sand[600]} />
-              <Text className={`text-sm font-bold ${active ? 'text-white' : 'text-sand-900'}`}>
+              <Text className={`text-sm font-semibold ${active ? 'text-white' : 'text-sand-900'}`}>
                 {opt.label}
               </Text>
             </View>
             <Text
-              className={`text-[10px] leading-3.5 ${active ? 'text-white/70' : 'text-sand-400'}`}
+              className={`text-[11px] leading-3.5 ${active ? 'text-white/70' : 'text-sand-400'}`}
               numberOfLines={2}
             >
               {opt.hint}

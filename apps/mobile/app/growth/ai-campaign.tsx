@@ -28,8 +28,8 @@ const EXAMPLE_PROMPTS = [
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-      <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3.5">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
+      <Text className="text-xs font-semibold text-spaceCadet-900 mb-3.5">
         {title}
       </Text>
       {children}
@@ -127,7 +127,7 @@ export default function AiCampaignScreen() {
           </AnimatedPressable>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            className="text-xl text-spaceCadet-900"
           >
             AI Campaign Assistant
           </Text>
@@ -143,7 +143,7 @@ export default function AiCampaignScreen() {
               onChangeText={setPrompt}
               placeholder="e.g. Send cotton new arrivals to customers who like office wear"
               placeholderTextColor="#928EB2"
-              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 min-h-[90px] border border-lavender-200"
+              className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 min-h-[90px] border border-lavender-200"
               multiline
               maxLength={2000}
               textAlignVertical="top"
@@ -177,27 +177,27 @@ export default function AiCampaignScreen() {
               <Section title="Suggested campaign">
                 <View className="gap-3.5">
                   <View>
-                    <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">Campaign Name</Text>
+                    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Campaign name</Text>
                     <TextInput
                       value={draft.name}
                       onChangeText={(text) => setDraft({ ...draft, name: text })}
-                      className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200"
+                      className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200"
                       maxLength={120}
                     />
                   </View>
 
                   <View className="flex-row gap-3">
                     <View className="flex-1">
-                      <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">Type</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Type</Text>
                       <View className="bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200">
-                        <Text className="text-sm font-bold text-spaceCadet-900">{typeLabel[draft.type] ?? draft.type}</Text>
+                        <Text className="text-sm font-semibold text-spaceCadet-900">{typeLabel[draft.type] ?? draft.type}</Text>
                       </View>
                     </View>
                     {draft.type === 'FESTIVAL' && (
                       <View className="flex-1">
-                        <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">Festival</Text>
+                        <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Festival</Text>
                         <View className="bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200">
-                          <Text className="text-sm font-bold text-spaceCadet-900">
+                          <Text className="text-sm font-semibold text-spaceCadet-900">
                             {draft.festival_id ? `Festival #${draft.festival_id}` : 'Not selected'}
                           </Text>
                         </View>
@@ -206,11 +206,11 @@ export default function AiCampaignScreen() {
                   </View>
 
                   <View>
-                    <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">WhatsApp Message Template</Text>
+                    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">WhatsApp message template</Text>
                     <TextInput
                       value={draft.message_template}
                       onChangeText={(text) => setDraft({ ...draft, message_template: text })}
-                      className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 min-h-[100px] border border-lavender-200"
+                      className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 min-h-[100px] border border-lavender-200"
                       multiline
                       maxLength={2000}
                       textAlignVertical="top"
@@ -218,10 +218,10 @@ export default function AiCampaignScreen() {
                   </View>
 
                   <View className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
-                    <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1">
-                      Target Audience
+                    <Text className="text-xs font-semibold text-spaceCadet-900 mb-1">
+                      Target audience
                     </Text>
-                    <Text className="text-xs font-bold text-fuchsia-700 leading-4">
+                    <Text className="text-xs font-semibold text-fuchsia-700 leading-4">
                       {draft.audience_count > 0
                         ? `${draft.audience_count} customers match this audience`
                         : 'No customers match — adjust filters'}
@@ -233,7 +233,7 @@ export default function AiCampaignScreen() {
 
                   {draft.matched_products.length > 0 && (
                     <View>
-                      <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+                      <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
                         Matched products ({draft.matched_products.length})
                       </Text>
                       <View className="gap-2">
@@ -242,12 +242,12 @@ export default function AiCampaignScreen() {
                             key={p.id}
                             className="flex-row items-center justify-between bg-lavender-50 rounded-2xl px-3.5 py-2.5 border border-lavender-200"
                           >
-                            <Text className="text-xs font-bold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
+                            <Text className="text-xs font-semibold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
                               {p.name ?? p.category ?? 'Product'}
                             </Text>
                             <Text
                               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                              className="text-xs font-bold text-spaceCadet-900"
+                              className="text-xs text-spaceCadet-900"
                             >
                               {p.primary_color ?? ''}
                               {p.price_min ? ` · ₹${(p.price_min / 100).toFixed(0)}` : ''}

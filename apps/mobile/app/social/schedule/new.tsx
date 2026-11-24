@@ -40,7 +40,7 @@ function Chip({
         active ? 'bg-fuchsia-600 border-fuchsia-600' : 'bg-white border-lavender-200'
       }`}
     >
-      <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
+      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
         {label}
       </Text>
     </AnimatedPressable>
@@ -70,7 +70,7 @@ function Stepper({
       >
         <Minus size={14} color="#231F48" />
       </AnimatedPressable>
-      <Text className="w-6 text-center text-sm font-bold text-spaceCadet-900">{value}</Text>
+      <Text className="w-6 text-center text-sm font-semibold text-spaceCadet-900">{value}</Text>
       <AnimatedPressable
         accessibilityLabel={`Increase ${label}`}
         accessibilityRole="button"
@@ -170,7 +170,7 @@ export default function NewSchedulePlanScreen() {
             </AnimatedPressable>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               New posting plan
             </Text>
@@ -185,7 +185,7 @@ export default function NewSchedulePlanScreen() {
           </View>
         ) : statusQuery.isLoading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#BB3F95" />
+            <ActivityIndicator color="#6B4773" />
           </View>
         ) : (
           <ScrollView
@@ -194,7 +194,7 @@ export default function NewSchedulePlanScreen() {
             contentContainerStyle={{ paddingBottom: screenPaddingBottom, gap: 18 }}
           >
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">Post to</Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">Post to</Text>
               <View className="flex-row flex-wrap gap-2">
                 {accounts.map((a) => (
                   <Chip
@@ -218,7 +218,7 @@ export default function NewSchedulePlanScreen() {
             </View>
 
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">Post style</Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">Post style</Text>
               <View className="flex-row gap-2">
                 <Chip
                   label="Carousel of products"
@@ -234,7 +234,7 @@ export default function NewSchedulePlanScreen() {
             </View>
 
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">Days</Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">Days</Text>
               <View className="flex-row flex-wrap gap-2">
                 {DAYS.map((label, d) => (
                   <Chip
@@ -249,7 +249,7 @@ export default function NewSchedulePlanScreen() {
 
             {postType === 'CAROUSEL' && weekdays.length > 0 ? (
               <View className="bg-white rounded-2xl border border-lavender-200 p-4">
-                <Text className="text-xs font-bold text-spaceCadet-900 mb-2">
+                <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
                   Photos per post (min – max, up to {MAX_SLIDES})
                 </Text>
                 {weekdays.map((d) => {
@@ -281,7 +281,7 @@ export default function NewSchedulePlanScreen() {
             ) : null}
 
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
                 Posting time (IST, every selected day)
               </Text>
               <View className="flex-row flex-wrap gap-2 mb-2">
@@ -304,7 +304,7 @@ export default function NewSchedulePlanScreen() {
             </View>
 
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">Which products</Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">Which products</Text>
               <View className="flex-row gap-2">
                 <Chip
                   label="Newest first"
@@ -332,7 +332,7 @@ export default function NewSchedulePlanScreen() {
             </View>
 
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">Plan for</Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">Plan for</Text>
               <View className="flex-row gap-2">
                 {HORIZONS.map((h) => (
                   <Chip
@@ -346,7 +346,7 @@ export default function NewSchedulePlanScreen() {
             </View>
 
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
                 Cover slide (optional)
               </Text>
               <View className="flex-row gap-2">
@@ -360,7 +360,7 @@ export default function NewSchedulePlanScreen() {
             </View>
 
             <View>
-              <Text className="text-xs font-bold text-spaceCadet-900 mb-2">
+              <Text className="text-xs font-semibold text-spaceCadet-900 mb-2">
                 Photo styles to rotate (optional)
               </Text>
               <View className="flex-row flex-wrap gap-2">
