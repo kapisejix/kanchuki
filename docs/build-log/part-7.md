@@ -757,4 +757,4 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | db src | `process.env['X']` → `process.env.X` (no `noPropertyAccessFromIndexSignature` in any tsconfig). `client.ts` shutdown message `console.log` → `console.info`. `vault.ts`: dead eslint comment replaced by a `biome-ignore` with the reason (vault client exists only when `VAULT_DATABASE_URL` is set). |
 | seed | 9 unused template arrays removed. `!` replaced by a `entries()` loop and `undefined` checks, `as any` → `as ProductStatus`. Not run (writes a DB). |
 | Local runs | `packages/db`: Biome 0 errors, 0 warnings. db tsc 0, tests 25 passed + 4 skipped. api tsc 0. |
-| Known, not changed | `seed.ts` is outside db's tsconfig; checked alone it has 3 `shop_name` type errors, same count on main. |
+| seed bug | `createRetailer` returned `{ id, sectionIds }` but `createCollections` reads `retailer.shop_name`, so collection slugs used `slugify(undefined)`. Now returns `shop_name` too. `seed.ts` checked alone with tsc: 0 errors (was 3). |

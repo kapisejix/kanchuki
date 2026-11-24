@@ -957,7 +957,7 @@ async function createRetailer(data: {
   );
 
   console.log(`  ✅ ${data.shop_name} — ${data.plan} plan, ${data.sections.length} sections`);
-  return { id: retailer.id, sectionIds: sections.map((s) => s.id) };
+  return { id: retailer.id, shop_name: retailer.shop_name, sectionIds: sections.map((s) => s.id) };
 }
 
 // ── Create Products ────────────────────────────────────────────────
