@@ -56,6 +56,25 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # F-046 push. This workflow builds the Play AAB outside EAS, so the EAS-only
+      # GOOGLE_SERVICES_JSON env var never reaches it: without google-services.json the AAB
+      # builds fine and Android push silently never registers. The file is a secret and lives
+      # under RUNNER_TEMP, never in the checkout. app.config.ts reads the exported path.
+      # Fails closed: a release without push must not look successful. The package name is
+      # compared with the shared app identity, not a copied literal (RC-041).
+      - name: Write google-services.json (Firebase / FCM)
+        working-directory: apps/mobile
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON_BASE64 secret is not set - this AAB would ship without push notifications"
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > "$RUNNER_TEMP/google-services.json"
+          node -e "require('sucrase/register/ts'); const { ANDROID_PACKAGE } = require('@kanchuki/shared/constants/app-identity'); const j = require(process.argv[1]); const p = j.client && j.client[0] && j.client[0].client_info && j.client[0].client_info.android_client_info && j.client[0].client_info.android_client_info.package_name; if (p !== ANDROID_PACKAGE) { console.error('::error::google-services.json package_name does not match ' + ANDROID_PACKAGE); process.exit(1); }" "$RUNNER_TEMP/google-services.json"
+          echo "GOOGLE_SERVICES_JSON=$RUNNER_TEMP/google-services.json" >> "$GITHUB_ENV"
+
       - name: Expo prebuild (generate android/)
         working-directory: apps/mobile
         run: pnpm exec expo prebuild --platform android --no-install --clean
