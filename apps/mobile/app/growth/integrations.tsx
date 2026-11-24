@@ -65,7 +65,7 @@ export default function IntegrationsScreen() {
         </View>
 
         {/* Tab Filters */}
-        <View className="flex-row gap-2 mt-3.5">
+        <View className="flex-row flex-wrap gap-2 mt-4">
           {(
             [
               { key: 'all', label: 'All Channels (6)' },
@@ -294,7 +294,7 @@ function IntegrationCard({
   onDisconnect: () => void
 }) {
   return (
-    <View className="bg-white rounded-2xl border border-lavender-200 p-4 mb-3.5">
+    <View className="bg-white rounded-2xl border border-lavender-200 p-4 mb-4">
       <View className="flex-row items-start gap-3">
         <BrandIcon brand={brand} size={48} />
         <View className="flex-1">
@@ -306,12 +306,12 @@ function IntegrationCard({
               {title}
             </Text>
             {configured ? (
-              <View className="flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              <View className="flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
                 <CheckCircle size={11} color="#16a34a" />
                 <Text className="text-[11px] font-semibold text-emerald-700">Linked</Text>
               </View>
             ) : (
-              <View className="flex-row items-center gap-1 bg-lavender-100 px-2 py-0.5 rounded-full">
+              <View className="flex-row items-center gap-1 bg-lavender-100 px-2 py-0.5 rounded-full shrink-0">
                 <XCircle size={11} color="#6B4773" />
                 <Text className="text-[11px] font-semibold text-heliotrope-500">Not Linked</Text>
               </View>
@@ -319,7 +319,7 @@ function IntegrationCard({
           </View>
           <Text className="text-xs text-heliotrope-500 mb-2 leading-relaxed font-medium">{subtitle}</Text>
           {configured && (metaLabel || configuredAt) && (
-            <View className="flex-row items-center gap-2 mb-2.5">
+            <View className="flex-row flex-wrap items-center gap-2 mb-2">
               {metaLabel && (
                 <View className="bg-fuchsia-500/10 border border-fuchsia-500/20 px-2.5 py-0.5 rounded-full">
                   <Text className="text-[11px] font-semibold text-fuchsia-700">{metaLabel}</Text>
@@ -332,29 +332,28 @@ function IntegrationCard({
               )}
             </View>
           )}
-          {/* Buttons: dark = GradientButton web, white = WhiteButton, red keeps its colour
-              (same radius 24 + navy shadow). Labels wrap, never cut off. */}
-          <View className="flex-row gap-3 mt-2 pb-2">
-            <View className="flex-1">
-              {configured ? (
-                <WhiteButton radius={16} label="Reconfigure" onPress={onConfigure} />
-              ) : (
-                <GradientButton
-                  variant="web"
-                  radius={16}
-                  label="Connect Account"
-                  iconRight={<ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />}
-                  onPress={onConfigure}
-                />
-              )}
-            </View>
-            {configured && (
-              <View className="flex-1">
-                <DangerButton radius={16} label="Disconnect" onPress={onDisconnect} />
-              </View>
-            )}
-          </View>
         </View>
+      </View>
+      {/* Buttons: dark = GradientButton web, white = WhiteButton, red keeps its colour
+          (shared default radius + navy shadow). Full card width so labels never cut off. */}
+      <View className="flex-row gap-3 mt-4">
+        <View className="flex-1">
+          {configured ? (
+            <WhiteButton label="Reconfigure" onPress={onConfigure} />
+          ) : (
+            <GradientButton
+              variant="web"
+              label="Connect Account"
+              iconRight={<ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />}
+              onPress={onConfigure}
+            />
+          )}
+        </View>
+        {configured && (
+          <View className="flex-1">
+            <DangerButton label="Disconnect" onPress={onDisconnect} />
+          </View>
+        )}
       </View>
     </View>
   )
