@@ -42,11 +42,12 @@ import { MAX_IMAGE_PIXELS } from '@kanchuki/shared';
 
 // Lazy import — same reason as detector.ts: sharp's native dlopen can crash
 // on Windows+pnpm when loaded eagerly by a module the API imports broadly.
-let _sharp: any = null;
+type Sharp = typeof import('sharp').default;
+let _sharp: Sharp | null = null;
 async function getSharp() {
   if (!_sharp) {
     const mod = await import('sharp');
-    _sharp = mod.default ?? mod;
+    _sharp = (mod.default ?? mod) as Sharp;
   }
   return _sharp;
 }
@@ -115,7 +116,8 @@ export async function compressImageToTarget(
   }
 
   // Nothing fit — return the smallest thing we produced.
-  const fallback = best!;
+  if (!best) throw new Error('compressImage: no encode attempted');
+  const fallback = best;
   return {
     buffer: fallback.buffer,
     width: fallback.w,
