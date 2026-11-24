@@ -64,7 +64,7 @@ export default function CampaignsScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl text-spaceCadet-900"
             >
               Campaign Broadcasts
@@ -123,7 +123,7 @@ export default function CampaignsScreen() {
               <Megaphone size={28} color="#6B4773" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl text-spaceCadet-900"
             >
               {filter === 'ALL' ? 'No campaigns yet' : `No ${TYPE_LABEL[filter].toLowerCase()} campaigns`}
@@ -161,7 +161,7 @@ export default function CampaignsScreen() {
                 >
                   <View className="flex-row items-center justify-between mb-2">
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className="text-base text-spaceCadet-900 flex-1 mr-2"
                       numberOfLines={1}
                     >

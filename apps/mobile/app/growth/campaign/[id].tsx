@@ -179,7 +179,7 @@ export default function CampaignDetailScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl text-spaceCadet-900 flex-1"
             numberOfLines={1}
           >
@@ -220,7 +220,7 @@ export default function CampaignDetailScreen() {
                 <Link2 size={16} color="#6B4773" />
               )}
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base text-spaceCadet-900"
               >
                 {sendResult.sent_via === 'whatsapp_api'
@@ -269,7 +269,7 @@ export default function CampaignDetailScreen() {
           <View className="flex-row items-center gap-2 mb-1.5">
             <Users size={16} color="#6B4773" />
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-base text-spaceCadet-900"
             >
               Audience Match
@@ -286,7 +286,7 @@ export default function CampaignDetailScreen() {
               ) : preview ? (
                 <>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-2xl text-fuchsia-700"
                   >
                     {preview.audience_count.toLocaleString('en-IN')}
@@ -310,7 +310,7 @@ export default function CampaignDetailScreen() {
             <View className="mt-3.5 flex-row gap-2.5">
               <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                   className="text-lg text-spaceCadet-900"
                 >
                   {campaign.sent_count.toLocaleString('en-IN')}
@@ -319,7 +319,7 @@ export default function CampaignDetailScreen() {
               </View>
               <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                   className="text-lg text-spaceCadet-900"
                 >
                   {campaign.opened_count.toLocaleString('en-IN')}
@@ -329,7 +329,7 @@ export default function CampaignDetailScreen() {
               {breakdown['OPENED'] != null && (
                 <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-lg text-fuchsia-700"
                   >
                     {campaign.sent_count > 0
@@ -350,7 +350,7 @@ export default function CampaignDetailScreen() {
             <View className="flex-row items-center gap-2 mb-3">
               <Trophy size={16} color="#6B4773" />
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base text-spaceCadet-900"
               >
                 Variant Performance
@@ -378,7 +378,7 @@ export default function CampaignDetailScreen() {
                     </Text>
                   </View>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-base text-fuchsia-700"
                   >
                     {Math.round(v.open_rate * 100)}%
@@ -394,7 +394,7 @@ export default function CampaignDetailScreen() {
           <View className="flex-row items-center gap-2 mb-2">
             <Megaphone size={16} color="#6B4773" />
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-base text-spaceCadet-900"
             >
               Message Content

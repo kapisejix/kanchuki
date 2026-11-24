@@ -96,7 +96,7 @@ export default function GoogleBusinessScreen() {
             <AnimatedPressable
               onPress={() => void refetch()}
               accessibilityRole="button"
-              className="mt-3 self-start py-2"
+              className="mt-3 self-start py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
             >
               <Text className="text-xs font-semibold text-fuchsia-600">Try again</Text>
             </AnimatedPressable>
@@ -125,7 +125,7 @@ export default function GoogleBusinessScreen() {
               onPress={confirmUnlink}
               disabled={unlink.isPending}
               accessibilityRole="button"
-              className="self-start py-2"
+              className="self-start py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
             >
               <Text className="text-xs font-semibold text-heliotrope-600">Disconnect</Text>
             </AnimatedPressable>

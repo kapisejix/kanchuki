@@ -309,7 +309,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
             <AnimatedPressable
               onPress={reset}
               accessibilityRole="button"
-              className="items-center py-3"
+              className="items-center py-3 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
             >
               <Text className="text-sm font-semibold text-sand-900">Make another</Text>
             </AnimatedPressable>

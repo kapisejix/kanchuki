@@ -126,7 +126,7 @@ export default function AiCampaignScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl text-spaceCadet-900"
           >
             AI Campaign Assistant
@@ -246,7 +246,7 @@ export default function AiCampaignScreen() {
                               {p.name ?? p.category ?? 'Product'}
                             </Text>
                             <Text
-                              style={{ fontFamily: 'Marcellus_400Regular' }}
+                              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                               className="text-xs text-spaceCadet-900"
                             >
                               {p.primary_color ?? ''}

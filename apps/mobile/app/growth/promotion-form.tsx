@@ -45,7 +45,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-base text-spaceCadet-900 mb-3.5"
       >
         {title}
@@ -146,7 +146,7 @@ export default function PromotionFormScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl text-spaceCadet-900"
           >
             {isEdit ? 'Edit Promotion' : 'New Promotion'}

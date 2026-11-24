@@ -64,7 +64,7 @@ export default function PromotionsScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl text-spaceCadet-900"
             >
               Promotions & Offers
@@ -94,7 +94,7 @@ export default function PromotionsScreen() {
               <Percent size={28} color="#6B4773" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl text-spaceCadet-900"
             >
               No Promotions Yet
@@ -124,7 +124,7 @@ export default function PromotionsScreen() {
                     </View>
                     <View className="flex-1">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32 }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-lg text-spaceCadet-900"
                         numberOfLines={1}
                       >

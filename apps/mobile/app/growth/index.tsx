@@ -117,13 +117,13 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
             {retailerProfile?.logo_url ? (
               <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
-              <Text className="text-spaceCadet-900 font-marcellus text-sm">
+              <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
               </Text>
             )}
           </View>
           <View>
-            <Text style={{ fontFamily: 'Marcellus_400Regular' }} className="text-base text-spaceCadet-900">{retailerProfile?.shop_name ?? 'Store'}</Text>
+            <Text style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }} className="text-base text-spaceCadet-900">{retailerProfile?.shop_name ?? 'Store'}</Text>
             <Text className="text-[11px] text-heliotrope-500 font-medium">
               {retailerProfile?.city ? `${retailerProfile.city} · Growth` : 'Growth'}
             </Text>
@@ -146,7 +146,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl text-spaceCadet-900"
             >
               Growth
@@ -179,7 +179,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           </View>
           <View className="flex-row items-baseline gap-2">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-3xl text-white"
             >
               {ctrPct !== null ? `${ctrPct}%` : '—'}
@@ -236,7 +236,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               <Wand2 size={16} color="#6B4773" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-sm text-spaceCadet-900"
             >
               AI Campaigns
@@ -254,7 +254,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               Live campaigns
             </Text>
             <View className="flex-row items-center gap-3">
-              <AnimatedPressable
+              <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 onPress={() => router.push('/growth/analytics')}
                 hitSlop={8}
                 accessibilityRole="button"
@@ -262,7 +262,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 <Text className="text-xs font-semibold text-fuchsia-700">Analytics</Text>
               </AnimatedPressable>
               {campaigns.length > 0 && (
-                <AnimatedPressable
+                <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                   onPress={() => router.push('/growth/campaigns')}
                   hitSlop={8}
                   accessibilityRole="button"
@@ -318,7 +318,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                     </View>
                     <View className="flex-1">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base text-spaceCadet-900"
                       >
                         {campaigns.length} {campaigns.length === 1 ? 'Campaign' : 'Campaigns'}

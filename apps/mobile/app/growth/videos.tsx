@@ -207,7 +207,7 @@ export default function VideosScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl text-spaceCadet-900 flex-1"
           >
             {picked ? (picked.name ?? 'Product') : 'Reels & Video Showcase'}
@@ -257,7 +257,7 @@ export default function VideosScreen() {
                     </View>
                     <View className="flex-1 mr-2">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base text-spaceCadet-900"
                         numberOfLines={1}
                       >

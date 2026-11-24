@@ -220,7 +220,7 @@ export default function GrowthAnalyticsScreen() {
           </AnimatedPressable>
           <View className="flex-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl text-spaceCadet-900"
             >
               Campaign Analytics
@@ -381,7 +381,7 @@ export default function GrowthAnalyticsScreen() {
                     <Text className="text-xs font-semibold text-spaceCadet-900">With video</Text>
                   </View>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-xl text-spaceCadet-900"
                   >
                     {stats.video_vs_photo.video.enquiries}
@@ -397,7 +397,7 @@ export default function GrowthAnalyticsScreen() {
                     <Text className="text-xs font-semibold text-spaceCadet-900">Photo only</Text>
                   </View>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-xl text-spaceCadet-900"
                   >
                     {stats.video_vs_photo.photo.enquiries}

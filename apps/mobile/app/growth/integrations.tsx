@@ -57,7 +57,7 @@ export default function IntegrationsScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl text-spaceCadet-900 flex-1"
           >
             Social & Marketing Channels
@@ -112,7 +112,7 @@ export default function IntegrationsScreen() {
             <View className="flex-row items-center gap-2 mb-1.5">
               <Share2 size={18} color="#6B4773" />
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-spaceCadet-900 text-base"
               >
                 Social and ad accounts
@@ -300,7 +300,7 @@ function IntegrationCard({
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-base text-spaceCadet-900 flex-1"
             >
               {title}
