@@ -1,49 +1,44 @@
-import { useState } from 'react'
-import { formatPriceRange } from '@kanchuki/shared'
-import {
-  View,
-  Text,
-  FlatList,
-  TextInput,
-} from 'react-native'
-import { router } from 'expo-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import { ChevronLeft } from 'lucide-react-native'
-import ProductCard from '../../src/components/ProductCard'
-import { ProductGridSkeleton } from '../../src/components/Skeleton'
-import { useGridColumns } from '../../src/hooks/useIsTablet'
-import { GradientButton } from '../../src/components/GradientButton'
-import { productApi, collectionApi } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { formatPriceRange } from '@kanchuki/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import { useState } from 'react';
+import { FlatList, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import ProductCard from '../../src/components/ProductCard';
+import { ProductGridSkeleton } from '../../src/components/Skeleton';
+import { useGridColumns } from '../../src/hooks/useIsTablet';
+import { collectionApi, productApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 type Product = {
-  id: string
-  category: string | null
-  primary_color: string | null
-  price_min: number | null
-  price_max: number | null
-  status: string
-  primary_photo_url: string | null
-}
+  id: string;
+  category: string | null;
+  primary_color: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  status: string;
+  primary_photo_url: string | null;
+};
 
-const EXPIRY_OPTIONS = [7, 30, 90] as const
+const EXPIRY_OPTIONS = [7, 30, 90] as const;
 
 export default function NewCollectionScreen() {
-  const columns = useGridColumns()
-  const [title, setTitle] = useState('')
-  const [expiresDays, setExpiresDays] = useState<number>(30)
-  const [selected, setSelected] = useState<Set<string>>(new Set())
-  const queryClient = useQueryClient()
-  const { insets, headerPaddingTop } = useScreenInsets()
+  const columns = useGridColumns();
+  const [title, setTitle] = useState('');
+  const [expiresDays, setExpiresDays] = useState<number>(30);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+  const { insets, headerPaddingTop } = useScreenInsets();
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'list', 'available'],
     queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 50 }),
-  })
-  const products = ((data as { data: Product[] } | undefined)?.data ?? [])
+  });
+  const products = (data as { data: Product[] } | undefined)?.data ?? [];
 
   const create = useMutation({
     mutationFn: () =>
@@ -53,23 +48,23 @@ export default function NewCollectionScreen() {
         expires_days: expiresDays,
       }),
     onSuccess: async (res) => {
-      await queryClient.invalidateQueries({ queryKey: ['collections'] })
+      await queryClient.invalidateQueries({ queryKey: ['collections'] });
       // ?share=1 → detail screen opens the customer WhatsApp share sheet on mount
-      router.replace(`/collection/${res.data.id as string}?share=1`)
+      router.replace(`/collection/${res.data.id as string}?share=1`);
     },
     onError: (err: Error) => showError(err, 'Please try again.', 'Could not create collection'),
-  })
+  });
 
   const toggle = (id: string) => {
     setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else if (next.size < 50) next.add(id)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 50) next.add(id);
+      return next;
+    });
+  };
 
-  const canCreate = title.trim().length > 0 && selected.size > 0 && !create.isPending
+  const canCreate = title.trim().length > 0 && selected.size > 0 && !create.isPending;
 
   return (
     <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
@@ -88,7 +83,7 @@ export default function NewCollectionScreen() {
         </AnimatedPressable>
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900 ml-3"
+          className="text-base text-spaceCadet-900 ml-3"
         >
           New Collection
         </Text>
@@ -100,12 +95,12 @@ export default function NewCollectionScreen() {
             onChangeText={setTitle}
             placeholder="Collection title (e.g. Wedding Specials)"
             placeholderTextColor="#928EB2"
-            className="bg-lavender-50 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+            className="bg-lavender-50 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
             maxLength={200}
           />
           <View className="flex-row gap-2.5">
             {EXPIRY_OPTIONS.map((d) => {
-              const active = expiresDays === d
+              const active = expiresDays === d;
               return (
                 <AnimatedPressable
                   key={d}
@@ -119,14 +114,14 @@ export default function NewCollectionScreen() {
                   }`}
                 >
                   <Text
-                    className={`text-xs font-bold text-center ${
+                    className={`text-xs font-semibold text-center ${
                       active ? 'text-white' : 'text-spaceCadet-900'
                     }`}
                   >
                     {d} days
                   </Text>
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </View>
@@ -142,7 +137,7 @@ export default function NewCollectionScreen() {
             contentContainerStyle={{ padding: 14, gap: 12 }}
             columnWrapperStyle={{ gap: 12 }}
             renderItem={({ item }) => {
-              const isSelected = selected.has(item.id)
+              const isSelected = selected.has(item.id);
               return (
                 <ProductCard
                   imageUrl={item.primary_photo_url}
@@ -153,19 +148,22 @@ export default function NewCollectionScreen() {
                   style={isSelected ? { borderWidth: 2, borderColor: '#BB3F95' } : undefined}
                   footer={
                     <View className="p-2 gap-0.5">
-                      <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
+                      <Text
+                        className="text-xs font-semibold text-spaceCadet-900 truncate"
+                        numberOfLines={1}
+                      >
                         {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                       </Text>
                       <Text
                         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                        className="text-xs font-bold text-spaceCadet-900"
+                        className="text-xs text-spaceCadet-900"
                       >
                         {formatPriceRange(item.price_min, item.price_max)}
                       </Text>
                     </View>
                   }
                 />
-              )
+              );
             }}
             ListEmptyComponent={
               <Text className="text-heliotrope-500 text-sm font-medium text-center mt-16">
@@ -179,7 +177,8 @@ export default function NewCollectionScreen() {
           className="bg-white px-4 pt-3.5 border-t border-lavender-200"
           style={{ paddingBottom: 14 + insets.bottom }}
         >
-          <GradientButton variant="web"
+          <GradientButton
+            variant="web"
             label={`Create & Share (${selected.size} selected)`}
             disabled={!canCreate}
             loading={create.isPending}
@@ -197,5 +196,5 @@ export default function NewCollectionScreen() {
         </View>
       </View>
     </KeyboardScreen>
-  )
+  );
 }

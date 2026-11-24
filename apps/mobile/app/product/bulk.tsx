@@ -1,90 +1,75 @@
-import { useState, useCallback } from 'react'
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  FlatList,
-  Dimensions,
-} from 'react-native'
-import { router } from 'expo-router'
-import * as ImagePicker from 'expo-image-picker'
-import * as ImageManipulator from 'expo-image-manipulator'
-import { Image } from 'expo-image'
-import { useQueryClient } from '@tanstack/react-query'
-import {
-  Camera,
-  ImagePlus,
-  Check,
-  X,
-  AlertTriangle,
-  Upload,
-} from 'lucide-react-native'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { productApi, uploadImageToR2, prepareImageForUpload } from '../../src/lib/api'
-import { logError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
+import { useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
+import { AlertTriangle, Camera, Check, ImagePlus, Upload, X } from 'lucide-react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { prepareImageForUpload, productApi, uploadImageToR2 } from '../../src/lib/api';
+import { logError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
+import { useTheme } from '../../src/lib/theme';
 
 // Retries a flaky network step up to `attempts` times with a short backoff.
 // Bulk import fires many sequential requests back-to-back — a single
 // transient timeout shouldn't permanently fail that photo.
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
-  let lastErr: unknown
+  let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
-      return await fn()
+      return await fn();
     } catch (err) {
-      lastErr = err
-      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 500 * 2 ** i))
+      lastErr = err;
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 500 * 2 ** i));
     }
   }
-  throw lastErr
+  throw lastErr;
 }
 
 // ─── Types ────────────────────────────────────────────────────────
 
 type PhotoItem = {
-  localUri: string
-  thumbUri: string
-}
+  localUri: string;
+  thumbUri: string;
+};
 
 type ImportStatus =
   | { state: 'pending' }
   | { state: 'uploading' }
   | { state: 'creating' }
   | { state: 'done'; productId: string }
-  | { state: 'failed'; error: string }
+  | { state: 'failed'; error: string };
 
-type Step = 'pick' | 'importing' | 'done'
+type Step = 'pick' | 'importing' | 'done';
 
-const MAX_BATCH_SIZE = 20
+const MAX_BATCH_SIZE = 20;
 
 // ─── Compress helper ──────────────────────────────────────────────
 
 async function compressPhoto(uri: string): Promise<string> {
-  const compressed = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: 1200 } }],
-    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-  )
-  return compressed.uri
+  const compressed = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1200 } }], {
+    compress: 0.8,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  return compressed.uri;
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function BulkImportScreen() {
-  const { primaryColor, colors } = useTheme()
-  const { insets, headerPaddingTop } = useScreenInsets()
-  const [step, setStep] = useState<Step>('pick')
-  const [photos, setPhotos] = useState<PhotoItem[]>([])
-  const [statuses, setStatuses] = useState<ImportStatus[]>([])
-  const [completed, setCompleted] = useState(0)
-  const [total, setTotal] = useState(0)
-  const [failed, setFailed] = useState(0)
+  const { primaryColor, colors } = useTheme();
+  const { insets, headerPaddingTop } = useScreenInsets();
+  const [step, setStep] = useState<Step>('pick');
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
+  const [statuses, setStatuses] = useState<ImportStatus[]>([]);
+  const [completed, setCompleted] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [failed, setFailed] = useState(0);
 
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   // ── Pick photos from gallery ──────────────────────────────────
 
@@ -94,72 +79,76 @@ export default function BulkImportScreen() {
       quality: 0.85,
       allowsMultipleSelection: true,
       selectionLimit: MAX_BATCH_SIZE,
-    })
+    });
 
-    if (result.canceled || !result.assets.length) return
+    if (result.canceled || !result.assets.length) return;
 
     const newPhotos: PhotoItem[] = result.assets.map((a) => ({
       localUri: a.uri,
       thumbUri: a.uri,
-    }))
+    }));
 
     setPhotos((prev) => {
-      const combined = [...prev, ...newPhotos]
-      if (combined.length > MAX_BATCH_SIZE) return combined.slice(0, MAX_BATCH_SIZE)
-      return combined
-    })
-  }, [])
+      const combined = [...prev, ...newPhotos];
+      if (combined.length > MAX_BATCH_SIZE) return combined.slice(0, MAX_BATCH_SIZE);
+      return combined;
+    });
+  }, []);
 
   // ── Remove a photo from the list ──────────────────────────────
 
   const removePhoto = useCallback((index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index))
-  }, [])
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   // ── Import all photos ─────────────────────────────────────────
 
   const handleImport = useCallback(async () => {
-    if (photos.length === 0) return
+    if (photos.length === 0) return;
 
-    setStep('importing')
-    setStatuses(photos.map(() => ({ state: 'pending' })))
-    setTotal(photos.length)
-    setCompleted(0)
-    setFailed(0)
+    setStep('importing');
+    setStatuses(photos.map(() => ({ state: 'pending' })));
+    setTotal(photos.length);
+    setCompleted(0);
+    setFailed(0);
 
-    let doneCount = 0
-    let failCount = 0
+    let doneCount = 0;
+    let failCount = 0;
 
     for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i]!
+      const photo = photos[i]!;
 
       // Mark as uploading
       setStatuses((prev) => {
-        const next = [...prev]
-        next[i] = { state: 'uploading' }
-        return next
-      })
+        const next = [...prev];
+        next[i] = { state: 'uploading' };
+        return next;
+      });
 
       try {
         // Compress
-        const compressedUri = await compressPhoto(photo.localUri)
+        const compressedUri = await compressPhoto(photo.localUri);
 
         // Get upload URL
-        const prep = await prepareImageForUpload(compressedUri, 'image/jpeg')
+        const prep = await prepareImageForUpload(compressedUri, 'image/jpeg');
         const uploadResult = await withRetry(() =>
           productApi.getUploadUrl('product.jpg', 'image/jpeg', prep.size),
-        )
-        const info = uploadResult.data
+        );
+        const info = uploadResult.data;
 
         // Mark as creating
         setStatuses((prev) => {
-          const next = [...prev]
-          next[i] = { state: 'creating' }
-          return next
-        })
+          const next = [...prev];
+          next[i] = { state: 'creating' };
+          return next;
+        });
 
         // Upload to R2
-        await withRetry(() => uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false }))
+        await withRetry(() =>
+          uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+            compress: false,
+          }),
+        );
 
         // Create product
         const productResult = await withRetry(() =>
@@ -167,103 +156,108 @@ export default function BulkImportScreen() {
             photo_r2_key: info.r2_key,
             photo_url: info.public_url,
           }),
-        )
-        const productId = (productResult.data as { id: string }).id
+        );
+        const productId = (productResult.data as { id: string }).id;
 
         // Mark as done
         setStatuses((prev) => {
-          const next = [...prev]
-          next[i] = { state: 'done', productId }
-          return next
-        })
-        doneCount++
-        setCompleted(doneCount)
+          const next = [...prev];
+          next[i] = { state: 'done', productId };
+          return next;
+        });
+        doneCount++;
+        setCompleted(doneCount);
       } catch (err) {
-        logError(err)
+        logError(err);
         setStatuses((prev) => {
-          const next = [...prev]
-          next[i] = { state: 'failed', error: 'Import failed' }
-          return next
-        })
-        failCount++
-        setFailed(failCount)
+          const next = [...prev];
+          next[i] = { state: 'failed', error: 'Import failed' };
+          return next;
+        });
+        failCount++;
+        setFailed(failCount);
       }
     }
 
     // Invalidate product queries so catalog refreshes
-    void queryClient.invalidateQueries({ queryKey: ['products'] })
-    void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
+    void queryClient.invalidateQueries({ queryKey: ['products'] });
+    void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] });
 
     // All done — transition to summary screen
-    setCompleted(doneCount)
-    setFailed(failCount)
-    setStep('done')
-  }, [photos, queryClient])
+    setCompleted(doneCount);
+    setFailed(failCount);
+    setStep('done');
+  }, [photos, queryClient]);
 
   // ── Retry failed items ────────────────────────────────────────
 
   const handleRetry = useCallback(() => {
     const failedIndices = statuses
       .map((s, i) => (s.state === 'failed' ? i : -1))
-      .filter((i) => i >= 0)
+      .filter((i) => i >= 0);
 
-    if (failedIndices.length === 0) return
+    if (failedIndices.length === 0) return;
 
     // Keep only failed photos, reset
-    const failedPhotos = failedIndices.map((i) => photos[i]!)
-    setPhotos(failedPhotos)
-    setStep('pick')
-  }, [statuses, photos])
+    const failedPhotos = failedIndices.map((i) => photos[i]!);
+    setPhotos(failedPhotos);
+    setStep('pick');
+  }, [statuses, photos]);
 
   // ── Status icon helper ────────────────────────────────────────
 
   const StatusIcon = ({ status }: { status: ImportStatus }) => {
     switch (status.state) {
       case 'pending':
-        return <Text className="text-sand-300 text-base">⏳</Text>
+        return <View className="w-[18px] h-[18px] rounded-full border border-lavender-300" />;
       case 'uploading':
-        return <ActivityIndicator size="small" color={primaryColor} />
+        return <ActivityIndicator size="small" color={primaryColor} />;
       case 'creating':
-        return <ActivityIndicator size="small" color={colors.turmeric[500]} />
+        return <ActivityIndicator size="small" color={colors.turmeric[500]} />;
       case 'done':
-        return <Check size={18} color={colors.turmeric[500]} />
+        return <Check size={18} color={colors.turmeric[500]} />;
       case 'failed':
-        return <AlertTriangle size={18} color={colors.rust[500]} />
+        return <AlertTriangle size={18} color={colors.rust[500]} />;
     }
-  }
+  };
 
   const StatusLabel = ({ status }: { status: ImportStatus }) => {
     switch (status.state) {
       case 'pending':
-        return <Text className="text-xs text-sand-400">Pending</Text>
+        return <Text className="text-xs text-heliotrope-500">Pending</Text>;
       case 'uploading':
-        return <Text className="text-xs text-ink-600 font-medium">Uploading...</Text>
+        return <Text className="text-xs text-ink-600 font-medium">Uploading...</Text>;
       case 'creating':
-        return <Text className="text-xs text-turmeric-600 font-medium">Saving...</Text>
+        return <Text className="text-xs text-turmeric-600 font-medium">Saving...</Text>;
       case 'done':
-        return <Text className="text-xs text-turmeric-600 font-medium">Imported</Text>
+        return <Text className="text-xs text-turmeric-600 font-medium">Imported</Text>;
       case 'failed':
         return (
           <Text className="text-xs text-rust-500" numberOfLines={1}>
             {status.error}
           </Text>
-        )
+        );
     }
-  }
+  };
 
   // ── Render ────────────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-lavender-50">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: headerPaddingTop }}
       >
-        <AnimatedPressable onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable
+          onPress={() => (step === 'importing' ? null : router.back())}
+          disabled={step === 'importing'}
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
           <X size={22} color={step === 'importing' ? colors.sand[300] : colors.sand[700]} />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">
+        <Text className="text-base font-semibold text-spaceCadet-900">
           {step === 'pick' && 'Bulk Import'}
           {step === 'importing' && 'Importing...'}
           {step === 'done' && 'Import Complete'}
@@ -277,13 +271,11 @@ export default function BulkImportScreen() {
           <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 120 }}>
             {photos.length === 0 ? (
               <View className="items-center pt-20 gap-4">
-                <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
-                  <Camera size={36} color={primaryColor} />
-                </View>
-                <Text className="text-lg font-bold text-sand-900 text-center">
+                <Camera size={32} color="#6B4773" />
+                <Text className="text-lg font-semibold text-spaceCadet-900 text-center">
                   Import products in bulk
                 </Text>
-                <Text className="text-sand-500 text-sm text-center px-8 leading-5">
+                <Text className="text-heliotrope-500 text-sm text-center px-8 leading-5">
                   Select up to {MAX_BATCH_SIZE} photos from your gallery. AI will tag each product
                   automatically in the background.
                 </Text>
@@ -298,7 +290,7 @@ export default function BulkImportScreen() {
             ) : (
               <>
                 <View className="flex-row justify-between items-center mb-4">
-                  <Text className="text-sm font-semibold text-sand-700">
+                  <Text className="text-sm font-semibold text-heliotrope-600">
                     {photos.length} photo{photos.length !== 1 ? 's' : ''} selected
                   </Text>
                   <AnimatedPressable
@@ -315,13 +307,13 @@ export default function BulkImportScreen() {
                     <View key={`${photo.localUri}-${i}`} className="relative">
                       <Image
                         source={{ uri: photo.thumbUri }}
-                        className="w-[30%] aspect-square rounded-xl bg-sand-200"
+                        className="w-[30%] aspect-square rounded-xl bg-lavender-200"
                         contentFit="cover"
                         style={{ width: (Dimensions.get('window').width - 48 - 6) / 3 }}
                       />
                       <AnimatedPressable
                         onPress={() => removePhoto(i)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-sand-900/70 rounded-full items-center justify-center"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-spaceCadet-900/70 rounded-full items-center justify-center"
                         hitSlop={8}
                         accessibilityLabel="Remove photo"
                         accessibilityRole="button"
@@ -337,10 +329,11 @@ export default function BulkImportScreen() {
 
           {/* Bottom bar */}
           <View
-            className="bg-white border-t border-sand-100 px-4 pt-4"
+            className="bg-white border-t border-lavender-200 px-4 pt-4"
             style={{ paddingBottom: 16 + insets.bottom }}
           >
-            <GradientButton variant="web"
+            <GradientButton
+              variant="web"
               label={`Import ${photos.length > 0 ? `${photos.length} Product${photos.length !== 1 ? 's' : ''}` : ''}`}
               onPress={() => void handleImport()}
               disabled={photos.length === 0}
@@ -353,12 +346,12 @@ export default function BulkImportScreen() {
       {step === 'importing' && (
         <View className="flex-1 px-4 pt-4">
           {/* Overall progress */}
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
+          <View className="bg-white rounded-2xl p-4 border border-lavender-200 mb-4">
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-sm font-semibold text-sand-900">
+              <Text className="text-sm font-semibold text-spaceCadet-900">
                 Importing {total} product{total !== 1 ? 's' : ''}
               </Text>
-              <Text className="text-sm text-sand-500">
+              <Text className="text-sm text-heliotrope-500">
                 {completed + failed}/{total}
               </Text>
             </View>
@@ -369,8 +362,9 @@ export default function BulkImportScreen() {
                 style={{ width: `${((completed + failed) / total) * 100}%` }}
               />
             </View>
-            <Text className="text-xs text-sand-400 mt-2">
-              {completed} succeeded{failed > 0 ? ` · ${failed} failed` : ''} · AI tagging runs in background
+            <Text className="text-xs text-heliotrope-500 mt-2">
+              {completed} succeeded{failed > 0 ? ` · ${failed} failed` : ''} · AI tagging runs in
+              background
             </Text>
           </View>
 
@@ -379,23 +373,21 @@ export default function BulkImportScreen() {
             data={photos}
             keyExtractor={(_, i) => String(i)}
             renderItem={({ item, index }) => {
-              const status = statuses[index] ?? { state: 'pending' as const }
+              const status = statuses[index] ?? { state: 'pending' as const };
               return (
-                <View className="flex-row items-center gap-3 py-3 border-b border-sand-100">
+                <View className="flex-row items-center gap-3 py-3 border-b border-lavender-200">
                   <Image
                     source={{ uri: item.thumbUri }}
-                    className="w-10 h-10 rounded-lg bg-sand-200"
+                    className="w-10 h-10 rounded-lg bg-lavender-200"
                     contentFit="cover"
                   />
                   <View className="flex-1">
-                    <Text className="text-sm text-sand-700 truncate">
-                      Photo {index + 1}
-                    </Text>
+                    <Text className="text-sm text-heliotrope-600 truncate">Photo {index + 1}</Text>
                     <StatusLabel status={status} />
                   </View>
                   <StatusIcon status={status} />
                 </View>
-              )
+              );
             }}
             className="flex-1"
           />
@@ -403,11 +395,11 @@ export default function BulkImportScreen() {
           {/* Auto-advance spinner when complete */}
           {completed + failed === total && total > 0 && (
             <View
-              className="bg-white border-t border-sand-100 px-0 pt-6 items-center gap-2"
+              className="bg-white border-t border-lavender-200 px-0 pt-6 items-center gap-2"
               style={{ paddingBottom: 24 + insets.bottom }}
             >
               <ActivityIndicator size="small" color={primaryColor} />
-              <Text className="text-sm text-sand-500">Finalizing...</Text>
+              <Text className="text-sm text-heliotrope-500">Finalizing...</Text>
             </View>
           )}
         </View>
@@ -415,44 +407,45 @@ export default function BulkImportScreen() {
 
       {step === 'done' && (
         <View className="flex-1 items-center justify-center px-8">
-          <View className="w-24 h-24 bg-turmeric-100 rounded-3xl items-center justify-center mb-6">
-            <Text className="text-5xl">{failed > 0 ? '⚠️' : '🎉'}</Text>
+          <View className="mb-6">
+            {failed > 0 ? (
+              <AlertTriangle size={40} color="#B45309" />
+            ) : (
+              <Check size={40} color="#231F48" />
+            )}
           </View>
 
-          <Text className="text-2xl font-bold text-sand-900 text-center">
-            {failed > 0 ? 'Import complete with errors' : 'All products imported!'}
+          <Text className="text-2xl font-semibold text-spaceCadet-900 text-center">
+            {failed > 0 ? 'Import complete with errors' : 'All products imported'}
           </Text>
-          <Text className="text-sand-500 text-base mt-2 text-center leading-5">
+          <Text className="text-heliotrope-500 text-base mt-2 text-center leading-5">
             {completed} product{completed !== 1 ? 's' : ''} added
-            {failed > 0 ? ` · ${failed} failed` : ''}.
-            {'\n'}AI is tagging them in the background.
+            {failed > 0 ? ` · ${failed} failed` : ''}.{'\n'}AI is tagging them in the background.
           </Text>
 
           <View className="mt-8 w-full gap-3">
             {failed > 0 && (
               <AnimatedPressable
                 onPress={() => handleRetry()}
-                className="py-4 rounded-2xl items-center border-2 border-sand-200 flex-row justify-center gap-2"
+                className="py-4 rounded-2xl items-center border-2 border-lavender-200 flex-row justify-center gap-2"
               >
                 <AlertTriangle size={18} color={colors.sand[700]} />
-                <Text className="text-sand-700 font-semibold">Retry Failed ({failed})</Text>
+                <Text className="text-heliotrope-600 font-semibold">Retry Failed ({failed})</Text>
               </AnimatedPressable>
             )}
             <AnimatedPressable
               onPress={() => {
-                void queryClient.invalidateQueries({ queryKey: ['products'] })
-                void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
-                router.replace('/')
+                void queryClient.invalidateQueries({ queryKey: ['products'] });
+                void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] });
+                router.replace('/');
               }}
               className="py-4 rounded-2xl items-center bg-ink-600"
             >
-              <Text className="text-white font-bold">View Catalog</Text>
+              <Text className="text-white font-semibold">View Catalog</Text>
             </AnimatedPressable>
           </View>
         </View>
       )}
     </View>
-  )
+  );
 }
-
-

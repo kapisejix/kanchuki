@@ -1,118 +1,121 @@
-import { useRef, useState } from 'react'
-import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
-import { KeyboardScreen } from '../../../src/components/KeyboardScreen'
-import { router, useLocalSearchParams } from 'expo-router'
-import { CameraView, useCameraPermissions } from 'expo-camera'
-import * as ImagePicker from 'expo-image-picker'
-import * as ImageManipulator from 'expo-image-manipulator'
-import { Image } from 'expo-image'
-import { useScreenInsets } from '../../../src/lib/safe-area'
-import { useQueryClient } from '@tanstack/react-query'
-import { X, ImagePlus } from 'lucide-react-native'
-import { productApi, uploadImageToR2, prepareImageForUpload } from '../../../src/lib/api'
-import { showError } from '../../../src/lib/errors'
-import { useTheme } from '../../../src/lib/theme'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { WhiteButton } from '../../../src/components/WhiteButton'
-import { GradientButton } from '../../../src/components/GradientButton'
+import { useQueryClient } from '@tanstack/react-query';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Image } from 'expo-image';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ImagePlus, X } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { GradientButton } from '../../../src/components/GradientButton';
+import { KeyboardScreen } from '../../../src/components/KeyboardScreen';
+import { WhiteButton } from '../../../src/components/WhiteButton';
+import { prepareImageForUpload, productApi, uploadImageToR2 } from '../../../src/lib/api';
+import { showError } from '../../../src/lib/errors';
+import { useScreenInsets } from '../../../src/lib/safe-area';
+import { useTheme } from '../../../src/lib/theme';
 
-type Step = 'camera' | 'detecting' | 'saving' | 'manual'
+type Step = 'camera' | 'detecting' | 'saving' | 'manual';
 
 export default function AddColorVariantScreen() {
-  const { colors } = useTheme()
-  const { insets } = useScreenInsets()
-  const queryClient = useQueryClient()
-  const { id } = useLocalSearchParams<{ id: string }>()
-  const [step, setStep] = useState<Step>('camera')
-  const [permission, requestPermission] = useCameraPermissions()
-  const [photoUri, setPhotoUri] = useState<string | null>(null)
-  const [color, setColor] = useState('')
-  const cameraRef = useRef<CameraView>(null)
+  const { colors } = useTheme();
+  const { insets } = useScreenInsets();
+  const queryClient = useQueryClient();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [step, setStep] = useState<Step>('camera');
+  const [permission, requestPermission] = useCameraPermissions();
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [color, setColor] = useState('');
+  const cameraRef = useRef<CameraView>(null);
   // Store upload result so we don't re-upload on save
-  const uploadInfoRef = useRef<{ r2_key: string; public_url: string } | null>(null)
+  const uploadInfoRef = useRef<{ r2_key: string; public_url: string } | null>(null);
 
   const handleCapture = async () => {
-    if (!cameraRef.current) return
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
-    if (!photo?.uri) return
-    await processPhoto(photo.uri)
-  }
+    if (!cameraRef.current) return;
+    const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
+    if (!photo?.uri) return;
+    await processPhoto(photo.uri);
+  };
 
   const handlePickFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.85,
-    })
-    if (result.canceled || !result.assets[0]) return
-    await processPhoto(result.assets[0].uri)
-  }
+    });
+    if (result.canceled || !result.assets[0]) return;
+    await processPhoto(result.assets[0].uri);
+  };
 
   const processPhoto = async (uri: string) => {
-    const compressed = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1200 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-    )
-    setPhotoUri(compressed.uri)
-    setStep('detecting')
-    await uploadAndAutoSave(compressed.uri)
-  }
+    const compressed = await ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1200 } }], {
+      compress: 0.8,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    setPhotoUri(compressed.uri);
+    setStep('detecting');
+    await uploadAndAutoSave(compressed.uri);
+  };
 
   // Upload, save and return immediately without manual friction.
   const uploadAndAutoSave = async (uri: string) => {
     try {
-      const prep = await prepareImageForUpload(uri, 'image/jpeg')
-      const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', prep.size)
-      const info = uploadResult.data
-      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
-      uploadInfoRef.current = { r2_key: info.r2_key, public_url: info.public_url }
+      const prep = await prepareImageForUpload(uri, 'image/jpeg');
+      const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', prep.size);
+      const info = uploadResult.data;
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+        compress: false,
+      });
+      uploadInfoRef.current = { r2_key: info.r2_key, public_url: info.public_url };
 
-      const detected = 'New Color'
+      const detected = 'New Color';
 
-      setColor(detected)
-      await saveVariant(detected)
+      setColor(detected);
+      await saveVariant(detected);
     } catch (err) {
       // If network or save fails, allow manual entry as safety fallback
-      setStep('manual')
-      showError(err, 'Could not auto-save color variant. Please check and retry.')
+      setStep('manual');
+      showError(err, 'Could not auto-save color variant. Please check and retry.');
     }
-  }
+  };
 
   const saveVariant = async (colorValue: string) => {
-    const finalColor = colorValue.trim() || 'New Color'
-    setStep('saving')
+    const finalColor = colorValue.trim() || 'New Color';
+    setStep('saving');
     try {
       if (uploadInfoRef.current) {
         await productApi.addVariant(id, {
           color: finalColor,
           r2_key: uploadInfoRef.current.r2_key,
           url: uploadInfoRef.current.public_url,
-        })
+        });
       } else if (photoUri) {
-        const prep = await prepareImageForUpload(photoUri, 'image/jpeg')
-        const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', prep.size)
-        const info = uploadResult.data
-        await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
+        const prep = await prepareImageForUpload(photoUri, 'image/jpeg');
+        const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', prep.size);
+        const info = uploadResult.data;
+        await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+          compress: false,
+        });
 
         await productApi.addVariant(id, {
           color: finalColor,
           r2_key: info.r2_key,
           url: info.public_url,
-        })
+        });
       }
 
       // Invalidate queries so product detail and catalog refresh immediately
-      await queryClient.invalidateQueries({ queryKey: ['products', id] })
-      await queryClient.invalidateQueries({ queryKey: ['products'] })
+      await queryClient.invalidateQueries({ queryKey: ['products', id] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
 
-      router.back()
+      router.back();
     } catch (err) {
-      setStep('manual')
-      showError(err, 'Failed to add color variant')
+      setStep('manual');
+      showError(err, 'Failed to add color variant');
     }
-  }
+  };
 
-  if (!permission) return <View className="flex-1 bg-black" />
+  if (!permission) return <View className="flex-1 bg-black" />;
 
   if (!permission.granted) {
     return (
@@ -122,7 +125,7 @@ export default function AddColorVariantScreen() {
         </Text>
         <WhiteButton compact label="Allow Camera" onPress={() => void requestPermission()} />
       </View>
-    )
+    );
   }
 
   if (step === 'camera') {
@@ -147,8 +150,10 @@ export default function AddColorVariantScreen() {
         </View>
 
         <View className="flex-1 items-center justify-center">
-          <View className="w-72 h-80 border-2 border-white/50 rounded-3xl" />
-          <Text className="text-white/70 text-xs mt-4">AI will auto-detect the color and save it</Text>
+          <View className="w-72 h-80 border-2 border-white/50 rounded-2xl" />
+          <Text className="text-white/70 text-xs mt-4">
+            AI will auto-detect the color and save it
+          </Text>
         </View>
 
         <View className="items-center gap-6" style={{ paddingBottom: 48 + insets.bottom }}>
@@ -176,20 +181,26 @@ export default function AddColorVariantScreen() {
           <Text className="text-white/60 text-xs">Tap to capture · Gallery to upload</Text>
         </View>
       </View>
-    )
+    );
   }
 
   // detecting / saving / manual fallback
   return (
     <KeyboardScreen className="flex-1 bg-black">
-      {photoUri && <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />}
+      {photoUri && (
+        <Image
+          source={{ uri: photoUri }}
+          style={{ width: '100%', height: '100%' }}
+          contentFit="contain"
+        />
+      )}
 
       <View className="absolute left-4" style={{ top: insets.top + 8 }}>
         <AnimatedPressable
           onPress={() => {
-            uploadInfoRef.current = null
-            setPhotoUri(null)
-            setStep('camera')
+            uploadInfoRef.current = null;
+            setPhotoUri(null);
+            setStep('camera');
           }}
           disabled={step === 'saving'}
           className="w-10 h-10 bg-black/50 rounded-full items-center justify-center"
@@ -222,9 +233,7 @@ export default function AddColorVariantScreen() {
           className="absolute bottom-0 left-0 right-0 bg-black/90 px-6 pt-5 gap-3"
           style={{ paddingBottom: Math.max(24, 20 + insets.bottom) }}
         >
-          <Text className="text-white text-xs font-semibold uppercase tracking-wide">
-            Enter Color Name
-          </Text>
+          <Text className="text-white text-xs font-semibold">Enter Color Name</Text>
           <TextInput
             value={color}
             onChangeText={setColor}
@@ -233,7 +242,8 @@ export default function AddColorVariantScreen() {
             className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
             autoFocus
           />
-          <GradientButton variant="web"
+          <GradientButton
+            variant="web"
             label="Save Color Variant"
             onPress={() => void saveVariant(color)}
             disabled={!color.trim()}
@@ -241,5 +251,5 @@ export default function AddColorVariantScreen() {
         </View>
       )}
     </KeyboardScreen>
-  )
+  );
 }
