@@ -20,7 +20,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const DRY_RUN = !process.argv.includes('--apply');
-const BATCH_SIZE = parseInt(
+const BATCH_SIZE = Number.parseInt(
   process.argv.find((a) => a.startsWith('--batch-size='))?.split('=')[1] || '50',
   10,
 );
@@ -92,7 +92,8 @@ async function backfill(): Promise<BackfillResult> {
         );
         accountId = `dry-run-${phoneHash.slice(0, 8)}`;
       } else {
-        const first = customers[0]!;
+        const [first] = customers;
+        if (!first) continue; // byHash groups are never empty
         const account = await prisma.customerAccount.create({
           data: {
             phone: first.phone,
@@ -170,7 +171,7 @@ async function main() {
     const result = await backfill();
 
     console.log(`\n${'='.repeat(50)}`);
-    console.log(`Results:`);
+    console.log('Results:');
     console.log(`  Accounts created:   ${result.accountsCreated}`);
     console.log(`  Accounts skipped:   ${result.accountsSkipped} (already existed)`);
     console.log(`  Customers linked:   ${result.customersLinked}`);

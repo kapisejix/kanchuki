@@ -14,6 +14,7 @@ const childEnv = {
 // preview subdomain leaked into the session at some point) would therefore
 // silently win over .env and leak into collection share links + CORS. Drop the
 // inherited copy so .env is the single source of truth for dev boots.
+// biome-ignore lint/performance/noDelete: assigning undefined would pass the string "undefined" to the child.
 delete childEnv.WEB_URL;
 
 const child = spawn('npx', ['tsx', 'watch', '--env-file', '.env', 'src/index.ts'], {
