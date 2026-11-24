@@ -88,6 +88,9 @@ export function PostPreview({
             ) : cover ? (
               <View className="mx-4 rounded-xl overflow-hidden bg-sand-100 mb-1">
                 <Image
+                  // Remount once the real aspect is known: Android expo-image does not redraw
+                  // after the box resizes, leaving the grey placeholder (owner screenshot 2026-11-24).
+                  key={`${cover.url}:${coverAspect}`}
                   source={{ uri: cover.url }}
                   style={{ width: '100%', aspectRatio: coverAspect }}
                   contentFit="cover"

@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   CheckCircle,
   XCircle,
+  Settings2,
   Share2,
 } from 'lucide-react-native'
 import {
@@ -21,7 +22,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { BrandIcon, type Brand } from '../../src/components/BrandIcon'
 import { DangerButton } from '../../src/components/DangerButton'
 import { GradientButton } from '../../src/components/GradientButton'
-import { WhiteButton } from '../../src/components/WhiteButton'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { growthApi } from '../../src/lib/api/growth'
 import { retailerApi } from '../../src/lib/api/retailer'
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
@@ -339,7 +340,12 @@ function IntegrationCard({
       <View className="flex-row gap-3 mt-4">
         <View className="flex-1">
           {configured ? (
-            <WhiteButton label="Reconfigure" onPress={onConfigure} />
+            <WhiteButton
+              uppercase
+              label="Reconfigure"
+              icon={<Settings2 size={14} color={WHITE_BUTTON_INK} />}
+              onPress={onConfigure}
+            />
           ) : (
             <GradientButton
               variant="web"
