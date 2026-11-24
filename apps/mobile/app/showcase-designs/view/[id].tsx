@@ -80,7 +80,7 @@ export default function ShowcaseDesignViewScreen() {
           </View>
 
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-lg text-spaceCadet-900 mt-5 text-center"
           >
             {design.name ?? `${design.category.name ?? 'Design'} design`}

@@ -244,7 +244,7 @@ export default function StaffDashboard() {
                   Retailers in Territory
                 </Text>
                 {retailers.length > 5 && (
-                  <AnimatedPressable>
+                  <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center">
                     <Text className="text-xs text-ink-600 font-semibold">See All</Text>
                   </AnimatedPressable>
                 )}

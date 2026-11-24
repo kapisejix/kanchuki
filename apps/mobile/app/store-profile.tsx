@@ -171,7 +171,7 @@ export default function StoreProfileScreen() {
         >
           <X size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-lg text-spaceCadet-900 font-marcellus">Store QR Code</Text>
+        <Text className="text-lg text-spaceCadet-900 font-extrabold font-marcellus">Store QR Code</Text>
         <View className="w-10" />
       </View>
 
@@ -199,7 +199,7 @@ export default function StoreProfileScreen() {
             )
           ) : (
             <View className="w-56 items-center justify-center px-2 py-4">
-              <Text className="text-base text-spaceCadet-900 font-marcellus text-center mb-1">
+              <Text className="text-base text-spaceCadet-900 font-extrabold font-marcellus text-center mb-1">
                 No QR code yet
               </Text>
               <Text className="text-xs text-heliotrope-500 text-center mb-5 px-2">

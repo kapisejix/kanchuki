@@ -354,7 +354,7 @@ function HistoryModal({
                         {post.error_message}
                       </Text>
                     ) : post.external_post_url ? (
-                      <AnimatedPressable
+                      <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                         onPress={() => void Linking.openURL(post.external_post_url!)}
                         hitSlop={6}
                       >

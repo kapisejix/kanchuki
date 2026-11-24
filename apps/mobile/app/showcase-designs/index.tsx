@@ -121,7 +121,7 @@ export default function ShowcaseDesignsScreen() {
           <ImagePlus size={28} color="#6B4773" />
         </View>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-spaceCadet-900 text-lg text-center"
         >
           No designs yet
@@ -150,7 +150,7 @@ export default function ShowcaseDesignsScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <Text className="text-spaceCadet-900 font-marcellus text-sm">
+              <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
               </Text>
             )}

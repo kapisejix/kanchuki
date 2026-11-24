@@ -381,7 +381,7 @@ function ProfileEditModal({
                     setBannerUrl(null);
                     setBannerR2Key(null);
                   }}
-                  className="mt-1"
+                  className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
                   <Text className="text-[11px] text-rust-500">
                     Remove banner
@@ -464,7 +464,7 @@ function ProfileEditModal({
                     setLatitude(null);
                     setLongitude(null);
                   }}
-                  className="mt-1"
+                  className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
                   <Text className="text-[11px] text-rust-500">Remove location</Text>
                 </AnimatedPressable>
@@ -1104,7 +1104,7 @@ function WhatsAppApiModal({
               {configured && (
                 <AnimatedPressable
                   onPress={handleDisconnect}
-                  className="items-center py-2"
+                  className="items-center py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
                 >
                   <Text className="text-rust-500 text-xs font-semibold">
                     Disconnect
@@ -1235,7 +1235,7 @@ function SettingsRow({
       </View>
       <View className="flex-1">
         <Text
-          className={`text-sm ${destructive ? "font-semibold text-red-600" : "text-spaceCadet-900 font-marcellus"}`}
+          className={`text-sm ${destructive ? " text-red-600" : "text-spaceCadet-900 font-extrabold font-marcellus"}`}
         >
           {label}
         </Text>
@@ -1332,7 +1332,7 @@ export default function SettingsScreen() {
             >
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-xl text-spaceCadet-900 font-marcellus">
+            <Text className="text-xl text-spaceCadet-900 font-extrabold font-marcellus">
               Settings
             </Text>
           </View>
@@ -1352,7 +1352,7 @@ export default function SettingsScreen() {
         <View className="bg-white rounded-2xl p-4 flex-row items-center justify-between mb-4 border border-lavender-200">
           <View className="flex-row items-center gap-3 flex-1 mr-2">
             <View className="w-12 h-12 rounded-2xl bg-tyrian-800 border border-lavender-200 items-center justify-center">
-              <Text className="text-lavender-200 text-base font-marcellus">
+              <Text className="text-lavender-200 text-base font-extrabold font-marcellus">
                 {(retailer?.shop_name ?? "RS").slice(0, 2).toUpperCase()}
               </Text>
             </View>
@@ -1360,10 +1360,12 @@ export default function SettingsScreen() {
               <Text
                 style={{
                   fontFamily: 'Marcellus_400Regular',
+                  letterSpacing: 0.32,
+                  fontWeight: '800',
                   fontSize: 16,
                   lineHeight: 24,
                 }}
-                className="text-base leading-6 text-spaceCadet-900 font-marcellus"
+                className="text-base leading-6 text-spaceCadet-900 font-extrabold font-marcellus"
                 numberOfLines={1}
               >
                 {retailer?.shop_name ?? "Radha Sarees"}
@@ -1436,7 +1438,7 @@ export default function SettingsScreen() {
                   hitSlop={8}
                   accessibilityLabel="Dismiss link notice"
                   accessibilityRole="button"
-                  className="py-1.5"
+                  className="py-1.5 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
                   <Text className="text-heliotrope-500 text-xs font-semibold">
                     Dismiss
@@ -1492,7 +1494,7 @@ export default function SettingsScreen() {
                     hitSlop={8}
                     accessibilityLabel="Dismiss GST reminder"
                     accessibilityRole="button"
-                    className="py-1.5"
+                    className="py-1.5 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                   >
                     <Text className="text-heliotrope-500 text-xs font-semibold">
                       Not now

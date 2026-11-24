@@ -144,7 +144,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           <IndianRupee size={28} color={primaryColor} />
         </View>
         <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Your quote is ready</Text>
-        <Text className="text-3xl font-semibold text-ink-600 mt-3">₹{ticket.quoted_price_inr}</Text>
+        <Text className="text-3xl font-bold text-ink-600 mt-3">₹{ticket.quoted_price_inr}</Text>
         <Text className="text-heliotrope-500 text-sm mt-2 text-center leading-5">
           for {ticket.item_count_requested ?? 'your'} items. Pay now to pick your visit slot.
         </Text>
@@ -156,7 +156,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           {pay.isPending ? (
             <ActivityIndicator color="white" />
           ) : (
-            <Text className="text-white font-semibold text-base">Pay ₹{ticket.quoted_price_inr}</Text>
+            <Text className="text-white font-bold text-base">Pay ₹{ticket.quoted_price_inr}</Text>
           )}
         </AnimatedPressable>
         <Text className="text-heliotrope-500 text-xs mt-3 text-center">

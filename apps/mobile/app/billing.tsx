@@ -50,7 +50,7 @@ export default function BillingScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg text-spaceCadet-900 ml-3"
         >
           Plans & Billing
@@ -83,7 +83,7 @@ export default function BillingScreen() {
                 `mailto:${SUPPORT_EMAIL}?subject=Plans%20%26%20Billing%20enquiry`,
               )
             }
-            className="py-1 flex-row items-center justify-center gap-2"
+            className="py-1 flex-row items-center justify-center gap-2 border border-lavender-200 rounded-lg px-3 min-h-[36px]"
           >
             <Mail size={15} color="#6B4773" />
             <Text className="text-xs text-spaceCadet-900 font-medium">
