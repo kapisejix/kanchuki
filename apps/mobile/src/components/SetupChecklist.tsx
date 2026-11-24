@@ -136,12 +136,14 @@ export function SetupChecklist() {
             </AnimatedPressable>
           </View>
 
-          <View className="flex-row items-center gap-3 mt-2.5">
+          {/* ponytail: 36px visual + hitSlop 4 keeps the 44px touch target */}
+          <View className="flex-row items-center gap-2 mt-2.5">
             <AnimatedPressable
               onPress={() => router.push(COPY[item.key].href as never)}
               accessibilityRole="button"
               accessibilityLabel={`Set up ${COPY[item.key].title} myself`}
-              className="bg-spaceCadet-900 px-4 py-2.5 rounded-xl min-h-[44px] justify-center"
+              hitSlop={{ top: 4, bottom: 4 }}
+              className="bg-spaceCadet-900 px-3 py-1.5 rounded-lg min-h-[36px] justify-center"
             >
               <Text className="text-white text-xs font-semibold">Set it up myself</Text>
             </AnimatedPressable>
@@ -151,7 +153,8 @@ export function SetupChecklist() {
                 disabled={ask.isPending}
                 accessibilityRole="button"
                 accessibilityLabel={`Ask Kanchuki team to help with ${COPY[item.key].title}`}
-                className="px-2 py-2.5 min-h-[44px] justify-center"
+                hitSlop={{ top: 4, bottom: 4 }}
+                className="border border-fuchsia-600 px-3 py-1.5 rounded-lg min-h-[36px] justify-center"
               >
                 <Text className="text-fuchsia-600 text-xs font-semibold">Ask Kanchuki team</Text>
               </AnimatedPressable>
@@ -165,7 +168,7 @@ export function SetupChecklist() {
           onPress={() => restore.mutate()}
           accessibilityRole="button"
           accessibilityLabel="Show hidden profile items"
-          className="self-start py-1.5 min-h-[44px] justify-center"
+          className="self-start py-1.5 justify-center border border-lavender-200 rounded-lg px-3 min-h-[44px] items-center"
         >
           <Text className="text-xs font-semibold text-heliotrope-600">Show {hidden} hidden</Text>
         </AnimatedPressable>

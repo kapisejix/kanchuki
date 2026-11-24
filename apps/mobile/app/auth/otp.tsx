@@ -342,7 +342,7 @@ export default function OtpScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </Pressable>
 
-          <Text className="text-3xl text-spaceCadet-900 font-marcellus">Enter OTP</Text>
+          <Text className="text-3xl text-spaceCadet-900 font-extrabold font-marcellus">Enter OTP</Text>
           <Text className="text-heliotrope-500 text-sm mt-2">
             {invite_token
               ? `Verification code sent to ${masked || 'your number'}`
@@ -438,7 +438,7 @@ export default function OtpScreen() {
                 Resend OTP in {resendTimer}s
               </Text>
             ) : (
-              <Pressable onPress={() => void handleResend()} disabled={resending}>
+              <Pressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center" onPress={() => void handleResend()} disabled={resending}>
                 <Text className="text-fuchsia-600 text-xs font-semibold">
                   {resending ? 'Sending...' : 'Resend OTP'}
                 </Text>
