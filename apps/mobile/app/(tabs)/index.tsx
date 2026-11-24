@@ -152,7 +152,7 @@ export default function HomeScreen() {
               {me?.shop_name || 'Your Store'}
             </Text>
             <Text className="text-xs text-heliotrope-500">
-              {me?.city ? `${me.city} · ` : ''}{me?.plan ?? 'PRO STORE'}
+              {[me?.city?.toUpperCase(), me?.plan, me?.plan_status].filter(Boolean).join(' · ')}
             </Text>
           </View>
         </View>
@@ -389,28 +389,21 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* ── Growth & Marketing ── */}
-      <View className="px-4 pt-5">
-        <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Growth & marketing</Text>
-        <View className="flex-row gap-3">
-          {canGrowth && (
+      {/* ── Growth & Marketing ── Analytics tile lives in the top quick actions. */}
+      {canGrowth && (
+        <View className="px-4 pt-5">
+          <Text className="text-sm font-semibold text-spaceCadet-900 mb-2 px-1">Growth & marketing</Text>
+          <View className="flex-row gap-3">
             <QuickAction
               icon={<Megaphone size={18} color="#5A3962" />}
               label="Growth Tools"
               sublabel="AI Campaigns · Referrals"
               onPress={() => router.push('/growth')}
             />
-          )}
-          {canAnalytics && (
-            <QuickAction
-              icon={<BarChart3 size={18} color="#5A3962" />}
-              label="Analytics"
-              sublabel="Views, enquiries & stats"
-              onPress={() => router.push('/analytics')}
-            />
-          )}
+            <View className="flex-1" />
+          </View>
         </View>
-      </View>
+      )}
 
       {/* ── Settings ── */}
       <View className="px-4 pt-5 pb-2">
