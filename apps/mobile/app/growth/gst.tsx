@@ -182,7 +182,7 @@ export default function GstScreen() {
               const active = selectedMonth === i + 1;
               return (
                 <AnimatedPressable
-                  key={i}
+                  key={m}
                   onPress={() => {
                     setSelectedMonth(i + 1);
                     setTxPage(1);

@@ -58,7 +58,10 @@ export default function VideosScreen() {
 
   const videosQuery = useQuery({
     queryKey: ['growth', 'videos', picked?.id],
-    queryFn: () => growthApi.productVideos(picked!.id),
+    queryFn: () => {
+      if (!picked) throw new Error('No product picked');
+      return growthApi.productVideos(picked.id);
+    },
     enabled: !!picked,
     refetchInterval: generating ? 1200 : false,
   });
@@ -117,7 +120,10 @@ export default function VideosScreen() {
   });
 
   const generate = useMutation({
-    mutationFn: () => growthApi.generateVideo(picked!.id),
+    mutationFn: () => {
+      if (!picked) throw new Error('No product picked');
+      return growthApi.generateVideo(picked.id);
+    },
     onMutate: () => {
       setGenerating(true);
       setVideoProgress(10);

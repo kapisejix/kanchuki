@@ -24,7 +24,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { MyStyleRankingNote } from '../../src/components/growth/MyStyleRankingNote';
 import { SchedulerBanner } from '../../src/components/social/SchedulerBanner';
-import { type CampaignType, growthApi, retailerApi } from '../../src/lib/api';
+import { type CampaignType, type RetailerMe, growthApi, retailerApi } from '../../src/lib/api';
 import { ApiError } from '../../src/lib/api/client';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 import { useScreenInsets } from '../../src/lib/safe-area';
@@ -133,7 +133,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
     staleTime: 60_000,
     enabled: isTab,
   });
-  const retailerProfile = (retailerQuery.data as { data: Record<string, any> } | undefined)?.data;
+  const retailerProfile = (retailerQuery.data as { data: RetailerMe } | undefined)?.data;
 
   const campaignsQuery = useQuery({
     queryKey: ['growth', 'campaigns'],
@@ -462,7 +462,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           {GROWTH_MODULES.map(({ icon: Icon, label, hint, href }) => (
             <AnimatedPressable
               key={label}
-              onPress={() => router.push(href as any)}
+              onPress={() => router.push(href)}
               accessibilityRole="button"
               accessibilityLabel={label}
               className="flex-row items-center bg-white rounded-2xl p-4 border border-lavender-200"

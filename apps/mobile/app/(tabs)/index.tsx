@@ -289,7 +289,7 @@ export default function HomeScreen() {
             Trending products
           </Text>
           <View className="gap-2.5">
-            {stats!.top_viewed_products.map((r) => (
+            {(stats?.top_viewed_products ?? []).map((r) => (
               <AnimatedPressable
                 key={r.product.id}
                 onPress={() => router.push(`/product/${r.product.id}`)}

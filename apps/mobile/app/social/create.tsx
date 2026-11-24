@@ -309,14 +309,13 @@ export default function CreateSocialPostScreen() {
   }, [collectionsData.data]);
 
   // Resolve a pending deep-link collection once the list arrives.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: postType is the re-run trigger — the prefill effect below sets the pending id AFTER this one runs on mount, and a warm collections cache never changes `collections` (RC-131)
   useEffect(() => {
     if (pendingCollectionId.current && collections.length > 0) {
       const match = collections.find((c) => c.id === pendingCollectionId.current) ?? null;
       pendingCollectionId.current = null;
       if (match) setCollectionLink(match);
     }
-    // postType: the prefill effect below sets the pending id AFTER this one runs on mount; a warm
-    // collections cache never changes `collections`, so the mode switch is what re-runs this (RC-131).
   }, [collections, postType]);
 
   // Collection detail — fetched whenever a collection is chosen: the
@@ -882,9 +881,9 @@ export default function CreateSocialPostScreen() {
       if (results.length > 0) definitiveOutcome = true;
       setResult(results);
       // Refresh each target's post history so the new rows show immediately.
-      payload.targets.forEach((id) => {
+      for (const id of payload.targets) {
         void queryClient.invalidateQueries({ queryKey: ['social', 'posts', id] });
-      });
+      }
     } catch (err) {
       // All-targets-failed publishes return 400 PUBLISH_FAILED with the
       // per-target rows attached (T-7.2) — show them in the result sheet so
@@ -1387,7 +1386,9 @@ function ResultSheet({
                       r.external_post_url ? (
                         <AnimatedPressable
                           className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
-                          onPress={() => void Linking.openURL(r.external_post_url!)}
+                          onPress={() => {
+                            if (r.external_post_url) void Linking.openURL(r.external_post_url);
+                          }}
                           hitSlop={6}
                           accessibilityRole="button"
                         >

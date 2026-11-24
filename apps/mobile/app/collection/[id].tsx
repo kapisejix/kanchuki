@@ -252,21 +252,23 @@ function ShareModal({
 
   const startSending = () => {
     const picked = customers.filter((c) => selected.has(c.id));
-    if (picked.length === 0) return;
+    const first = picked[0];
+    if (!first) return;
     setQueue(picked);
     setQueueIndex(0);
-    openChat(picked[0]!);
+    openChat(first);
   };
 
   const sendNext = () => {
     if (!queue) return;
     const next = queueIndex + 1;
-    if (next >= queue.length) {
+    const nextCustomer = queue[next];
+    if (!nextCustomer) {
       handleClose();
       return;
     }
     setQueueIndex(next);
-    openChat(queue[next]!);
+    openChat(nextCustomer);
   };
 
   const handleBulkSend = async () => {
@@ -338,7 +340,7 @@ function ShareModal({
                 Message {queueIndex + 1} of {queue.length}
               </Text>
               <Text className="text-sm text-spaceCadet-900 font-semibold">
-                {queue[queueIndex]!.name}
+                {queue[queueIndex]?.name}
               </Text>
               <Text className="text-xs text-heliotrope-500 text-center px-4">
                 WhatsApp opened with the message pre-filled. Tap Send in WhatsApp, then come back

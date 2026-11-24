@@ -102,12 +102,14 @@ export default function ShowcaseDesignDetailScreen() {
   };
 
   const save = useMutation({
-    mutationFn: () =>
-      showcaseDesignsApi.update(design!.id, {
+    mutationFn: () => {
+      if (!design) throw new Error('Design not loaded');
+      return showcaseDesignsApi.update(design.id, {
         ...(categoryId !== null ? { category_id: categoryId } : {}),
         name: name ?? null,
         is_active: isActive ?? true,
-      }),
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['showcase-designs'] });
       router.back();

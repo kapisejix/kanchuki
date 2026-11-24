@@ -20,7 +20,7 @@ import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
 import { type PublicShowcaseDesignDetail, showcaseDesignsApi } from '../../../src/lib/api';
 import { useScreenInsets } from '../../../src/lib/safe-area';
 
-const WEB_URL = process.env['EXPO_PUBLIC_WEB_URL'] ?? 'https://kanchuki.app';
+const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://kanchuki.app';
 
 export default function ShowcaseDesignViewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

@@ -14,6 +14,40 @@ export type SetupChecklistItem = {
   can_ask: boolean;
 };
 
+// Fields of GET /v1/retailers/me that the app screens read. All optional: the
+// payload grows over time and screens fall back when a field is missing.
+export type RetailerMe = {
+  shop_name?: string | null;
+  owner_name?: string | null;
+  city?: string | null;
+  state?: string | null;
+  address_line1?: string | null;
+  pincode?: string | null;
+  gstin?: string | null;
+  phone?: string | null;
+  whatsapp_number?: string | null;
+  slug?: string | null;
+  public_slug?: string | null;
+  plan?: string | null;
+  plan_status?: string | null;
+  kyc_status?: string | null;
+  kyc_rejection_reason?: string | null;
+  kyc_gst_url?: string | null;
+  kyc_aadhar_front_url?: string | null;
+  kyc_aadhar_back_url?: string | null;
+  google_place_id?: string | null;
+  logo_url?: string | null;
+  logo_r2_key?: string | null;
+  banner_url?: string | null;
+  banner_r2_key?: string | null;
+  // Prisma Decimal may serialise as a string.
+  latitude?: number | string | null;
+  longitude?: number | string | null;
+  onboarding_completed?: boolean;
+  whatsapp_api_configured?: boolean;
+  features?: string[];
+};
+
 // This build knows how to render `store_location`. Older builds do not send this header, so the
 // API never returns that item to them (an unknown key would crash their dashboard).
 const CHECKLIST_OPT_IN = { 'x-checklist-store-location': '1' };

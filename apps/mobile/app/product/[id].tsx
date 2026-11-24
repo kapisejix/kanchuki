@@ -34,7 +34,13 @@ import { useNetworkStatus } from '../../src/hooks/useNetworkStatus';
 import { useProductAiStudio } from '../../src/hooks/useProductAiStudio';
 import { useProductDetailForm } from '../../src/hooks/useProductDetailForm';
 import { useProductPromoVideo } from '../../src/hooks/useProductPromoVideo';
-import { categoryApi, productApi, productAttributeApi, retailerApi } from '../../src/lib/api';
+import {
+  type RetailerMe,
+  categoryApi,
+  productApi,
+  productAttributeApi,
+  retailerApi,
+} from '../../src/lib/api';
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
 import { isKidsAudience } from '../../src/lib/promo-video';
 import { useSafeVideoPlayer } from '../../src/lib/safe-video-player';
@@ -107,7 +113,7 @@ export default function ProductDetailScreen() {
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
   });
-  const me = (meData as { data?: Record<string, any> } | undefined)?.data;
+  const me = (meData as { data?: RetailerMe } | undefined)?.data;
   const publicSlug: string | null = me?.public_slug ?? null;
   // F-040 — the in-store try-on entry point shows only when the plan
   // carries VIRTUAL_TRY_ON_V2. `features` comes from GET /retailers/me and

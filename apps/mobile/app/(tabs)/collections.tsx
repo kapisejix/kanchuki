@@ -8,7 +8,7 @@ import { GradientButton } from '../../src/components/GradientButton';
 import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import { CollectionListSkeleton } from '../../src/components/Skeleton';
 import { WhiteButton } from '../../src/components/WhiteButton';
-import { collectionApi, retailerApi } from '../../src/lib/api';
+import { type RetailerMe, collectionApi, retailerApi } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
 import { useScreenInsets } from '../../src/lib/safe-area';
 
@@ -72,7 +72,7 @@ function EditCollectionModal({
     try {
       await collectionApi.update(collection.id, {
         title: title.trim(),
-        ...(expiryDays ? { expires_days: parseInt(expiryDays, 10) } : {}),
+        ...(expiryDays ? { expires_days: Number.parseInt(expiryDays, 10) } : {}),
       });
       onSaved();
       onClose();
@@ -265,7 +265,7 @@ export default function CollectionsScreen() {
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
   });
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data;
+  const retailerProfile = (retailerData as { data: RetailerMe } | undefined)?.data;
   const [editTarget, setEditTarget] = useState<Collection | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 

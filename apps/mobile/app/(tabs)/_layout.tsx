@@ -141,10 +141,15 @@ export default function TabsLayout() {
           tabBarLabel: () => null,
           tabBarIcon: () => null,
           tabBarButton: (props) => {
-            const { style, ...rest } = props as any;
+            // AnimatedPressable reads only these props; the rest of the tab-bar props were dropped
+            // by it anyway. Tab props allow null where AnimatedPressable takes undefined.
+            const { style, onLongPress, disabled, accessibilityState, testID } = props;
             return (
               <AnimatedPressable
-                {...rest}
+                onLongPress={onLongPress ?? undefined}
+                disabled={disabled ?? undefined}
+                accessibilityState={{ selected: accessibilityState?.selected }}
+                testID={testID}
                 onPress={() => router.push('/product/add')}
                 // Tab slot is 54px tall (64 bar − 10 padding; the bottom inset cancels out) and the
                 // 56px circle centres in it, so −27 puts the circle's centre exactly on the bar's top

@@ -16,7 +16,12 @@ import { GooglePlaceField } from '../../src/components/GooglePlaceField';
 import { GoogleReviewsTab } from '../../src/components/GoogleReviewsTab';
 import { KeyboardScreen } from '../../src/components/KeyboardScreen';
 import { type GbpState, googleBusinessApi } from '../../src/lib/api/google-business';
-import { growthApi } from '../../src/lib/api/growth';
+import {
+  type ProductReview,
+  type ReviewSummary,
+  type StoreReview,
+  growthApi,
+} from '../../src/lib/api/growth';
 import { useAuth } from '../../src/lib/auth-context';
 import { useScreenInsets } from '../../src/lib/safe-area';
 import { staffCan } from '../../src/lib/staff-can';
@@ -193,7 +198,7 @@ function SummaryTab({
   summary,
   gbpState,
 }: {
-  summary: any;
+  summary: ReviewSummary;
   gbpState?: GbpState;
 }) {
   const queryClient = useQueryClient();
@@ -276,7 +281,7 @@ function SummaryTab({
       {summary.google_review_url && (
         <AnimatedPressable
           onPress={() => {
-            void Linking.openURL(summary.google_review_url);
+            if (summary.google_review_url) void Linking.openURL(summary.google_review_url);
           }}
           accessibilityRole="button"
           accessibilityLabel="Open your Google review link"
@@ -319,7 +324,7 @@ function SummaryTab({
             Top Rated Designs
           </Text>
           <View className="gap-3">
-            {summary.top_products.map((p: any) => (
+            {summary.top_products.map((p) => (
               <View key={p.id} className="flex-row items-center gap-3">
                 <View className="w-6 items-center justify-center">
                   <ShoppingBag size={18} color="#6B4773" />
@@ -359,7 +364,7 @@ function SummaryTab({
             Recent Customer Feedback
           </Text>
           <View className="gap-3.5">
-            {summary.recent_reviews.map((r: any) => (
+            {summary.recent_reviews.map((r) => (
               <View key={r.id} className="border-b border-lavender-100 pb-3 last:border-b-0">
                 <View className="flex-row items-center gap-2 mb-1.5">
                   <StarRating rating={r.rating} size={12} />
@@ -395,7 +400,7 @@ function SummaryTab({
 function ProductReviewsTab({
   reviews,
 }: {
-  reviews: any[];
+  reviews: ProductReview[];
 }) {
   if (reviews.length === 0) {
     return (
@@ -457,7 +462,7 @@ function ProductReviewsTab({
 function StoreReviewsTab({
   reviews,
 }: {
-  reviews: any[];
+  reviews: StoreReview[];
 }) {
   if (reviews.length === 0) {
     return (

@@ -52,19 +52,19 @@ export default function CampaignDetailScreen() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['growth', 'campaign', id],
-    queryFn: () => growthApi.campaign(id!),
+    queryFn: () => growthApi.campaign(id),
   });
   const campaign = data?.data;
 
   const previewQuery = useQuery({
     queryKey: ['growth', 'campaign', id, 'preview'],
-    queryFn: () => growthApi.previewCampaign(id!),
+    queryFn: () => growthApi.previewCampaign(id),
     enabled: !!campaign && campaign.status !== 'SENT',
   });
   const preview = previewQuery.data?.data;
 
   const sendMutation = useMutation({
-    mutationFn: () => growthApi.sendCampaign(id!),
+    mutationFn: () => growthApi.sendCampaign(id),
     onSuccess: (res) => {
       setSendResult(res.data);
       void queryClient.invalidateQueries({ queryKey: ['growth'] });
@@ -84,7 +84,7 @@ export default function CampaignDetailScreen() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => growthApi.deleteCampaign(id!),
+    mutationFn: () => growthApi.deleteCampaign(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['growth'] });
       router.back();
@@ -347,7 +347,7 @@ export default function CampaignDetailScreen() {
                 </Text>
                 <Text className="text-[11px] font-semibold text-heliotrope-500 mt-0.5">opened</Text>
               </View>
-              {breakdown['OPENED'] != null && (
+              {breakdown.OPENED != null && (
                 <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
                   <Text
                     style={{

@@ -46,7 +46,7 @@ type Analytics = {
 // ── Helpers ────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(`${dateStr}T00:00:00`);
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   return days[d.getDay()];
 }
@@ -115,10 +115,10 @@ function MiniBarChart({
   const max = Math.max(maxValue, 1);
   return (
     <View className="flex-row items-end gap-2 h-24 pt-2">
-      {data.map((d, i) => {
+      {data.map((d) => {
         const height = Math.max((d.value / max) * 70, d.value > 0 ? 8 : 3);
         return (
-          <View key={i} className="flex-1 items-center gap-1.5">
+          <View key={d.label} className="flex-1 items-center gap-1.5">
             <Text className="text-[11px] text-heliotrope-500 font-semibold">
               {d.value > 0 ? d.value : ''}
             </Text>
@@ -389,7 +389,7 @@ export default function AnalyticsScreen() {
 
         {/* Category Breakdown */}
         {(analytics?.category_breakdown?.length ?? 0) > 0 && (
-          <CategoryBreakdown data={analytics!.category_breakdown} />
+          <CategoryBreakdown data={analytics?.category_breakdown ?? []} />
         )}
 
         {/* Plan Usage */}
@@ -434,7 +434,7 @@ export default function AnalyticsScreen() {
             <Text className="text-xs font-semibold text-spaceCadet-900 px-1">
               Recent Collections
             </Text>
-            {analytics!.recent_collections.map((c) => (
+            {(analytics?.recent_collections ?? []).map((c) => (
               <CollectionCard key={c.id} item={c} />
             ))}
           </View>

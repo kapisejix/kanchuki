@@ -29,13 +29,14 @@ export default function ScanScreen() {
     try {
       const res = await productApi.list({ sku, limit: 1 });
       const items = (res.data ?? []) as { id: string }[];
-      if (items.length === 0) {
+      const first = items[0];
+      if (!first) {
         Alert.alert('Not Found', `No product with SKU "${sku.toUpperCase()}" in this catalog.`, [
           { text: 'Scan again', onPress: () => setScanPaused(false) },
         ]);
         return;
       }
-      router.replace(`/product/${items[0]!.id}`);
+      router.replace(`/product/${first.id}`);
     } catch (err) {
       showError(err, 'Could not look up that SKU');
       setScanPaused(false);

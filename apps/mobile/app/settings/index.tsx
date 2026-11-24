@@ -49,6 +49,7 @@ import { SettingsSkeleton } from '../../src/components/Skeleton';
 import { UsageCard } from '../../src/components/UsageCard';
 import { WhiteButton } from '../../src/components/WhiteButton';
 import {
+  type RetailerMe,
   prepareImageForUpload,
   readLocalImage,
   retailerApi,
@@ -79,7 +80,7 @@ function ProfileEditModal({
   onStoreUrlChanged,
 }: {
   visible: boolean;
-  retailer: Record<string, any> | null;
+  retailer: RetailerMe | null;
   onClose: () => void;
   onSaved: () => void;
   onStoreUrlChanged: (newSlug: string) => void;
@@ -286,7 +287,7 @@ function ProfileEditModal({
       // name changes AND a QR slug already exists — surface that here so old
       // links / printed QRs are never a surprise to the retailer.
       const updatedSlug = (res as { data?: { public_slug?: string | null } }).data?.public_slug;
-      const previousSlug = retailer?.public_slug as string | null | undefined;
+      const previousSlug = retailer?.public_slug;
       if (updatedSlug && updatedSlug !== previousSlug) onStoreUrlChanged(updatedSlug);
       onSaved();
       onClose();
@@ -528,6 +529,7 @@ function WhatsAppModal({
   const [sendingOtp, setSendingOtp] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: visible is the reset trigger (reopening the modal clears the OTP step)
   useEffect(() => {
     setNumber(current);
     setOtp('');
@@ -733,12 +735,13 @@ function kycStatusInfo(
   status: string,
   colors: ReturnType<typeof useTheme>['colors'],
 ): { label: string; color: string; bg: string } {
+  const notSubmitted = {
+    label: 'Not Submitted',
+    color: colors.sand[600],
+    bg: colors.sand[100],
+  };
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    NOT_SUBMITTED: {
-      label: 'Not Submitted',
-      color: colors.sand[600],
-      bg: colors.sand[100],
-    },
+    NOT_SUBMITTED: notSubmitted,
     PENDING: {
       label: 'Pending Review',
       color: colors.turmeric[600],
@@ -755,7 +758,7 @@ function kycStatusInfo(
       bg: colors.rust[100],
     },
   };
-  return map[status] ?? map['NOT_SUBMITTED']!;
+  return map[status] ?? notSubmitted;
 }
 
 function KycModal({
@@ -765,7 +768,7 @@ function KycModal({
   onSaved,
 }: {
   visible: boolean;
-  retailer: Record<string, any> | null;
+  retailer: RetailerMe | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -1149,9 +1152,7 @@ export default function SettingsScreen() {
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
   });
-  const retailer = (meData as { data: Record<string, any> } | undefined)?.data as
-    | Record<string, any>
-    | undefined;
+  const retailer = (meData as { data: RetailerMe } | undefined)?.data;
 
   // Team members (Staff rows added by the owner) only get product/category/
   // collection/size-chart/QR access server-side (see apps/api plugins/auth.ts
@@ -1438,8 +1439,8 @@ export default function SettingsScreen() {
                 icon={<ShieldCheck size={18} color={primaryColor} />}
                 label="Identity Verification (KYC)"
                 subtitle={
-                  (KYC_STATUS_LABEL[retailer?.kyc_status ?? 'NOT_SUBMITTED'] ??
-                    KYC_STATUS_LABEL['NOT_SUBMITTED'])!.label
+                  KYC_STATUS_LABEL[retailer?.kyc_status ?? 'NOT_SUBMITTED']?.label ??
+                  'Not Submitted'
                 }
                 onPress={() => setShowKyc(true)}
               />

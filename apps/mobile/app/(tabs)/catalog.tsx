@@ -18,7 +18,7 @@ import { GradientButton } from '../../src/components/GradientButton';
 import ProductCard from '../../src/components/ProductCard';
 import { ProductGridSkeleton } from '../../src/components/Skeleton';
 import { useGridColumns } from '../../src/hooks/useIsTablet';
-import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api';
+import { type RetailerMe, productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
 import { prefetchProductImages } from '../../src/lib/image-prefetch';
 import { enqueueStatusMutation, isRetryable } from '../../src/lib/mutation-queue';
@@ -182,9 +182,7 @@ export default function CatalogScreen() {
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
   });
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as
-    | Record<string, any>
-    | undefined;
+  const retailerProfile = (retailerData as { data: RetailerMe } | undefined)?.data;
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Explicit toggle so retailers can enter tap-to-select without discovering

@@ -5,7 +5,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { ProductGridSkeleton } from '../../src/components/Skeleton';
-import { type ShowcaseDesignRow, retailerApi, showcaseDesignsApi } from '../../src/lib/api';
+import {
+  type RetailerMe,
+  type ShowcaseDesignRow,
+  retailerApi,
+  showcaseDesignsApi,
+} from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
 import { useScreenInsets } from '../../src/lib/safe-area';
 
@@ -19,9 +24,7 @@ export default function ShowcaseDesignsScreen() {
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
   });
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as
-    | Record<string, any>
-    | undefined;
+  const retailerProfile = (retailerData as { data: RetailerMe } | undefined)?.data;
 
   const [filterSlug, setFilterSlug] = useState<string | null>(null);
 

@@ -81,7 +81,7 @@ export default function SocialSettingsScreen() {
 
     const sub = Linking.addEventListener('url', handleDeepLink);
     return () => sub.remove();
-  }, [queryClient, refresh]);
+  }, [refresh]);
 
   // Fallback for builds without the native SDK (Expo Go): the old web OAuth-URL
   // flow. Kept only so development on Expo Go still has *a* path.
@@ -368,7 +368,9 @@ function HistoryModal({
                     ) : post.external_post_url ? (
                       <AnimatedPressable
                         className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
-                        onPress={() => void Linking.openURL(post.external_post_url!)}
+                        onPress={() => {
+                          if (post.external_post_url) void Linking.openURL(post.external_post_url);
+                        }}
                         hitSlop={6}
                       >
                         <Text className="text-[11px] font-semibold text-ink-700">
