@@ -181,7 +181,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
         contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
         keyboardShouldPersistTaps="handled"
       >
-        <Text className="text-sm font-bold mb-2 text-sand-900">1. Pick a product</Text>
+        <Text className="text-sm font-semibold mb-2 text-sand-900">1. Pick a product</Text>
         <ProductGridPicker
           maxItems={1}
           selected={product ? [product] : []}
@@ -191,7 +191,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
 
         {poster ? (
           <>
-            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Optional text</Text>
+            <Text className="text-sm font-semibold mt-5 mb-2 text-sand-900">2. Optional text</Text>
             <TextInput
               value={headline}
               onChangeText={setHeadline}
@@ -211,7 +211,9 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
           </>
         ) : (
           <>
-            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">2. Describe the scene</Text>
+            <Text className="text-sm font-semibold mt-5 mb-2 text-sand-900">
+              2. Describe the scene
+            </Text>
             <TextInput
               value={prompt}
               onChangeText={setPrompt}
@@ -227,7 +229,9 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
               add a price or your logo below.
             </Text>
 
-            <Text className="text-sm font-bold mt-5 mb-2 text-sand-900">3. Finish (optional)</Text>
+            <Text className="text-sm font-semibold mt-5 mb-2 text-sand-900">
+              3. Finish (optional)
+            </Text>
             <View className="flex-row flex-wrap">
               {FORMATS.map((f) => (
                 <Chip
@@ -305,7 +309,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
             <AnimatedPressable
               onPress={reset}
               accessibilityRole="button"
-              className="items-center py-3"
+              className="items-center py-3 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
             >
               <Text className="text-sm font-semibold text-sand-900">Make another</Text>
             </AnimatedPressable>
@@ -314,7 +318,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
 
         {!poster && (mine.data?.data.length ?? 0) > 0 ? (
           <View className="mt-6">
-            <Text className="text-sm font-bold mb-2 text-sand-900">My AI designs</Text>
+            <Text className="text-sm font-semibold mb-2 text-sand-900">My AI designs</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {mine.data?.data.map((d) =>
                 d.image_url ? (
@@ -330,7 +334,7 @@ function AiDesignBody({ templateId }: { templateId?: string }) {
                       className="h-36 w-28 rounded-2xl bg-sand-100"
                       resizeMode="cover"
                     />
-                    <Text className="text-[10px] mt-1 text-sand-400" numberOfLines={2}>
+                    <Text className="text-[11px] mt-1 text-sand-400" numberOfLines={2}>
                       {d.prompt}
                     </Text>
                   </AnimatedPressable>

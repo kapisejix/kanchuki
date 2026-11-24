@@ -1,61 +1,61 @@
-import { useState } from 'react'
-import { formatPriceRange } from '@kanchuki/shared'
-import { View, Text, FlatList } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../../../src/lib/safe-area'
-import { ChevronLeft } from 'lucide-react-native'
-import ProductCard from '../../../src/components/ProductCard'
-import { ProductGridSkeleton } from '../../../src/components/Skeleton'
-import { useGridColumns } from '../../../src/hooks/useIsTablet'
-import { productApi, categoryApi } from '../../../src/lib/api'
-import { showError } from '../../../src/lib/errors'
-import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
-import { GradientButton } from '../../../src/components/GradientButton'
+import { formatPriceRange } from '@kanchuki/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import { useState } from 'react';
+import { FlatList, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable';
+import { GradientButton } from '../../../src/components/GradientButton';
+import ProductCard from '../../../src/components/ProductCard';
+import { ProductGridSkeleton } from '../../../src/components/Skeleton';
+import { useGridColumns } from '../../../src/hooks/useIsTablet';
+import { categoryApi, productApi } from '../../../src/lib/api';
+import { showError } from '../../../src/lib/errors';
+import { useScreenInsets } from '../../../src/lib/safe-area';
 
 type Product = {
-  id: string
-  category: string | null
-  primary_color: string | null
-  price_min: number | null
-  price_max: number | null
-  status: string
-  primary_photo_url: string | null
-}
+  id: string;
+  category: string | null;
+  primary_color: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  status: string;
+  primary_photo_url: string | null;
+};
 
 export default function AddProductsToCategoryScreen() {
-  const columns = useGridColumns()
-  const { id } = useLocalSearchParams<{ id: string }>()
-  const { insets, headerPaddingTop } = useScreenInsets()
-  const queryClient = useQueryClient()
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const columns = useGridColumns();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { insets, headerPaddingTop } = useScreenInsets();
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'list', 'available'],
     queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 100 }),
-  })
-  const products = ((data as { data: Product[] } | undefined)?.data ?? [])
+  });
+  const products = (data as { data: Product[] } | undefined)?.data ?? [];
 
   const toggle = (productId: string) => {
     setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(productId)) next.delete(productId)
-      else next.add(productId)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  };
 
   const assign = useMutation({
     mutationFn: () => categoryApi.assignProducts(id, [...selected]),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['products'] })
-      await queryClient.invalidateQueries({ queryKey: ['categories'] })
-      router.back()
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      await queryClient.invalidateQueries({ queryKey: ['categories'] });
+      router.back();
     },
     onError: (err: Error) => showError(err, 'Please try again.', 'Could not assign products'),
-  })
+  });
 
-  const canAssign = selected.size > 0 && !assign.isPending
+  const canAssign = selected.size > 0 && !assign.isPending;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
@@ -74,7 +74,7 @@ export default function AddProductsToCategoryScreen() {
         </AnimatedPressable>
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-xl font-bold text-spaceCadet-900 ml-3"
+          className="text-xl text-spaceCadet-900 ml-3"
         >
           Add Products to Category
         </Text>
@@ -91,7 +91,7 @@ export default function AddProductsToCategoryScreen() {
           contentContainerStyle={{ padding: 16, gap: 12 }}
           columnWrapperStyle={{ gap: 12 }}
           renderItem={({ item }) => {
-            const isSelected = selected.has(item.id)
+            const isSelected = selected.has(item.id);
             return (
               <ProductCard
                 imageUrl={item.primary_photo_url}
@@ -104,21 +104,21 @@ export default function AddProductsToCategoryScreen() {
                   <View className="p-3">
                     <Text
                       style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                      className="text-xs font-bold text-spaceCadet-900"
+                      className="text-xs text-spaceCadet-900"
                       numberOfLines={1}
                     >
                       {item.category ?? 'Design'} · {item.primary_color ?? '—'}
                     </Text>
-                    <Text className="text-xs font-bold text-spaceCadet-900 mt-1">
+                    <Text className="text-xs font-semibold text-spaceCadet-900 mt-1">
                       {formatPriceRange(item.price_min, item.price_max)}
                     </Text>
                   </View>
                 }
               />
-            )
+            );
           }}
           ListEmptyComponent={
-            <Text className="text-heliotrope-400 text-xs font-medium text-center mt-16">
+            <Text className="text-heliotrope-500 text-xs font-medium text-center mt-16">
               No available products. Add products to your catalog first.
             </Text>
           }
@@ -129,7 +129,8 @@ export default function AddProductsToCategoryScreen() {
         className="bg-white px-5 pt-3.5 border-t border-lavender-200"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
-        <GradientButton variant="web"
+        <GradientButton
+          variant="web"
           label={`Add ${selected.size || ''} Design${selected.size === 1 ? '' : 's'}`.trim()}
           disabled={!canAssign}
           loading={assign.isPending}
@@ -137,5 +138,5 @@ export default function AddProductsToCategoryScreen() {
         />
       </View>
     </View>
-  )
+  );
 }

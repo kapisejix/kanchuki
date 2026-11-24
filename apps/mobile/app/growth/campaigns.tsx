@@ -25,7 +25,7 @@ const TYPE_FILTERS: { key: CampaignType | 'ALL'; label: string }[] = [
 
 function statusInfo(status: CampaignStatus) {
   const map: Record<CampaignStatus, { label: string; color: string; bg: string }> = {
-    DRAFT: { label: 'Draft', color: '#928EB2', bg: '#F8F7FC' },
+    DRAFT: { label: 'Draft', color: '#6B4773', bg: '#F8F7FC' },
     SCHEDULED: { label: 'Scheduled', color: '#BB3F95', bg: '#BB3F951A' },
     SENT: { label: 'Sent', color: '#16a34a', bg: '#dcfce7' },
   }
@@ -65,7 +65,7 @@ export default function CampaignsScreen() {
             </AnimatedPressable>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               Campaign Broadcasts
             </Text>
@@ -74,7 +74,7 @@ export default function CampaignsScreen() {
             onPress={() => router.push('/growth/campaign-new')}
             accessibilityLabel="New campaign"
             accessibilityRole="button"
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-spaceCadet-900"
           >
             <Plus size={20} color="white" />
           </AnimatedPressable>
@@ -97,11 +97,11 @@ export default function CampaignsScreen() {
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               className={`px-4 py-1.5 rounded-full border ${
-                active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'
+                active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'border-lavender-200 bg-lavender-50'
               }`}
             >
               <Text
-                className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
               >
                 {t.label}
               </Text>
@@ -112,19 +112,19 @@ export default function CampaignsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : campaigns.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
+              className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Megaphone size={28} color="#BB3F95" />
+              <Megaphone size={28} color="#6B4773" />
             </View>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               {filter === 'ALL' ? 'No campaigns yet' : `No ${TYPE_LABEL[filter].toLowerCase()} campaigns`}
             </Text>
@@ -157,12 +157,12 @@ export default function CampaignsScreen() {
                 <AnimatedPressable
                   key={c.id}
                   onPress={() => router.push(`/growth/campaign/${c.id}`)}
-                  className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm"
+                  className="bg-white rounded-2xl p-5 border border-lavender-200"
                 >
                   <View className="flex-row items-center justify-between mb-2">
                     <Text
                       style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                      className="text-base font-bold text-spaceCadet-900 flex-1 mr-2"
+                      className="text-base text-spaceCadet-900 flex-1 mr-2"
                       numberOfLines={1}
                     >
                       {c.name}
@@ -171,7 +171,7 @@ export default function CampaignsScreen() {
                       className="rounded-full px-2.5 py-0.5"
                       style={{ backgroundColor: status.bg }}
                     >
-                      <Text className="text-[10px] font-bold uppercase tracking-wider" style={{ color: status.color }}>
+                      <Text className="text-[11px] font-semibold" style={{ color: status.color }}>
                         {status.label}
                       </Text>
                     </View>

@@ -1,6 +1,5 @@
 import { Image } from 'expo-image'
 import { Facebook, Globe, Instagram, Link2, Play } from 'lucide-react-native'
-import { useState } from 'react'
 import { Text, View } from 'react-native'
 import type { SocialPostComposeType } from '../../lib/api/social'
 import { useTheme } from '../../lib/theme'
@@ -37,12 +36,9 @@ export function PostPreview({
   linkUrl: string | null
 }) {
   const { colors } = useTheme()
-  // Real shape of the loaded photo, so the preview does not crop it.
-  const [loaded, setLoaded] = useState<{ url: string; aspect: number } | null>(null)
   if (targets.length === 0) return null
 
   const cover = previewCover(media)
-  const coverAspect = loaded && loaded.url === cover?.url ? loaded.aspect : 4 / 3
   const linkLine = previewLinkLine(caption, linkUrl)
   // Link card only when there is no photo to show — a collection link with a
   // cover photo, or the Photo carousel format, renders its media like any post.
@@ -86,18 +82,18 @@ export function PostPreview({
                 <Globe size={14} color={colors.sand[400]} />
               </View>
             ) : cover ? (
-              <View className="mx-4 rounded-xl overflow-hidden bg-sand-100 mb-1">
+              // ponytail: fixed 4:5 box, image fills it like ItemMediaStrip. Sizing the box from
+              // onLoad looped on Android (reload at new size -> new dims -> remount), leaving
+              // the grey placeholder. `contain` shows the whole product without cropping.
+              <View
+                className="mx-4 rounded-xl overflow-hidden bg-sand-100 mb-1"
+                style={{ aspectRatio: 4 / 5 }}
+              >
                 <Image
                   source={{ uri: cover.url }}
-                  style={{ width: '100%', aspectRatio: coverAspect }}
-                  contentFit="cover"
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="contain"
                   cachePolicy="memory-disk"
-                  onLoad={(e) => {
-                    const { width, height } = e.source
-                    if (width > 0 && height > 0) {
-                      setLoaded({ url: cover.url, aspect: width / height })
-                    }
-                  }}
                 />
                 {cover.isVideo ? (
                   <View className="absolute inset-0 items-center justify-center">

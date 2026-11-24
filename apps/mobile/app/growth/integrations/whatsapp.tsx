@@ -12,7 +12,7 @@ import { retailerApi } from '../../../src/lib/api/retailer'
 import { showError } from '../../../src/lib/errors'
 
 const INPUT =
-  'bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4'
+  'bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-semibold text-spaceCadet-900 mb-4'
 
 export default function WhatsAppCloudConfigScreen() {
   const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
@@ -55,7 +55,7 @@ export default function WhatsAppCloudConfigScreen() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
       void queryClient.invalidateQueries({ queryKey: ['retailer', 'whatsapp-api'] })
-      Alert.alert('Connected!', 'WhatsApp Business Cloud API is configured.', [
+      Alert.alert('Connected', 'WhatsApp Business Cloud API is configured.', [
         { text: 'OK', onPress: () => router.back() },
       ])
     },
@@ -80,7 +80,7 @@ export default function WhatsAppCloudConfigScreen() {
           </AnimatedPressable>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            className="text-xl text-spaceCadet-900"
           >
             WhatsApp Business API
           </Text>
@@ -103,7 +103,7 @@ export default function WhatsAppCloudConfigScreen() {
 
         {planBlocked && (
           <View className="bg-rose-50 border border-rose-200 rounded-2xl px-4 py-3 mb-4">
-            <Text className="text-xs text-rose-700 font-bold">
+            <Text className="text-xs text-rose-700 font-semibold">
               WhatsApp Business API is not included in your current plan.
             </Text>
           </View>
@@ -165,7 +165,7 @@ export default function WhatsAppCloudConfigScreen() {
 
         <View className="mt-2">
           {save.isPending ? (
-            <ActivityIndicator color="#BB3F95" />
+            <ActivityIndicator color="#6B4773" />
           ) : (
             <GradientButton
               variant="web"
@@ -182,6 +182,6 @@ export default function WhatsAppCloudConfigScreen() {
 
 function Label({ text }: { text: string }) {
   return (
-    <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">{text}</Text>
+    <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">{text}</Text>
   )
 }

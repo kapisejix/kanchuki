@@ -683,3 +683,31 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | ProductCard snapshots updated. Onboarding smoke test updated for 3 sentence-case headings. |
 | Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 18 changed code files: 36 errors, same as `origin/main`. |
 | Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |
+
+## 2026-11-23 — Mobile design cleanup, Task 2 (branch `design/mobile-unslop-task-2`)
+
+| Area | Change |
+|---|---|
+| Screens | 18 of 20 changed: product, category, collection, customer, enquiries, enquiry try-on and AI search. `product/scan` and `product/[id]/add-photos` had nothing to fix. |
+| Type and color | Fake-bold Marcellus, uppercase field labels and 9-10px text removed. Off-palette grey text and borders moved to the Royal Orchid tokens. Admin theme variables kept. |
+| Decoration | Emoji, sparkles, icon tiles, the AI search gradient hero and colored stat icons removed. |
+| Bug fixed | `sand-950` and `heliotrope-400` are not Tailwind tokens. Replaced with real tokens. |
+| Kept | Owner-approved uppercase button labels. Logic, API calls, navigation, validation, prices and permissions unchanged. |
+| Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 18 changed code files: 0 errors (was 44: 36 format and import order, 8 lint). |
+| Logic check | AST comparison with `origin/main`, ignoring styles and text: only icons, wrappers, copy and same-behavior lint fixes differ. No dark text added on camera screens. All 610 color classes resolve. |
+| Not verified | Real rendering and spacing. No Android emulator on the dev machine and the app root does not run on Expo web. Needs the owner's Expo Go check. Reaches phones only with a new app build. |
+
+## 2026-11-23 — Mobile design cleanup, Task 3 (branch `design/mobile-unslop-task-3`)
+
+| Area | Change |
+|---|---|
+| Screens | All 28 `growth/*` and `social/*` screens follow `docs/tasks/pending/mobile-unslop.md`. Fake-bold Marcellus, uppercase tracked labels, 8-10px text, tinted icon tiles, sparkles, greetings and hype copy removed. |
+| Panels | Growth and Inventory keep one navy-to-plum figure panel. Integrations and Translate banners had no key number, so they are plain cards. |
+| Shared | `MyStyleRankingNote`, `ItemMediaStrip`, `PostTypePicker`, `ProductGridPicker`, `SchedulerBanner`, `TargetChecklist` and `TemplatePicker` restyled. `PostPreview` unchanged. |
+| Bug fixed | `heliotrope-400`, `spaceCadet-700` and `lavender-600` are not Tailwind tokens, so that text lost its intended color. Replaced with real tokens. |
+| Left alone | Campaign message templates keep emoji because customers receive them. |
+| Buttons | Owner approved rewording 9 labels on Translate, Videos and the integration screens, removing "Luxury", "Ken Burns" and "1-Click". |
+| Tests | Create Post test updated for `Posted`. Connect double-tap test updated for the new labels. |
+| Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 36 changed code files: 54 errors, same as `origin/main`. |
+| Biome cleanup | Owner asked to clear the 15 errors in the 7 reworded-label files. Imports and one test line are in one commit, formatting in another. Those 7 files now have 0 errors and 3 warnings, and use semicolons as `biome.jsonc` requires, unlike most other mobile files. Mobile 722 passed, tsc 0. |
+| Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |

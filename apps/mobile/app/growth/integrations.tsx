@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
-import { LinearGradient } from 'expo-linear-gradient'
 import {
   ArrowRight,
   ChevronLeft,
   CheckCircle,
   XCircle,
+  Settings2,
   Share2,
 } from 'lucide-react-native'
 import {
@@ -22,7 +22,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { BrandIcon, type Brand } from '../../src/components/BrandIcon'
 import { DangerButton } from '../../src/components/DangerButton'
 import { GradientButton } from '../../src/components/GradientButton'
-import { WhiteButton } from '../../src/components/WhiteButton'
+import { WHITE_BUTTON_INK, WhiteButton } from '../../src/components/WhiteButton'
 import { growthApi } from '../../src/lib/api/growth'
 import { retailerApi } from '../../src/lib/api/retailer'
 import { META_SOCIAL_ENABLED } from '../../src/lib/meta-social';
@@ -59,14 +59,14 @@ export default function IntegrationsScreen() {
           </AnimatedPressable>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900 flex-1"
+            className="text-xl text-spaceCadet-900 flex-1"
           >
             Social & Marketing Channels
           </Text>
         </View>
 
         {/* Tab Filters */}
-        <View className="flex-row gap-2 mt-3.5">
+        <View className="flex-row flex-wrap gap-2 mt-4">
           {(
             [
               { key: 'all', label: 'All Channels (6)' },
@@ -81,12 +81,12 @@ export default function IntegrationsScreen() {
                 onPress={() => setActiveTab(tab.key)}
                 className={`px-3.5 py-2 rounded-full border ${
                   active
-                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
                     : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 <Text
-                  className={`text-xs font-bold ${
+                  className={`text-xs font-semibold ${
                     active ? 'text-white' : 'text-spaceCadet-900'
                   }`}
                 >
@@ -100,7 +100,7 @@ export default function IntegrationsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : (
         <ScrollView
@@ -109,34 +109,29 @@ export default function IntegrationsScreen() {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
           {/* Hero Banner */}
-          <LinearGradient
-            colors={['#231F48', '#560A39']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="rounded-3xl p-5 mb-4 shadow-sm"
-          >
+          <View className="bg-white rounded-2xl p-5 mb-4 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-1.5">
-              <Share2 size={18} color="#BB3F95" />
+              <Share2 size={18} color="#6B4773" />
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-white text-base font-bold"
+                className="text-spaceCadet-900 text-base"
               >
-                Omnichannel Social & Ads Sync
+                Social and ad accounts
               </Text>
             </View>
-            <Text className="text-lavender-200 text-xs leading-relaxed mt-1 font-medium">
+            <Text className="text-heliotrope-500 text-xs leading-relaxed mt-1 font-medium">
               {META_SOCIAL_ENABLED
                 ? 'Publish catalog drops, lookbooks, and 6s photoshoot reels across Instagram, Facebook and WhatsApp. '
                 : 'Connect WhatsApp and Google for your shop. '}
               Credentials are encrypted and securely stored.
             </Text>
-          </LinearGradient>
+          </View>
 
           {/* Social Media Accounts Section */}
           {(activeTab === 'all' || activeTab === 'social') && (
             <View className="mb-4">
-              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2.5">
-                Social Media Accounts
+              <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2.5">
+                Social media accounts
               </Text>
 
               {META_SOCIAL_ENABLED && (<>
@@ -218,8 +213,8 @@ export default function IntegrationsScreen() {
           {/* Ad & Search Discovery Section */}
           {(activeTab === 'all' || activeTab === 'ads') && (
             <View>
-              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2.5">
-                Ad Platforms & Local Search
+              <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-2.5">
+                Ad platforms and local search
               </Text>
 
               {META_SOCIAL_ENABLED && (<>
@@ -227,7 +222,7 @@ export default function IntegrationsScreen() {
               <IntegrationCard
                 brand="facebook-ads"
                 title="Facebook Local Awareness Ads"
-                subtitle="Create local luxury ad campaigns across Instagram & Facebook"
+                subtitle="Create local ad campaigns across Instagram & Facebook"
                 configured={data?.facebook_ads.configured ?? false}
                 configuredAt={data?.facebook_ads.configured_at ?? null}
                 onConfigure={() => router.push('/growth/integrations/fb-ads' as any)}
@@ -300,67 +295,71 @@ function IntegrationCard({
   onDisconnect: () => void
 }) {
   return (
-    <View className="bg-white rounded-3xl border border-lavender-200 p-4 mb-3.5 shadow-sm">
+    <View className="bg-white rounded-2xl border border-lavender-200 p-4 mb-4">
       <View className="flex-row items-start gap-3">
         <BrandIcon brand={brand} size={48} />
         <View className="flex-1">
           <View className="flex-row items-center gap-2 mb-1">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-base font-bold text-spaceCadet-900 flex-1"
+              className="text-base text-spaceCadet-900 flex-1"
             >
               {title}
             </Text>
             {configured ? (
-              <View className="flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              <View className="flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
                 <CheckCircle size={11} color="#16a34a" />
-                <Text className="text-[10px] font-bold text-emerald-700">Linked</Text>
+                <Text className="text-[11px] font-semibold text-emerald-700">Linked</Text>
               </View>
             ) : (
-              <View className="flex-row items-center gap-1 bg-lavender-100 px-2 py-0.5 rounded-full">
-                <XCircle size={11} color="#928EB2" />
-                <Text className="text-[10px] font-bold text-heliotrope-400">Not Linked</Text>
+              <View className="flex-row items-center gap-1 bg-lavender-100 px-2 py-0.5 rounded-full shrink-0">
+                <XCircle size={11} color="#6B4773" />
+                <Text className="text-[11px] font-semibold text-heliotrope-500">Not Linked</Text>
               </View>
             )}
           </View>
           <Text className="text-xs text-heliotrope-500 mb-2 leading-relaxed font-medium">{subtitle}</Text>
           {configured && (metaLabel || configuredAt) && (
-            <View className="flex-row items-center gap-2 mb-2.5">
+            <View className="flex-row flex-wrap items-center gap-2 mb-2">
               {metaLabel && (
                 <View className="bg-fuchsia-500/10 border border-fuchsia-500/20 px-2.5 py-0.5 rounded-full">
-                  <Text className="text-[10px] font-bold text-fuchsia-700">{metaLabel}</Text>
+                  <Text className="text-[11px] font-semibold text-fuchsia-700">{metaLabel}</Text>
                 </View>
               )}
               {configuredAt && (
-                <Text className="text-[10px] text-heliotrope-400 font-medium">
+                <Text className="text-[11px] text-heliotrope-500 font-medium">
                   Connected {new Date(configuredAt).toLocaleDateString('en-IN')}
                 </Text>
               )}
             </View>
           )}
-          {/* Buttons: dark = GradientButton web, white = WhiteButton, red keeps its colour
-              (same radius 24 + navy shadow). Labels wrap, never cut off. */}
-          <View className="flex-row gap-3 mt-2 pb-2">
-            <View className="flex-1">
-              {configured ? (
-                <WhiteButton radius={16} label="Reconfigure" onPress={onConfigure} />
-              ) : (
-                <GradientButton
-                  variant="web"
-                  radius={16}
-                  label="Connect Account"
-                  iconRight={<ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />}
-                  onPress={onConfigure}
-                />
-              )}
-            </View>
-            {configured && (
-              <View className="flex-1">
-                <DangerButton radius={16} label="Disconnect" onPress={onDisconnect} />
-              </View>
-            )}
-          </View>
         </View>
+      </View>
+      {/* Buttons: dark = GradientButton web, white = WhiteButton, red keeps its colour
+          (shared default radius + navy shadow). Full card width so labels never cut off. */}
+      <View className="flex-row gap-3 mt-4">
+        <View className="flex-1">
+          {configured ? (
+            <WhiteButton
+              uppercase
+              label="Reconfigure"
+              icon={<Settings2 size={14} color={WHITE_BUTTON_INK} />}
+              onPress={onConfigure}
+            />
+          ) : (
+            <GradientButton
+              variant="web"
+              label="Connect Account"
+              iconRight={<ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />}
+              onPress={onConfigure}
+            />
+          )}
+        </View>
+        {configured && (
+          <View className="flex-1">
+            <DangerButton label="Disconnect" onPress={onDisconnect} />
+          </View>
+        )}
       </View>
     </View>
   )

@@ -30,23 +30,23 @@ function Chip({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`px-4 py-2 rounded-2xl border ${active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'}`}
+      className={`px-4 py-2 rounded-2xl border ${active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'border-lavender-200 bg-lavender-50'}`}
     >
-      <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>{label}</Text>
+      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>{label}</Text>
     </AnimatedPressable>
   )
 }
 
 function Label({ text }: { text: string }) {
-  return <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5 mt-3">{text}</Text>
+  return <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5 mt-3">{text}</Text>
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <Text
         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-        className="text-base font-bold text-spaceCadet-900 mb-3.5"
+        className="text-base text-spaceCadet-900 mb-3.5"
       >
         {title}
       </Text>
@@ -147,7 +147,7 @@ export default function PromotionFormScreen() {
           </AnimatedPressable>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            className="text-xl text-spaceCadet-900"
           >
             {isEdit ? 'Edit Promotion' : 'New Promotion'}
           </Text>
@@ -165,7 +165,7 @@ export default function PromotionFormScreen() {
               placeholderTextColor="#928EB2"
               autoCapitalize="characters"
               maxLength={20}
-              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+              className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             />
             <Text className="text-xs text-heliotrope-500 mt-2 font-medium">
               Shown to customers at checkout — letters, numbers and underscores only.
@@ -185,7 +185,7 @@ export default function PromotionFormScreen() {
               placeholderTextColor="#928EB2"
               keyboardType="number-pad"
               maxLength={6}
-              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+              className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             />
             <Label text="Minimum order (₹, optional)" />
             <TextInput
@@ -194,7 +194,7 @@ export default function PromotionFormScreen() {
               placeholder="2000"
               placeholderTextColor="#928EB2"
               keyboardType="decimal-pad"
-              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+              className="text-sm font-semibold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             />
           </Section>
 

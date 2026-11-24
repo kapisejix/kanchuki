@@ -1,45 +1,71 @@
-import { useState } from 'react'
-import { PRODUCT_CATEGORIES } from '@kanchuki/shared'
-import { View, Text, TextInput, ActivityIndicator, Image, Modal, FlatList, Pressable } from 'react-native'
-import { Stack, router } from 'expo-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import * as ImagePicker from 'expo-image-picker'
-import { ImagePlus, Check, X, Package } from 'lucide-react-native'
-import { categoryApi, productApi, prepareImageForUpload, uploadImageToR2 } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
+import { PRODUCT_CATEGORIES } from '@kanchuki/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as ImagePicker from 'expo-image-picker';
+import { Stack, router } from 'expo-router';
+import { Check, ImagePlus, Package, X } from 'lucide-react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import { categoryApi, prepareImageForUpload, productApi, uploadImageToR2 } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 export default function NewCategoryScreen() {
-  const { insets } = useScreenInsets()
-  const [name, setName] = useState('')
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [imageR2Key, setImageR2Key] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const queryClient = useQueryClient()
+  const { insets } = useScreenInsets();
+  const [name, setName] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageR2Key, setImageR2Key] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const queryClient = useQueryClient();
 
   // Product photo picker state
-  const [showProductPicker, setShowProductPicker] = useState(false)
-  const [showPhotoPicker, setShowPhotoPicker] = useState(false)
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
-  const [selectedProductName, setSelectedProductName] = useState<string>('')
+  const [showProductPicker, setShowProductPicker] = useState(false);
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProductName, setSelectedProductName] = useState<string>('');
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['products', 'list-for-category'],
     queryFn: () => productApi.list({ limit: 50 }),
     enabled: showProductPicker,
-  })
+  });
 
   const { data: productDetail, isLoading: detailLoading } = useQuery({
     queryKey: ['product', 'detail-for-category', selectedProductId],
     queryFn: () => productApi.get(selectedProductId!),
     enabled: !!selectedProductId && showPhotoPicker,
-  })
+  });
 
-  const products = (productsData as { data: { id: string; name: string | null; category: string | null; primary_photo_url: string | null }[] } | undefined)?.data ?? []
-  const productPhotos = (productDetail as { data?: { photos?: { id: string; url: string; r2_key: string }[] } } | undefined)?.data?.photos ?? []
+  const products =
+    (
+      productsData as
+        | {
+            data: {
+              id: string;
+              name: string | null;
+              category: string | null;
+              primary_photo_url: string | null;
+            }[];
+          }
+        | undefined
+    )?.data ?? [];
+  const productPhotos =
+    (
+      productDetail as
+        | { data?: { photos?: { id: string; url: string; r2_key: string }[] } }
+        | undefined
+    )?.data?.photos ?? [];
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -47,24 +73,26 @@ export default function NewCategoryScreen() {
       quality: 0.85,
       allowsEditing: true,
       aspect: [1, 1],
-    })
-    if (result.canceled || !result.assets[0]) return
+    });
+    if (result.canceled || !result.assets[0]) return;
 
-    setUploading(true)
+    setUploading(true);
     try {
-      const uri = result.assets[0].uri
-      const prep = await prepareImageForUpload(uri, 'image/jpeg')
-      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', prep.size)
-      const info = uploadResult.data
-      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
-      setImageUrl(info.public_url)
-      setImageR2Key(info.r2_key)
+      const uri = result.assets[0].uri;
+      const prep = await prepareImageForUpload(uri, 'image/jpeg');
+      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', prep.size);
+      const info = uploadResult.data;
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+        compress: false,
+      });
+      setImageUrl(info.public_url);
+      setImageR2Key(info.r2_key);
     } catch (err) {
-      showError(err, 'Failed to upload image')
+      showError(err, 'Failed to upload image');
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const create = useMutation({
     mutationFn: () =>
@@ -74,13 +102,13 @@ export default function NewCategoryScreen() {
         image_r2_key: imageR2Key ?? undefined,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['categories'] })
-      router.back()
+      await queryClient.invalidateQueries({ queryKey: ['categories'] });
+      router.back();
     },
     onError: (err: Error) => showError(err, 'Please try again.', 'Could not create category'),
-  })
+  });
 
-  const canCreate = name.trim().length > 0 && !uploading && !create.isPending
+  const canCreate = name.trim().length > 0 && !uploading && !create.isPending;
 
   return (
     <>
@@ -90,12 +118,16 @@ export default function NewCategoryScreen() {
           <AnimatedPressable
             onPress={() => void handlePickImage()}
             disabled={uploading}
-            className="w-28 h-28 rounded-3xl bg-white border border-lavender-200 items-center justify-center overflow-hidden shadow-sm"
+            className="w-28 h-28 rounded-2xl bg-white border border-lavender-200 items-center justify-center overflow-hidden shadow-sm"
           >
             {uploading ? (
               <ActivityIndicator color="#BB3F95" />
             ) : imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={{ width: 112, height: 112 }} resizeMode="cover" />
+              <Image
+                source={{ uri: imageUrl }}
+                style={{ width: 112, height: 112 }}
+                resizeMode="cover"
+              />
             ) : (
               <ImagePlus size={26} color="#6B4773" />
             )}
@@ -111,12 +143,14 @@ export default function NewCategoryScreen() {
             onPress={() => setShowProductPicker(true)}
             className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-lavender-200 shadow-sm"
           >
-            <View className="w-10 h-10 rounded-xl items-center justify-center bg-fuchsia-500/15">
-              <Package size={18} color="#BB3F95" />
-            </View>
+            <Package size={18} color="#6B4773" />
             <View className="flex-1">
-              <Text className="text-sm font-bold text-spaceCadet-900">Choose from product photos</Text>
-              <Text className="text-xs text-heliotrope-500 font-medium">Reuse an existing product&apos;s image as the category cover</Text>
+              <Text className="text-sm font-semibold text-spaceCadet-900">
+                Choose from product photos
+              </Text>
+              <Text className="text-xs text-heliotrope-500 font-medium">
+                Reuse an existing product&apos;s image as the category cover
+              </Text>
             </View>
           </AnimatedPressable>
         )}
@@ -126,17 +160,26 @@ export default function NewCategoryScreen() {
           visible={showProductPicker}
           animationType="slide"
           presentationStyle="pageSheet"
-          onRequestClose={() => { setShowProductPicker(false); setSelectedProductId(null) }}
+          onRequestClose={() => {
+            setShowProductPicker(false);
+            setSelectedProductId(null);
+          }}
         >
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-base font-bold text-spaceCadet-900"
+                className="text-base text-spaceCadet-900"
               >
                 Select a Product
               </Text>
-              <Pressable onPress={() => { setShowProductPicker(false); setSelectedProductId(null) }} className="p-2">
+              <Pressable
+                onPress={() => {
+                  setShowProductPicker(false);
+                  setSelectedProductId(null);
+                }}
+                className="p-2"
+              >
                 <X size={20} color="#6B4773" />
               </Pressable>
             </View>
@@ -152,23 +195,37 @@ export default function NewCategoryScreen() {
                 renderItem={({ item }) => (
                   <AnimatedPressable
                     onPress={() => {
-                      setSelectedProductId(item.id)
-                      setSelectedProductName(item.name ?? item.category ?? 'Product')
-                      setShowProductPicker(false)
-                      setShowPhotoPicker(true)
+                      setSelectedProductId(item.id);
+                      setSelectedProductName(item.name ?? item.category ?? 'Product');
+                      setShowProductPicker(false);
+                      setShowPhotoPicker(true);
                     }}
                     className="flex-row items-center gap-3 bg-white rounded-2xl p-3 mb-2 border border-lavender-200 shadow-sm"
                   >
                     {item.primary_photo_url ? (
-                      <Image source={{ uri: item.primary_photo_url }} style={{ width: 48, height: 48, borderRadius: 12 }} resizeMode="cover" />
+                      <Image
+                        source={{ uri: item.primary_photo_url }}
+                        style={{ width: 48, height: 48, borderRadius: 12 }}
+                        resizeMode="cover"
+                      />
                     ) : (
                       <View className="w-12 h-12 rounded-xl bg-lavender-100 items-center justify-center">
                         <Package size={18} color="#6B4773" />
                       </View>
                     )}
                     <View className="flex-1 min-w-0">
-                      <Text className="text-sm font-bold text-spaceCadet-900 truncate" numberOfLines={1}>{item.name ?? 'Unnamed'}</Text>
-                      <Text className="text-xs text-heliotrope-500 font-medium truncate" numberOfLines={1}>{item.category ?? 'No category'}</Text>
+                      <Text
+                        className="text-sm font-semibold text-spaceCadet-900 truncate"
+                        numberOfLines={1}
+                      >
+                        {item.name ?? 'Unnamed'}
+                      </Text>
+                      <Text
+                        className="text-xs text-heliotrope-500 font-medium truncate"
+                        numberOfLines={1}
+                      >
+                        {item.category ?? 'No category'}
+                      </Text>
                     </View>
                   </AnimatedPressable>
                 )}
@@ -182,18 +239,27 @@ export default function NewCategoryScreen() {
           visible={showPhotoPicker}
           animationType="slide"
           presentationStyle="pageSheet"
-          onRequestClose={() => { setShowPhotoPicker(false); setSelectedProductId(null) }}
+          onRequestClose={() => {
+            setShowPhotoPicker(false);
+            setSelectedProductId(null);
+          }}
         >
           <View className="flex-1 bg-[#F8F7FC]">
             <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-base font-bold text-spaceCadet-900 truncate flex-1"
+                className="text-base text-spaceCadet-900 truncate flex-1"
                 numberOfLines={1}
               >
                 {selectedProductName}
               </Text>
-              <Pressable onPress={() => { setShowPhotoPicker(false); setSelectedProductId(null) }} className="p-2">
+              <Pressable
+                onPress={() => {
+                  setShowPhotoPicker(false);
+                  setSelectedProductId(null);
+                }}
+                className="p-2"
+              >
                 <X size={20} color="#6B4773" />
               </Pressable>
             </View>
@@ -204,7 +270,9 @@ export default function NewCategoryScreen() {
             ) : productPhotos.length === 0 ? (
               <View className="flex-1 items-center justify-center px-6">
                 <Package size={32} color="#928EB2" />
-                <Text className="text-sm text-heliotrope-500 font-medium mt-2">No photos on this product</Text>
+                <Text className="text-sm text-heliotrope-500 font-medium mt-2">
+                  No photos on this product
+                </Text>
               </View>
             ) : (
               <FlatList
@@ -216,14 +284,18 @@ export default function NewCategoryScreen() {
                 renderItem={({ item }) => (
                   <AnimatedPressable
                     onPress={() => {
-                      setImageUrl(item.url)
-                      setImageR2Key(item.r2_key)
-                      setShowPhotoPicker(false)
-                      setSelectedProductId(null)
+                      setImageUrl(item.url);
+                      setImageR2Key(item.r2_key);
+                      setShowPhotoPicker(false);
+                      setSelectedProductId(null);
                     }}
                     className="flex-1 aspect-square rounded-2xl overflow-hidden border-2 border-transparent"
                   >
-                    <Image source={{ uri: item.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <Image
+                      source={{ uri: item.url }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="cover"
+                    />
                   </AnimatedPressable>
                 )}
               />
@@ -232,26 +304,22 @@ export default function NewCategoryScreen() {
         </Modal>
 
         <View>
-          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
-            Category Name
-          </Text>
+          <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">Category Name</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g. Wedding Sarees"
             placeholderTextColor="#928EB2"
-            className="bg-white px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+            className="bg-white px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
             maxLength={100}
           />
         </View>
 
         <View>
-          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
-            Suggestions
-          </Text>
+          <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">Suggestions</Text>
           <View className="flex-row flex-wrap gap-2">
             {PRODUCT_CATEGORIES.map((cat) => {
-              const selected = name.trim() === cat
+              const selected = name.trim() === cat;
               return (
                 <AnimatedPressable
                   key={cat}
@@ -259,20 +327,25 @@ export default function NewCategoryScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
+                    selected
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                      : 'bg-white border-lavender-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                  <Text
+                    className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}
+                  >
                     {cat}
                   </Text>
                 </AnimatedPressable>
-              )
+              );
             })}
           </View>
         </View>
 
-        <GradientButton variant="web"
+        <GradientButton
+          variant="web"
           label="Create Category"
           disabled={!canCreate}
           loading={create.isPending}
@@ -280,5 +353,5 @@ export default function NewCategoryScreen() {
         />
       </KeyboardScreen>
     </>
-  )
+  );
 }

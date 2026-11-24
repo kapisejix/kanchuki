@@ -82,7 +82,7 @@ export default function GstScreen() {
             </AnimatedPressable>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               GST Filing Ledger
             </Text>
@@ -98,7 +98,7 @@ export default function GstScreen() {
             </AnimatedPressable>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-sm font-bold text-spaceCadet-900 px-2 text-center"
+              className="text-sm text-spaceCadet-900 px-2 text-center"
             >
               {selectedYear}
             </Text>
@@ -127,11 +127,11 @@ export default function GstScreen() {
                 key={t.key}
                 onPress={() => setTab(t.key)}
                 className={`flex-1 items-center py-2.5 rounded-2xl border ${
-                  active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 <Text
-                  className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                 >
                   {t.label}
                 </Text>
@@ -152,11 +152,11 @@ export default function GstScreen() {
             <AnimatedPressable
               onPress={() => { setSelectedMonth(undefined); setTxPage(1) }}
               className={`rounded-full px-4 py-1.5 border ${
-                !selectedMonth ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                !selectedMonth ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
               }`}
             >
               <Text
-                className={`text-xs font-bold ${!selectedMonth ? 'text-white' : 'text-spaceCadet-900'}`}
+                className={`text-xs font-semibold ${!selectedMonth ? 'text-white' : 'text-spaceCadet-900'}`}
               >
                 Full Year
               </Text>
@@ -168,11 +168,11 @@ export default function GstScreen() {
                   key={i}
                   onPress={() => { setSelectedMonth(i + 1); setTxPage(1) }}
                   className={`rounded-full px-4 py-1.5 border ${
-                    active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                    active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
                   }`}
                 >
                   <Text
-                    className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                    className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                   >
                     {m}
                   </Text>
@@ -216,7 +216,7 @@ function SummaryTab({
         <StatCard
           label="Total Sales"
           value={inr(summary.total_sales)}
-          icon={<TrendingUp size={16} color="#BB3F95" />}
+          icon={<TrendingUp size={16} color="#6B4773" />}
           flex
         />
         <StatCard
@@ -237,16 +237,16 @@ function SummaryTab({
         <StatCard
           label="Total Orders"
           value={String(summary.total_orders)}
-          icon={<FileText size={16} color="#BB3F95" />}
+          icon={<FileText size={16} color="#6B4773" />}
           flex
         />
       </View>
 
       {/* GST Breakdown */}
-      <View className="bg-white rounded-3xl border border-lavender-200 p-5 mb-3.5 shadow-sm">
+      <View className="bg-white rounded-2xl border border-lavender-200 p-5 mb-3.5">
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900 mb-3.5"
+          className="text-base text-spaceCadet-900 mb-3.5"
         >
           GST Breakdown (Estimated)
         </Text>
@@ -256,10 +256,10 @@ function SummaryTab({
           <BreakdownRow label="IGST (18%)" value={inr(summary.igst)} />
           <View className="border-t border-lavender-200 pt-3">
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-bold text-spaceCadet-900">Total GST Liability</Text>
+              <Text className="text-sm font-semibold text-spaceCadet-900">Total GST Liability</Text>
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-base font-bold text-fuchsia-700"
+                className="text-base text-fuchsia-700"
               >
                 {inr(summary.total_gst)}
               </Text>
@@ -269,10 +269,10 @@ function SummaryTab({
       </View>
 
       {/* Invoice status */}
-      <View className="bg-white rounded-3xl border border-lavender-200 p-5 shadow-sm">
+      <View className="bg-white rounded-2xl border border-lavender-200 p-5">
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900 mb-3.5"
+          className="text-base text-spaceCadet-900 mb-3.5"
         >
           Invoice Fulfillment Status
         </Text>
@@ -281,21 +281,21 @@ function SummaryTab({
             <CheckCircle size={20} color="#16a34a" />
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-emerald-700 mt-1"
+              className="text-xl text-emerald-700 mt-1"
             >
               {summary.invoiced_orders}
             </Text>
-            <Text className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">Invoiced</Text>
+            <Text className="text-[11px] text-emerald-600 font-semibold mt-0.5">Invoiced</Text>
           </View>
           <View className="flex-1 items-center py-3.5 bg-amber-50 rounded-2xl border border-amber-200">
             <Clock size={20} color="#d97706" />
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-amber-700 mt-1"
+              className="text-xl text-amber-700 mt-1"
             >
               {summary.pending_invoices}
             </Text>
-            <Text className="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5">Pending</Text>
+            <Text className="text-[11px] text-amber-600 font-semibold mt-0.5">Pending</Text>
           </View>
         </View>
       </View>
@@ -316,7 +316,7 @@ function MonthlyTab({
     <View className="px-4 pt-2">
       <Text
         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-        className="text-base font-bold text-spaceCadet-900 mb-3.5"
+        className="text-base text-spaceCadet-900 mb-3.5"
       >
         Monthly GST Breakdown — {monthly.year}
       </Text>
@@ -325,12 +325,12 @@ function MonthlyTab({
         {monthly.months.map((m) => (
           <View
             key={m.month}
-            className="bg-white rounded-3xl border border-lavender-200 p-4 shadow-sm"
+            className="bg-white rounded-2xl border border-lavender-200 p-4"
           >
             <View className="flex-row items-center justify-between mb-2">
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-base font-bold text-spaceCadet-900"
+                className="text-base text-spaceCadet-900"
               >
                 {m.month_name}
               </Text>
@@ -353,7 +353,7 @@ function MonthlyTab({
               </Text>
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-sm font-bold text-fuchsia-700"
+                className="text-sm text-fuchsia-700"
               >
                 GST: {inr(m.gst)}
               </Text>
@@ -381,7 +381,7 @@ function TransactionsTab({
       <View className="flex-row items-center justify-between mb-3.5">
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900"
+          className="text-base text-spaceCadet-900"
         >
           Invoices ({transactions.pagination.total})
         </Text>
@@ -412,14 +412,14 @@ function TransactionsTab({
               page <= 1 ? 'bg-lavender-50 border-lavender-200 opacity-50' : 'bg-white border-lavender-200'
             }`}
           >
-            <Text className="text-xs font-bold text-spaceCadet-900">← Prev</Text>
+            <Text className="text-xs font-semibold text-spaceCadet-900">← Prev</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => onPageChange(Math.min(transactions.pagination.pages, page + 1))}
             disabled={page >= transactions.pagination.pages}
             className="rounded-2xl px-5 py-2.5 bg-spaceCadet-900 shadow-sm"
           >
-            <Text className="text-xs font-bold text-white">Next →</Text>
+            <Text className="text-xs font-semibold text-white">Next →</Text>
           </AnimatedPressable>
         </View>
       )}
@@ -438,37 +438,37 @@ function TxRow({
   const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
   return (
-    <View className="bg-white rounded-3xl border border-lavender-200 p-4 shadow-sm">
+    <View className="bg-white rounded-2xl border border-lavender-200 p-4">
       <View className="flex-row items-center justify-between mb-1.5">
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900"
+          className="text-base text-spaceCadet-900"
           numberOfLines={1}
         >
           Kanchuki subscription
         </Text>
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900"
+          className="text-base text-spaceCadet-900"
         >
           {inr(tx.total)}
         </Text>
       </View>
       <View className="flex-row items-center gap-2">
-        <Text className="text-xs text-heliotrope-400 font-medium">{dateStr}</Text>
+        <Text className="text-xs text-heliotrope-500 font-medium">{dateStr}</Text>
         <Text className="text-xs text-lavender-300">·</Text>
-        <Text className="text-xs text-fuchsia-700 font-bold">GST: {inr(tx.gst)}</Text>
+        <Text className="text-xs text-fuchsia-700 font-semibold">GST: {inr(tx.gst)}</Text>
         <View className="flex-1" />
         {tx.has_invoice ? (
           <View className="flex-row items-center gap-1 bg-emerald-50 rounded-full px-2.5 py-0.5 border border-emerald-200">
             <CheckCircle size={11} color="#16a34a" />
-            <Text className="text-[10px] font-bold text-emerald-700">
+            <Text className="text-[11px] font-semibold text-emerald-700">
               {tx.invoice_number}
             </Text>
           </View>
         ) : (
           <View className="bg-amber-50 rounded-full px-2.5 py-0.5 border border-amber-200">
-            <Text className="text-[10px] font-bold text-amber-700">No invoice</Text>
+            <Text className="text-[11px] font-semibold text-amber-700">No invoice</Text>
           </View>
         )}
       </View>
@@ -491,18 +491,18 @@ function StatCard({
 }) {
   return (
     <View
-      className="bg-white rounded-3xl border border-lavender-200 p-4 shadow-sm"
+      className="bg-white rounded-2xl border border-lavender-200 p-4"
       style={flex ? { flex: 1 } : undefined}
     >
       <View className="flex-row items-center gap-2 mb-2">
-        <View className="w-8 h-8 rounded-xl bg-lavender-100 items-center justify-center border border-lavender-200">
+        <View className="w-6 items-center justify-center">
           {icon}
         </View>
-        <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">{label}</Text>
+        <Text className="text-[11px] font-semibold text-heliotrope-500">{label}</Text>
       </View>
       <Text
         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-        className="text-xl font-bold text-spaceCadet-900"
+        className="text-xl text-spaceCadet-900"
         numberOfLines={1}
       >
         {value}
@@ -521,7 +521,7 @@ function BreakdownRow({
   return (
     <View className="flex-row items-center justify-between">
       <Text className="text-xs text-heliotrope-500 font-medium">{label}</Text>
-      <Text className="text-xs font-bold text-spaceCadet-900">{value}</Text>
+      <Text className="text-xs font-semibold text-spaceCadet-900">{value}</Text>
     </View>
   )
 }

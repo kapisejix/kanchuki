@@ -1,29 +1,44 @@
-import { useState, useEffect } from 'react'
-import { formatPriceRange } from '@kanchuki/shared'
-import { View, Text, FlatList, TextInput, ActivityIndicator, Alert, Image, Modal } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useScreenInsets } from '../../src/lib/safe-area'
-import { KeyboardScreen } from '../../src/components/KeyboardScreen'
-import * as ImagePicker from 'expo-image-picker'
-import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft, FolderOpen } from 'lucide-react-native'
-import ProductCard from '../../src/components/ProductCard'
-import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/Skeleton'
-import { useGridColumns } from '../../src/hooks/useIsTablet'
-import { productApi, categoryApi, prepareImageForUpload, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
+import { formatPriceRange } from '@kanchuki/shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ChevronLeft, FolderOpen, ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { KeyboardScreen } from '../../src/components/KeyboardScreen';
+import ProductCard from '../../src/components/ProductCard';
+import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/Skeleton';
+import { useGridColumns } from '../../src/hooks/useIsTablet';
+import {
+  type ProductCategory,
+  categoryApi,
+  prepareImageForUpload,
+  productApi,
+  uploadImageToR2,
+} from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useScreenInsets } from '../../src/lib/safe-area';
 
 type Product = {
-  id: string
-  category: string | null
-  primary_color: string | null
-  price_min: number | null
-  price_max: number | null
-  status: string
-  primary_photo_url: string | null
-}
+  id: string;
+  category: string | null;
+  primary_color: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  status: string;
+  primary_photo_url: string | null;
+};
 
 function EditCategoryModal({
   visible,
@@ -31,24 +46,24 @@ function EditCategoryModal({
   onClose,
   onSaved,
 }: {
-  visible: boolean
-  category: ProductCategory | null
-  onClose: () => void
-  onSaved: () => void
+  visible: boolean;
+  category: ProductCategory | null;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
-  const [name, setName] = useState('')
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [imageR2Key, setImageR2Key] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [name, setName] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageR2Key, setImageR2Key] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (category) {
-      setName(category.name)
-      setImageUrl(category.image_url)
-      setImageR2Key(null)
+      setName(category.name);
+      setImageUrl(category.image_url);
+      setImageR2Key(null);
     }
-  }, [category, visible])
+  }, [category, visible]);
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -56,54 +71,60 @@ function EditCategoryModal({
       quality: 0.85,
       allowsEditing: true,
       aspect: [1, 1],
-    })
-    if (result.canceled || !result.assets[0]) return
+    });
+    if (result.canceled || !result.assets[0]) return;
 
-    setUploading(true)
+    setUploading(true);
     try {
-      const uri = result.assets[0].uri
-      const prep = await prepareImageForUpload(uri, 'image/jpeg')
-      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', prep.size)
-      const info = uploadResult.data
-      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
-      setImageUrl(info.public_url)
-      setImageR2Key(info.r2_key)
+      const uri = result.assets[0].uri;
+      const prep = await prepareImageForUpload(uri, 'image/jpeg');
+      const uploadResult = await categoryApi.getUploadUrl('image/jpeg', prep.size);
+      const info = uploadResult.data;
+      await uploadImageToR2(prep.uri, info.upload_url, 'image/jpeg', undefined, undefined, {
+        compress: false,
+      });
+      setImageUrl(info.public_url);
+      setImageR2Key(info.r2_key);
     } catch (err) {
-      showError(err, 'Failed to upload image')
+      showError(err, 'Failed to upload image');
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const handleSave = async () => {
-    if (!category || name.trim().length === 0) return
-    setSaving(true)
+    if (!category || name.trim().length === 0) return;
+    setSaving(true);
     try {
       await categoryApi.update(category.id, {
         name: name.trim(),
         ...(imageR2Key ? { image_url: imageUrl, image_r2_key: imageR2Key } : {}),
-      })
-      onSaved()
-      onClose()
+      });
+      onSaved();
+      onClose();
     } catch (err) {
-      showError(err, 'Failed to update category')
+      showError(err, 'Failed to update category');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-lg">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4 border border-lavender-200">
           <View className="flex-row items-center justify-between">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-lg font-bold text-spaceCadet-900"
+              className="text-lg text-spaceCadet-900"
             >
               Edit Category
             </Text>
-            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable
+              onPress={onClose}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
               <X size={20} color="#6B4773" />
             </AnimatedPressable>
           </View>
@@ -117,32 +138,43 @@ function EditCategoryModal({
               {uploading ? (
                 <ActivityIndicator color="#BB3F95" />
               ) : imageUrl ? (
-                <Image source={{ uri: imageUrl }} style={{ width: 96, height: 96 }} resizeMode="cover" />
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={{ width: 96, height: 96 }}
+                  resizeMode="cover"
+                />
               ) : (
                 <ImagePlus size={22} color="#6B4773" />
               )}
             </AnimatedPressable>
-            <Text className="text-[10px] text-heliotrope-500 mt-1.5 font-medium">Tap to change photo</Text>
+            <Text className="text-[11px] text-heliotrope-500 mt-1.5 font-medium">
+              Tap to change photo
+            </Text>
           </View>
 
           <View>
-            <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
-              Category Name
-            </Text>
+            <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">Category Name</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
               maxLength={100}
             />
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <AnimatedPressable onPress={onClose} disabled={saving} className="flex-1 bg-lavender-100 py-3.5 rounded-2xl items-center border border-lavender-200">
-              <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Cancel</Text>
+            <AnimatedPressable
+              onPress={onClose}
+              disabled={saving}
+              className="flex-1 bg-lavender-100 py-3.5 rounded-2xl items-center border border-lavender-200"
+            >
+              <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">
+                Cancel
+              </Text>
             </AnimatedPressable>
             <View className="flex-1">
-              <GradientButton variant="web"
+              <GradientButton
+                variant="web"
                 label="Save Changes"
                 onPress={() => void handleSave()}
                 loading={saving}
@@ -153,27 +185,27 @@ function EditCategoryModal({
         </View>
       </KeyboardScreen>
     </Modal>
-  )
+  );
 }
 
 export default function CategoryDetailScreen() {
-  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets()
-  const { id } = useLocalSearchParams<{ id: string }>()
-  const columns = useGridColumns()
-  const queryClient = useQueryClient()
-  const [editModalOpen, setEditModalOpen] = useState(false)
+  const { headerPaddingTop, screenPaddingBottom } = useScreenInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const columns = useGridColumns();
+  const queryClient = useQueryClient();
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const { data: categoryData, isLoading: categoryLoading } = useQuery({
     queryKey: ['categories', id],
     queryFn: () => categoryApi.get(id),
-  })
-  const category = categoryData?.data
+  });
+  const category = categoryData?.data;
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['products', 'by-category', id],
     queryFn: () => productApi.list({ category_id: id, limit: 50 }),
-  })
-  const products = (productsData?.data as unknown as Product[]) ?? []
+  });
+  const products = (productsData?.data as unknown as Product[]) ?? [];
 
   const handleDelete = () => {
     Alert.alert('Delete Category', `Are you sure you want to delete "${category?.name}"?`, [
@@ -183,19 +215,19 @@ export default function CategoryDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await categoryApi.delete(id)
-            queryClient.invalidateQueries({ queryKey: ['categories'] })
-            router.back()
+            await categoryApi.delete(id);
+            queryClient.invalidateQueries({ queryKey: ['categories'] });
+            router.back();
           } catch (err) {
-            showError(err, 'Failed to delete category')
+            showError(err, 'Failed to delete category');
           }
         },
       },
-    ])
-  }
+    ]);
+  };
 
   if (categoryLoading) {
-    return <DetailScreenSkeleton />
+    return <DetailScreenSkeleton />;
   }
 
   if (!category) {
@@ -203,15 +235,18 @@ export default function CategoryDetailScreen() {
       <View className="flex-1 items-center justify-center p-6 bg-[#F8F7FC]">
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-lg font-bold text-spaceCadet-900"
+          className="text-lg text-spaceCadet-900"
         >
           Category not found
         </Text>
-        <AnimatedPressable onPress={() => router.back()} className="mt-4 px-6 py-2.5 rounded-full bg-spaceCadet-900">
-          <Text className="text-white font-bold text-xs">Go Back</Text>
+        <AnimatedPressable
+          onPress={() => router.back()}
+          className="mt-4 px-6 py-2.5 rounded-full bg-spaceCadet-900"
+        >
+          <Text className="text-white font-semibold text-xs">Go Back</Text>
         </AnimatedPressable>
       </View>
-    )
+    );
   }
 
   return (
@@ -233,7 +268,7 @@ export default function CategoryDetailScreen() {
 
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-lg font-bold text-spaceCadet-900 truncate max-w-[200px]"
+          className="text-lg text-spaceCadet-900 truncate max-w-[200px]"
           numberOfLines={1}
         >
           {category.name}
@@ -261,7 +296,11 @@ export default function CategoryDetailScreen() {
       <View className="bg-white px-5 py-3.5 border-b border-lavender-200 flex-row items-center gap-3.5">
         <View className="w-14 h-14 rounded-2xl bg-lavender-100 border border-lavender-200 overflow-hidden items-center justify-center">
           {category.image_url ? (
-            <Image source={{ uri: category.image_url }} style={{ width: 56, height: 56 }} resizeMode="cover" />
+            <Image
+              source={{ uri: category.image_url }}
+              style={{ width: 56, height: 56 }}
+              resizeMode="cover"
+            />
           ) : (
             <FolderOpen size={22} color="#928EB2" />
           )}
@@ -269,7 +308,7 @@ export default function CategoryDetailScreen() {
         <View className="flex-1">
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-base font-bold text-spaceCadet-900"
+            className="text-base text-spaceCadet-900"
           >
             {category.name}
           </Text>
@@ -288,7 +327,12 @@ export default function CategoryDetailScreen() {
           keyExtractor={(item) => item.id}
           numColumns={columns}
           columnWrapperStyle={{ gap: 14 }}
-          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1, paddingBottom: screenPaddingBottom + 72 }}
+          contentContainerStyle={{
+            padding: 16,
+            gap: 14,
+            flexGrow: 1,
+            paddingBottom: screenPaddingBottom + 72,
+          }}
           renderItem={({ item }) => (
             <ProductCard
               imageUrl={item.primary_photo_url}
@@ -296,11 +340,14 @@ export default function CategoryDetailScreen() {
               statusBadge={item.status !== 'AVAILABLE' ? item.status : null}
               footer={
                 <View className="gap-0.5">
-                  <Text className="text-xs font-bold text-spaceCadet-900 truncate" numberOfLines={1}>
+                  <Text
+                    className="text-xs font-semibold text-spaceCadet-900 truncate"
+                    numberOfLines={1}
+                  >
                     {item.category ?? 'Product'}
                     {item.primary_color ? ` · ${item.primary_color}` : ''}
                   </Text>
-                  <Text className="text-xs font-extrabold text-spaceCadet-900 mt-0.5">
+                  <Text className="text-xs font-semibold text-spaceCadet-900 mt-0.5">
                     {formatPriceRange(item.price_min, item.price_max)}
                   </Text>
                 </View>
@@ -309,7 +356,9 @@ export default function CategoryDetailScreen() {
           )}
           ListEmptyComponent={
             <View className="items-center py-16 px-6">
-              <Text className="text-heliotrope-500 text-sm font-medium">No products in this category yet</Text>
+              <Text className="text-heliotrope-500 text-sm font-medium">
+                No products in this category yet
+              </Text>
             </View>
           }
         />
@@ -322,13 +371,15 @@ export default function CategoryDetailScreen() {
         style={{
           shadowColor: '#231F48',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.35,
+          shadowOpacity: 0.18,
           shadowRadius: 10,
           elevation: 6,
         }}
       >
         <Plus size={18} color="white" strokeWidth={2.5} />
-        <Text className="text-white text-xs font-extrabold uppercase tracking-wider">Add Products</Text>
+        <Text className="text-white text-xs font-extrabold uppercase tracking-wider">
+          Add Products
+        </Text>
       </AnimatedPressable>
 
       <EditCategoryModal
@@ -336,9 +387,9 @@ export default function CategoryDetailScreen() {
         category={category}
         onClose={() => setEditModalOpen(false)}
         onSaved={() => {
-          void queryClient.invalidateQueries({ queryKey: ['categories'] })
+          void queryClient.invalidateQueries({ queryKey: ['categories'] });
         }}
       />
     </View>
-  )
+  );
 }

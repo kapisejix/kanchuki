@@ -124,7 +124,7 @@ export default function RatingsScreen() {
           <View className="flex-1">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-xl font-bold text-spaceCadet-900"
+              className="text-xl text-spaceCadet-900"
             >
               Ratings & Reputation
             </Text>
@@ -150,7 +150,7 @@ export default function RatingsScreen() {
                 key={key}
                 onPress={() => setTab(key)}
                 className={`flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-2xl border ${
-                  active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  active ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 <Icon
@@ -158,7 +158,7 @@ export default function RatingsScreen() {
                   color={active ? '#FFFFFF' : '#928EB2'}
                 />
                 <Text
-                  className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  className={`text-xs font-semibold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                 >
                   {label}
                 </Text>
@@ -170,7 +170,7 @@ export default function RatingsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#BB3F95" />
+          <ActivityIndicator color="#6B4773" />
         </View>
       ) : (
         <ScrollView
@@ -221,9 +221,9 @@ function SummaryTab({
           onPress={() => router.push('/growth/integrations/google-business' as never)}
           accessibilityRole="button"
           accessibilityLabel="Bring your Google reviews into Kanchuki"
-          className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
+          className="bg-white rounded-2xl p-4 border border-lavender-200"
         >
-          <Text className="text-sm font-bold text-spaceCadet-900">
+          <Text className="text-sm font-semibold text-spaceCadet-900">
             {gbpState === 'REQUESTED'
               ? 'Google reviews: one step left'
               : gbpState === 'NEEDS_ACCESS'
@@ -234,10 +234,10 @@ function SummaryTab({
         </AnimatedPressable>
       )}
       {/* Store rating overview */}
-      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+      <View className="bg-white rounded-2xl p-5 border border-lavender-200">
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-base font-bold text-spaceCadet-900 mb-3"
+          className="text-base text-spaceCadet-900 mb-3"
         >
           Overall Boutique Rating
         </Text>
@@ -245,7 +245,7 @@ function SummaryTab({
           <View className="items-center">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-4xl font-bold text-spaceCadet-900"
+              className="text-4xl text-spaceCadet-900"
             >
               {summary.store.avg_rating.toFixed(1)}
             </Text>
@@ -266,8 +266,8 @@ function SummaryTab({
                   : 0
                 return (
                   <View key={star} className="flex-row items-center gap-2">
-                    <Text className="text-xs text-heliotrope-500 font-bold w-3">{star}</Text>
-                    <Star size={11} color="#BB3F95" fill="#BB3F95" />
+                    <Text className="text-xs text-heliotrope-500 font-semibold w-3">{star}</Text>
+                    <Star size={11} color="#6B4773" fill="#BB3F95" />
                     <View className="flex-1 h-2 bg-lavender-100 rounded-full overflow-hidden">
                       <View
                         className="h-full rounded-full bg-fuchsia-600"
@@ -276,7 +276,7 @@ function SummaryTab({
                         }}
                       />
                     </View>
-                    <Text className="text-xs text-heliotrope-400 font-medium w-6 text-right">{count}</Text>
+                    <Text className="text-xs text-heliotrope-500 font-medium w-6 text-right">{count}</Text>
                   </View>
                 )
               })}
@@ -292,23 +292,22 @@ function SummaryTab({
           }}
           accessibilityRole="button"
           accessibilityLabel="Open your Google review link"
-          className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm flex-row items-center gap-3.5"
+          className="bg-white rounded-2xl p-4 border border-lavender-200 flex-row items-center gap-3.5"
         >
-          <View
-            className="w-11 h-11 rounded-2xl items-center justify-center bg-fuchsia-500/10 border border-fuchsia-500/20"
+          <View className="w-6 items-center justify-center"
           >
-            <ExternalLink size={20} color="#BB3F95" />
+            <ExternalLink size={20} color="#6B4773" />
           </View>
           <View className="flex-1">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-sm font-bold text-spaceCadet-900"
+              className="text-sm text-spaceCadet-900"
             >
               Google & JustDial Review Link
             </Text>
             <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">Share with happy customers via WhatsApp</Text>
           </View>
-          <ChevronLeft size={16} color="#928EB2" style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronLeft size={16} color="#6B4773" style={{ transform: [{ rotate: '180deg' }] }} />
         </AnimatedPressable>
       )}
 
@@ -323,25 +322,24 @@ function SummaryTab({
 
       {/* Top reviewed products */}
       {summary.top_products.length > 0 && (
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200">
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-base font-bold text-spaceCadet-900 mb-3.5"
+            className="text-base text-spaceCadet-900 mb-3.5"
           >
             Top Rated Designs
           </Text>
           <View className="gap-3">
             {summary.top_products.map((p: any) => (
               <View key={p.id} className="flex-row items-center gap-3">
-                <View
-                  className="w-10 h-10 rounded-xl bg-lavender-100 border border-lavender-200 items-center justify-center"
+                <View className="w-6 items-center justify-center"
                 >
-                  <ShoppingBag size={18} color="#BB3F95" />
+                  <ShoppingBag size={18} color="#6B4773" />
                 </View>
                 <View className="flex-1">
                   <Text
                     style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                    className="text-sm font-bold text-spaceCadet-900"
+                    className="text-sm text-spaceCadet-900"
                     numberOfLines={1}
                   >
                     {p.name ?? 'Untitled Design'}
@@ -361,10 +359,10 @@ function SummaryTab({
 
       {/* Recent reviews */}
       {summary.recent_reviews.length > 0 && (
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View className="bg-white rounded-2xl p-5 border border-lavender-200">
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-base font-bold text-spaceCadet-900 mb-3.5"
+            className="text-base text-spaceCadet-900 mb-3.5"
           >
             Recent Customer Feedback
           </Text>
@@ -373,18 +371,18 @@ function SummaryTab({
               <View key={r.id} className="border-b border-lavender-100 pb-3 last:border-b-0">
                 <View className="flex-row items-center gap-2 mb-1.5">
                   <StarRating rating={r.rating} size={12} />
-                  <Text className="text-xs text-heliotrope-400 font-medium">{timeAgo(r.created_at)}</Text>
+                  <Text className="text-xs text-heliotrope-500 font-medium">{timeAgo(r.created_at)}</Text>
                   <View
                     className="rounded-full px-2.5 py-0.5 ml-auto bg-fuchsia-500/10 border border-fuchsia-500/20"
                   >
                     <Text
-                      className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-700"
+                      className="text-[11px] font-semibold text-fuchsia-700"
                     >
                       {r.type === 'product' ? 'Design' : 'Boutique'}
                     </Text>
                   </View>
                 </View>
-                <Text className="text-xs font-bold text-spaceCadet-900">
+                <Text className="text-xs font-semibold text-spaceCadet-900">
                   {r.display_name ?? r.customer?.name ?? 'Anonymous'}
                   {r.type === 'product' && r.product ? ` on ${r.product.name}` : ''}
                 </Text>
@@ -411,13 +409,13 @@ function ProductReviewsTab({
     return (
       <View className="items-center py-12">
         <View
-          className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
+          className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
         >
-          <MessageSquare size={28} color="#BB3F95" />
+          <MessageSquare size={28} color="#6B4773" />
         </View>
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-lg font-bold text-spaceCadet-900"
+          className="text-lg text-spaceCadet-900"
         >
           No design reviews yet
         </Text>
@@ -431,10 +429,10 @@ function ProductReviewsTab({
   return (
     <View className="gap-3">
       {reviews.map((r) => (
-        <View key={r.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View key={r.id} className="bg-white rounded-2xl p-5 border border-lavender-200">
           <View className="flex-row items-center gap-2 mb-2">
             <StarRating rating={r.rating} size={14} />
-            <Text className="text-xs text-heliotrope-400 font-medium ml-auto">{timeAgo(r.created_at)}</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium ml-auto">{timeAgo(r.created_at)}</Text>
             {r.is_flagged && (
               <View className="bg-rose-50 rounded-full px-2 py-0.5 border border-rose-200">
                 <Flag size={10} color="#e11d48" />
@@ -443,7 +441,7 @@ function ProductReviewsTab({
           </View>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-base font-bold text-spaceCadet-900"
+            className="text-base text-spaceCadet-900"
             numberOfLines={1}
           >
             {r.product?.name ?? 'Collection Item'}
@@ -471,13 +469,13 @@ function StoreReviewsTab({
     return (
       <View className="items-center py-12">
         <View
-          className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
+          className="w-16 h-16 rounded-2xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
         >
-          <Store size={28} color="#BB3F95" />
+          <Store size={28} color="#6B4773" />
         </View>
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-lg font-bold text-spaceCadet-900"
+          className="text-lg text-spaceCadet-900"
         >
           No boutique reviews yet
         </Text>
@@ -491,17 +489,17 @@ function StoreReviewsTab({
   return (
     <View className="gap-3">
       {reviews.map((r) => (
-        <View key={r.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View key={r.id} className="bg-white rounded-2xl p-5 border border-lavender-200">
           <View className="flex-row items-center gap-2 mb-2">
             <StarRating rating={r.rating} size={14} />
-            <Text className="text-xs text-heliotrope-400 font-medium ml-auto">{timeAgo(r.created_at)}</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium ml-auto">{timeAgo(r.created_at)}</Text>
             {r.is_flagged && (
               <View className="bg-rose-50 rounded-full px-2 py-0.5 border border-rose-200">
                 <Flag size={10} color="#e11d48" />
               </View>
             )}
           </View>
-          <Text className="text-xs font-bold text-spaceCadet-900">
+          <Text className="text-xs font-semibold text-spaceCadet-900">
             by {r.display_name ?? r.customer?.name ?? 'Anonymous'}
           </Text>
           {r.comment && (

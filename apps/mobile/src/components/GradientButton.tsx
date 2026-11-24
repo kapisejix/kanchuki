@@ -101,14 +101,16 @@ export function GradientButton({
           minHeight: isWeb ? 44 : 48,
         }}
       >
+        {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
         {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 }}>
+          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color="#FFFFFF" size="small" />
           </View>
-        ) : (
+        ) : null}
           <>
             <View
               style={{
+                opacity: loading ? 0 : 1,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: isWeb ? 'center' : undefined,
@@ -138,6 +140,7 @@ export function GradientButton({
             {badgeContent ? (
               <View
                 style={{
+                  opacity: loading ? 0 : 1,
                   width: 32,
                   height: 32,
                   borderRadius: 12,
@@ -156,7 +159,6 @@ export function GradientButton({
               </View>
             ) : null}
           </>
-        )}
       </LinearGradient>
     </AnimatedPressable>
   )

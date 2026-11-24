@@ -25,7 +25,7 @@ const KIND_META: Record<
   },
   TOP_PERFORMER: {
     label: 'Top performer',
-    icon: <TrendingUp size={16} color="#BB3F95" />,
+    icon: <TrendingUp size={16} color="#6B4773" />,
     badge: 'bg-fuchsia-500/10',
     chipBg: 'bg-fuchsia-500/10',
   },
@@ -40,18 +40,18 @@ const KIND_META: Record<
 function AlertCard({ alert }: { alert: InventoryAlert }) {
   const meta = KIND_META[alert.kind]
   return (
-    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+    <View className="bg-white rounded-2xl p-5 border border-lavender-200">
       <View className="flex-row items-center gap-2 mb-2">
         <View className={`w-8 h-8 rounded-xl items-center justify-center ${meta.badge}`}>
           {meta.icon}
         </View>
-        <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">
+        <Text className="text-[11px] font-semibold text-heliotrope-500">
           {meta.label}
         </Text>
       </View>
       <Text
         style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-        className="text-base font-bold text-spaceCadet-900"
+        className="text-base text-spaceCadet-900"
         numberOfLines={1}
       >
         {alert.product_name ?? alert.sku ?? 'Product'}
@@ -60,26 +60,26 @@ function AlertCard({ alert }: { alert: InventoryAlert }) {
       <View className="flex-row flex-wrap gap-2 mt-3">
         {alert.views_30d > 0 && (
           <View className={`rounded-full px-3 py-1 ${meta.chipBg}`}>
-            <Text className="text-[10px] font-bold text-spaceCadet-900">{alert.views_30d} views</Text>
+            <Text className="text-[11px] font-semibold text-spaceCadet-900">{alert.views_30d} views</Text>
           </View>
         )}
         {alert.enquiries_30d > 0 && (
           <View className="rounded-full px-3 py-1 bg-lavender-100 border border-lavender-200">
-            <Text className="text-[10px] font-bold text-fuchsia-700">
+            <Text className="text-[11px] font-semibold text-fuchsia-700">
               {alert.enquiries_30d} enquiries
             </Text>
           </View>
         )}
         {alert.sales_30d > 0 && (
           <View className="rounded-full px-3 py-1 bg-emerald-50 border border-emerald-200">
-            <Text className="text-[10px] font-bold text-emerald-700">
+            <Text className="text-[11px] font-semibold text-emerald-700">
               {alert.sales_30d} sold
             </Text>
           </View>
         )}
         {alert.days_since_interaction != null && (
           <View className="rounded-full px-3 py-1 bg-lavender-50 border border-lavender-200">
-            <Text className="text-[10px] font-bold text-heliotrope-500">
+            <Text className="text-[11px] font-semibold text-heliotrope-500">
               {alert.days_since_interaction}d quiet
             </Text>
           </View>
@@ -125,7 +125,7 @@ export default function InventoryScreen() {
           </AnimatedPressable>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-xl font-bold text-spaceCadet-900"
+            className="text-xl text-spaceCadet-900"
           >
             Inventory Intelligence
           </Text>
@@ -142,65 +142,64 @@ export default function InventoryScreen() {
           colors={['#231F48', '#560A39']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="rounded-3xl p-5 mb-5 shadow-sm"
+          className="rounded-2xl p-5 mb-5"
         >
           <View className="flex-row items-center gap-2 mb-1">
-            <View className="w-2 h-2 rounded-full bg-fuchsia-400" />
-            <Text className="text-[10px] text-fuchsia-300 font-bold uppercase tracking-wider">
-              Signal-Based Insights
+            <Text className="text-[11px] text-lavender-200 font-medium">
+              Inventory signals
             </Text>
           </View>
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-white text-lg font-bold mt-1"
+            className="text-white text-lg mt-1"
           >
-            {alerts.length} {alerts.length === 1 ? 'Design' : 'Designs'} Worth Acting On
+            {alerts.length} {alerts.length === 1 ? 'design' : 'designs'} worth acting on
           </Text>
           <View className="flex-row gap-2 mt-4">
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-xl font-bold text-white"
+                className="text-xl text-white"
               >
                 {counts.high_velocity + counts.top_performer}
               </Text>
-              <Text className="text-[10px] font-bold text-white/70 uppercase tracking-wider mt-0.5">selling</Text>
+              <Text className="text-[11px] font-semibold text-white/70 mt-0.5">selling</Text>
             </View>
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-xl font-bold text-white"
+                className="text-xl text-white"
               >
                 {counts.dead_stock}
               </Text>
-              <Text className="text-[10px] font-bold text-white/70 uppercase tracking-wider mt-0.5">dead stock</Text>
+              <Text className="text-[11px] font-semibold text-white/70 mt-0.5">dead stock</Text>
             </View>
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
                 style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-xl font-bold text-white"
+                className="text-xl text-white"
               >
                 {counts.unlisted}
               </Text>
-              <Text className="text-[10px] font-bold text-white/70 uppercase tracking-wider mt-0.5">unlisted</Text>
+              <Text className="text-[11px] font-semibold text-white/70 mt-0.5">unlisted</Text>
             </View>
           </View>
         </LinearGradient>
 
         {isLoading ? (
-          <View className="bg-white rounded-3xl p-8 border border-lavender-200 items-center">
-            <ActivityIndicator color="#BB3F95" />
+          <View className="bg-white rounded-2xl p-8 border border-lavender-200 items-center">
+            <ActivityIndicator color="#6B4773" />
           </View>
         ) : alerts.length === 0 ? (
-          <View className="bg-white rounded-3xl p-8 border border-lavender-200 items-center">
+          <View className="bg-white rounded-2xl p-8 border border-lavender-200 items-center">
             <View
-              className="w-14 h-14 rounded-3xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200"
+              className="w-14 h-14 rounded-2xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200"
             >
-              <PackageSearch size={26} color="#BB3F95" />
+              <PackageSearch size={26} color="#6B4773" />
             </View>
             <Text
               style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-              className="text-lg font-bold text-spaceCadet-900"
+              className="text-lg text-spaceCadet-900"
             >
               All Signals Healthy
             </Text>
@@ -216,7 +215,7 @@ export default function InventoryScreen() {
                   <View key={s.key}>
                     <Text
                       style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                      className="text-base font-bold text-spaceCadet-900 px-1 mb-3"
+                      className="text-base text-spaceCadet-900 px-1 mb-3"
                     >
                       {s.title}
                     </Text>
