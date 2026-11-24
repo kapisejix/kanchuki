@@ -28,9 +28,12 @@ export function DangerButton({
       disabled={isDisabled}
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled }}
-      style={[
-        {
-          width: '100%',
+      // Red box lives on an inner View: NativeWind's Pressable wrapper drops a background set
+      // on the Pressable's function style (Disconnect rendered as white text on white).
+      style={[{ width: '100%' }, style]}
+    >
+      <View
+        style={{
           minHeight: 44,
           borderRadius: radius,
           paddingVertical: 12,
@@ -44,16 +47,14 @@ export function DangerButton({
           shadowOpacity: 0.25,
           shadowRadius: 12,
           elevation: 10,
-        },
-        style,
-      ]}
-    >
-      {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
-      {loading ? (
-        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="small" color="#FFFFFF" />
-        </View>
-      ) : null}
+        }}
+      >
+        {/* Label stays rendered (hidden) while loading so the button keeps its width; spinner overlays it. */}
+        {loading ? (
+          <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          </View>
+        ) : null}
         <Text
           style={{
             opacity: loading ? 0 : 1,
@@ -67,6 +68,7 @@ export function DangerButton({
         >
           {label}
         </Text>
+      </View>
     </AnimatedPressable>
   )
 }
