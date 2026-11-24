@@ -5,9 +5,9 @@ import { Prisma, PrismaClient } from '@prisma/client';
 // Defaults are conservative; override via env vars if Railway's Postgres needs
 // different values (e.g. behind pgbouncer).
 const POOL_CONFIG = {
-  connection_limit: Number(process.env['DB_CONNECTION_LIMIT']) || 5, // ponytail: was 10; each pooled conn costs engine memory, raise via env if P2024 appears
-  pool_timeout: Number(process.env['DB_POOL_TIMEOUT']) || 10000, // 10s
-  connect_timeout: Number(process.env['DB_CONNECT_TIMEOUT']) || 10000, // 10s
+  connection_limit: Number(process.env.DB_CONNECTION_LIMIT) || 5, // ponytail: was 10; each pooled conn costs engine memory, raise via env if P2024 appears
+  pool_timeout: Number(process.env.DB_POOL_TIMEOUT) || 10000, // 10s
+  connect_timeout: Number(process.env.DB_CONNECT_TIMEOUT) || 10000, // 10s
 };
 
 function withPoolParams(url: string): string {
@@ -116,24 +116,24 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function buildPrimaryClient(): PrismaClient {
-  const baseUrl = process.env['DATABASE_URL'];
+  const baseUrl = process.env.DATABASE_URL;
   if (!baseUrl) throw new Error('[db] DATABASE_URL is not set');
   return new PrismaClient({
     datasources: { db: { url: withPoolParams(baseUrl) } },
-    log: process.env['NODE_ENV'] === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 }
 
 export const prisma = globalForPrisma.prisma ?? buildPrimaryClient();
 
-if (process.env['NODE_ENV'] !== 'production') globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // ─── Graceful shutdown ────────────────────────────────────────────────────
 // On SIGTERM/SIGINT (Railway sends SIGTERM on deploy/stop), disconnect all
 // pools cleanly so in-flight queries can finish and connections are released.
 
 function gracefulShutdown() {
-  console.log('[db] Shutting down — disconnecting Prisma pool…');
+  console.info('[db] Shutting down — disconnecting Prisma pool…');
   void prisma.$disconnect();
   if (globalForPrisma.replicaPrisma) void globalForPrisma.replicaPrisma.$disconnect();
   if (globalForPrisma.purgePrisma) void globalForPrisma.purgePrisma.$disconnect();
@@ -159,7 +159,7 @@ if (!(globalThis as Record<string, unknown>)[shutdownKey]) {
  * never against the primary write database.
  */
 export function getReplicaPrisma(): PrismaClient {
-  const replicaUrl = process.env['DATABASE_URL_REPLICA'];
+  const replicaUrl = process.env.DATABASE_URL_REPLICA;
   if (!replicaUrl) {
     throw new Error(
       '[db] DATABASE_URL_REPLICA is not set — refusing to run admin queries against the primary database. ' +
@@ -170,7 +170,7 @@ export function getReplicaPrisma(): PrismaClient {
   if (!globalForPrisma.replicaPrisma) {
     globalForPrisma.replicaPrisma = new PrismaClient({
       datasources: { db: { url: withPoolParams(replicaUrl) } },
-      log: process.env['NODE_ENV'] === 'development' ? ['error', 'warn'] : ['error'],
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
     });
   }
 
@@ -197,7 +197,7 @@ export function getReplicaPrisma(): PrismaClient {
  * is no DELETE, so the purge would fail with permission denied.
  */
 export function getPurgePrisma(): PrismaClient {
-  const purgeUrl = process.env['PURGE_DATABASE_URL'];
+  const purgeUrl = process.env.PURGE_DATABASE_URL;
   if (!purgeUrl) {
     console.warn(
       '[db] PURGE_DATABASE_URL is not set — purge cron will run with the primary client. ' +
@@ -210,7 +210,7 @@ export function getPurgePrisma(): PrismaClient {
   if (!globalForPrisma.purgePrisma) {
     globalForPrisma.purgePrisma = new PrismaClient({
       datasources: { db: { url: withPoolParams(purgeUrl) } },
-      log: process.env['NODE_ENV'] === 'development' ? ['error', 'warn'] : ['error'],
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
     });
   }
 

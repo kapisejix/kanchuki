@@ -13,7 +13,7 @@ import { prisma } from './client.js';
 const MASTER_KEY_SALT = 'kanchuki-encryption-master-key-v1';
 
 function masterKey(): Buffer {
-  const raw = process.env['ENCRYPTION_MASTER_KEY'];
+  const raw = process.env.ENCRYPTION_MASTER_KEY;
   if (!raw) throw new Error('ENCRYPTION_MASTER_KEY not configured');
   return scryptSync(raw, MASTER_KEY_SALT, 32);
 }

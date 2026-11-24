@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type ProductStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 // ── Helpers ────────────────────────────────────────────────────────
 
 function randomPick<T>(arr: readonly T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)]!;
+  return arr[Math.floor(Math.random() * arr.length)] as T; // callers pass non-empty literals
 }
 
 function randomInt(min: number, max: number): number {
@@ -25,103 +25,6 @@ function slugify(text: string): string {
 function placeholderUrl(category: string, color: string, idx: number): string {
   return `https://picsum.photos/seed/${slugify(category)}-${color}-${idx}/400/500`;
 }
-
-// ── Template data ──────────────────────────────────────────────────
-
-const CITIES = ['Delhi', 'Jaipur', 'Surat', 'Mumbai', 'Ahmedabad', 'Lucknow', 'Chennai', 'Kolkata'];
-const STATES = [
-  'Delhi',
-  'Rajasthan',
-  'Gujarat',
-  'Maharashtra',
-  'Uttar Pradesh',
-  'Tamil Nadu',
-  'West Bengal',
-];
-const COLORS = [
-  'Red',
-  'Blue',
-  'Green',
-  'Pink',
-  'Gold',
-  'White',
-  'Black',
-  'Purple',
-  'Orange',
-  'Teal',
-  'Maroon',
-  'Navy',
-  'Peach',
-  'Mint',
-  'Coral',
-];
-const FABRICS = [
-  'Cotton',
-  'Silk',
-  'Georgette',
-  'Chiffon',
-  'Net',
-  'Organza',
-  'Rayon',
-  'Linen',
-  'Satin',
-  'Chanderi',
-  'Crepe',
-  'Modal',
-];
-const PATTERNS = [
-  'Plain',
-  'Printed',
-  'Embroidered',
-  'Block Print',
-  'Bandhani',
-  'Chikankari',
-  'Phulkari',
-  'Woven',
-  'Checked',
-  'Striped',
-];
-const OCCASIONS = [
-  'Casual',
-  'Office Wear',
-  'Party Wear',
-  'Wedding',
-  'Festive',
-  'Sangeet',
-  'Daily Wear',
-  'Special Occasion',
-];
-const EMBELLISHMENTS = [
-  'Zari Work',
-  'Zardozi',
-  'Gota Patti',
-  'Mirror Work',
-  'Sequin',
-  'Stone Work',
-  'Resham Embroidery',
-  'Thread Work',
-  'None',
-];
-const NECK_STYLES = [
-  'Round Neck',
-  'V-Neck',
-  'Boat Neck',
-  'High Neck',
-  'Square Neck',
-  'Sweetheart',
-  'Keyhole',
-  'Collared',
-];
-const SLEEVE_TYPES = [
-  'Full Sleeve',
-  'Three-Quarter',
-  'Half Sleeve',
-  'Short Sleeve',
-  'Sleeveless',
-  'Cap Sleeve',
-  'Bell Sleeve',
-  'Bishop Sleeve',
-];
 
 // ── Main Seed ──────────────────────────────────────────────────────
 
@@ -983,7 +886,7 @@ async function main() {
   console.log(`  👕 Products:      ${products}`);
   console.log(`  👥 Customers:     ${customers}`);
   console.log(`  📦 Collections:   ${collections}`);
-  console.log(`\n✅ Database seeded successfully!`);
+  console.log('\n✅ Database seeded successfully!');
 }
 
 // ── Create Retailer ────────────────────────────────────────────────
@@ -1054,7 +957,7 @@ async function createRetailer(data: {
   );
 
   console.log(`  ✅ ${data.shop_name} — ${data.plan} plan, ${data.sections.length} sections`);
-  return { id: retailer.id, sectionIds: sections.map((s) => s.id) };
+  return { id: retailer.id, shop_name: retailer.shop_name, sectionIds: sections.map((s) => s.id) };
 }
 
 // ── Create Products ────────────────────────────────────────────────
@@ -1086,7 +989,7 @@ async function createProducts(
   const createdIds: string[] = [];
 
   for (const [pi, p] of products.entries()) {
-    const sectionId = sectionIds[pi % sectionIds.length]!;
+    const sectionId = sectionIds[pi % sectionIds.length] as string;
 
     const product = await prisma.product.create({
       data: {
@@ -1096,7 +999,7 @@ async function createProducts(
         price_min: p.price_min,
         price_max: p.price_max,
         mrp: p.mrp,
-        status: p.status as any,
+        status: p.status as ProductStatus,
         category: p.category,
         product_type: p.product_type,
         primary_color: p.primary_color,
@@ -1228,13 +1131,13 @@ async function createCollections(
     });
 
     // Link products using stored IDs
-    for (let sortOrder = 0; sortOrder < c.product_indices.length; sortOrder++) {
-      const prodIndex = c.product_indices[sortOrder]!;
-      if (prodIndex < productIds.length) {
+    for (const [sortOrder, prodIndex] of c.product_indices.entries()) {
+      const productId = productIds[prodIndex];
+      if (productId) {
         await prisma.collectionProduct.create({
           data: {
             collection_id: collection.id,
-            product_id: productIds[prodIndex]!,
+            product_id: productId,
             sort_order: sortOrder,
           },
         });
@@ -1252,8 +1155,8 @@ async function createCollections(
     });
 
     // Enquiry
-    if (customerId && c.product_indices.length > 0) {
-      const firstProductIndex = c.product_indices[0]!;
+    const firstProductIndex = c.product_indices[0];
+    if (customerId && firstProductIndex !== undefined) {
       const firstProductId = productIds[firstProductIndex];
       if (firstProductId) {
         await prisma.collectionEnquiry.create({

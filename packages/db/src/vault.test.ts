@@ -21,7 +21,7 @@ const TEST_TABLE = 'deleted_records';
 const TEST_SHARED_ID = `test-vault-perm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 // Conditionally skip the entire suite when vault DB is not configured
-const suite = process.env['VAULT_DATABASE_URL'] ? describe : describe.skip;
+const suite = process.env.VAULT_DATABASE_URL ? describe : describe.skip;
 
 suite('vault INSERT-only constraint', () => {
   let vault: Awaited<ReturnType<typeof getVaultPrisma>>;
