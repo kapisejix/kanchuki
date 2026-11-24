@@ -1385,7 +1385,8 @@ function ResultSheet({
                       </Text>
                     ) : r.status === 'POSTED' ? (
                       r.external_post_url ? (
-                        <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
+                        <AnimatedPressable
+                          className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                           onPress={() => void Linking.openURL(r.external_post_url!)}
                           hitSlop={6}
                           accessibilityRole="button"
