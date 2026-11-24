@@ -25,6 +25,7 @@ export function CatalogDelegateBanner() {
   const pathname = usePathname();
   const [info, setInfo] = useState<CatalogDelegateInfo | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-fetch on every route change, pathname is the trigger
   useEffect(() => {
     const load = () => void getCatalogDelegateInfo().then(setInfo);
     load();

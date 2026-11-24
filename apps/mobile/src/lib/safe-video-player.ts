@@ -1,7 +1,12 @@
 import { requireNativeModule, useReleasingSharedObject } from 'expo-modules-core';
 import type { VideoPlayer, VideoSource } from 'expo-video';
 
-let NativeVideoModule: any = null;
+// Native constructor arity differs between installed expo-video builds (1 or 2 args).
+type VideoPlayerCtor = new (source: VideoSource, useSynchronousUpdates?: boolean) => VideoPlayer;
+// useReleasingSharedObject is typed to require a non-null SharedObject; this factory may return null.
+type ReleasingFactory = (factory: () => VideoPlayer | null, deps: unknown[]) => VideoPlayer | null;
+
+let NativeVideoModule: { VideoPlayer?: VideoPlayerCtor } | null = null;
 try {
   NativeVideoModule = requireNativeModule('ExpoVideo');
 } catch (e) {
@@ -21,16 +26,17 @@ export function useSafeVideoPlayer(
 ): VideoPlayer | null {
   const parsedSource = parseSource(source);
   try {
-    const player = (useReleasingSharedObject as any)(() => {
-      if (!NativeVideoModule?.VideoPlayer) return null;
-      let p: any = null;
+    const player = (useReleasingSharedObject as unknown as ReleasingFactory)(() => {
+      const Ctor = NativeVideoModule?.VideoPlayer;
+      if (!Ctor) return null;
+      let p: VideoPlayer | null = null;
       try {
         // 1-arg constructor (matches installed native Expo Video Android build)
-        p = new (NativeVideoModule.VideoPlayer as any)(parsedSource);
+        p = new Ctor(parsedSource);
       } catch {
         try {
           // 3-arg constructor (matches newer expo-video versions)
-          p = new (NativeVideoModule.VideoPlayer as any)(parsedSource, false);
+          p = new Ctor(parsedSource, false);
         } catch (err) {
           console.warn('[video] Failed to construct VideoPlayer:', err);
           return null;
@@ -46,7 +52,7 @@ export function useSafeVideoPlayer(
       return p;
     }, [JSON.stringify(parsedSource)]);
 
-    return player as VideoPlayer | null;
+    return player;
   } catch (err) {
     console.warn('[video] useSafeVideoPlayer failed:', err);
     return null;

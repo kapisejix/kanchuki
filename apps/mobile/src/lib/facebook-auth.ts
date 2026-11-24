@@ -147,10 +147,11 @@ export async function loginWithFacebook(
 
   if (!token?.accessToken) {
     throw new Error(
-      'Facebook returned no access token. This usually means the Android release key hash / bundle ID is not registered on the Meta app, or the app is not in Live mode.' +
-        (lastDeclined.length > 0
+      `Facebook returned no access token. This usually means the Android release key hash / bundle ID is not registered on the Meta app, or the app is not in Live mode.${
+        lastDeclined.length > 0
           ? ` Facebook also reported these permissions as declined: ${lastDeclined.join(', ')}.`
-          : ''),
+          : ''
+      }`,
     );
   }
   return token.accessToken;

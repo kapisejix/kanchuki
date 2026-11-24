@@ -9,7 +9,7 @@ import { cachedJsonRequest, clearRequestCache } from '../request-cache';
 import { deleteItem, getItem, setItem } from '../storage';
 import { ApiError } from './api-error';
 
-export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export function getToken(): Promise<string | null> {
   return getItem('auth_token');
@@ -87,7 +87,7 @@ export async function request<T>(
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers as Record<string, string> | undefined),
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   const method = (options.method ?? 'GET').toUpperCase();
 

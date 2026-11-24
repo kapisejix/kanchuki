@@ -11,8 +11,6 @@ interface ProductActionsBarProps {
   handleStatusChange: (status: ProductStatus) => void;
   deleting: boolean;
   handleDelete: () => void;
-  primaryColor: string;
-  colors: any;
 }
 
 export function ProductActionsBar({
@@ -21,8 +19,6 @@ export function ProductActionsBar({
   handleStatusChange,
   deleting,
   handleDelete,
-  primaryColor,
-  colors,
 }: ProductActionsBarProps) {
   return (
     <View className="px-4 py-4 gap-4">

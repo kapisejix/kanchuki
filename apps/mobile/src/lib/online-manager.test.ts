@@ -49,10 +49,10 @@ describe('setupOnlineManager', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(onlineManager.isOnline()).toBe(false);
 
-    listeners.forEach((cb) => cb({ isConnected: true, isInternetReachable: true }));
+    for (const cb of listeners) cb({ isConnected: true, isInternetReachable: true });
     expect(onlineManager.isOnline()).toBe(true);
 
-    listeners.forEach((cb) => cb({ isConnected: true, isInternetReachable: false }));
+    for (const cb of listeners) cb({ isConnected: true, isInternetReachable: false });
     expect(onlineManager.isOnline()).toBe(false);
   });
 });

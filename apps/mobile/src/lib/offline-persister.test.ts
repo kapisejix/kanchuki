@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearPersistedCache, persistQueryCache, restoreQueryCache } from './offline-persister';
 
@@ -82,7 +83,7 @@ function makeClient(queries: unknown[] = []) {
   return {
     getQueryCache: () => ({ getAll: () => queries }),
     setQueryData: vi.fn(),
-  };
+  } as unknown as QueryClient & { setQueryData: ReturnType<typeof vi.fn> };
 }
 
 describe('offline-persister', () => {

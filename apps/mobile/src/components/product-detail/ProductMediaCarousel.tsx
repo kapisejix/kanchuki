@@ -11,9 +11,10 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react-native';
-import React from 'react';
+import type React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import Gallery from 'react-native-awesome-gallery';
+import type { useProductAiStudio } from '../../hooks/useProductAiStudio';
 import { AnimatedPressable } from '../AnimatedPressable';
 
 interface DisplayPhoto {
@@ -34,16 +35,12 @@ interface ProductMediaCarouselProps {
   setSelectedPhotoIndex: (idx: number) => void;
   carouselWidth: number;
   setCarouselWidth: (w: number) => void;
-  galleryRef: React.RefObject<any>;
+  galleryRef: React.ComponentProps<typeof Gallery>['ref'];
   setFullscreenOpen: (open: boolean) => void;
-  displayUrl: (photo: DisplayPhoto) => string;
   imageErrors: Set<string>;
   setImageErrors: React.Dispatch<React.SetStateAction<Set<string>>>;
-  primaryColor: string;
-  colors: any;
   currentPhoto: DisplayPhoto | undefined;
   currentPhotoIsVariant: boolean;
-  currentPhotoIsOriginal: boolean;
   downloadingMedia: boolean;
   handleDownloadCurrentMedia: () => void;
   deletingMedia: boolean;
@@ -52,7 +49,7 @@ interface ProductMediaCarouselProps {
   setStudioModalOpen: (open: boolean) => void;
   studioStarting: boolean;
   studioStatus: 'processing' | 'ready' | 'failed' | null;
-  originalPhoto: any;
+  originalPhoto: ReturnType<typeof useProductAiStudio>['originalPhoto'];
   studioQuota: { unlimited?: boolean; remaining?: number } | undefined;
   ProductVideoSlide: React.ComponentType<{ url: string; width: number; height: number }>;
   /** F-034 AI promo video button, before AI Studio. Unavailable plans get an explanation on tap. */
@@ -72,14 +69,10 @@ export function ProductMediaCarousel({
   setCarouselWidth,
   galleryRef,
   setFullscreenOpen,
-  displayUrl,
   imageErrors,
   setImageErrors,
-  primaryColor,
-  colors,
   currentPhoto,
   currentPhotoIsVariant,
-  currentPhotoIsOriginal,
   downloadingMedia,
   handleDownloadCurrentMedia,
   deletingMedia,
@@ -122,7 +115,7 @@ export function ProductMediaCarousel({
                 <ProductVideoSlide url={photo.url} width={carouselWidth} height={380} />
               ) : !imageErrors.has(photo.url) ? (
                 <Image
-                  source={{ uri: displayUrl(photo) }}
+                  source={{ uri: photo.url }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                   onError={() => setImageErrors((prev) => new Set(prev).add(photo.url))}
@@ -181,7 +174,7 @@ export function ProductMediaCarousel({
                   }}
                 >
                   <Image
-                    source={{ uri: displayUrl(photo) }}
+                    source={{ uri: photo.url }}
                     style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
                   />
@@ -264,7 +257,7 @@ export function ProductMediaCarousel({
           <View className="absolute bottom-3 left-4 flex-row items-center gap-1.5">
             {displayPhotos.map((p, idx) => (
               <AnimatedPressable
-                key={idx}
+                key={p.id}
                 onPress={() => goToPhoto(idx)}
                 className={`h-1.5 rounded-full ${
                   idx === selectedPhotoIndex ? 'bg-fuchsia-500 w-4' : 'bg-white/70 w-1.5'

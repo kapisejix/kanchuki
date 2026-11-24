@@ -2,11 +2,13 @@ import { PATTERN_TYPES, SIZE_OPTIONS, resolveFashionColor } from '@kanchuki/shar
 import type { KidsAgeGroupValue, ProductAudienceValue, ProductDetail } from '@kanchuki/shared';
 import { Image } from 'expo-image';
 import { Check, Sparkles, Tag } from 'lucide-react-native';
-import React from 'react';
+import type React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { AnimatedPressable } from '../AnimatedPressable';
 import { AudienceChips, type AudiencePick } from './AudienceChips';
 import { StockEditor } from './StockEditor';
+
+type NamedItem = { id: string; name: string };
 
 interface ProductAttributesFormProps {
   product: ProductDetail;
@@ -29,7 +31,6 @@ interface ProductAttributesFormProps {
   editedCategory: string | null;
   setEditedCategory: (c: string | null) => void;
   editedColor: string;
-  setEditedColor: (c: string) => void;
   editedPattern: string | null;
   setEditedPattern: (p: string | null) => void;
   editedCategoryId: string | null;
@@ -46,13 +47,10 @@ interface ProductAttributesFormProps {
   kidsAge: KidsAgeGroupValue | null;
   onAudienceChange: (p: AudiencePick) => void;
   dirty: <T>(setter: (v: T) => void) => (val: T) => void;
-  primaryColor: string;
-  colors: any;
-  categories: any[];
-  availableStyles: any[];
-  availableFabrics: any[];
-  displayPhotos: any[];
-  selectedPhotoIndex: number;
+  categories: NamedItem[];
+  availableStyles: NamedItem[];
+  availableFabrics: NamedItem[];
+  displayPhotos: { id: string; url: string; is_video?: boolean }[];
   goToPhoto: (idx: number) => void;
   onOpenSkuTagModal: () => void;
 }
@@ -78,7 +76,6 @@ export function ProductAttributesForm({
   editedCategory,
   setEditedCategory,
   editedColor,
-  setEditedColor,
   editedPattern,
   setEditedPattern,
   editedCategoryId,
@@ -95,13 +92,10 @@ export function ProductAttributesForm({
   kidsAge,
   onAudienceChange,
   dirty,
-  primaryColor,
-  colors,
   categories,
   availableStyles,
   availableFabrics,
   displayPhotos,
-  selectedPhotoIndex,
   goToPhoto,
   onOpenSkuTagModal,
 }: ProductAttributesFormProps) {
@@ -286,10 +280,11 @@ export function ProductAttributesForm({
                       ? selectedCategoryIds.filter((id) => id !== c.id)
                       : [...selectedCategoryIds, c.id];
                     dirty(setSelectedCategoryIds)(newIds);
-                    if (newIds.length > 0) {
-                      dirty(setEditedCategoryId)(newIds[0]!);
+                    const [firstId] = newIds;
+                    if (firstId) {
+                      dirty(setEditedCategoryId)(firstId);
                       dirty(setEditedCategory)(
-                        categories.find((cat) => cat.id === newIds[0])?.name ?? null,
+                        categories.find((cat) => cat.id === firstId)?.name ?? null,
                       );
                     } else {
                       dirty(setEditedCategoryId)(null);

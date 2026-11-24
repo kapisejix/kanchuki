@@ -8,16 +8,12 @@ interface ProductAiReviewSectionProps {
   product: ProductDetail;
   retagging: boolean;
   handleRetag: () => void;
-  primaryColor: string;
-  colors: any;
 }
 
 export function ProductAiReviewSection({
   product,
   retagging,
   handleRetag,
-  primaryColor,
-  colors,
 }: ProductAiReviewSectionProps) {
   return (
     <View className="mx-4 mt-3">

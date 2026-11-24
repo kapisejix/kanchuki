@@ -46,7 +46,7 @@ interface ProductVideoModalProps {
   result: { videoId: string; url: string } | null;
   elapsedMs: number;
   primaryColor: string;
-  colors: any;
+  colors: { ink: Record<number, string>; sand: Record<number, string>; danger: string };
 }
 
 function PromoClip({ url }: { url: string }) {

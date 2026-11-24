@@ -76,10 +76,13 @@ export async function runTryOnSession(args: {
     state: 'queued',
   }));
   const set = (i: number, patch: Partial<SessionItem>) => {
-    items[i] = { ...items[i]!, ...patch };
-    onItem(items[i]!);
+    const item = items[i];
+    if (!item) return;
+    const updated = { ...item, ...patch };
+    items[i] = updated;
+    onItem(updated);
   };
-  items.forEach((it) => onItem(it));
+  for (const it of items) onItem(it);
 
   // Compress ONCE; every product reuses the same file.
   let uri = photoUri;
@@ -149,8 +152,9 @@ export async function runTryOnSession(args: {
   const worker = async () => {
     while (!signal.aborted && !limitHit) {
       const i = next++;
-      if (i >= items.length) return;
-      const productId = items[i]!.productId;
+      const item = items[i];
+      if (!item) return;
+      const productId = item.productId;
       set(i, { state: 'running' });
       let jobId: string;
       try {

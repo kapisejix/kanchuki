@@ -645,7 +645,12 @@ describe('caption auto-suggest (T3.2-a #6b)', () => {
 
   it('shows "Writing with AI…" while the request is in flight', async () => {
     let settle: (v: unknown) => void = () => {};
-    suggest.mockImplementation(() => new Promise((r) => (settle = r)) as never);
+    suggest.mockImplementation(
+      () =>
+        new Promise((r) => {
+          settle = r;
+        }) as never,
+    );
     const t = await fakeMount();
     await pick(t, 'p1');
     await tick(900);
@@ -760,7 +765,12 @@ describe('caption auto-suggest (T3.2-a #6b)', () => {
   // Typing while the request is in flight: the response used to land on top of it.
   it('typing while the request is in flight keeps the typed text', async () => {
     let settle: (v: unknown) => void = () => {};
-    suggest.mockImplementation(() => new Promise((r) => (settle = r)) as never);
+    suggest.mockImplementation(
+      () =>
+        new Promise((r) => {
+          settle = r;
+        }) as never,
+    );
     const t = await fakeMount();
     await pick(t, 'p1');
     await tick(900);

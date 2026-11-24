@@ -19,7 +19,8 @@
 
 import { Image } from 'expo-image';
 import { Heart, ImageOff, Package } from 'lucide-react-native';
-import React, { memo, useState, useEffect } from 'react';
+import type React from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Text, View, type ViewStyle } from 'react-native';
 import { AnimatedPressable } from './AnimatedPressable';
 
@@ -88,6 +89,7 @@ const ProductCard = memo(function ProductCard({
   const [imageError, setImageError] = useState(false);
 
   // Reset error state when imageUrl changes (e.g. new photo uploaded)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: imageUrl is the reset trigger
   useEffect(() => setImageError(false), [imageUrl]);
 
   return (

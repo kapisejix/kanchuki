@@ -2,7 +2,6 @@ import React from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-type ReactTestRenderer = typeof renderer;
 import { router } from 'expo-router';
 import { Text } from 'react-native';
 

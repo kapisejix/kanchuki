@@ -21,7 +21,7 @@ import { useProductDetailForm } from '../../src/hooks/useProductDetailForm';
 
 let form: any;
 function Harness({ product }: { product: any }) {
-  form = useProductDetailForm({ product, selectedPhotoIndex: 0, displayPhotos: [] });
+  form = useProductDetailForm({ product });
   return null;
 }
 const base = { id: 'p1', name: 'Frock', search_tags: [], sizes: [], stock: [], photos: [] };

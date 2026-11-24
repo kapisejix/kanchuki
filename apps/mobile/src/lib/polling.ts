@@ -34,7 +34,7 @@ export function pollWithBackoff(opts: {
 
     if (attempt >= maxAttempts) return;
 
-    const delay = Math.min(initialMs * Math.pow(2, attempt - 1), maxMs);
+    const delay = Math.min(initialMs * 2 ** (attempt - 1), maxMs);
     timer = setTimeout(tick, delay);
   };
 

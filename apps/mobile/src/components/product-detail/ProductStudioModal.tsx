@@ -20,7 +20,7 @@ interface ProductStudioModalProps {
   starting: boolean;
   quota: { unlimited?: boolean; remaining?: number } | undefined;
   primaryColor: string;
-  colors: any;
+  colors: { ink: Record<number, string>; sand: Record<number, string> };
   // Progress / result / error state (from useProductAiStudio)
   status: StudioStatus;
   progress: number;
@@ -112,6 +112,7 @@ export function ProductStudioModal({
   // Reset the pick when the tab changes or the modal is reopened, so a fresh
   // open starts on the first style of the active tab. Depends on primitives
   // only — never on `activeList`, which is a new array on every render.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeTab and visible are the reset triggers
   useEffect(() => {
     setPickedSlug(null);
   }, [activeTab, visible]);
@@ -121,7 +122,7 @@ export function ProductStudioModal({
   };
 
   const creditsLeft = quota?.unlimited
-    ? Infinity
+    ? Number.POSITIVE_INFINITY
     : (quota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE;
   const limitReached = !quota?.unlimited && creditsLeft < STUDIO_CREDITS_PER_IMAGE;
   const runningLow =
