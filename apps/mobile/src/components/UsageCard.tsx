@@ -61,7 +61,7 @@ export function UsageCard() {
     <View className="bg-white rounded-2xl p-5 border border-lavender-200 shadow-sm">
       <View className="flex-row items-center gap-2 mb-3">
         <BarChart2 size={16} color="#6B4773" />
-        <Text className="text-sm text-spaceCadet-900 font-marcellus">Usage & quotas</Text>
+        <Text className="text-sm text-spaceCadet-900 font-extrabold font-marcellus">Usage & quotas</Text>
       </View>
       {active.map((r) => {
         const pct = Math.min(Math.round((r.used / r.limit) * 100), 100)

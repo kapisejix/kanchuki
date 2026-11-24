@@ -550,11 +550,10 @@ describe('SellScreen — leaving', () => {
 describe('Sell entry points (catalog tests render a mock screen, so pin the real files)', () => {
   const read = (p: string) => readFileSync(resolve(__dirname, p), 'utf8')
 
-  it('the Catalog header has a Sell button that opens /product/sell, beside the F-025 scan icon', () => {
-    const src = read('../../app/(tabs)/catalog.tsx')
-    expect(src).toContain("router.push('/product/sell')")
+  it('Home keeps the F-025 single scan entry (moved off the Catalog header, owner 2026-11-24)', () => {
+    const src = read('../../app/(tabs)/index.tsx')
     expect(src).toContain("router.push('/product/scan')") // single scan stays
-    expect(src).toMatch(/accessibilityLabel="Sell items: scan and mark several articles sold"/)
+    expect(src).toContain('label="Scan product"')
   })
 
   it('Home has a "Sell items" shortcut with no staffCan gate (owner, manager and salesperson may sell)', () => {

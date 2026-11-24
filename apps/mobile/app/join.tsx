@@ -105,7 +105,7 @@ export default function JoinScreen() {
       }}
     >
       <View>
-        <Text className="text-3xl text-spaceCadet-900 font-marcellus mt-4">
+        <Text className="text-3xl text-spaceCadet-900 font-extrabold font-marcellus mt-4">
           Join your store
         </Text>
 
@@ -187,7 +187,7 @@ export default function JoinScreen() {
           <GradientButton variant="web" label="Retry" onPress={() => setReload((r) => r + 1)} />
         )}
         {state.kind === 'ready' && (
-          <Pressable onPress={goToLogin} className="py-3 items-center">
+          <Pressable onPress={goToLogin} className="py-3 items-center border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center">
             <Text className="text-heliotrope-500 text-sm font-semibold">
               Log in with a different account
             </Text>

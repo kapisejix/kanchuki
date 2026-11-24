@@ -1,4 +1,3 @@
-// Facebook/Instagram stay hidden until Meta App Review passes. Unset = hidden, so a
-// release build needs no CI or eas.json change. Set EXPO_PUBLIC_META_SOCIAL=true to show.
-// ponytail: entry points only; a typed deep link to /social/* still opens. Server is unchanged.
-export const META_SOCIAL_ENABLED = process.env.EXPO_PUBLIC_META_SOCIAL === 'true';
+// Social (Facebook/Instagram) shows in every build, Play included (owner 2026-11-24).
+// ponytail: kept as a constant so the 9 call sites stay untouched; set false to hide again.
+export const META_SOCIAL_ENABLED = true;

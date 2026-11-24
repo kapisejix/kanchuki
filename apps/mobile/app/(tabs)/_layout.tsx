@@ -100,6 +100,8 @@ export default function TabsLayout() {
           fontSize: 16,
           lineHeight: 24,
           fontFamily: 'Marcellus_400Regular',
+          letterSpacing: 0.32,
+          fontWeight: '800',
         },
         headerShadowVisible: false,
       }}
