@@ -13,7 +13,6 @@ import {
   Trash2,
   Palette,
   Camera,
-  Video,
   Sparkles,
   Clapperboard,
   Shirt,
@@ -55,19 +54,14 @@ interface ProductMediaCarouselProps {
   deletingMedia: boolean
   handleDeleteCurrentMedia: () => void
   goToPhoto: (idx: number) => void
-  handleProductVideoPress: () => void
-  videoGenerating: boolean
-  generateVideoPending: boolean
-  productVideosCount: number
   setStudioModalOpen: (open: boolean) => void
   studioStarting: boolean
   studioStatus: 'processing' | 'ready' | 'failed' | null
   originalPhoto: any
   studioQuota: { unlimited?: boolean; remaining?: number } | undefined
   ProductVideoSlide: React.ComponentType<{ url: string; width: number; height: number }>
-  /** F-034: "AI Video" pill. Omitted or `available: false` = pill hidden (no upsell for a feature nobody can buy). */
+  /** F-034 AI promo video button, before AI Studio. Unavailable plans get an explanation on tap. */
   promoVideo?: {
-    available: boolean
     running: boolean
     quota: { remaining: number; unlimited: boolean } | undefined
     onPress: () => void
@@ -96,10 +90,6 @@ export function ProductMediaCarousel({
   deletingMedia,
   handleDeleteCurrentMedia,
   goToPhoto,
-  handleProductVideoPress,
-  videoGenerating,
-  generateVideoPending,
-  productVideosCount,
   setStudioModalOpen,
   studioStarting,
   studioStatus,
@@ -312,29 +302,34 @@ export function ProductMediaCarousel({
             <Text className="text-spaceCadet-900 text-[10px] font-bold">Add Color</Text>
           </View>
         </AnimatedPressable>
-        <AnimatedPressable
-          onPress={handleProductVideoPress}
-          disabled={generateVideoPending || videoGenerating}
-          className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center relative"
-        >
-          <View className="items-center justify-center gap-1">
-            {generateVideoPending || videoGenerating ? (
-              <ActivityIndicator size="small" color="#BB3F95" />
-            ) : (
-              <Video size={16} color="#BB3F95" />
-            )}
-            <Text className="text-spaceCadet-900 text-[10px] font-bold">
-              {videoGenerating ? 'Building...' : 'Video'}
-            </Text>
-          </View>
-          {productVideosCount > 0 && !videoGenerating && (
-            <View
-              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 shadow-sm"
-            >
-              <Text className="text-[9px] font-bold text-white">{productVideosCount}</Text>
+        {promoVideo && (
+          <AnimatedPressable
+            onPress={promoVideo.onPress}
+            disabled={!originalPhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Make an AI promo video"
+            accessibilityState={{ disabled: !originalPhoto }}
+            className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center relative"
+          >
+            <View className="items-center justify-center gap-1">
+              {promoVideo.running ? (
+                <ActivityIndicator size="small" color="#BB3F95" />
+              ) : (
+                <Clapperboard size={16} color="#BB3F95" />
+              )}
+              <Text className="text-spaceCadet-900 text-[10px] font-bold text-center">AI Video</Text>
             </View>
-          )}
-        </AnimatedPressable>
+            {promoVideo.quota && !promoVideo.quota.unlimited && (
+              <View
+                className={`absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-sm ${
+                  promoVideo.quota.remaining > 0 ? 'bg-fuchsia-600' : 'bg-red-600'
+                }`}
+              >
+                <Text className="text-[9px] font-bold text-white">{promoVideo.quota.remaining}</Text>
+              </View>
+            )}
+          </AnimatedPressable>
+        )}
         <AnimatedPressable
           onPress={() => setStudioModalOpen(true)}
           disabled={!originalPhoto || studioStarting || studioStatus === 'processing'}
@@ -364,34 +359,6 @@ export function ProductMediaCarousel({
             </View>
           )}
         </AnimatedPressable>
-        {promoVideo?.available && (
-          <AnimatedPressable
-            onPress={promoVideo.onPress}
-            disabled={!originalPhoto}
-            accessibilityRole="button"
-            accessibilityLabel="Make an AI promo video"
-            accessibilityState={{ disabled: !originalPhoto }}
-            className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center relative"
-          >
-            <View className="items-center justify-center gap-1">
-              {promoVideo.running ? (
-                <ActivityIndicator size="small" color="#BB3F95" />
-              ) : (
-                <Clapperboard size={16} color="#BB3F95" />
-              )}
-              <Text className="text-spaceCadet-900 text-[10px] font-bold text-center">AI Video</Text>
-            </View>
-            {promoVideo.quota && !promoVideo.quota.unlimited && (
-              <View
-                className={`absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-sm ${
-                  promoVideo.quota.remaining > 0 ? 'bg-fuchsia-600' : 'bg-red-600'
-                }`}
-              >
-                <Text className="text-[9px] font-bold text-white">{promoVideo.quota.remaining}</Text>
-              </View>
-            )}
-          </AnimatedPressable>
-        )}
       </View>
     </View>
   )

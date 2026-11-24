@@ -7,6 +7,7 @@ import { Camera, ChevronLeft, Clapperboard, Share2, Star } from 'lucide-react-na
 import React, { useState, useRef, useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Linking,
   Modal,
@@ -337,10 +338,6 @@ export default function ProductDetailScreen() {
           deletingMedia={studio.deletingMedia}
           handleDeleteCurrentMedia={studio.handleDeleteCurrentMedia}
           goToPhoto={goToPhoto}
-          handleProductVideoPress={studio.handleProductVideoPress}
-          videoGenerating={studio.videoGenerating}
-          generateVideoPending={studio.generateVideo.isPending}
-          productVideosCount={studio.productVideos.length}
           setStudioModalOpen={studio.setStudioModalOpen}
           studioStarting={studio.studioStarting}
           studioStatus={studio.studioStatus}
@@ -348,10 +345,17 @@ export default function ProductDetailScreen() {
           studioQuota={studio.studioQuota}
           ProductVideoSlide={ProductVideoSlide}
           promoVideo={{
-            available: promo.available,
             running: promo.status === 'processing',
             quota: promo.quota,
-            onPress: () => promo.setOpen(true),
+            onPress: () => {
+              if (promo.stylesLoading) return;
+              if (promo.available) promo.setOpen(true);
+              else
+                Alert.alert(
+                  'AI Video',
+                  promo.unavailableReason ?? 'AI videos are not available right now.',
+                );
+            },
           }}
         />
 
