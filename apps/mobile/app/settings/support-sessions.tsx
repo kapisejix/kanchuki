@@ -75,7 +75,7 @@ export default function SupportSessionsScreen() {
           {rows.length === 0 ? (
             <View className="items-center py-16">
               <ShieldCheck size={40} color={colors.sand[300]} />
-              <Text className="text-sand-400 text-sm mt-4 text-center px-8">
+              <Text className="text-heliotrope-500 text-sm mt-4 text-center px-8">
                 No active support sessions. Kanchuki staff can only enter your account after you
                 approve, for up to 24 hours.
               </Text>
@@ -83,9 +83,9 @@ export default function SupportSessionsScreen() {
           ) : (
             <View className="gap-3">
               {rows.map((r) => (
-                <View key={r.id} className="bg-white rounded-2xl p-4 border border-sand-100">
-                  <Text className="text-sm font-bold text-sand-900">{r.staff_name}</Text>
-                  <Text className="text-xs text-sand-500 mt-1">
+                <View key={r.id} className="bg-white rounded-2xl p-4 border border-lavender-200">
+                  <Text className="text-sm font-semibold text-spaceCadet-900">{r.staff_name}</Text>
+                  <Text className="text-xs text-heliotrope-500 mt-1">
                     {r.status === 'PENDING' ? 'Wants to ' : 'Can '}
                     {SUPPORT_SCOPE_LABEL[r.scope]}
                     {r.expires_at

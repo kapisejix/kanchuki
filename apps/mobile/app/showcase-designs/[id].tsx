@@ -3,7 +3,7 @@ import { View, Text, TextInput, ActivityIndicator, Image, ScrollView, Alert, Swi
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
-import { Camera, Trash2, Share2, Sparkles } from 'lucide-react-native'
+import { Camera, Droplet, Trash2, Share2 } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
   uploadImageToR2,
@@ -131,7 +131,7 @@ export default function ShowcaseDesignDetailScreen() {
   if (isLoading || !design) {
     return (
       <View className="flex-1 bg-[#F8F7FC] items-center justify-center">
-        <ActivityIndicator color="#BB3F95" />
+        <ActivityIndicator color="#6B4773" />
       </View>
     )
   }
@@ -148,25 +148,25 @@ export default function ShowcaseDesignDetailScreen() {
       >
         {/* Image + replace */}
         <View className="items-center gap-3">
-          <View className="w-48 h-60 rounded-3xl overflow-hidden bg-lavender-100 border border-lavender-200 shadow-sm">
+          <View className="w-48 h-60 rounded-2xl overflow-hidden bg-lavender-100 border border-lavender-200">
             <Image source={{ uri: design.image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           </View>
           {globalReadOnly ? (
             <View className="bg-lavender-100 px-3 py-1.5 rounded-full border border-lavender-200">
-              <Text className="text-[11px] text-heliotrope-600 font-bold">Kanchuki design · read-only</Text>
+              <Text className="text-[11px] text-heliotrope-600 font-semibold">Kanchuki design · read-only</Text>
             </View>
           ) : (
             <AnimatedPressable
               onPress={() => void handleReplacePhoto()}
               disabled={replacingPhoto}
-              className="flex-row items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border border-lavender-200 shadow-sm"
+              className="flex-row items-center gap-2 bg-white px-4 py-2.5 rounded-2xl border border-lavender-200"
             >
               {replacingPhoto ? (
-                <ActivityIndicator size="small" color="#BB3F95" />
+                <ActivityIndicator size="small" color="#6B4773" />
               ) : (
                 <Camera size={16} color="#6B4773" />
               )}
-              <Text className="text-xs font-bold text-spaceCadet-900">Replace photo (re-watermarks)</Text>
+              <Text className="text-xs font-semibold text-spaceCadet-900">Replace photo (re-watermarks)</Text>
             </AnimatedPressable>
           )}
         </View>
@@ -175,7 +175,7 @@ export default function ShowcaseDesignDetailScreen() {
           <>
             {/* Category */}
             <View>
-              <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-2">Category</Text>
+              <Text className="text-xs font-semibold text-heliotrope-600 mb-2">Category</Text>
               <View className="flex-row flex-wrap gap-2">
                 {categories.map((cat) => {
                   const selected = categoryId === cat.id
@@ -189,7 +189,7 @@ export default function ShowcaseDesignDetailScreen() {
                         selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                      <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                         {cat.name}
                       </Text>
                     </AnimatedPressable>
@@ -200,7 +200,7 @@ export default function ShowcaseDesignDetailScreen() {
 
             {/* Name — re-suggested by AI after a photo replace */}
             <View>
-              <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">Name</Text>
+              <Text className="text-xs font-semibold text-heliotrope-600 mb-1.5">Name</Text>
               <TextInput
                 value={name ?? ''}
                 onChangeText={setName}
@@ -208,22 +208,22 @@ export default function ShowcaseDesignDetailScreen() {
                   suggesting ? 'Detecting name…' : 'e.g. Anarkali floor-length'
                 }
                 placeholderTextColor="#928EB2"
-                className="bg-white px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
+                className="bg-white px-4 py-3 rounded-2xl text-sm font-semibold text-spaceCadet-900 border border-lavender-200"
                 maxLength={150}
                 editable={!suggesting}
               />
               <View className="flex-row items-center gap-2 mt-1.5">
                 {suggesting ? (
                   <View className="flex-row items-center gap-1.5">
-                    <ActivityIndicator size={12} color="#BB3F95" />
+                    <ActivityIndicator size={12} color="#6B4773" />
                     <Text className="text-[11px] text-heliotrope-500 font-medium">
                       Auto-detecting name &amp; color…
                     </Text>
                   </View>
                 ) : detectedColor ? (
                   <View className="flex-row items-center gap-1.5 bg-lavender-100 px-2.5 py-1 rounded-full border border-lavender-200">
-                    <Sparkles size={12} color="#6B4773" />
-                    <Text className="text-[11px] text-heliotrope-600 font-bold">
+                    <Droplet size={12} color="#6B4773" />
+                    <Text className="text-[11px] text-heliotrope-600 font-semibold">
                       Detected color: {detectedColor}
                     </Text>
                   </View>
@@ -232,9 +232,9 @@ export default function ShowcaseDesignDetailScreen() {
             </View>
 
             {/* Active toggle */}
-            <View className="flex-row items-center justify-between bg-white px-4 py-3.5 rounded-2xl border border-lavender-200 shadow-sm">
+            <View className="flex-row items-center justify-between bg-white px-4 py-3.5 rounded-2xl border border-lavender-200">
               <View className="flex-1 pr-3">
-                <Text className="text-sm font-bold text-spaceCadet-900">Active</Text>
+                <Text className="text-sm font-semibold text-spaceCadet-900">Active</Text>
                 <Text className="text-[11px] text-heliotrope-500 font-medium">
                   Inactive designs are hidden from the customer storefront
                 </Text>
@@ -253,13 +253,13 @@ export default function ShowcaseDesignDetailScreen() {
 {META_SOCIAL_ENABLED && (
         <AnimatedPressable
           onPress={() => router.push(`/social/create?design_id=${design.id}`)}
-          className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-lavender-200 shadow-sm"
+          className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-lavender-200"
         >
-          <View className="w-10 h-10 rounded-xl items-center justify-center bg-fuchsia-500/15">
-            <Share2 size={18} color="#BB3F95" />
+          <View className="w-6 items-center justify-center">
+            <Share2 size={18} color="#6B4773" />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-bold text-spaceCadet-900">Post to Facebook / Instagram</Text>
+            <Text className="text-sm font-semibold text-spaceCadet-900">Post to Facebook / Instagram</Text>
             <Text className="text-xs text-heliotrope-500 font-medium">Share this design with your followers</Text>
           </View>
         </AnimatedPressable>
@@ -273,7 +273,7 @@ export default function ShowcaseDesignDetailScreen() {
               className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-red-200 bg-red-50"
             >
               <Trash2 size={16} color="#DC2626" />
-              <Text className="text-sm font-bold text-red-600">Delete design</Text>
+              <Text className="text-sm font-semibold text-red-600">Delete design</Text>
             </AnimatedPressable>
           </>
         )}

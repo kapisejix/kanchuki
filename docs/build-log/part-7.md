@@ -711,3 +711,16 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | Mobile 722 passed, tsc 0, Android JS bundle exported. Biome on the 36 changed code files: 54 errors, same as `origin/main`. |
 | Biome cleanup | Owner asked to clear the 15 errors in the 7 reworded-label files. Imports and one test line are in one commit, formatting in another. Those 7 files now have 0 errors and 3 warnings, and use semicolons as `biome.jsonc` requires, unlike most other mobile files. Mobile 722 passed, tsc 0. |
 | Not verified | Not opened on a device or in Expo Go. Reaches phones only with a new app build. |
+
+## 2026-11-24 — Mobile design cleanup, Task 4 and owner-review fixes (PRs #335, #336, #333, #334)
+
+| Area | Change |
+|---|---|
+| Task 4 screens | 21 screens: settings (8), staff (5), billing, analytics, store profile and showcase designs (5). Same rules as Tasks 1-3 in `docs/tasks/pending/mobile-unslop.md`. `settings/social` `Connected!` reworded with its test. |
+| Owner-review fixes | Heading weight restored, text links to outline buttons, buttons keep width while loading, `DangerButton` red on an inner view, full-width channel and Post buttons, Reconfigure with icon. Listed with commits in `mobile-unslop.md`. |
+| Post preview | Photo box fixed at 4:5 with `contain`. The old `onLoad`-sized box looped on Android and stayed grey. |
+| Social | `META_SOCIAL_ENABLED` is always `true` by owner decision, so the Play build shows all 5 tabs and every Social entry point. |
+| AI Video | Product detail: the button before AI Studio opens the F-034 AI promo video sheet instead of the pan/zoom clip. Shown on every plan; when the plan has no AI video the server's reason shows on tap. |
+| Local runs | Each branch before push: mobile 722 passed, tsc 0, Biome on changed files no new errors vs `origin/main`. GitHub Actions passed on #336, #333 and #334. |
+| Expo Go | Owner checked all screens on 2026-11-24 ("checked all") after reporting the preview, Social tab and AI Video issues above. |
+| Not verified | AI video generation end to end (needs an admin model and styles; costs Fal credits). Reaches phones only with a new Android build. |

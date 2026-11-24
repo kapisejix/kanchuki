@@ -56,17 +56,17 @@ export default function ShowcaseDesignsBrowseScreen() {
       <View className="flex-1">
         <AnimatedPressable
           onPress={() => router.push(`/showcase-designs/view/${item.id}`)}
-          className="bg-white rounded-2xl overflow-hidden border border-lavender-200 shadow-sm"
+          className="bg-white rounded-2xl overflow-hidden border border-lavender-200"
         >
           <View className="w-full aspect-[3/4] bg-lavender-100">
             <Image source={{ uri: item.image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           </View>
           <View className="px-2.5 py-2">
-            <Text className="text-xs font-bold text-spaceCadet-900 truncate" numberOfLines={1}>
+            <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
               {item.name ?? item.category.name ?? 'Design'}
             </Text>
             {item.store && (
-              <Text className="text-[10px] text-heliotrope-500 font-medium mt-0.5 truncate">
+              <Text className="text-[11px] text-heliotrope-500 font-medium mt-0.5 truncate">
                 {item.store.shop_name ?? item.store.slug}
               </Text>
             )}
@@ -101,7 +101,7 @@ export default function ShowcaseDesignsBrowseScreen() {
                       selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                    <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                       {item.name}
                     </Text>
                   </AnimatedPressable>
@@ -113,7 +113,7 @@ export default function ShowcaseDesignsBrowseScreen() {
 
         {isLoading && designs.length === 0 ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#BB3F95" />
+            <ActivityIndicator color="#6B4773" />
           </View>
         ) : (
           <FlatList

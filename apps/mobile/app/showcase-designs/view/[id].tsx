@@ -57,13 +57,13 @@ export default function ShowcaseDesignViewScreen() {
 
   const handleCopy = async () => {
     await Clipboard.setStringAsync(permalink)
-    Alert.alert('Link copied', 'Share it with your customers!')
+    Alert.alert('Link copied', 'Share it with your customers')
   }
 
   if (isLoading || !design) {
     return (
       <View className="flex-1 bg-[#F8F7FC] items-center justify-center">
-        <ActivityIndicator color="#BB3F95" />
+        <ActivityIndicator color="#6B4773" />
       </View>
     )
   }
@@ -75,13 +75,13 @@ export default function ShowcaseDesignViewScreen() {
       <Stack.Screen options={{ title: design.name ?? 'Design', headerShown: true }} />
       <View className="flex-1 bg-[#F8F7FC]" style={{ paddingBottom: screenPaddingBottom }}>
         <View className="items-center pt-6 px-6">
-          <View className="w-full max-w-sm aspect-[3/4] rounded-3xl overflow-hidden bg-lavender-100 border border-lavender-200 shadow-sm">
+          <View className="w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden bg-lavender-100 border border-lavender-200">
             <Image source={{ uri: design.image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           </View>
 
           <Text
             style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-            className="text-lg font-bold text-spaceCadet-900 mt-5 text-center"
+            className="text-lg text-spaceCadet-900 mt-5 text-center"
           >
             {design.name ?? `${design.category.name ?? 'Design'} design`}
           </Text>
@@ -98,23 +98,23 @@ export default function ShowcaseDesignViewScreen() {
             className="flex-row items-center justify-center gap-2 bg-spaceCadet-900 py-3.5 rounded-2xl"
           >
             <Share2 size={17} color="white" />
-            <Text className="text-white text-sm font-bold">Share</Text>
+            <Text className="text-white text-sm font-semibold">Share</Text>
           </AnimatedPressable>
 
           <View className="flex-row gap-3">
             <AnimatedPressable
               onPress={handleWhatsApp}
-              className="flex-1 flex-row items-center justify-center gap-2 bg-white py-3.5 rounded-2xl border border-lavender-200 shadow-sm"
+              className="flex-1 flex-row items-center justify-center gap-2 bg-white py-3.5 rounded-2xl border border-lavender-200"
             >
-              <MessageCircle size={17} color="#25D366" />
-              <Text className="text-spaceCadet-900 text-sm font-bold">WhatsApp</Text>
+              <MessageCircle size={17} color="#231F48" />
+              <Text className="text-spaceCadet-900 text-sm font-semibold">WhatsApp</Text>
             </AnimatedPressable>
             <AnimatedPressable
               onPress={() => void handleCopy()}
-              className="flex-1 flex-row items-center justify-center gap-2 bg-white py-3.5 rounded-2xl border border-lavender-200 shadow-sm"
+              className="flex-1 flex-row items-center justify-center gap-2 bg-white py-3.5 rounded-2xl border border-lavender-200"
             >
               <Copy size={17} color="#6B4773" />
-              <Text className="text-spaceCadet-900 text-sm font-bold">Copy link</Text>
+              <Text className="text-spaceCadet-900 text-sm font-semibold">Copy link</Text>
             </AnimatedPressable>
           </View>
 
@@ -123,8 +123,8 @@ export default function ShowcaseDesignViewScreen() {
               onPress={() => router.push(`/showcase-designs/browse?store=${encodeURIComponent(visitSlug)}`)}
               className="flex-row items-center justify-center gap-2 py-3.5 rounded-2xl border border-lavender-200 bg-white"
             >
-              <Store size={17} color="#BB3F95" />
-              <Text className="text-sm font-bold text-fuchsia-600">Visit store</Text>
+              <Store size={17} color="#6B4773" />
+              <Text className="text-sm font-semibold text-fuchsia-600">Visit store</Text>
             </AnimatedPressable>
           )}
         </View>

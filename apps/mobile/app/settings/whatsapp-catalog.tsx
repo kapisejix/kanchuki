@@ -143,7 +143,7 @@ export default function WhatsAppCatalogSettingsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={primaryColor} />
         }
       >
-        <Text className="text-xs text-sand-500 leading-5 mb-4">
+        <Text className="text-xs text-heliotrope-500 leading-5 mb-4">
           Show your products inside WhatsApp Business — customers see your catalog when they
           open your business chat, no app needed. Syncs your product list, prices and photos.
         </Text>
@@ -151,21 +151,21 @@ export default function WhatsAppCatalogSettingsScreen() {
         {loadingStatus ? (
           <ActivityIndicator color={primaryColor} className="py-10" />
         ) : status === null ? (
-          <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center">
+          <View className="bg-white rounded-2xl p-6 border border-lavender-200 items-center">
             <View className="w-14 h-14 rounded-2xl bg-sand-100 items-center justify-center mb-3">
               <MessageCircle size={26} color={colors.sand[400]} />
             </View>
-            <Text className="text-sm font-bold text-sand-900 mb-1">Not on your plan</Text>
-            <Text className="text-xs text-sand-400 text-center leading-5">
+            <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">Not on your plan</Text>
+            <Text className="text-xs text-heliotrope-500 text-center leading-5">
               WhatsApp Catalog Sync is not included in your current plan.
             </Text>
           </View>
         ) : (
           <>
             {/* ── F5: status card ── */}
-            <View className="bg-white rounded-2xl p-5 border border-sand-100 mb-4">
+            <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-sm font-bold text-sand-900">Sync Status</Text>
+                <Text className="text-sm font-semibold text-spaceCadet-900">Sync Status</Text>
                 {status.configured ? (
                   <View className="bg-emerald-50 px-2.5 py-1 rounded-full">
                     <Text className="text-emerald-600 text-[11px] font-semibold">Connected</Text>
@@ -185,7 +185,7 @@ export default function WhatsAppCatalogSettingsScreen() {
                 <Stat
                   label="Failed"
                   value={String(status.items_failed)}
-                  color={status.items_failed > 0 ? 'text-rust-600' : 'text-sand-400'}
+                  color={status.items_failed > 0 ? 'text-rust-600' : 'text-heliotrope-500'}
                 />
               </View>
 
@@ -202,7 +202,7 @@ export default function WhatsAppCatalogSettingsScreen() {
               </View>
 
               {!status.configured && (
-                <Text className="text-xs text-sand-400 leading-5 mt-3">
+                <Text className="text-xs text-heliotrope-500 leading-5 mt-3">
                   Connect your WhatsApp Business API in Settings → WhatsApp Business API first —
                   the catalog is created on your Meta account.
                 </Text>
@@ -216,18 +216,18 @@ export default function WhatsAppCatalogSettingsScreen() {
               disabled={!status.configured || syncMutation.isPending}
               onPress={() => syncMutation.mutate()}
             />
-            <Text className="text-[11px] text-sand-400 text-center mt-2 mb-4">
+            <Text className="text-[11px] text-heliotrope-500 text-center mt-2 mb-4">
               {status.configured
                 ? 'Syncs every product to your WhatsApp catalog — takes a few seconds.'
                 : 'Sync is available after connecting your WhatsApp Business API.'}
             </Text>
 
             {/* ── F2: toggle ── */}
-            <View className="bg-white rounded-2xl p-5 border border-sand-100 mb-4">
+            <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-1 mr-4">
-                  <Text className="text-sm font-bold text-sand-900">Sync to WhatsApp Catalog</Text>
-                  <Text className="text-xs text-sand-400 leading-5 mt-1">
+                  <Text className="text-sm font-semibold text-spaceCadet-900">Sync to WhatsApp Catalog</Text>
+                  <Text className="text-xs text-heliotrope-500 leading-5 mt-1">
                     Keep your WhatsApp catalog in sync as products change.
                   </Text>
                 </View>
@@ -243,15 +243,15 @@ export default function WhatsAppCatalogSettingsScreen() {
             </View>
 
             {/* ── F3: category selector ── */}
-            <View className="bg-white rounded-2xl p-5 border border-sand-100 mb-4">
-              <Text className="text-sm font-bold text-sand-900 mb-1">Categories to sync</Text>
-              <Text className="text-xs text-sand-400 leading-5 mb-3">
+            <View className="bg-white rounded-2xl p-5 border border-lavender-200 mb-4">
+              <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">Categories to sync</Text>
+              <Text className="text-xs text-heliotrope-500 leading-5 mb-3">
                 {status.sync_categories.length === 0
                   ? 'All categories are synced. Pick specific ones to sync only those products.'
                   : 'Only products in the selected categories are synced.'}
               </Text>
               {categories.length === 0 ? (
-                <Text className="text-xs text-sand-400">No categories yet.</Text>
+                <Text className="text-xs text-heliotrope-500">No categories yet.</Text>
               ) : (
                 <View className="flex-row flex-wrap gap-2">
                   {categories.map((category) => {
@@ -267,10 +267,10 @@ export default function WhatsAppCatalogSettingsScreen() {
                         className={`px-3.5 py-2 rounded-full border ${
                           selected
                             ? 'bg-ink-600 border-ink-600'
-                            : 'bg-sand-50 border-sand-200'
+                            : 'bg-lavender-50 border-lavender-200'
                         }`}
                       >
-                        <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-sand-600'}`}>
+                        <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-heliotrope-600'}`}>
                           {category.name}
                         </Text>
                       </AnimatedPressable>
@@ -284,9 +284,9 @@ export default function WhatsAppCatalogSettingsScreen() {
             </View>
 
             {/* ── F6: sync history ── */}
-            <View className="bg-white rounded-2xl border border-sand-100 overflow-hidden">
-              <View className="px-5 py-4 border-b border-sand-100 flex-row items-center justify-between">
-                <Text className="text-sm font-bold text-sand-900">Sync History</Text>
+            <View className="bg-white rounded-2xl border border-lavender-200 overflow-hidden">
+              <View className="px-5 py-4 border-b border-lavender-200 flex-row items-center justify-between">
+                <Text className="text-sm font-semibold text-spaceCadet-900">Sync History</Text>
                 <AnimatedPressable
                   onPress={() => void refresh()}
                   hitSlop={8}
@@ -300,25 +300,25 @@ export default function WhatsAppCatalogSettingsScreen() {
               {loadingLogs ? (
                 <ActivityIndicator color={primaryColor} className="py-8" />
               ) : logs.length === 0 ? (
-                <Text className="text-xs text-sand-400 text-center py-8 px-5">
+                <Text className="text-xs text-heliotrope-500 text-center py-8 px-5">
                   No sync runs yet. Tap Sync Now to sync your products.
                 </Text>
               ) : (
                 logs.slice(0, 20).map((log) => (
-                  <View key={log.id} className="px-5 py-3.5 border-b border-sand-50">
+                  <View key={log.id} className="px-5 py-3.5 border-b border-lavender-200">
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-sm font-semibold text-sand-800 capitalize">
+                      <Text className="text-sm font-semibold text-spaceCadet-900 capitalize">
                         {log.operation.replace('_', ' ')}
                       </Text>
                       <Text
-                        className={`text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-1 ${
-                          LOG_STATUS_COLOR[log.status] ?? 'bg-sand-50 text-sand-500'
+                        className={`text-[11px] font-semibold capitalize rounded-full px-2 py-1 ${
+                          LOG_STATUS_COLOR[log.status] ?? 'bg-lavender-50 text-heliotrope-500'
                         }`}
                       >
                         {log.status}
                       </Text>
                     </View>
-                    <Text className="text-xs text-sand-400 mt-0.5">
+                    <Text className="text-xs text-heliotrope-500 mt-0.5">
                       {fmtDate(log.created_at)}
                       {log.product_id ? ` · ${log.product_id}` : ''}
                     </Text>
@@ -343,8 +343,8 @@ export default function WhatsAppCatalogSettingsScreen() {
 function Stat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <View className="flex-1">
-      <Text className={`text-xl font-bold ${color}`}>{value}</Text>
-      <Text className="text-[11px] text-sand-400 mt-0.5">{label}</Text>
+      <Text className={`text-xl font-semibold ${color}`}>{value}</Text>
+      <Text className="text-[11px] text-heliotrope-500 mt-0.5">{label}</Text>
     </View>
   );
 }
@@ -352,8 +352,8 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
 function InfoRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
     <View className="flex-row items-center justify-between">
-      <Text className="text-xs text-sand-400">{label}</Text>
-      <Text className={`text-xs font-semibold text-sand-700 ${mono ? 'font-mono' : ''}`} numberOfLines={1}>
+      <Text className="text-xs text-heliotrope-500">{label}</Text>
+      <Text className={`text-xs font-semibold text-heliotrope-600 ${mono ? 'font-mono' : ''}`} numberOfLines={1}>
         {value}
       </Text>
     </View>

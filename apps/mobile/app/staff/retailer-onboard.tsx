@@ -49,7 +49,7 @@ export default function RetailerOnboardScreen() {
       setSuccess(true)
       Alert.alert(
         'Retailer Onboarded',
-        `${result.data.retailer.shop_name} has been added to your territory with a 14-day trial.${result.data.over_capacity ? '\n\n⚠️ You are over your capacity limit.' : ''}`,
+        `${result.data.retailer.shop_name} has been added to your territory with a 14-day trial.${result.data.over_capacity ? '\n\nYou are over your capacity limit.' : ''}`,
         [
           {
             text: 'Add Another',
@@ -85,22 +85,22 @@ export default function RetailerOnboardScreen() {
     }
   }
 
-  const inputClass = 'bg-white border border-sand-300 rounded-xl px-4 py-3.5 text-sm text-sand-900'
-  const labelClass = 'text-xs font-semibold text-sand-700 uppercase tracking-wide mb-1.5'
+  const inputClass = 'bg-white border border-lavender-300 rounded-xl px-4 py-3.5 text-sm text-spaceCadet-900'
+  const labelClass = 'text-xs font-semibold text-heliotrope-600 mb-1.5'
 
   if (success) {
     return (
-      <View className="flex-1 bg-slate-50 items-center justify-center px-6">
+      <View className="flex-1 bg-[#F8F7FC] items-center justify-center px-6">
         <View className="w-20 h-20 bg-turmeric-100 rounded-full items-center justify-center mb-4">
           <CheckCircle2 size={40} color={colors.turmeric[500]} />
         </View>
-        <Text className="text-xl font-bold text-sand-900 text-center">Retailer Onboarded!</Text>
-        <Text className="text-sand-500 text-sm mt-2 text-center">
+        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Retailer onboarded</Text>
+        <Text className="text-heliotrope-500 text-sm mt-2 text-center">
           {shopName} has been added with a 14-day free trial.
         </Text>
         <AnimatedPressable
           onPress={() => router.back()}
-          className="mt-8 bg-rust-500 px-8 py-3.5 rounded-2xl shadow-sm"
+          className="mt-8 bg-spaceCadet-900 px-8 py-3.5 rounded-2xl"
         >
           <Text className="text-white font-semibold">Back to Dashboard</Text>
         </AnimatedPressable>
@@ -109,7 +109,7 @@ export default function RetailerOnboardScreen() {
   }
 
   return (
-    <KeyboardScreen className="flex-1 bg-slate-50">
+    <KeyboardScreen className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <ScreenHeader title="New Retailer" subtitle="Quick field onboarding" />
 
@@ -120,7 +120,7 @@ export default function RetailerOnboardScreen() {
       >
         <View className="gap-4">
           {/* Shop name */}
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <View className="bg-white rounded-2xl p-4 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-2">
               <Store size={16} color={primaryColor} />
               <Text className={labelClass}>Shop Name *</Text>
@@ -136,13 +136,13 @@ export default function RetailerOnboardScreen() {
           </View>
 
           {/* Phone */}
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <View className="bg-white rounded-2xl p-4 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-2">
               <Phone size={16} color={colors.turmeric[500]} />
               <Text className={labelClass}>Mobile Number *</Text>
             </View>
-            <View className="flex-row items-center border border-sand-200 rounded-xl px-4">
-              <Text className="text-sm font-semibold text-sand-600">+91</Text>
+            <View className="flex-row items-center border border-lavender-200 rounded-xl px-4">
+              <Text className="text-sm font-semibold text-heliotrope-600">+91</Text>
               <View className="w-px h-5 bg-sand-300 mx-3" />
               <TextInput
                 value={phone}
@@ -151,7 +151,7 @@ export default function RetailerOnboardScreen() {
                 placeholderTextColor={colors.sand[400]}
                 keyboardType="phone-pad"
                 maxLength={15}
-                className="flex-1 py-3.5 text-sm text-sand-900"
+                className="flex-1 py-3.5 text-sm text-spaceCadet-900"
               />
             </View>
             {phone.replace(/\D/g, '').length > 0 && !isValidIndianPhone(phone) ? (
@@ -162,7 +162,7 @@ export default function RetailerOnboardScreen() {
           </View>
 
           {/* Owner name */}
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <View className="bg-white rounded-2xl p-4 border border-lavender-200">
             <View className="flex-row items-center gap-2 mb-2">
               <User size={16} color={colors.danger} />
               <Text className={labelClass}>Owner Name</Text>
@@ -178,7 +178,7 @@ export default function RetailerOnboardScreen() {
 
           {/* City + State */}
           <View className="flex-row gap-3">
-            <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100">
+            <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200">
               <View className="flex-row items-center gap-2 mb-2">
                 <MapPin size={16} color={colors.turmeric[500]} />
                 <Text className={labelClass}>City *</Text>
@@ -191,7 +191,7 @@ export default function RetailerOnboardScreen() {
                 className={inputClass}
               />
             </View>
-            <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100">
+            <View className="flex-1 bg-white rounded-2xl p-4 border border-lavender-200">
               <Text className={labelClass}>State</Text>
               <TextInput
                 value={state}
@@ -204,7 +204,7 @@ export default function RetailerOnboardScreen() {
           </View>
 
           {/* Pincode */}
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <View className="bg-white rounded-2xl p-4 border border-lavender-200">
             <Text className={labelClass}>Pincode</Text>
             <TextInput
               value={pincode}
@@ -215,7 +215,7 @@ export default function RetailerOnboardScreen() {
               maxLength={6}
               className={inputClass}
             />
-            <Text className="text-xs text-sand-400 mt-1.5">
+            <Text className="text-xs text-heliotrope-500 mt-1.5">
               Used to auto-assign territory. Will be editable by the retailer later.
             </Text>
           </View>
@@ -233,7 +233,7 @@ export default function RetailerOnboardScreen() {
 
       {/* Submit button */}
       <View
-        className="bg-white border-t border-sand-100 px-4 py-4"
+        className="bg-white border-t border-lavender-200 px-4 py-4"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
         <GradientButton variant="web"

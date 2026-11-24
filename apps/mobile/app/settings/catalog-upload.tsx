@@ -46,28 +46,28 @@ function RequestForm() {
       <View className="w-16 h-16 bg-ink-100 rounded-2xl items-center justify-center mb-4">
         <Package size={28} color={primaryColor} />
       </View>
-      <Text className="text-2xl font-bold text-sand-900">Get help adding your catalog</Text>
-      <Text className="text-sand-500 text-base mt-2 leading-5">
+      <Text className="text-2xl font-semibold text-spaceCadet-900">Get help adding your catalog</Text>
+      <Text className="text-heliotrope-500 text-base mt-2 leading-5">
         A Kanchuki team member visits your shop and uploads your entire catalog for you. Tell us
         roughly how many items you have — we&apos;ll quote a price and propose a visit time.
       </Text>
 
       <View className="mt-6">
-        <Text className="text-sm font-semibold text-sand-600 mb-2">About how many items?</Text>
+        <Text className="text-sm font-semibold text-heliotrope-600 mb-2">About how many items?</Text>
         <TextInput
           value={itemCount}
           onChangeText={(t) => setItemCount(t.replace(/[^0-9]/g, ''))}
           placeholder="e.g. 500"
           keyboardType="number-pad"
-          className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+          className="border-2 border-lavender-200 rounded-2xl px-4 py-4 text-base text-spaceCadet-900"
           placeholderTextColor={colors.sand[400]}
           maxLength={6}
         />
       </View>
 
       <View className="mt-4">
-        <Text className="text-sm font-semibold text-sand-600 mb-2">
-          Note <Text className="text-sand-400 font-normal">(optional)</Text>
+        <Text className="text-sm font-semibold text-heliotrope-600 mb-2">
+          Note <Text className="text-heliotrope-500 font-normal">(optional)</Text>
         </Text>
         <TextInput
           value={note}
@@ -75,7 +75,7 @@ function RequestForm() {
           placeholder="Anything we should know?"
           multiline
           numberOfLines={3}
-          className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+          className="border-2 border-lavender-200 rounded-2xl px-4 py-4 text-base text-spaceCadet-900"
           placeholderTextColor={colors.sand[400]}
           maxLength={2000}
         />
@@ -127,8 +127,8 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
         <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
           <Clock size={28} color={colors.turmeric[600]} />
         </View>
-        <Text className="text-xl font-bold text-sand-900 text-center">Request received</Text>
-        <Text className="text-sand-500 text-base mt-2 text-center leading-5">
+        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Request received</Text>
+        <Text className="text-heliotrope-500 text-base mt-2 text-center leading-5">
           Our team is reviewing your request for {ticket.item_count_requested ?? 'your'} items.
           We&apos;ll notify you with a price and visit time soon. Pull down to refresh.
         </Text>
@@ -143,9 +143,9 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
         <View className="w-16 h-16 bg-ink-100 rounded-2xl items-center justify-center mb-4">
           <IndianRupee size={28} color={primaryColor} />
         </View>
-        <Text className="text-xl font-bold text-sand-900 text-center">Your quote is ready</Text>
+        <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Your quote is ready</Text>
         <Text className="text-3xl font-bold text-ink-600 mt-3">₹{ticket.quoted_price_inr}</Text>
-        <Text className="text-sand-500 text-sm mt-2 text-center leading-5">
+        <Text className="text-heliotrope-500 text-sm mt-2 text-center leading-5">
           for {ticket.item_count_requested ?? 'your'} items. Pay now to pick your visit slot.
         </Text>
         <AnimatedPressable
@@ -159,7 +159,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
             <Text className="text-white font-bold text-base">Pay ₹{ticket.quoted_price_inr}</Text>
           )}
         </AnimatedPressable>
-        <Text className="text-sand-400 text-xs mt-3 text-center">
+        <Text className="text-heliotrope-500 text-xs mt-3 text-center">
           Opens Razorpay checkout in your browser — return here after paying.
         </Text>
       </View>
@@ -175,16 +175,16 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
             <Check size={28} color={colors.turmeric[600]} />
           </View>
-          <Text className="text-xl font-bold text-sand-900 text-center">Payment received</Text>
+          <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Payment received</Text>
         </View>
 
         {slots.length === 0 ? (
-          <Text className="text-sand-500 text-base text-center leading-5">
+          <Text className="text-heliotrope-500 text-base text-center leading-5">
             Waiting for our team to propose visit times. Pull down to refresh.
           </Text>
         ) : (
           <>
-            <Text className="text-sand-500 text-base text-center leading-5 mb-4">
+            <Text className="text-heliotrope-500 text-base text-center leading-5 mb-4">
               Pick a visit time:
             </Text>
             {slots.map((slot) => (
@@ -192,9 +192,9 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
                 key={slot}
                 onPress={() => confirmSlot.mutate(slot)}
                 disabled={confirmSlot.isPending}
-                className="flex-row items-center justify-between border-2 border-sand-200 rounded-2xl p-4 mb-3"
+                className="flex-row items-center justify-between border-2 border-lavender-200 rounded-2xl p-4 mb-3"
               >
-                <Text className="text-sand-900 font-semibold">
+                <Text className="text-spaceCadet-900 font-semibold">
                   {new Date(slot).toLocaleString('en-IN', {
                     weekday: 'short',
                     day: 'numeric',
@@ -218,8 +218,8 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
       <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
         <Check size={28} color={colors.turmeric[600]} />
       </View>
-      <Text className="text-xl font-bold text-sand-900 text-center">Visit confirmed</Text>
-      <Text className="text-sand-500 text-base mt-2 text-center leading-5">
+      <Text className="text-xl font-semibold text-spaceCadet-900 text-center">Visit confirmed</Text>
+      <Text className="text-heliotrope-500 text-base mt-2 text-center leading-5">
         {new Date(ticket.confirmed_slot).toLocaleString('en-IN', {
           weekday: 'long',
           day: 'numeric',
@@ -228,7 +228,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           minute: '2-digit',
         })}
       </Text>
-      <Text className="text-sand-400 text-xs mt-3 text-center">
+      <Text className="text-heliotrope-500 text-xs mt-3 text-center">
         A Kanchuki team member will visit your shop at this time to upload your catalog.
       </Text>
     </View>

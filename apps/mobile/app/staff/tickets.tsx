@@ -36,7 +36,7 @@ const STATUS_STYLE: Record<SupportTicket['status'], { label: string; bg: string;
   OPEN: { label: 'Open', bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
   ASSIGNED: { label: 'Assigned', bg: 'bg-ink-100', text: 'text-ink-700' },
   RESOLVED: { label: 'Resolved', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  CLOSED: { label: 'Closed', bg: 'bg-sand-100', text: 'text-sand-600' },
+  CLOSED: { label: 'Closed', bg: 'bg-sand-100', text: 'text-heliotrope-600' },
 };
 
 function matches(filter: Filter, t: SupportTicket) {
@@ -95,10 +95,10 @@ export default function StaffTicketsScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 className={`px-4 py-1.5 rounded-full border ${
-                  active ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                  active ? 'bg-ink-600 border-ink-600' : 'bg-white border-lavender-200'
                 }`}
               >
-                <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-sand-700'}`}>
+                <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-heliotrope-600'}`}>
                   {f.label} ({all.filter((t) => matches(f.key, t)).length})
                 </Text>
               </AnimatedPressable>
@@ -118,7 +118,7 @@ export default function StaffTicketsScreen() {
           {tickets.length === 0 ? (
             <View className="items-center py-16">
               <Ticket size={40} color={colors.sand[300]} />
-              <Text className="text-sand-400 text-sm mt-4 text-center px-8">
+              <Text className="text-heliotrope-500 text-sm mt-4 text-center px-8">
                 {filter === 'ACTIVE' ? 'No active tickets right now.' : 'No tickets here.'}
               </Text>
             </View>
@@ -131,25 +131,25 @@ export default function StaffTicketsScreen() {
                 const canResolve = canAct && t.status === 'ASSIGNED' && (mine || isManager);
                 const busy = update.isPending && update.variables?.id === t.id;
                 return (
-                  <View key={t.id} className="bg-white rounded-2xl p-4 border border-sand-100">
+                  <View key={t.id} className="bg-white rounded-2xl p-4 border border-lavender-200">
                     <View className="flex-row items-center gap-2 mb-1">
                       <Store size={16} color={primaryColor} />
-                      <Text className="text-sm font-bold text-sand-900 flex-1">{t.retailer.shop_name}</Text>
+                      <Text className="text-sm font-semibold text-spaceCadet-900 flex-1">{t.retailer.shop_name}</Text>
                       <View className={`rounded-full px-2.5 py-0.5 ${s.bg}`}>
-                        <Text className={`text-[10px] font-bold ${s.text}`}>{s.label}</Text>
+                        <Text className={`text-[11px] font-semibold ${s.text}`}>{s.label}</Text>
                       </View>
                     </View>
                     <View className="flex-row items-center gap-1 mb-2">
                       <MapPin size={12} color={colors.sand[400]} />
-                      <Text className="text-xs text-sand-400">{t.retailer.city}</Text>
+                      <Text className="text-xs text-heliotrope-500">{t.retailer.city}</Text>
                     </View>
-                    <Text className="text-xs font-semibold text-sand-700">
+                    <Text className="text-xs font-semibold text-heliotrope-600">
                       {TYPE_LABEL[t.ticket_type] ?? 'Support'}
                       {t.setup_item ? ` · Setup: ${t.setup_item.replace(/_/g, ' ')}` : ''}
                       {t.requires_visit ? ' · visit needed' : ''}
                     </Text>
-                    {t.note ? <Text className="text-xs text-sand-600 mt-1 leading-5">{t.note}</Text> : null}
-                    <Text className="text-[11px] text-sand-400 mt-2">
+                    {t.note ? <Text className="text-xs text-heliotrope-600 mt-1 leading-5">{t.note}</Text> : null}
+                    <Text className="text-[11px] text-heliotrope-500 mt-2">
                       {new Date(t.created_at).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'short',

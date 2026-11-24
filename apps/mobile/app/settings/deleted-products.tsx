@@ -68,7 +68,7 @@ export default function DeletedProductsScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: DeletedProduct }) => (
-      <View className="bg-white rounded-2xl p-3 border border-sand-100 flex-row items-center">
+      <View className="bg-white rounded-2xl p-3 border border-lavender-200 flex-row items-center">
         {item.photos[0] ? (
           <Image source={{ uri: item.photos[0].url }} className="w-14 h-14 rounded-xl mr-3" resizeMode="cover" />
         ) : (
@@ -77,10 +77,10 @@ export default function DeletedProductsScreen() {
           </View>
         )}
         <View className="flex-1">
-          <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
+          <Text className="text-sm font-semibold text-spaceCadet-900" numberOfLines={1}>
             {item.name ?? 'Untitled product'}
           </Text>
-          <Text className="text-xs text-sand-400 mt-0.5">
+          <Text className="text-xs text-heliotrope-500 mt-0.5">
             {formatPriceRange(item.price_min, item.price_max)}
           </Text>
         </View>
@@ -117,7 +117,7 @@ export default function DeletedProductsScreen() {
         ) : products.length === 0 ? (
           <View className="items-center py-16">
             <PackageX size={40} color={colors.sand[300]} />
-            <Text className="text-sand-400 text-sm mt-4 text-center">
+            <Text className="text-heliotrope-500 text-sm mt-4 text-center">
               No deleted products.{'\n'}Items removed by you or your team show up here.
             </Text>
           </View>
@@ -128,7 +128,7 @@ export default function DeletedProductsScreen() {
             renderItem={renderItem}
             contentContainerStyle={{ gap: 8, paddingBottom: screenPaddingBottom }}
             ListHeaderComponent={
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
+              <Text className="text-xs font-semibold text-heliotrope-500 mb-1">
                 {products.length} deleted item{products.length !== 1 ? 's' : ''}
               </Text>
             }

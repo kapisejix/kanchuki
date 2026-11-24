@@ -312,9 +312,9 @@ function ProfileEditModal({
       onRequestClose={onClose}
     >
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[80%]">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[80%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">
+            <Text className="text-lg font-semibold text-spaceCadet-900">
               Edit Profile
             </Text>
             <AnimatedPressable
@@ -332,7 +332,7 @@ function ProfileEditModal({
               <AnimatedPressable
                 onPress={() => void handlePickLogo()}
                 disabled={uploadingLogo}
-                className="w-20 h-20 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
+                className="w-20 h-20 rounded-2xl bg-lavender-50 border border-lavender-200 items-center justify-center overflow-hidden"
               >
                 {uploadingLogo ? (
                   <ActivityIndicator color={primaryColor} />
@@ -346,7 +346,7 @@ function ProfileEditModal({
                   <ImagePlus size={22} color={colors.sand[400]} />
                 )}
               </AnimatedPressable>
-              <Text className="text-[10px] text-sand-400 mt-1.5">
+              <Text className="text-[11px] text-heliotrope-500 mt-1.5">
                 {logoUrl ? "Tap to change logo" : "Add store logo (optional)"}
               </Text>
             </View>
@@ -356,7 +356,7 @@ function ProfileEditModal({
               <AnimatedPressable
                 onPress={() => void handlePickBanner()}
                 disabled={uploadingBanner}
-                className="w-full h-28 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
+                className="w-full h-28 rounded-2xl bg-lavender-50 border border-lavender-200 items-center justify-center overflow-hidden"
               >
                 {uploadingBanner ? (
                   <ActivityIndicator color={primaryColor} />
@@ -369,7 +369,7 @@ function ProfileEditModal({
                 ) : (
                   <View className="items-center">
                     <ImagePlus size={22} color={colors.sand[400]} />
-                    <Text className="text-[10px] text-sand-400 mt-1">
+                    <Text className="text-[11px] text-heliotrope-500 mt-1">
                       Tap to add store banner
                     </Text>
                   </View>
@@ -381,9 +381,9 @@ function ProfileEditModal({
                     setBannerUrl(null);
                     setBannerR2Key(null);
                   }}
-                  className="mt-1"
+                  className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
-                  <Text className="text-[10px] text-rust-500">
+                  <Text className="text-[11px] text-rust-500">
                     Remove banner
                   </Text>
                 </AnimatedPressable>
@@ -411,20 +411,20 @@ function ProfileEditModal({
 
             {/* Store location — customers see a Directions button that opens Google Maps */}
             <View className="mb-3">
-              <Text className="text-xs font-semibold text-sand-600 mb-1">Store location</Text>
+              <Text className="text-xs font-semibold text-heliotrope-600 mb-1">Store location</Text>
               <AnimatedPressable
                 onPress={() => void handleSetLocation()}
                 disabled={locating}
                 accessibilityLabel="Set store location from my current position"
                 accessibilityRole="button"
-                className="flex-row items-center gap-3 bg-white border border-sand-200 rounded-2xl p-3"
+                className="flex-row items-center gap-3 bg-white border border-lavender-200 rounded-2xl p-3"
               >
                 <MapPin size={18} color={latitude !== null ? primaryColor : colors.sand[500]} />
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-sand-900">
+                  <Text className="text-sm font-semibold text-spaceCadet-900">
                     {latitude !== null ? "Location saved" : "Use my current location"}
                   </Text>
-                  <Text className="text-[11px] text-sand-400 mt-0.5">
+                  <Text className="text-[11px] text-heliotrope-500 mt-0.5">
                     {latitude !== null && longitude !== null
                       ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)} — tap to update (stand inside your shop)`
                       : "Stand inside your shop and tap. Customers get a Directions button."}
@@ -441,7 +441,7 @@ function ProfileEditModal({
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
-                  className="flex-1 bg-white border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900"
+                  className="flex-1 bg-white border border-lavender-200 rounded-xl px-3 py-2.5 text-sm text-spaceCadet-900"
                 />
                 <AnimatedPressable
                   onPress={() => void handleUseMapsLink()}
@@ -464,9 +464,9 @@ function ProfileEditModal({
                     setLatitude(null);
                     setLongitude(null);
                   }}
-                  className="mt-1"
+                  className="mt-1 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
-                  <Text className="text-[10px] text-rust-500">Remove location</Text>
+                  <Text className="text-[11px] text-rust-500">Remove location</Text>
                 </AnimatedPressable>
               ) : null}
             </View>
@@ -478,7 +478,7 @@ function ProfileEditModal({
               placeholder="22AAAAA0000A1Z5"
             />
 
-            <Text className="text-[10px] text-sand-400 mt-1">
+            <Text className="text-[11px] text-heliotrope-500 mt-1">
               GSTIN format: 22AAAAA0000A1Z5 (15 characters)
             </Text>
 
@@ -488,7 +488,7 @@ function ProfileEditModal({
                 disabled={saving}
                 className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
               >
-                <Text className="text-sand-700 font-semibold">Cancel</Text>
+                <Text className="text-heliotrope-600 font-semibold">Cancel</Text>
               </AnimatedPressable>
               <AnimatedPressable
                 onPress={() => void handleSave()}
@@ -525,7 +525,7 @@ function Field({
   const { colors } = useTheme();
   return (
     <View>
-      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+      <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
         {label}
       </Text>
       <TextInput
@@ -533,7 +533,7 @@ function Field({
         onChangeText={onChange}
         placeholder={placeholder}
         keyboardType={keyboardType}
-        className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+        className="bg-lavender-50 px-4 py-3 rounded-xl text-sm text-spaceCadet-900"
         placeholderTextColor={colors.sand[400]}
       />
     </View>
@@ -618,11 +618,11 @@ function WhatsAppModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-sand-900">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4">
+          <Text className="text-lg font-semibold text-spaceCadet-900">
             WhatsApp Number
           </Text>
-          <Text className="text-xs text-sand-500">
+          <Text className="text-xs text-heliotrope-500">
             Customer enquiries open WhatsApp on this number. Use the shop
             WhatsApp Business number and link staff phones to it (WhatsApp →
             Linked devices) so the whole team sees every chat.
@@ -757,9 +757,9 @@ function KycDocRow({
     <AnimatedPressable
       onPress={() => void handlePick()}
       disabled={uploading}
-      className="flex-row items-center bg-sand-50 rounded-2xl p-3.5 border border-sand-100"
+      className="flex-row items-center bg-lavender-50 rounded-2xl p-3.5 border border-lavender-200"
     >
-      <View className="w-11 h-11 rounded-xl bg-white border border-sand-200 items-center justify-center mr-3 overflow-hidden">
+      <View className="w-11 h-11 rounded-xl bg-white border border-lavender-200 items-center justify-center mr-3 overflow-hidden">
         {uploading ? (
           <ActivityIndicator size="small" color={primaryColor} />
         ) : url ? (
@@ -773,8 +773,8 @@ function KycDocRow({
         )}
       </View>
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-sand-900">{label}</Text>
-        <Text className="text-xs text-sand-400 mt-0.5">
+        <Text className="text-sm font-semibold text-spaceCadet-900">{label}</Text>
+        <Text className="text-xs text-heliotrope-500 mt-0.5">
           {url ? "Uploaded — tap to replace" : hint}
         </Text>
       </View>
@@ -844,9 +844,9 @@ function KycModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">
+            <Text className="text-lg font-semibold text-spaceCadet-900">
               Identity Verification
             </Text>
             <AnimatedPressable
@@ -876,7 +876,7 @@ function KycModal({
             </Text>
           )}
 
-          <Text className="text-xs text-sand-500">
+          <Text className="text-xs text-heliotrope-500">
             Upload GST certificate and Aadhar card (front + back) for KYC.
             Submitted for review once all three are uploaded.
           </Text>
@@ -899,7 +899,7 @@ function KycModal({
             onPress={onClose}
             className="bg-sand-100 py-3.5 rounded-2xl items-center"
           >
-            <Text className="text-sand-700 font-semibold">Done</Text>
+            <Text className="text-heliotrope-600 font-semibold">Done</Text>
           </AnimatedPressable>
         </View>
       </View>
@@ -930,8 +930,8 @@ function GoogleListingModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
-          <Text className="text-lg font-bold text-sand-900">Google Listing</Text>
+        <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[85%]">
+          <Text className="text-lg font-semibold text-spaceCadet-900">Google Listing</Text>
           <ScrollView keyboardShouldPersistTaps="handled">
             <GooglePlaceField
               defaultQuery={defaultQuery}
@@ -1028,9 +1028,9 @@ function WhatsAppApiModal({
       onRequestClose={onClose}
     >
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">
+            <Text className="text-lg font-semibold text-spaceCadet-900">
               WhatsApp Business API
             </Text>
             <AnimatedPressable
@@ -1046,7 +1046,7 @@ function WhatsAppApiModal({
             <ActivityIndicator color={primaryColor} className="py-8" />
           ) : (
             <ScrollView className="gap-3">
-              <Text className="text-xs text-sand-500 mb-1">
+              <Text className="text-xs text-heliotrope-500 mb-1">
                 Optional — connect your own Meta WhatsApp Business API to send
                 collection links to many customers in one tap. Without this,
                 sharing works one-by-one via WhatsApp. Requires a pre-approved
@@ -1104,7 +1104,7 @@ function WhatsAppApiModal({
               {configured && (
                 <AnimatedPressable
                   onPress={handleDisconnect}
-                  className="items-center py-2"
+                  className="items-center py-2 border border-lavender-200 rounded-lg px-3 min-h-[36px] justify-center"
                 >
                   <Text className="text-rust-500 text-xs font-semibold">
                     Disconnect
@@ -1164,11 +1164,11 @@ function DeleteAccountModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-rust-600">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4">
+          <Text className="text-lg font-semibold text-rust-600">
             Delete Account
           </Text>
-          <Text className="text-sm text-sand-600 leading-relaxed">
+          <Text className="text-sm text-heliotrope-600 leading-relaxed">
             This will permanently delete your account and ALL associated data —
             products, customers, collections, orders, staff, and settings.
             {"\n\n"}
@@ -1180,7 +1180,7 @@ function DeleteAccountModal({
             value={confirm}
             onChangeText={setConfirm}
             placeholder='Type "DELETE" to confirm'
-            className="bg-rust-50 border border-rust-200 px-4 py-3 rounded-xl text-sm text-sand-900"
+            className="bg-rust-50 border border-rust-200 px-4 py-3 rounded-xl text-sm text-spaceCadet-900"
             placeholderTextColor={colors.sand[400]}
             autoCapitalize="characters"
           />
@@ -1190,7 +1190,7 @@ function DeleteAccountModal({
               disabled={deleting}
               className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
             >
-              <Text className="text-sand-700 font-semibold">Cancel</Text>
+              <Text className="text-heliotrope-600 font-semibold">Cancel</Text>
             </AnimatedPressable>
             <AnimatedPressable
               onPress={() => void handleDelete()}
@@ -1228,14 +1228,14 @@ function SettingsRow({
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="flex-row items-center bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
+      className="flex-row items-center bg-white rounded-2xl p-4 border border-lavender-200"
     >
-      <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center mr-3.5">
+      <View className="w-6 items-center justify-center mr-3.5">
         {icon}
       </View>
       <View className="flex-1">
         <Text
-          className={`text-sm font-bold ${destructive ? "text-red-600" : "text-spaceCadet-900 font-marcellus"}`}
+          className={`text-sm ${destructive ? " text-red-600" : "text-spaceCadet-900 font-extrabold font-marcellus"}`}
         >
           {label}
         </Text>
@@ -1332,12 +1332,12 @@ export default function SettingsScreen() {
             >
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-xl font-extrabold text-spaceCadet-900 font-marcellus">
+            <Text className="text-xl text-spaceCadet-900 font-extrabold font-marcellus">
               Settings
             </Text>
           </View>
-          <View className="px-2.5 py-1 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30">
-            <Text className="text-tyrian-800 text-[10px] font-extrabold uppercase tracking-wider">
+          <View className="px-2.5 py-1 rounded-full bg-lavender-100 border border-lavender-200">
+            <Text className="text-tyrian-800 text-[11px] font-semibold">
               {retailer?.plan ?? "PRO PLAN"}
             </Text>
           </View>
@@ -1349,10 +1349,10 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: screenPaddingBottom }}
       >
         {/* Store Profile Card (Point 8 Spec) */}
-        <View className="bg-white rounded-3xl p-4 flex-row items-center justify-between mb-4 border border-lavender-200 shadow-sm">
+        <View className="bg-white rounded-2xl p-4 flex-row items-center justify-between mb-4 border border-lavender-200">
           <View className="flex-row items-center gap-3 flex-1 mr-2">
-            <View className="w-12 h-12 rounded-2xl bg-tyrian-800 border border-fuchsia-500/30 items-center justify-center shadow-sm">
-              <Text className="text-lavender-200 font-bold text-base font-marcellus">
+            <View className="w-12 h-12 rounded-2xl bg-tyrian-800 border border-lavender-200 items-center justify-center">
+              <Text className="text-lavender-200 text-base font-extrabold font-marcellus">
                 {(retailer?.shop_name ?? "RS").slice(0, 2).toUpperCase()}
               </Text>
             </View>
@@ -1360,12 +1360,12 @@ export default function SettingsScreen() {
               <Text
                 style={{
                   fontFamily: 'Marcellus_400Regular',
-                  fontSize: 16,
-                  lineHeight: 24,
                   letterSpacing: 0.32,
                   fontWeight: '800',
+                  fontSize: 16,
+                  lineHeight: 24,
                 }}
-                className="text-base leading-6 tracking-[0.02em] font-extrabold text-spaceCadet-900 font-marcellus"
+                className="text-base leading-6 text-spaceCadet-900 font-extrabold font-marcellus"
                 numberOfLines={1}
               >
                 {retailer?.shop_name ?? "Radha Sarees"}
@@ -1395,19 +1395,19 @@ export default function SettingsScreen() {
           >
             <View className="p-4">
               <View className="flex-row items-center gap-3">
-                <View className="w-10 h-10 rounded-xl bg-white border border-turmeric-200 items-center justify-center">
+                <View className="w-6 items-center justify-center">
                   <QrCode size={18} color={colors.turmeric[600]} />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm font-bold text-sand-900">
+                  <Text className="text-sm font-semibold text-spaceCadet-900">
                     Your store link has changed
                   </Text>
-                  <Text className="text-xs text-sand-600 mt-0.5">
+                  <Text className="text-xs text-heliotrope-600 mt-0.5">
                     Old links and printed QR codes no longer work
                   </Text>
                 </View>
               </View>
-              <Text className="text-xs text-sand-600 leading-4 mt-3">
+              <Text className="text-xs text-heliotrope-600 leading-4 mt-3">
                 Renaming your shop updated your store URL. Your new link is:
               </Text>
               <AnimatedPressable
@@ -1438,9 +1438,9 @@ export default function SettingsScreen() {
                   hitSlop={8}
                   accessibilityLabel="Dismiss link notice"
                   accessibilityRole="button"
-                  className="py-1.5"
+                  className="py-1.5 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                 >
-                  <Text className="text-sand-500 text-xs font-semibold">
+                  <Text className="text-heliotrope-500 text-xs font-semibold">
                     Dismiss
                   </Text>
                 </AnimatedPressable>
@@ -1463,19 +1463,19 @@ export default function SettingsScreen() {
             >
               <View className="p-4">
                 <View className="flex-row items-center gap-3">
-                  <View className="w-10 h-10 rounded-xl bg-white border border-turmeric-200 items-center justify-center">
+                  <View className="w-6 items-center justify-center">
                     <FileText size={18} color={colors.turmeric[600]} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-sand-900">
+                    <Text className="text-sm font-semibold text-spaceCadet-900">
                       Add your GST number
                     </Text>
-                    <Text className="text-xs text-sand-600 mt-0.5">
+                    <Text className="text-xs text-heliotrope-600 mt-0.5">
                       Needed for GST invoices on customer orders
                     </Text>
                   </View>
                 </View>
-                <Text className="text-xs text-sand-600 leading-4 mt-3">
+                <Text className="text-xs text-heliotrope-600 leading-4 mt-3">
                   You skipped this during onboarding. Add your GSTIN now so
                   every sale can be billed correctly — it takes a minute.
                 </Text>
@@ -1494,9 +1494,9 @@ export default function SettingsScreen() {
                     hitSlop={8}
                     accessibilityLabel="Dismiss GST reminder"
                     accessibilityRole="button"
-                    className="py-1.5"
+                    className="py-1.5 border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                   >
-                    <Text className="text-sand-500 text-xs font-semibold">
+                    <Text className="text-heliotrope-500 text-xs font-semibold">
                       Not now
                     </Text>
                   </AnimatedPressable>
@@ -1512,7 +1512,7 @@ export default function SettingsScreen() {
         <View className="gap-2.5">
           {!isStaff && (
             <>
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">
+              <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
                 Account
               </Text>
 
@@ -1584,7 +1584,7 @@ export default function SettingsScreen() {
             </>
           )}
 
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">
+          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
             Store
           </Text>
 
@@ -1667,7 +1667,7 @@ export default function SettingsScreen() {
 
           <View className="h-2" />
 
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">
+          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
             Legal
           </Text>
 
@@ -1685,7 +1685,7 @@ export default function SettingsScreen() {
 
           <View className="h-2" />
 
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">
+          <Text className="text-xs font-semibold text-heliotrope-500 px-1 mb-0.5">
             Actions
           </Text>
 

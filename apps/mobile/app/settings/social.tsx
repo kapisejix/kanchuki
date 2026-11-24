@@ -82,7 +82,7 @@ export default function SocialSettingsScreen() {
           });
 
           if (res?.data?.connected) {
-            Alert.alert('Connected!', `Successfully linked ${res.data.handle || 'your Facebook Page'}!`);
+            Alert.alert('Connected', `Linked ${res.data.handle || 'your Facebook Page'}.`);
             refresh();
           }
         }
@@ -125,7 +125,7 @@ export default function SocialSettingsScreen() {
       const res = await socialApi.connectWithToken(token, 'facebook');
       if (res.data?.connected) {
         Alert.alert(
-          'Connected!',
+          'Connected',
           `Linked ${res.data.account_name || res.data.handle || 'your Facebook Page'}.`,
         );
         refresh();
@@ -176,14 +176,14 @@ export default function SocialSettingsScreen() {
       <ScreenHeader title="Social Media" />
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: screenPaddingBottom }}>
-        <Text className="text-xs text-sand-500 leading-5 mb-4">
+        <Text className="text-xs text-heliotrope-500 leading-5 mb-4">
           Connect your Facebook Page to post products and collection links directly from Kanchuki.
           Your posts can carry your store link so customers can shop right away.
         </Text>
 
         {connectError && (
           <View className="rounded-2xl bg-rust-50 border border-rust-200 px-4 py-3 mb-4">
-            <Text className="text-xs font-bold text-rust-700 mb-0.5">Could not connect</Text>
+            <Text className="text-xs font-semibold text-rust-700 mb-0.5">Could not connect</Text>
             <Text className="text-[11px] text-rust-600 leading-5">{connectError}</Text>
           </View>
         )}
@@ -193,12 +193,12 @@ export default function SocialSettingsScreen() {
         ) : (
           <>
             {accounts.length === 0 ? (
-              <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center mb-5">
+              <View className="bg-white rounded-2xl p-6 border border-lavender-200 items-center mb-5">
                 <View className="mb-3">
                   <BrandIcon brand="facebook" size={56} />
                 </View>
-                <Text className="text-sm font-bold text-sand-900 mb-1">No accounts connected</Text>
-                <Text className="text-xs text-sand-400 text-center mb-4">
+                <Text className="text-sm font-semibold text-spaceCadet-900 mb-1">No accounts connected</Text>
+                <Text className="text-xs text-heliotrope-500 text-center mb-4">
                   Connect your Facebook Page to start posting your products.
                 </Text>
                 <GradientButton
@@ -211,28 +211,29 @@ export default function SocialSettingsScreen() {
             ) : (
               <>
                 {accounts.map((account) => (
-                  <View key={account.id} className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
-                    <View className="flex-row items-center mb-2">
+                  <View key={account.id} className="bg-white rounded-2xl p-4 border border-lavender-200 mb-3">
+                    <View className="flex-row items-center">
                       <View className="mr-3">
                         <BrandIcon brand="facebook" size={40} />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-bold text-sand-900">
+                        <Text className="text-sm font-semibold text-spaceCadet-900">
                           {account.account_name}
                         </Text>
-                        <Text className="text-xs text-sand-400">
+                        <Text className="text-xs text-heliotrope-500">
                           Facebook Page · connected{' '}
                           {new Date(account.connected_at).toLocaleDateString()}
                         </Text>
                       </View>
+                    </View>
+                    <View className="mt-3">
                       <GradientButton
                         variant="web"
-                        compact
                         label="Post"
                         onPress={() => router.push('/social/create')}
                       />
                     </View>
-                    <View className="flex-row gap-3 mt-3 pb-2">
+                    <View className="flex-row gap-3 mt-3">
                       <View className="flex-1">
                         <WhiteButton
                           label="History"
@@ -295,7 +296,7 @@ function HistoryModal({
       <View className="flex-1 bg-black/50 justify-end">
         <View className="bg-white rounded-t-3xl w-full p-5 max-h-[80%]">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-bold text-sand-900">Post history</Text>
+            <Text className="text-lg font-semibold text-spaceCadet-900">Post history</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color={colors.sand[400]} />
             </AnimatedPressable>
@@ -304,13 +305,13 @@ function HistoryModal({
           {isLoading ? (
             <ActivityIndicator color={colors.sand[400]} className="py-10" />
           ) : posts.length === 0 ? (
-            <Text className="text-xs text-sand-400 py-10 text-center">No posts yet</Text>
+            <Text className="text-xs text-heliotrope-500 py-10 text-center">No posts yet</Text>
           ) : (
             <ScrollView>
               {posts.map((post) => (
-                <View key={post.id} className="bg-sand-50 rounded-xl p-4 mb-2.5">
+                <View key={post.id} className="bg-lavender-50 rounded-xl p-4 mb-2.5">
                   <View className="flex-row items-center mb-1.5">
-                    <Text className="text-xs font-bold text-sand-900 flex-1">
+                    <Text className="text-xs font-semibold text-spaceCadet-900 flex-1">
                       {post.post_type === 'SINGLE_PRODUCT'
                         ? 'Product post'
                         : post.post_type === 'COLLECTION_LINK'
@@ -322,43 +323,43 @@ function HistoryModal({
                     {post.status === 'POSTED' ? (
                       <View className="flex-row items-center gap-1">
                         <Check size={12} color={colors.turmeric[600]} />
-                        <Text className="text-[10px] font-semibold text-turmeric-600">Posted</Text>
+                        <Text className="text-[11px] font-semibold text-turmeric-600">Posted</Text>
                       </View>
                     ) : post.status === 'PROCESSING' ? (
-                      <Text className="text-[10px] font-semibold text-sand-500">Posting…</Text>
+                      <Text className="text-[11px] font-semibold text-heliotrope-500">Posting…</Text>
                     ) : (
-                      <Text className="text-[10px] font-semibold text-rust-600">Failed</Text>
+                      <Text className="text-[11px] font-semibold text-rust-600">Failed</Text>
                     )}
                   </View>
-                  <Text className="text-xs text-sand-600 mb-1.5" numberOfLines={2}>
+                  <Text className="text-xs text-heliotrope-600 mb-1.5" numberOfLines={2}>
                     {post.caption}
                   </Text>
                   {(post.likes_count !== null || post.comments_count !== null) && (
                     <View className="flex-row items-center gap-3 mb-1.5">
                       <View className="flex-row items-center gap-1">
                         <Heart size={12} color={colors.rust[400]} />
-                        <Text className="text-[10px] text-sand-500">{post.likes_count ?? 0}</Text>
+                        <Text className="text-[11px] text-heliotrope-500">{post.likes_count ?? 0}</Text>
                       </View>
                       <View className="flex-row items-center gap-1">
                         <MessageCircle size={12} color={colors.sand[400]} />
-                        <Text className="text-[10px] text-sand-500">{post.comments_count ?? 0}</Text>
+                        <Text className="text-[11px] text-heliotrope-500">{post.comments_count ?? 0}</Text>
                       </View>
                     </View>
                   )}
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-[10px] text-sand-400">
+                    <Text className="text-[11px] text-heliotrope-500">
                       {new Date(post.created_at).toLocaleString()}
                     </Text>
                     {post.status === 'FAILED' && post.error_message ? (
-                      <Text className="text-[10px] text-rust-600" numberOfLines={1}>
+                      <Text className="text-[11px] text-rust-600" numberOfLines={1}>
                         {post.error_message}
                       </Text>
                     ) : post.external_post_url ? (
-                      <AnimatedPressable
+                      <AnimatedPressable className="border border-lavender-200 rounded-lg px-3 min-h-[36px] items-center justify-center"
                         onPress={() => void Linking.openURL(post.external_post_url!)}
                         hitSlop={6}
                       >
-                        <Text className="text-[10px] font-semibold text-ink-700 underline">
+                        <Text className="text-[11px] font-semibold text-ink-700">
                           View on Facebook
                         </Text>
                       </AnimatedPressable>

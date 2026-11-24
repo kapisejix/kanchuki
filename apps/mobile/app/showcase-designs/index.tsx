@@ -10,7 +10,7 @@ import {
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenInsets } from '../../src/lib/safe-area'
-import { Plus, Sparkles, ImagePlus } from 'lucide-react-native'
+import { Plus, ImagePlus } from 'lucide-react-native'
 import {
   showcaseDesignsApi,
   retailerApi,
@@ -92,16 +92,16 @@ export default function ShowcaseDesignsScreen() {
         <AnimatedPressable
           onPress={() => router.push(`/showcase-designs/${item.id}`)}
           onLongPress={() => handleDelete(item)}
-          className="bg-white rounded-2xl overflow-hidden border border-lavender-200 shadow-sm"
+          className="bg-white rounded-2xl overflow-hidden border border-lavender-200"
         >
           <View className="w-full aspect-[3/4] bg-lavender-100">
             <Image source={{ uri: item.image_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           </View>
           <View className="px-2.5 py-2">
-            <Text className="text-xs font-bold text-spaceCadet-900 truncate" numberOfLines={1}>
+            <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
               {item.name ?? item.category_name ?? 'Design'}
             </Text>
-            <Text className="text-[10px] text-heliotrope-500 font-medium mt-0.5">
+            <Text className="text-[11px] text-heliotrope-500 font-medium mt-0.5">
               {item.category_name ?? item.category_slug}
               {item.owner === 'global' ? ' · Kanchuki' : ''}
             </Text>
@@ -117,12 +117,12 @@ export default function ShowcaseDesignsScreen() {
   const listEmpty = useCallback(
     () => (
       <View className="items-center py-16 px-8">
-        <View className="w-16 h-16 bg-lavender-100 rounded-3xl items-center justify-center mb-4 border border-lavender-200 shadow-sm">
-          <ImagePlus size={28} color="#BB3F95" />
+        <View className="w-16 h-16 bg-lavender-100 rounded-2xl items-center justify-center mb-4 border border-lavender-200">
+          <ImagePlus size={28} color="#6B4773" />
         </View>
         <Text
           style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-spaceCadet-900 text-lg font-bold text-center"
+          className="text-spaceCadet-900 text-lg text-center"
         >
           No designs yet
         </Text>
@@ -142,7 +142,7 @@ export default function ShowcaseDesignsScreen() {
         style={{ paddingTop: headerPaddingTop }}
       >
         <View className="flex-row items-center gap-3">
-          <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
+          <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200">
             {retailerProfile?.logo_url ? (
               <Image
                 source={{ uri: retailerProfile.logo_url }}
@@ -150,14 +150,14 @@ export default function ShowcaseDesignsScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+              <Text className="text-spaceCadet-900 font-extrabold font-marcellus text-sm">
                 {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
               </Text>
             )}
           </View>
           <View>
-            <Text className="text-sm font-bold text-spaceCadet-900">Suits Designs</Text>
-            <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
+            <Text className="text-sm font-semibold text-spaceCadet-900">Suits Designs</Text>
+            <Text className="text-[11px] text-heliotrope-500 font-semibold">
               {designs.length} {designs.length === 1 ? 'Design' : 'Designs'}
               {usage?.limit ? ` · ${usage.used} of ${usage.limit} used` : ''}
             </Text>
@@ -185,7 +185,7 @@ export default function ShowcaseDesignsScreen() {
                   selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
                 }`}
               >
-                <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
+                <Text className={`text-xs font-semibold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                   {item.name}
                 </Text>
               </AnimatedPressable>
@@ -218,28 +218,23 @@ export default function ShowcaseDesignsScreen() {
         disabled={atCap}
         accessibilityLabel={atCap ? 'Design limit reached' : 'Add a design'}
         accessibilityRole="button"
-        className="absolute bottom-6 right-5 w-14 h-14 rounded-full bg-spaceCadet-900 items-center justify-center shadow-lg border border-white/20"
+        className="absolute bottom-6 right-5 w-14 h-14 rounded-full bg-spaceCadet-900 items-center justify-center"
         style={{
           shadowColor: '#231F48',
           shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.35,
+          shadowOpacity: 0.25,
           shadowRadius: 12,
           elevation: 8,
           opacity: atCap ? 0.5 : 1,
         }}
       >
-        {atCap ? (
-          <Sparkles size={24} color="#E0E1F6" />
-        ) : (
-          <Plus size={26} color="white" />
-        )}
+        <Plus size={26} color="white" />
       </Pressable>
 
       {atCap && (
         <View className="absolute bottom-24 left-4 right-4 items-center">
           <View className="bg-spaceCadet-900 rounded-2xl px-4 py-2.5 flex-row items-center gap-2 shadow-lg">
-            <Sparkles size={14} color="#E0E1F6" />
-            <Text className="text-white text-[11px] font-bold">
+            <Text className="text-white text-[11px] font-semibold">
               Design limit reached. Delete a design to add a new one.
             </Text>
           </View>

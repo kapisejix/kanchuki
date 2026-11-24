@@ -85,25 +85,25 @@ export default function CatalogTicketsScreen() {
           {tickets.length === 0 ? (
             <View className="items-center py-16">
               <Package size={40} color={colors.sand[300]} />
-              <Text className="text-sand-400 text-sm mt-4 text-center px-8">
+              <Text className="text-heliotrope-500 text-sm mt-4 text-center px-8">
                 No confirmed catalog upload visits assigned to you right now.
               </Text>
             </View>
           ) : (
             <View className="gap-3">
               {tickets.map((t) => (
-                <View key={t.id} className="bg-white rounded-2xl p-4 border border-sand-100">
+                <View key={t.id} className="bg-white rounded-2xl p-4 border border-lavender-200">
                   <View className="flex-row items-center gap-2 mb-2">
                     <Store size={16} color={primaryColor} />
-                    <Text className="text-sm font-bold text-sand-900 flex-1">
+                    <Text className="text-sm font-semibold text-spaceCadet-900 flex-1">
                       {t.retailer.shop_name}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-1 mb-1">
                     <MapPin size={12} color={colors.sand[400]} />
-                    <Text className="text-xs text-sand-400">{t.retailer.city}</Text>
+                    <Text className="text-xs text-heliotrope-500">{t.retailer.city}</Text>
                   </View>
-                  <Text className="text-xs text-sand-500 mb-3">
+                  <Text className="text-xs text-heliotrope-500 mb-3">
                     ~{t.item_count_requested ?? '?'} items · visit{' '}
                     {t.confirmed_slot &&
                       new Date(t.confirmed_slot).toLocaleString('en-IN', {
@@ -119,7 +119,7 @@ export default function CatalogTicketsScreen() {
                       <ActivityIndicator color="white" size="small" />
                     ) : (
                       <>
-                        <Text className="text-white text-sm font-bold">Start Upload Session</Text>
+                        <Text className="text-white text-sm font-semibold">Start Upload Session</Text>
                         <ArrowRight size={16} color="white" />
                       </>
                     )}

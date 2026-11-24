@@ -1,6 +1,6 @@
 # Mobile unslop: direction, rules and screen checklist
 
-**Status:** Task 1 merged (PR #332). Task 2 built on `design/mobile-unslop-task-2`, not merged. Neither is checked in Expo Go. The owner will check all four tasks together after Task 4.
+**Status:** Tasks 1-4 and the owner-review fixes are done and merged to `main` (PRs #332, #336, #333, #334, #335). The owner checked them in Expo Go on 2026-11-24. They reach phones only with a new Android build.
 
 ## Direction
 
@@ -43,7 +43,7 @@ Use the existing tokens in `apps/mobile/tailwind.config.js`. Add no dependencies
 
 ### Task 1: shared components, auth, join, onboarding, tabs (12)
 
-Expo Go check: **pending owner**.
+Expo Go check: **done by owner 2026-11-24**.
 
 - [x] `auth/phone`
 - [x] `auth/otp`
@@ -62,7 +62,7 @@ Shared components changed: `ProductCard`, `ScreenHeader`, `UsageCard`, `SetupChe
 
 ### Task 2: products, categories, collections, customers (20)
 
-Expo Go check: **pending owner**.
+Expo Go check: **done by owner 2026-11-24**.
 
 - [x] `product/[id]`
 - [x] `product/[id]/add-color`
@@ -87,15 +87,15 @@ Expo Go check: **pending owner**.
 
 ### Task 3: growth and social (28)
 
-Built on `design/mobile-unslop-task-3`. Expo Go check: **pending owner**.
+Merged in PR #334. Expo Go check: **done by owner 2026-11-24**.
 
 Left alone on purpose:
 
 - Campaign message templates keep their emoji because customers receive that text.
-- `PostPreview` is unchanged because it must match the published post.
+- `PostPreview` keeps the published-post layout. Its photo box became a fixed 4:5 frame during the owner-review fixes (see below).
 - Owner approved rewording 9 button labels on Translate, Videos and the integration screens (2026-11-23).
 - `social/ai-design` keeps its own gradient button, which matches `GradientButton`.
-- `settings/social` still says `Connected!`. Task 4 should change it and its test together.
+- `settings/social` said `Connected!`. Task 4 changed it and its test together.
 
 - [x] `growth/index`
 - [x] `growth/aggregators`
@@ -128,26 +128,51 @@ Left alone on purpose:
 
 ### Task 4: settings, staff, billing, analytics, store profile, showcase (21)
 
-- [ ] `settings/index`
-- [ ] `settings/catalog-upload`
-- [ ] `settings/deleted-products`
-- [ ] `settings/help-support`
-- [ ] `settings/social`
-- [ ] `settings/staff`
-- [ ] `settings/support-sessions`
-- [ ] `settings/whatsapp-catalog`
-- [ ] `staff/index`
-- [ ] `staff/catalog-tickets`
-- [ ] `staff/retailer-onboard`
-- [ ] `staff/support-session`
-- [ ] `staff/tickets`
-- [ ] `billing`
-- [ ] `analytics`
-- [ ] `store-profile`
-- [ ] `showcase-designs/index`
-- [ ] `showcase-designs/browse`
-- [ ] `showcase-designs/new`
-- [ ] `showcase-designs/[id]`
-- [ ] `showcase-designs/view/[id]`
+Merged in PR #335. Expo Go check: **done by owner 2026-11-24**.
+
+- [x] `settings/index`
+- [x] `settings/catalog-upload`
+- [x] `settings/deleted-products`
+- [x] `settings/help-support`
+- [x] `settings/social`
+- [x] `settings/staff`
+- [x] `settings/support-sessions`
+- [x] `settings/whatsapp-catalog`
+- [x] `staff/index`
+- [x] `staff/catalog-tickets`
+- [x] `staff/retailer-onboard`
+- [x] `staff/support-session`
+- [x] `staff/tickets`
+- [x] `billing`
+- [x] `analytics`
+- [x] `store-profile`
+- [x] `showcase-designs/index`
+- [x] `showcase-designs/browse`
+- [x] `showcase-designs/new`
+- [x] `showcase-designs/[id]`
+- [x] `showcase-designs/view/[id]`
+
+### Fixes after owner review (2026-11-24)
+
+Owner Expo Go results, as reported:
+
+1. Social post preview: "i want real product image in preview ... it works good when i post the product, then why not its not showing the preview image."
+2. Bottom bar: "social show on all Play build, i want complete 5 icons on bottom nav bar, there is no option to hide it from plan or something else."
+3. Product detail: "it still showing me old video generation, but i developed vedio generation feature using seedance API ... when retailer click on the Generate video button just before AI Studio. must be AI Video."
+4. After those fixes: "checked all".
+
+| Fix | Commit |
+|---|---|
+| Marcellus weight and spacing restored on headings; catalog duplicate filter and header icons removed; text links became outline buttons | `28e7676e`, `c99ee5b1`, `f406bf34`, `e88af33f` |
+| Shared buttons keep their width while loading | `58486b68` |
+| `DangerButton` red painted on an inner view (Disconnect showed white text) | `9f5db288` |
+| Social & Marketing Channels card buttons full width | `1df7016e` |
+| Reconfigure uppercase with icon, next to Disconnect | `dce44eda` |
+| Social settings Post button full width | `ff915dc4` |
+| Post preview photo: fixed 4:5 box, whole photo shown. Sizing the box from `onLoad` looped on Android and left the grey placeholder | `6975a81a` |
+| Social shown in every build: `META_SOCIAL_ENABLED` is always `true` (owner decision, replaces the `EXPO_PUBLIC_META_SOCIAL` Play gate) | `664f7112` |
+| Product detail: the old pan/zoom Video button before AI Studio is now AI Video (F-034). Shown on every plan; a plan without AI video gets the server's reason on tap | `a6317c05` |
+
+AI Video needs admin settings per plan: AI Promo Videos feature, an `AI_VIDEO` limit, an enabled video model, and published video styles. Facebook and Instagram connect still depends on Meta App Review.
 
 Merging does not reach phones. After Task 4, a new Android build is needed.

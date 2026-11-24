@@ -295,7 +295,7 @@ describe('connect', () => {
     await press(t, 'Connect Facebook Page')
     expect(m.loginWithFacebook).toHaveBeenCalledWith('facebook')
     expect(m.connectWithToken).toHaveBeenCalledWith('fb-token', 'facebook')
-    expect(alertSpy).toHaveBeenCalledWith('Connected!', 'Linked Meena Boutique.')
+    expect(alertSpy).toHaveBeenCalledWith('Connected', 'Linked Meena Boutique.')
     expect(rq.invalidate).toHaveBeenCalledWith({ queryKey: ['social', 'accounts'] })
   })
 
@@ -307,7 +307,7 @@ describe('connect', () => {
     const alertSpy = vi.spyOn(Alert, 'alert').mockImplementation(() => {})
     const t = await mount([])
     await press(t, 'Connect Facebook Page')
-    expect(alertSpy).toHaveBeenCalledWith('Connected!', expected)
+    expect(alertSpy).toHaveBeenCalledWith('Connected', expected)
   })
 
   it('"Connect another Page" runs the same flow', async () => {
@@ -478,7 +478,7 @@ describe('OAuth deep link', () => {
     await mount([])
     await fireUrl('kanchuki://oauth/callback?code=abc&state=xyz')
     expect(m.autoConnect).toHaveBeenCalledWith({ code: 'abc', state: 'xyz', provider: 'facebook' })
-    expect(alertSpy).toHaveBeenCalledWith('Connected!', 'Successfully linked @meena!')
+    expect(alertSpy).toHaveBeenCalledWith('Connected', 'Linked @meena.')
     expect(rq.invalidate).toHaveBeenCalledWith({ queryKey: ['social', 'accounts'] })
   })
 

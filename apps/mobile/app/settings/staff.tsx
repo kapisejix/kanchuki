@@ -108,9 +108,9 @@ function AddStaffModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">
+            <Text className="text-lg font-semibold text-spaceCadet-900">
               {editing ? 'Edit Team Member' : 'Add Team Member'}
             </Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
@@ -119,19 +119,19 @@ function AddStaffModal({
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">Name</Text>
+            <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">Name</Text>
             <TextInput
               value={name}
               onChangeText={setName}
               placeholder="e.g. Ramesh"
-              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+              className="bg-lavender-50 px-4 py-3 rounded-xl text-sm text-spaceCadet-900"
               placeholderTextColor={colors.sand[400]}
               autoFocus={!editing}
             />
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
               Phone
             </Text>
             <TextInput
@@ -141,11 +141,11 @@ function AddStaffModal({
               keyboardType="numeric"
               maxLength={10}
               editable={!editing}
-              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+              className="bg-lavender-50 px-4 py-3 rounded-xl text-sm text-spaceCadet-900"
               placeholderTextColor={colors.sand[400]}
             />
             {editing && (
-              <Text className="text-[10px] text-sand-400 mt-1">
+              <Text className="text-[11px] text-heliotrope-500 mt-1">
                 Phone can&apos;t be changed — remove and re-add to use a new number.
               </Text>
             )}
@@ -153,7 +153,7 @@ function AddStaffModal({
 
           {/* FR-1.1 — role picker (previously hardcoded salesperson) */}
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-heliotrope-500 mb-1.5">
               Access level
             </Text>
             <View className="gap-2">
@@ -173,10 +173,10 @@ function AddStaffModal({
                     accessibilityLabel={`${option.label} role`}
                   >
                     <View className="flex-row items-center justify-between">
-                      <Text className="text-sm font-bold text-sand-900">{option.label}</Text>
+                      <Text className="text-sm font-semibold text-spaceCadet-900">{option.label}</Text>
                       {selected && <Check size={16} color={colors.ink[600]} />}
                     </View>
-                    <Text className="text-xs text-sand-500 mt-1 leading-4">{option.description}</Text>
+                    <Text className="text-xs text-heliotrope-500 mt-1 leading-4">{option.description}</Text>
                   </Pressable>
                 )
               })}
@@ -243,9 +243,9 @@ function PurgeModal({
   return (
     <Modal visible={Boolean(member)} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardScreen className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-rust-600">Delete permanently</Text>
-          <Text className="text-sm text-sand-600 leading-relaxed">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4">
+          <Text className="text-lg font-semibold text-rust-600">Delete permanently</Text>
+          <Text className="text-sm text-heliotrope-600 leading-relaxed">
             This erases {member?.name ?? 'this member'}&apos;s record — name, phone and role — from
             your team permanently (DPDP erasure). This cannot be undone.
             {'\n\n'}
@@ -255,7 +255,7 @@ function PurgeModal({
             value={confirm}
             onChangeText={setConfirm}
             placeholder='Type "DELETE" to confirm'
-            className="bg-rust-50 border border-rust-200 px-4 py-3 rounded-xl text-sm text-sand-900"
+            className="bg-rust-50 border border-rust-200 px-4 py-3 rounded-xl text-sm text-spaceCadet-900"
             placeholderTextColor={colors.sand[400]}
             autoCapitalize="characters"
           />
@@ -344,17 +344,17 @@ function InvitePromptModal({
   return (
     <Modal visible={Boolean(member)} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4">
+        <View className="bg-white rounded-2xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">Team member added</Text>
+            <Text className="text-lg font-semibold text-spaceCadet-900">Team member added</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color={colors.sand[400]} />
             </AnimatedPressable>
           </View>
-          <Text className="text-sm text-sand-600 leading-relaxed">
+          <Text className="text-sm text-heliotrope-600 leading-relaxed">
             {message}
           </Text>
-          <Text className="text-xs text-sand-400 leading-relaxed">
+          <Text className="text-xs text-heliotrope-500 leading-relaxed">
             {member ? `${member.name} can open the Kanchuki app and log in with ${member.phone} — no link needed. ` : ''}
             {invite
               ? `You can also share the link below; it expires ${new Date(invite.expires_at).toLocaleDateString()}.`
@@ -561,16 +561,16 @@ export default function StaffScreen() {
 
   const renderActive = useCallback(
     ({ item }: { item: StaffMember }) => (
-      <View className="bg-white rounded-2xl p-4 border border-sand-100">
+      <View className="bg-white rounded-2xl p-4 border border-lavender-200">
         <View className="flex-row items-center">
           <View className="w-10 h-10 rounded-full bg-ink-100 items-center justify-center mr-3">
-            <Text className="text-ink-700 text-sm font-bold">
+            <Text className="text-ink-700 text-sm font-semibold">
               {item.name.charAt(0).toUpperCase()}
             </Text>
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-semibold text-sand-900">{item.name}</Text>
-            <Text className="text-xs text-sand-400">{item.phone}</Text>
+            <Text className="text-sm font-semibold text-spaceCadet-900">{item.name}</Text>
+            <Text className="text-xs text-heliotrope-500">{item.phone}</Text>
           </View>
           <AnimatedPressable
             onPress={() => {
@@ -597,8 +597,8 @@ export default function StaffScreen() {
           className="mt-3 rounded-xl px-3 py-2"
           style={{ backgroundColor: colors.ink[50] }}
         >
-          <Text className="text-[11px] font-bold text-sand-900">{roleLabel(item.role)}</Text>
-          <Text className="text-[11px] text-sand-500 mt-0.5 leading-4">
+          <Text className="text-[11px] font-semibold text-spaceCadet-900">{roleLabel(item.role)}</Text>
+          <Text className="text-[11px] text-heliotrope-500 mt-0.5 leading-4">
             {ROLE_SUMMARY[item.role] ?? ''}
           </Text>
         </View>
@@ -611,22 +611,22 @@ export default function StaffScreen() {
 
   const renderRemoved = useCallback(
     ({ item }: { item: StaffMember }) => (
-      <View className="bg-sand-50 rounded-2xl p-3.5 border border-sand-100">
+      <View className="bg-lavender-50 rounded-2xl p-3.5 border border-lavender-200">
         <View className="flex-row items-center">
           <View className="flex-1">
-            <Text className="text-sm font-semibold text-sand-600">{item.name}</Text>
-            <Text className="text-xs text-sand-400">
+            <Text className="text-sm font-semibold text-heliotrope-600">{item.name}</Text>
+            <Text className="text-xs text-heliotrope-500">
               {item.phone} · {roleLabel(item.role)} · Removed
             </Text>
           </View>
           <AnimatedPressable
             onPress={() => handleRestore(item)}
-            className="bg-white border border-sand-200 px-3 py-2 rounded-xl flex-row items-center gap-1.5 mr-2"
+            className="bg-white border border-lavender-200 px-3 py-2 rounded-xl flex-row items-center gap-1.5 mr-2"
             accessibilityLabel={`Restore ${item.name}`}
             accessibilityRole="button"
           >
             <RotateCcw size={13} color={colors.sand[700]} />
-            <Text className="text-xs font-semibold text-sand-700">Restore</Text>
+            <Text className="text-xs font-semibold text-heliotrope-600">Restore</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => setPurgeTarget(item)}
@@ -653,7 +653,7 @@ export default function StaffScreen() {
         ) : staff.length === 0 && removed.length === 0 ? (
           <View className="items-center py-16">
             <User size={40} color={colors.sand[300]} />
-            <Text className="text-sand-400 text-sm mt-4 text-center">
+            <Text className="text-heliotrope-500 text-sm mt-4 text-center">
               No team members yet.{'\n'}Add shop staff to help manage the catalog.
             </Text>
             <AnimatedPressable
@@ -671,7 +671,7 @@ export default function StaffScreen() {
             contentContainerStyle={{ gap: 8, flexGrow: 1, paddingBottom: screenPaddingBottom }}
             ListHeaderComponent={
               <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+                <Text className="text-xs font-semibold text-heliotrope-500">
                   {staff.length} active member{staff.length !== 1 ? 's' : ''}
                 </Text>
               </View>
@@ -685,10 +685,10 @@ export default function StaffScreen() {
                     accessibilityLabel="Toggle removed members"
                     accessibilityRole="button"
                   >
-                    <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+                    <Text className="text-xs font-semibold text-heliotrope-500">
                       Removed ({removed.length}) — records kept, restorable
                     </Text>
-                    <Text className="text-sand-400 text-xs">{showRemoved ? '▲' : '▼'}</Text>
+                    <Text className="text-heliotrope-500 text-xs">{showRemoved ? '▲' : '▼'}</Text>
                   </AnimatedPressable>
                   {showRemoved &&
                     removed.map((m) => (
