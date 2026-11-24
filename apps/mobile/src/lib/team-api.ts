@@ -3,7 +3,7 @@ import { clearRequestCache, clearToken } from './api';
 import { emitAuthChange } from './auth-events';
 import { deleteItem, getItem } from './storage';
 
-const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 class TeamApiError extends Error {
   constructor(
@@ -25,7 +25,7 @@ async function teamRequest<T>(
     ...(options.headers as Record<string, string> | undefined),
   };
   const token = await getItem('auth_token');
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 15_000);

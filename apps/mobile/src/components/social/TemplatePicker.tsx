@@ -8,7 +8,7 @@ interface TemplatePickerProps {
   templates: PostTemplateInfo[];
   selectedId: string | null;
   onSelect: (template: PostTemplateInfo | null) => void;
-  colors: any;
+  colors: { ink: Record<number, string>; sand: Record<number, string> };
 }
 
 /**

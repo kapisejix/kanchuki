@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { type EffectCallback, useEffect } from 'react';
 import renderer, { act } from 'react-test-renderer';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emitEnquiryPush } from './enquiry-push-events';
@@ -11,7 +11,7 @@ vi.mock('./api/collections', () => ({ collectionApi: api }));
 // useFocusEffect gives (cleanup runs on blur and on unmount).
 const focus = vi.hoisted(() => ({ blur: () => {} }));
 vi.mock('expo-router', () => ({
-  useFocusEffect: (cb: () => void | (() => void)) =>
+  useFocusEffect: (cb: EffectCallback) =>
     useEffect(() => {
       const cleanup = cb();
       focus.blur = () => cleanup?.();

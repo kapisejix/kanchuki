@@ -140,7 +140,7 @@ let appHandlers: ((s: string) => void)[] = [];
 let backHandler: (() => boolean) | undefined;
 const fireApp = (s: string) =>
   act(async () => {
-    appHandlers.slice().forEach((h) => h(s));
+    for (const h of appHandlers.slice()) h(s);
     await new Promise((r) => setTimeout(r, 0));
   });
 
@@ -192,7 +192,11 @@ beforeEach(() => {
     cb: (s: string) => void,
   ) => {
     appHandlers.push(cb);
-    return { remove: () => void (appHandlers = appHandlers.filter((h) => h !== cb)) };
+    return {
+      remove: () => {
+        appHandlers = appHandlers.filter((h) => h !== cb);
+      },
+    };
   }) as never);
   vi.spyOn(BackHandler, 'addEventListener').mockImplementation(((_: string, cb: () => boolean) => {
     backHandler = cb;

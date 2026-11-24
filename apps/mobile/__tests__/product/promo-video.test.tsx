@@ -123,7 +123,11 @@ describe('useProductPromoVideo', () => {
 
   it('two taps in one tick send one POST (RC-015/132/135 shape)', async () => {
     let resolve!: (v: unknown) => void;
-    api.startPromoVideo.mockReturnValue(new Promise((r) => (resolve = r)));
+    api.startPromoVideo.mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
     const { ref, t } = mountHook();
     await act(async () => {
       void ref.current!.start('slow-turn', '9:16');

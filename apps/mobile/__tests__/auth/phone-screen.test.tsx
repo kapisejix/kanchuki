@@ -92,7 +92,11 @@ beforeEach(() => {
 describe('app/auth/phone.tsx', () => {
   it('RC-015: keyboard Done + button tap in one frame send the OTP once', async () => {
     let resolveSend!: (v: unknown) => void;
-    mockSendOtp.mockReturnValue(new Promise((r) => (resolveSend = r)));
+    mockSendOtp.mockReturnValue(
+      new Promise((r) => {
+        resolveSend = r;
+      }),
+    );
     const tree = await renderPhone();
 
     await act(async () => {

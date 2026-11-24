@@ -59,7 +59,7 @@ describe('RC-123: team requests carry only the retailer Bearer token', () => {
     const src = read('src/lib/team-api.ts');
     expect(src).not.toContain('admin_key');
     expect(src).not.toContain('x-admin-key');
-    expect(src).toContain("headers['Authorization'] = `Bearer ${token}`");
+    expect(src).toContain('headers.Authorization = `Bearer ${token}`');
   });
 });
 

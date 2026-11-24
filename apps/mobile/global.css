@@ -5,6 +5,7 @@
 @layer utilities {
   .font-brand-title,
   .brand-heading {
+    /* biome-ignore lint/a11y/useGenericFontNames: React Native fontFamily takes one loaded font name; a fallback list breaks lookup */
     font-family: Marcellus_400Regular;
     font-size: 1rem;
     line-height: 1.5rem;

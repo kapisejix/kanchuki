@@ -8,6 +8,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 
+// ponytail: placeholder rows never reorder; string ids keep keys stable without index keys.
+const slots = (n: number) => Array.from({ length: n }, (_, i) => `slot-${i}`);
+
 export function Skeleton({ className = '', style }: { className?: string; style?: object }) {
   const reduceMotion = useReduceMotion();
   const opacity = useSharedValue(0.3);
@@ -40,11 +43,11 @@ export function ProductCardSkeleton() {
 }
 
 export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
-  const rows = Array.from({ length: Math.ceil(count / 2) });
+  const rows = slots(Math.ceil(count / 2));
   return (
     <View style={{ padding: 12, gap: 12 }}>
-      {rows.map((_, r) => (
-        <View key={r} className="flex-row" style={{ gap: 12 }}>
+      {rows.map((id) => (
+        <View key={id} className="flex-row" style={{ gap: 12 }}>
           <ProductCardSkeleton />
           <ProductCardSkeleton />
         </View>
@@ -69,8 +72,8 @@ export function CustomerRowSkeleton() {
 export function CustomerListSkeleton({ count = 6 }: { count?: number }) {
   return (
     <View style={{ padding: 12, gap: 8 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <CustomerRowSkeleton key={i} />
+      {slots(count).map((id) => (
+        <CustomerRowSkeleton key={id} />
       ))}
     </View>
   );
@@ -100,8 +103,8 @@ export function CollectionCardSkeleton() {
 export function CollectionListSkeleton({ count = 5 }: { count?: number }) {
   return (
     <View style={{ padding: 12, gap: 10 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <CollectionCardSkeleton key={i} />
+      {slots(count).map((id) => (
+        <CollectionCardSkeleton key={id} />
       ))}
     </View>
   );
@@ -224,8 +227,8 @@ export function AnalyticsSkeleton() {
             <Skeleton className="w-4 h-4" />
           </View>
           <View className="flex-row items-end gap-1.5 h-24">
-            {[55, 70, 40, 80, 50, 65, 45].map((h, i) => (
-              <View key={i} className="flex-1 items-center gap-1">
+            {[55, 70, 40, 80, 50, 65, 45].map((h) => (
+              <View key={h} className="flex-1 items-center gap-1">
                 <Skeleton className="h-3 w-4" />
                 <Skeleton className="w-full rounded-t-md" style={{ height: h }} />
                 <Skeleton className="h-3 w-6" />
@@ -237,8 +240,8 @@ export function AnalyticsSkeleton() {
         {/* Category breakdown */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-3">
           <Skeleton className="h-3 w-36" />
-          {Array.from({ length: 5 }).map((_, i) => (
-            <View key={i} className="flex-row items-center gap-2">
+          {slots(5).map((id) => (
+            <View key={id} className="flex-row items-center gap-2">
               <Skeleton className="w-2.5 h-2.5 rounded-full" />
               <Skeleton className="flex-1 h-4 w-20" />
               <Skeleton className="h-4 w-6" />
@@ -250,8 +253,8 @@ export function AnalyticsSkeleton() {
         {/* Plan Usage */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-3">
           <Skeleton className="h-3 w-20" />
-          {Array.from({ length: 2 }).map((_, i) => (
-            <View key={i} className="gap-1">
+          {slots(2).map((id) => (
+            <View key={id} className="gap-1">
               <View className="flex-row justify-between">
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-3 w-16" />
@@ -301,8 +304,8 @@ export function SettingsSkeleton() {
         {/* Usage */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-3">
           <Skeleton className="h-4 w-16" />
-          {Array.from({ length: 3 }).map((_, i) => (
-            <View key={i} className="gap-1">
+          {slots(3).map((id) => (
+            <View key={id} className="gap-1">
               <View className="flex-row justify-between">
                 <Skeleton className="h-3 w-24" />
                 <Skeleton className="h-3 w-16" />
@@ -313,9 +316,9 @@ export function SettingsSkeleton() {
         </View>
 
         {/* Settings rows */}
-        {Array.from({ length: 4 }).map((_, i) => (
+        {slots(4).map((id) => (
           <View
-            key={i}
+            key={id}
             className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
           >
             <Skeleton className="w-9 h-9 rounded-xl mr-3" />
@@ -356,8 +359,8 @@ export function OrdersCardSkeleton() {
 
       {/* Items summary */}
       <View className="px-4 pb-2 border-b border-sand-50 gap-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <View key={i} className="flex-row items-center justify-between py-1">
+        {slots(3).map((id) => (
+          <View key={id} className="flex-row items-center justify-between py-1">
             <Skeleton className="h-3 w-40" />
             <Skeleton className="h-3 w-14" />
           </View>
@@ -405,16 +408,16 @@ export function OrdersListSkeleton({
       {/* Status filter chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 pt-3 pb-2">
         <View className="flex-row gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-7 w-24 rounded-full" />
+          {slots(4).map((id) => (
+            <Skeleton key={id} className="h-7 w-24 rounded-full" />
           ))}
         </View>
       </ScrollView>
 
       {/* Cards */}
       <View className="px-4 pt-2 pb-8 gap-3">
-        {Array.from({ length: count }).map((_, i) => (
-          <OrdersCardSkeleton key={i} />
+        {slots(count).map((id) => (
+          <OrdersCardSkeleton key={id} />
         ))}
       </View>
     </ScrollView>
@@ -428,9 +431,9 @@ export function CollectionDetailSkeleton() {
     <ScrollView className="flex-1 bg-ink-50">
       {/* Stats grid */}
       <View className="flex-row flex-wrap px-4 pt-4 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
+        {slots(4).map((id) => (
           <View
-            key={i}
+            key={id}
             className="bg-white rounded-xl p-3 border border-sand-100 flex-1 min-w-[45%] gap-1"
           >
             <Skeleton className="h-4 w-4" />
@@ -456,9 +459,9 @@ export function CollectionDetailSkeleton() {
         <Skeleton className="h-3 w-24 mb-3" />
         {/* Product grid — 3 items per row */}
         <View className="flex-row flex-wrap gap-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {slots(6).map((id) => (
             <View
-              key={i}
+              key={id}
               className="w-[31%] bg-white rounded-xl overflow-hidden border border-sand-100"
             >
               <Skeleton className="w-full" style={{ height: 96 }} />
@@ -518,8 +521,8 @@ export function ProductAddSkeleton() {
               <Skeleton className="h-3 w-12" />
             </View>
             <View className="flex-row flex-wrap gap-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-7 w-20 rounded-full" />
+              {slots(6).map((id) => (
+                <Skeleton key={id} className="h-7 w-20 rounded-full" />
               ))}
             </View>
           </View>
@@ -528,8 +531,8 @@ export function ProductAddSkeleton() {
           <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-3">
             <Skeleton className="h-3 w-12" />
             <View className="flex-row flex-wrap gap-2">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <Skeleton key={i} className="h-7 w-12 rounded-full" />
+              {slots(7).map((id) => (
+                <Skeleton key={id} className="h-7 w-12 rounded-full" />
               ))}
             </View>
           </View>
@@ -569,8 +572,8 @@ export function DetailScreenSkeleton({ withPhoto = true }: { withPhoto?: boolean
         </View>
       )}
       <View className="px-4 py-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <View key={i} className="bg-white rounded-2xl p-4 border border-sand-100 gap-2">
+        {slots(4).map((id) => (
+          <View key={id} className="bg-white rounded-2xl p-4 border border-sand-100 gap-2">
             <Skeleton className="h-3 w-1/3" />
             <Skeleton className="h-4 w-2/3" />
           </View>

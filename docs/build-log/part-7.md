@@ -768,3 +768,17 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | providers | Legacy-row map typed `AiProviderConfigRow \| undefined`; the existing filter already drops missing rows. |
 | safe-fetch | SSRF check destructures IPv4 octets and fails closed (treated as private) if one is missing. Unreachable after `isIP() === 4`, kept as a guard. |
 | Local runs | `packages/ai`: Biome 0 errors, 0 warnings (was 8 warnings). ai tsc 0, tests 209 passed. api tsc 0. |
+
+## 2026-11-24 — Biome: apps/mobile src, tests, config (this PR, mobile 1 of 2)
+
+| Area | Change |
+|---|---|
+| Dead props | Product detail: `primaryColor`/`colors` (4 components), `setEditedColor`, `selectedPhotoIndex`, `currentPhotoIsOriginal`, `displayPhotos` and `setPhotoCacheBust` were passed but never read. Removed from props, hooks and `app/product/[id].tsx`. |
+| Dead cache-bust | `photoCacheBust` state and `displayUrl()` removed: nothing has set it since #49 removed rotate/background removal, so it always returned `photo.url`. |
+| Sentry | `beforeSend` header strip now filters `authorization` and `x-admin-key` in any casing (was exact `Authorization` only). No test: needs a Sentry init mock. |
+| Types | `any` replaced: palette shape for `colors`, `QueryClient` in offline persister, gallery ref, `originalPhoto`, typed native `VideoPlayer` constructor in `safe-video-player`. |
+| Keys | `Skeleton.tsx` uses stable `slot-N` ids; carousel dots keyed by photo id. |
+| Kept with reason | 3 reset-on-change effects and the RN single-font `font-family` in `global.css` carry `biome-ignore` with the reason. |
+| Tests | Promise-resolver assignments and `forEach` rewritten; RC-123 pin updated to `headers.Authorization`. |
+| Local runs | mobile `src`, `__tests__`, config: Biome 0 errors, 0 warnings. tsc 0. Tests 725 passed. |
+| Not verified | Not opened in Expo Go. Product detail screen touched (props only), worth a look on device. |

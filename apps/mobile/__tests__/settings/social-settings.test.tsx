@@ -414,7 +414,12 @@ describe('connect', () => {
 
   it('the button shows loading while a login is in flight', async () => {
     let settle: (v: string) => void = () => {};
-    m.loginWithFacebook.mockImplementation(() => new Promise((r) => (settle = r)));
+    m.loginWithFacebook.mockImplementation(
+      () =>
+        new Promise((r) => {
+          settle = r;
+        }),
+    );
     vi.spyOn(Alert, 'alert').mockImplementation(() => {});
     const t = await mount([]);
     await act(async () => {
@@ -432,7 +437,12 @@ describe('connect', () => {
   // is guarded by connectingRef; two taps in one tick start one login.
   it('a second tap in the same tick starts no second login', async () => {
     let settle: (v: string) => void = () => {};
-    m.loginWithFacebook.mockImplementation(() => new Promise((r) => (settle = r)));
+    m.loginWithFacebook.mockImplementation(
+      () =>
+        new Promise((r) => {
+          settle = r;
+        }),
+    );
     vi.spyOn(Alert, 'alert').mockImplementation(() => {});
     const t = await mount([]);
     const btn = byLabel(t, 'Connect Facebook Page')!;

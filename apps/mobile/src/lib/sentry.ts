@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 
 // DSN from Sentry wizard / config
 const DSN =
-  process.env['EXPO_PUBLIC_SENTRY_DSN'] ??
+  process.env.EXPO_PUBLIC_SENTRY_DSN ??
   'https://1cf3b3ac98fe5853c643c2a7cb22ab96@o4511960130387968.ingest.de.sentry.io/4511960286494800';
 
 /** Initialize Sentry — call once before any component renders. */
@@ -56,8 +56,12 @@ export function initSentry(): void {
     // Before send hook — strip sensitive tokens and secrets
     beforeSend(event) {
       if (event.request?.headers) {
-        delete event.request.headers['Authorization'];
-        delete event.request.headers['x-admin-key'];
+        // Header names are case-insensitive; strip every casing.
+        event.request.headers = Object.fromEntries(
+          Object.entries(event.request.headers).filter(
+            ([k]) => !['authorization', 'x-admin-key'].includes(k.toLowerCase()),
+          ),
+        );
       }
       if (event.breadcrumbs) {
         for (const crumb of event.breadcrumbs) {
@@ -130,7 +134,7 @@ export function captureException(error: unknown, context?: unknown): string {
   if (typeof context === 'string') {
     return Sentry.captureException(error, { extra: { componentStack: context } });
   }
-  return Sentry.captureException(error, context as any);
+  return Sentry.captureException(error, context as Parameters<typeof Sentry.captureException>[1]);
 }
 
 export { Sentry };

@@ -301,7 +301,12 @@ describe('polling', () => {
 
   it('a slow poll is not overlapped by the next tick', async () => {
     let settle: (v: unknown) => void = () => {};
-    m.getSupportSession.mockImplementation(() => new Promise((r) => (settle = r)));
+    m.getSupportSession.mockImplementation(
+      () =>
+        new Promise((r) => {
+          settle = r;
+        }),
+    );
     const t = await mount();
     await request(t);
     await tick(9000);
@@ -357,7 +362,12 @@ describe('cancel', () => {
   it('cancelling while the token is being fetched does not enter the session', async () => {
     m.getSupportSession.mockResolvedValue(status('APPROVED'));
     let giveToken: (v: unknown) => void = () => {};
-    m.getSupportSessionToken.mockImplementation(() => new Promise((r) => (giveToken = r)));
+    m.getSupportSessionToken.mockImplementation(
+      () =>
+        new Promise((r) => {
+          giveToken = r;
+        }),
+    );
     const t = await mount();
     await request(t);
     const cancel = byText(t, 'Cancel request');
@@ -375,7 +385,12 @@ describe('cancel', () => {
   // RC-134, first await: the status answer arrives after the manager cancelled — no stale alert.
   it('cancelling while the status request is pending shows no "Not approved" for the cancelled request', async () => {
     let giveStatus: (v: unknown) => void = () => {};
-    m.getSupportSession.mockImplementation(() => new Promise((r) => (giveStatus = r)));
+    m.getSupportSession.mockImplementation(
+      () =>
+        new Promise((r) => {
+          giveStatus = r;
+        }),
+    );
     const t = await mount();
     await request(t);
     const cancel = byText(t, 'Cancel request');

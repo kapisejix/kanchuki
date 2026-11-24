@@ -14,15 +14,9 @@ import { showError } from '../lib/errors';
 
 interface UseProductDetailFormProps {
   product: ProductDetail | undefined;
-  selectedPhotoIndex: number;
-  displayPhotos: { url: string; is_video?: boolean }[];
 }
 
-export function useProductDetailForm({
-  product,
-  selectedPhotoIndex,
-  displayPhotos,
-}: UseProductDetailFormProps) {
+export function useProductDetailForm({ product }: UseProductDetailFormProps) {
   const queryClient = useQueryClient();
 
   const [price, setPrice] = useState('');
@@ -109,7 +103,7 @@ export function useProductDetailForm({
     if (!product) return;
     setSaving(true);
     try {
-      const priceInPaise = price ? Math.round(parseFloat(price) * 100) : undefined;
+      const priceInPaise = price ? Math.round(Number.parseFloat(price) * 100) : undefined;
       const primaryCatId = selectedCategoryIds[0] ?? editedCategoryId ?? undefined;
       const matchedCatName =
         categoryList && primaryCatId

@@ -13,6 +13,7 @@
  * - Write errors are non-fatal (logged, not thrown)
  */
 
+import type { QueryClient } from '@tanstack/react-query';
 import { Directory, File, Paths } from 'expo-file-system';
 import { clearQueue } from './mutation-queue';
 
@@ -36,7 +37,7 @@ function cacheFileUri(): string {
 
 interface PersistedQuery {
   queryHash: string;
-  queryKey: unknown[];
+  queryKey: readonly unknown[];
   state: Record<string, unknown>;
 }
 
@@ -75,7 +76,7 @@ function cacheFile(): File {
  * Filters to only queries that still have gcTime remaining.
  * Errors are non-fatal — silently logged.
  */
-export function persistQueryCache(queryClient: any): void {
+export function persistQueryCache(queryClient: QueryClient): void {
   try {
     const allQueries = queryClient.getQueryCache().getAll();
     const persistable: PersistedQuery[] = [];
@@ -138,7 +139,7 @@ export function persistQueryCache(queryClient: any): void {
  * Called once on app start before screens render.
  * Returns true if data was restored, false if no cache was found.
  */
-export async function restoreQueryCache(queryClient: any): Promise<boolean> {
+export async function restoreQueryCache(queryClient: QueryClient): Promise<boolean> {
   try {
     const file = cacheFile();
     if (!file.exists) return false;

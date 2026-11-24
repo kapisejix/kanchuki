@@ -17,7 +17,6 @@ interface UseProductAiStudioProps {
   displayPhotos: { id: string; url: string; is_video?: boolean; is_primary?: boolean }[];
   selectedPhotoIndex: number;
   setSelectedPhotoIndex: (index: number) => void;
-  setPhotoCacheBust: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 }
 
 export function useProductAiStudio({
@@ -27,7 +26,6 @@ export function useProductAiStudio({
   displayPhotos,
   selectedPhotoIndex,
   setSelectedPhotoIndex,
-  setPhotoCacheBust,
 }: UseProductAiStudioProps) {
   const queryClient = useQueryClient();
 
@@ -112,7 +110,10 @@ export function useProductAiStudio({
   }, [productVideos.length, videoGenerating]);
 
   const generateVideo = useMutation({
-    mutationFn: () => growthApi.generateVideo(product!.id),
+    mutationFn: () => {
+      if (!product) throw new Error('Product not loaded');
+      return growthApi.generateVideo(product.id);
+    },
     onMutate: () => {
       setVideoGenerating(true);
       setVideoProgress(10);
@@ -198,7 +199,8 @@ export function useProductAiStudio({
           void queryClient.invalidateQueries({ queryKey: ['products', product.id] });
           void refetchStudioQuota();
           return true;
-        } else if (s.status === 'failed') {
+        }
+        if (s.status === 'failed') {
           setStudioStatus('failed');
           setStudioError(s.error ?? 'The studio shoot failed. Please try again.');
           return true;

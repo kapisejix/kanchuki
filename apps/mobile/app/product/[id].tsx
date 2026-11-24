@@ -152,7 +152,6 @@ export default function ProductDetailScreen() {
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
   const [skuTagOpen, setSkuTagOpen] = useState(false);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
-  const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({});
 
   const galleryRef = useRef<GalleryRef>(null);
 
@@ -212,14 +211,6 @@ export default function ProductDetailScreen() {
   const currentPhotoIsVariant = currentPhoto?.is_variant_preview ?? false;
   const currentPhotoIsOriginal = currentPhoto?.is_original_preview ?? false;
 
-  const displayUrl = useCallback(
-    (photo: { id: string; url: string }) => {
-      const bust = photoCacheBust[photo.id];
-      return bust ? `${photo.url}?t=${bust}` : photo.url;
-    },
-    [photoCacheBust],
-  );
-
   const goToPhoto = useCallback(
     (index: number) => {
       const clamped = Math.max(0, Math.min(index, displayPhotos.length - 1));
@@ -232,8 +223,6 @@ export default function ProductDetailScreen() {
   // Form hook
   const form = useProductDetailForm({
     product,
-    selectedPhotoIndex,
-    displayPhotos,
   });
 
   // AI Studio hook
@@ -244,7 +233,6 @@ export default function ProductDetailScreen() {
     displayPhotos,
     selectedPhotoIndex,
     setSelectedPhotoIndex,
-    setPhotoCacheBust,
   });
 
   // F-034 AI promo video. D5: source = photo on screen when it is a real product
@@ -325,14 +313,10 @@ export default function ProductDetailScreen() {
           setCarouselWidth={setCarouselWidth}
           galleryRef={galleryRef}
           setFullscreenOpen={setFullscreenOpen}
-          displayUrl={displayUrl}
           imageErrors={imageErrors}
           setImageErrors={setImageErrors}
-          primaryColor={primaryColor}
-          colors={colors}
           currentPhoto={currentPhoto}
           currentPhotoIsVariant={currentPhotoIsVariant}
-          currentPhotoIsOriginal={currentPhotoIsOriginal}
           downloadingMedia={studio.downloadingMedia}
           handleDownloadCurrentMedia={studio.handleDownloadCurrentMedia}
           deletingMedia={studio.deletingMedia}
@@ -372,8 +356,6 @@ export default function ProductDetailScreen() {
           product={product}
           retagging={form.retagging}
           handleRetag={form.handleRetag}
-          primaryColor={primaryColor}
-          colors={colors}
         />
 
         {/* Product Attributes Form */}
@@ -398,7 +380,6 @@ export default function ProductDetailScreen() {
           editedCategory={form.editedCategory}
           setEditedCategory={form.setEditedCategory}
           editedColor={form.editedColor}
-          setEditedColor={form.setEditedColor}
           editedPattern={form.editedPattern}
           setEditedPattern={form.setEditedPattern}
           editedCategoryId={form.editedCategoryId}
@@ -415,13 +396,10 @@ export default function ProductDetailScreen() {
           kidsAge={form.kidsAge}
           onAudienceChange={form.setAudiencePick}
           dirty={form.dirty}
-          primaryColor={primaryColor}
-          colors={colors}
           categories={categories}
           availableStyles={availableStyles}
           availableFabrics={availableFabrics}
           displayPhotos={displayPhotos}
-          selectedPhotoIndex={selectedPhotoIndex}
           goToPhoto={goToPhoto}
           onOpenSkuTagModal={() => setSkuTagOpen(true)}
         />
@@ -451,7 +429,7 @@ export default function ProductDetailScreen() {
                   params: {
                     productId: product.id,
                     productName: product.name ?? product.category ?? '',
-                    photo: displayPhotos[0] ? displayUrl(displayPhotos[0]) : '',
+                    photo: displayPhotos[0] ? displayPhotos[0].url : '',
                   },
                 })
               }
@@ -466,8 +444,6 @@ export default function ProductDetailScreen() {
           handleStatusChange={form.handleStatusChange}
           deleting={form.deleting}
           handleDelete={form.handleDelete}
-          primaryColor={primaryColor}
-          colors={colors}
         />
       </ScrollView>
 
@@ -508,7 +484,7 @@ export default function ProductDetailScreen() {
               onSwipeToClose={() => setFullscreenOpen(false)}
               renderItem={({ item: photo }) => (
                 <Image
-                  source={{ uri: displayUrl(photo) }}
+                  source={{ uri: photo.url }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="contain"
                 />
