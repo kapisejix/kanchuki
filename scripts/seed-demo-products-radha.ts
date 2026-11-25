@@ -595,8 +595,7 @@ async function main() {
 
   let created = 0;
   for (const group of GROUPS) {
-    for (let i = 0; i < group.items.length; i++) {
-      const item = group.items[i];
+    for (const [i, item] of group.items.entries()) {
       const sku = `DEMO-${group.category.slice(0, 3).toUpperCase()}-${String(i + 1).padStart(2, '0')}`;
       const photoSeed = `${group.category}-${i}`.replace(/\s+/g, '-').toLowerCase();
 

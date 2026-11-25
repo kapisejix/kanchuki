@@ -1,0 +1,13 @@
+{
+  // Type-check only: scripts run via tsx/node, which never type-check.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "**/*.mts"]
+}

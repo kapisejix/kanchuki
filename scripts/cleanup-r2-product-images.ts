@@ -85,6 +85,7 @@ async function main(): Promise<void> {
   const workers = Array.from({ length: CONCURRENCY }, async () => {
     while (cursor < toDelete.length) {
       const obj = toDelete[cursor++];
+      if (!obj) break;
       try {
         await deleteObject(obj.key);
         ok++;
