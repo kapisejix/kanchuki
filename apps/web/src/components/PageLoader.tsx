@@ -16,7 +16,7 @@ const containerVariants = {
 const shimmerVariants = {
   animate: {
     x: ['-100%', '200%'],
-    transition: { repeat: Infinity, duration: 1.5, ease: 'easeInOut' },
+    transition: { repeat: Number.POSITIVE_INFINITY, duration: 1.5, ease: 'easeInOut' },
   },
 };
 
@@ -29,9 +29,9 @@ export function PageLoader({ variant = 'fullscreen', text = 'Loading...' }: Page
         animate="animate"
         className="w-full space-y-4"
       >
-        {Array.from({ length: 3 }).map((_, i) => (
+        {Array.from({ length: 3 }, (_, i) => `sk-${i}`).map((k) => (
           <div
-            key={i}
+            key={k}
             className="bg-white/80 rounded-2xl border border-gray-200/80 p-6 overflow-hidden relative"
           >
             <div className="absolute inset-0 -translate-x-full overflow-hidden">
@@ -79,7 +79,7 @@ export function PageLoader({ variant = 'fullscreen', text = 'Loading...' }: Page
         <div className="flex justify-center mb-8">
           <motion.div
             animate={{ scale: [1, 1.05, 1], opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: 'easeInOut' }}
             className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-xl shadow-cyan-500/20"
           >
             <span className="text-white font-bold text-xl">K</span>
@@ -88,9 +88,9 @@ export function PageLoader({ variant = 'fullscreen', text = 'Loading...' }: Page
 
         {/* Skeleton cards */}
         <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => (
             <div
-              key={i}
+              key={k}
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-5 overflow-hidden relative"
             >
               {/* Shimmer overlay */}

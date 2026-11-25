@@ -84,7 +84,9 @@ function Host({
   const [open, setOpen] = useState(initialOpen);
   return (
     <>
-      <button onClick={() => setOpen(true)}>open</button>
+      <button type="button" onClick={() => setOpen(true)}>
+        open
+      </button>
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
@@ -219,7 +221,9 @@ describe('Sheet', () => {
       const [open, setOpen] = useState(true);
       return (
         <>
-          <button onClick={() => setOpen(false)}>close</button>
+          <button type="button" onClick={() => setOpen(false)}>
+            close
+          </button>
           <Sheet
             open={open}
             onClose={() => setOpen(false)}

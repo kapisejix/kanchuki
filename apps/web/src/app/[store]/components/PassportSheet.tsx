@@ -79,6 +79,7 @@ export function PassportSheet({ slug, profile, account, onSuccess }: Props) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="absolute inset-0 z-50 bg-black/40 flex items-end justify-center px-4 pb-4"
+      // biome-ignore lint/a11y/useSemanticElements: framer-motion overlay; a native <dialog> needs showModal() and top-layer stacking this sheet does not use
       role="dialog"
       aria-label={`Welcome back to ${profile.shop_name}`}
     >

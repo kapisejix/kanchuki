@@ -84,6 +84,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
   if (!expanded) {
     return (
       <button
+        type="button"
         onClick={() => setExpanded(true)}
         className="w-full flex items-center justify-center gap-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-xs font-semibold py-2.5 rounded-xl transition-colors"
       >
@@ -108,6 +109,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
           minLength={10}
         />
         <button
+          type="button"
           onClick={() => void handleSubmit()}
           disabled={phone.trim().length < 10 || !consent || loading}
           className="bg-amber-600 disabled:bg-amber-300 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors"

@@ -30,7 +30,7 @@ export function loadWishlist(slug: string): Map<string, WishlistItem> {
     if (Array.isArray(raw)) {
       const map = new Map<string, WishlistItem>();
       for (const item of raw as WishlistItem[]) {
-        if (item && item.id) map.set(item.id, item);
+        if (item?.id) map.set(item.id, item);
       }
       return map;
     }

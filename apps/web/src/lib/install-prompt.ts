@@ -44,8 +44,8 @@ export function captureInstallPrompt(event: Event): void {
   event.preventDefault();
   const promptEvent = event as InstallPromptEvent;
   deferredPrompt = promptEvent;
-  // forEach, not for...of: the web app's tsc target predates iterating a Set.
-  listeners.forEach((listener) => listener(promptEvent));
+  // Array.from: the web app's tsc target predates iterating a Set directly.
+  for (const listener of Array.from(listeners)) listener(promptEvent);
 }
 
 /** The captured event, or null when the browser never offered one. */

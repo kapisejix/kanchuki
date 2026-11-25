@@ -22,7 +22,7 @@ export function loadCart(slug: string): CartMap {
     if (Array.isArray(raw)) {
       const map = new Map<string, CartItem>();
       for (const item of raw as CartItem[]) {
-        if (item && item.id) map.set(item.id, item);
+        if (item?.id) map.set(item.id, item);
       }
       return map;
     }
@@ -61,9 +61,10 @@ export function productToCartItem(p: {
 /** Total cart value in paise */
 export function cartTotal(items: CartMap): number {
   let total = 0;
-  items.forEach((item) => {
+  // Array.from: the web app's tsc target predates iterating a Map directly.
+  for (const item of Array.from(items.values())) {
     total += (item.price_min ?? 0) * item.quantity;
-  });
+  }
   return total;
 }
 

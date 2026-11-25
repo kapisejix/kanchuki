@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Loader2, Lock, Send, Sparkles } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export interface TeamSession {
   token: string;
@@ -142,6 +142,7 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
                     type="tel"
                     inputMode="numeric"
                     required
+                    // biome-ignore lint/a11y/noAutofocus: single-purpose staff login screen; the phone number is the only thing to enter
                     autoFocus
                     maxLength={10}
                     value={phone}
@@ -191,6 +192,7 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
                   type="text"
                   inputMode="numeric"
                   required
+                  // biome-ignore lint/a11y/noAutofocus: the OTP field appears right after the code is sent; focus lets staff type it at once
                   autoFocus
                   maxLength={6}
                   value={otp}

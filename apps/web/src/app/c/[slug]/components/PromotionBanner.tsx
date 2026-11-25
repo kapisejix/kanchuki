@@ -44,7 +44,8 @@ export function PromotionBanner({ storeSlug }: Props) {
     setTimeout(() => setCopiedId(null), 2000);
   }, []);
 
-  if (loading || promotions.length === 0 || dismissed) return null;
+  const [promo] = promotions;
+  if (loading || !promo || dismissed) return null;
 
   const fmtDiscount = (p: Promotion) =>
     p.discount_type === 'PERCENT'
@@ -62,7 +63,6 @@ export function PromotionBanner({ storeSlug }: Props) {
   };
 
   // Show the first active promotion as a banner
-  const promo = promotions[0]!;
   const timeLeft = fmtTimeLeft(promo.ends_at);
 
   return (
@@ -79,6 +79,7 @@ export function PromotionBanner({ storeSlug }: Props) {
               </span>
               <span className="text-[10px] text-[#6B4773] font-medium">Use code</span>
               <button
+                type="button"
                 onClick={() => void handleCopy(promo.code, promo.id)}
                 className="font-mono font-bold text-[10px] bg-[#231F48] text-white hover:bg-[#560A39] px-2 py-0.5 rounded-md transition-colors inline-flex items-center gap-1 shadow-sm"
               >
@@ -99,6 +100,7 @@ export function PromotionBanner({ storeSlug }: Props) {
           </div>
         </div>
         <button
+          type="button"
           onClick={() => setDismissed(true)}
           className="text-[#928EB2] hover:text-[#231F48] p-1 text-xs"
           aria-label="Dismiss promotion"

@@ -21,6 +21,7 @@ export function StarPicker({ value, onChange, size = 28, disabled = false }: Sta
           <button
             key={star}
             type="button"
+            // biome-ignore lint/a11y/useSemanticElements: star buttons need hover preview and custom visuals; ARIA radio semantics are kept on purpose
             role="radio"
             aria-checked={star === value}
             aria-label={`${star} star${star > 1 ? 's' : ''}`}
@@ -76,13 +77,7 @@ interface ReviewFormProps {
   onSubmit?: () => void;
 }
 
-export function ReviewForm({
-  productName,
-  retailerId,
-  productId,
-  retailerName,
-  onSubmit,
-}: ReviewFormProps) {
+export function ReviewForm({ productName, productId, retailerName, onSubmit }: ReviewFormProps) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   // Prefill name/phone from ContactGate localStorage if available

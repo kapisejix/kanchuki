@@ -202,6 +202,7 @@ export default function MyStylePage() {
     if (item) void enquiry.send([{ slug: item.slug, shop_name: item.shop_name, items: [item] }]);
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is a refetch trigger (bumped after a quiz save / retry)
   useEffect(() => {
     if (tab === 'look') return; // the look tab has its own request below
     const ctrl = new AbortController();
@@ -256,6 +257,7 @@ export default function MyStylePage() {
     return () => ctrl.abort();
   }, [sort, tab, tabOccasion, page, budget, size, occasion, kids, where, radius, similar, nonce]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is a refetch trigger (bumped on retry)
   useEffect(() => {
     if (tab !== 'look' || !lookAnchor) return;
     const ctrl = new AbortController();
@@ -477,12 +479,9 @@ export default function MyStylePage() {
           </div>
         )}
         {quizNote && (
-          <p
-            role="status"
-            className="mt-3 rounded-2xl bg-fuchsia-500/10 px-3 py-2 text-xs font-semibold text-fuchsia-600"
-          >
+          <output className="mt-3 block rounded-2xl bg-fuchsia-500/10 px-3 py-2 text-xs font-semibold text-fuchsia-600">
             {quizNote}
-          </p>
+          </output>
         )}
         {showKids && (
           <KidsForm
@@ -583,7 +582,7 @@ export default function MyStylePage() {
 
       {tab === 'occasion' && (
         <div className="space-y-2">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Occasion">
+          <fieldset className="flex min-w-0 flex-wrap gap-2" aria-label="Occasion">
             {PRODUCT_OCCASIONS.map((o) => (
               <button
                 key={o}
@@ -598,7 +597,7 @@ export default function MyStylePage() {
                 {o}
               </button>
             ))}
-          </div>
+          </fieldset>
           {!tabOccasion && (
             <p className="text-xs text-heliotrope-500 px-1">
               Pick an occasion to see pieces chosen for it first.
@@ -617,7 +616,7 @@ export default function MyStylePage() {
             scrolls sideways, so no chip can sit off-screen (it was one overflow-x row whose
             last chips were clipped at phone width). */}
         <div className="space-y-2">
-          <div className={SEGMENTED} role="group" aria-label="Sort">
+          <fieldset className={`${SEGMENTED} min-w-0`} aria-label="Sort">
             {SORTS.map((s) => (
               <button
                 key={s.value}
@@ -629,7 +628,7 @@ export default function MyStylePage() {
                 {s.label}
               </button>
             ))}
-          </div>
+          </fieldset>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={nearMe} className={chip(Boolean(where))}>
               <LocateFixed
@@ -789,8 +788,8 @@ function Results({
   if (view.kind === 'loading') {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-busy="true">
-        {Array.from({ length: 6 }, (_, i) => (
-          <CardSkeleton key={i} />
+        {Array.from({ length: 6 }, (_, i) => `sk-${i}`).map((k) => (
+          <CardSkeleton key={k} />
         ))}
       </div>
     );

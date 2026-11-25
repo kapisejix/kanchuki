@@ -53,9 +53,9 @@ export function ReportAiContent({
 
   if (state === 'sent') {
     return (
-      <p role="status" className={`text-xs text-gray-500 text-center py-2 ${className}`}>
+      <output className={`block text-xs text-gray-500 text-center py-2 ${className}`}>
         Thanks. We will review this content.
-      </p>
+      </output>
     );
   }
 

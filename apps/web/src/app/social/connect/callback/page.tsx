@@ -151,6 +151,7 @@ function CallbackInner() {
           Open Kanchuki app
         </a>
         <button
+          type="button"
           onClick={() => window.close()}
           className="bg-carbon text-cream rounded-lg px-6 py-2.5 text-sm font-semibold"
         >
@@ -183,6 +184,7 @@ function CallbackInner() {
           </p>
           {pages.map((p) => (
             <button
+              type="button"
               key={p.id}
               onClick={() => void choosePage(p.id)}
               disabled={busy}

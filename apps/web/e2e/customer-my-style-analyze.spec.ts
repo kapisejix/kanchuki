@@ -213,7 +213,8 @@ test('happy path: the photo crosses the proxy as a JPEG, the palette appears', a
   // Exactly one upload, with the consent version in the query and a multipart body
   // whose photo part is a JPEG (FF D8 FF) - the browser re-encoded the PNG.
   expect(state.analyzed).toHaveLength(1);
-  const sent = state.analyzed[0]!;
+  const [sent] = state.analyzed;
+  if (!sent) throw new Error('no analyze request was recorded');
   expect(sent.query).toBe(`?consent_version=${MY_STYLE_CONSENT.version}`);
   expect(sent.contentType).toMatch(/^multipart\/form-data; boundary=/);
   expect(sent.body.includes(Buffer.from([0xff, 0xd8, 0xff]))).toBe(true);
@@ -276,10 +277,10 @@ test('find similar: the garment photo goes up as mode=garment, the descriptor ri
 
   await expect(page.getByText('Showing pieces like this')).toBeVisible({ timeout: 30_000 });
   expect(state.analyzed).toHaveLength(1);
-  expect(state.analyzed[0]!.query).toBe(
-    `?consent_version=${MY_STYLE_CONSENT.version}&mode=garment`,
-  );
-  expect(state.analyzed[0]!.body.includes(Buffer.from([0xff, 0xd8, 0xff]))).toBe(true);
+  const [garment] = state.analyzed;
+  if (!garment) throw new Error('no analyze request was recorded');
+  expect(garment.query).toBe(`?consent_version=${MY_STYLE_CONSENT.version}&mode=garment`);
+  expect(garment.body.includes(Buffer.from([0xff, 0xd8, 0xff]))).toBe(true);
 
   await page.getByRole('button', { name: 'See matches' }).click();
   await expect(page.getByText('yellow Kurti, Printed, Zari Work')).toBeVisible();

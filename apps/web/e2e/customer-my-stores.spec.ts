@@ -304,7 +304,7 @@ test.beforeAll(async () => {
     // Store profile — what /{public_slug} renders into ContactGate.
     const retailerMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)$/);
     if (req.method === 'GET' && retailerMatch) {
-      const slug = decodeURIComponent(retailerMatch[1]!);
+      const slug = decodeURIComponent(retailerMatch[1] ?? '');
       const known: Record<string, string> = {
         [STORE_SLUG]: 'Meera Sarees',
         [SECOND_SLUG]: 'Gupta Textiles',
@@ -368,7 +368,7 @@ test.beforeAll(async () => {
     // Storefront product listing (page 1 of the gated catalog).
     const productsMatch = path.match(/^\/v1\/public\/retailers\/([^/]+)\/products$/);
     if (req.method === 'GET' && productsMatch) {
-      json(res, 200, { data: collectionFor(decodeURIComponent(productsMatch[1]!)) });
+      json(res, 200, { data: collectionFor(decodeURIComponent(productsMatch[1] ?? '')) });
       return;
     }
 
@@ -743,10 +743,10 @@ for (const vp of VIEWPORTS) {
     // a 20px sliver is unusable on the device it exists for. 44px is the
     // touch-target floor the mobile work in this repo already holds to.
     const box = await row.boundingBox();
-    expect(box, 'the store row has no layout box').not.toBeNull();
+    if (!box) throw new Error('the store row has no layout box');
     expect(
-      box!.height,
-      `the store row on ${vp.name} is ${box!.height}px tall`,
+      box.height,
+      `the store row on ${vp.name} is ${box.height}px tall`,
     ).toBeGreaterThanOrEqual(44);
 
     // The un-published store still says so, rather than vanishing at this size.
@@ -775,10 +775,10 @@ for (const vp of VIEWPORTS) {
     const chip = page.getByRole('button', { name: 'Festive', exact: true });
     await expect(chip).toBeVisible();
     const box = await chip.boundingBox();
-    expect(box, 'the style chip has no layout box').not.toBeNull();
+    if (!box) throw new Error('the style chip has no layout box');
     expect(
-      box!.height,
-      `the style chip on ${vp.name} is ${box!.height}px tall`,
+      box.height,
+      `the style chip on ${vp.name} is ${box.height}px tall`,
     ).toBeGreaterThanOrEqual(24);
     client.expectClean(`the profile page on ${vp.name}`);
   });

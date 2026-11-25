@@ -21,7 +21,7 @@ export function LiveStats() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     fetch(`${apiUrl}/v1/public/stats`)
       .then((r) => r.json())
       .then((res) => {

@@ -36,6 +36,7 @@ export function RecentlyViewed({ storeSlug, onProductTap }: Props) {
       <div className="flex gap-2.5 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-hide snap-x snap-mandatory">
         {items.map((item) => (
           <button
+            type="button"
             key={item.id}
             onClick={() =>
               onProductTap({

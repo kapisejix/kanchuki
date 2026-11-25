@@ -45,13 +45,18 @@ export function SavedSize({ storeSlug }: Props) {
       <div className="bg-cyan-50 border border-cyan-100 rounded-2xl p-3">
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold text-cyan-800">What&apos;s your usual size?</p>
-          <button onClick={() => setEditing(false)} className="text-cyan-400 hover:text-cyan-600">
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="text-cyan-400 hover:text-cyan-600"
+          >
             <X size={14} />
           </button>
         </div>
         <div className="flex flex-wrap gap-1.5 mb-2">
           {SIZE_OPTIONS.map((size) => (
             <button
+              type="button"
               key={size}
               onClick={() => setSelected(size)}
               className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
@@ -66,6 +71,7 @@ export function SavedSize({ storeSlug }: Props) {
         </div>
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={() => void handleSave()}
             disabled={!selected}
             className="flex-1 bg-cyan-600 disabled:bg-cyan-300 text-white text-xs font-semibold py-2 rounded-xl transition-colors"
@@ -74,6 +80,7 @@ export function SavedSize({ storeSlug }: Props) {
           </button>
           {savedSize && (
             <button
+              type="button"
               onClick={handleClear}
               className="text-xs text-gray-500 hover:text-red-500 px-3 py-2 transition-colors"
             >
@@ -88,6 +95,7 @@ export function SavedSize({ storeSlug }: Props) {
   if (savedSize) {
     return (
       <button
+        type="button"
         onClick={() => {
           setSelected(savedSize);
           setEditing(true);
@@ -103,6 +111,7 @@ export function SavedSize({ storeSlug }: Props) {
 
   return (
     <button
+      type="button"
       onClick={() => setEditing(true)}
       className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 w-full hover:bg-cyan-50 hover:border-cyan-100 transition-colors"
     >

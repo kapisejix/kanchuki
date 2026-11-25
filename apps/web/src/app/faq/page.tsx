@@ -146,6 +146,7 @@ export default function FaqPage() {
           payload can never prematurely close the script tag. */}
       <script
         type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from static local data; `<` is escaped
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
       <Navbar />

@@ -92,8 +92,8 @@ export const viewport: Viewport = {
 // Runtime API_URL first (non-NEXT_PUBLIC var — read at runtime, so it can
 // override a stale build-inlined NEXT_PUBLIC value without a web rebuild),
 // same precedence + truthiness as lib/apiUrl.ts (so API_URL="" falls through).
-const API_ORIGIN = process.env['API_URL'] || process.env['NEXT_PUBLIC_API_URL'] || '';
-const R2_ORIGIN = process.env['NEXT_PUBLIC_R2_PUBLIC_URL'] ?? '';
+const API_ORIGIN = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+const R2_ORIGIN = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? '';
 
 const DEFAULT_PRIMARY_COLOR = '#14213D';
 

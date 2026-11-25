@@ -43,11 +43,13 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
   const nearbyCoords = debouncedQuery || city || nearbyEmpty ? null : loc.coords;
 
   // A filter change resets to page 1; the data effect below does the fetch.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the filter values are the reset trigger, not inputs
   useEffect(() => {
     setPage(1);
   }, [debouncedQuery, city, nearbyCoords]);
 
   // Single data-fetch effect — one fetch per (query, city, location, page) change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retryToken is a refetch trigger bumped by the Retry button
   useEffect(() => {
     let cancelled = false;
     setError(false);
@@ -125,6 +127,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
           />
           {query && (
             <button
+              type="button"
               onClick={() => setQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-carbon/40 hover:text-carbon transition"
               aria-label="Clear search"
@@ -137,6 +140,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
         {cities.length > 0 && (
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <button
+              type="button"
               onClick={() => setCity(null)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition border ${
                 city === null
@@ -148,6 +152,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
             </button>
             {cities.map((c) => (
               <button
+                type="button"
                 key={c.city}
                 onClick={() => setCity(city === c.city ? null : c.city)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition border ${
@@ -170,6 +175,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
             We couldn&apos;t load the store directory right now.
           </p>
           <button
+            type="button"
             onClick={() => setRetryToken((t) => t + 1)}
             className="inline-flex items-center gap-2 bg-volt text-carbon text-sm font-semibold px-6 py-3 rounded-full hover:bg-volt-600 transition"
           >
@@ -190,6 +196,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
                 Try a different city or clear the search.
               </p>
               <button
+                type="button"
                 onClick={() => {
                   setQuery('');
                   setCity(null);
@@ -235,6 +242,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
               aria-label="Store directory pages"
             >
               <button
+                type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
                 className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-carbon/15 text-sm font-medium text-carbon/60 hover:border-cobalt-500 disabled:opacity-40 disabled:pointer-events-none transition"
@@ -245,6 +253,7 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
                 Page {data.page} of {data.total_pages}
               </span>
               <button
+                type="button"
                 onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
                 disabled={page >= data.total_pages}
                 className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-carbon/15 text-sm font-medium text-carbon/60 hover:border-cobalt-500 disabled:opacity-40 disabled:pointer-events-none transition"

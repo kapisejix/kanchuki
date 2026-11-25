@@ -95,6 +95,7 @@ export function PricingTable({
               <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/70'}>
                 <td className="px-5 py-3.5 text-carbon/70 font-medium">{row.label}</td>
                 {row.values.map((v, vi) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed 3-tuple aligned to the plan columns; values repeat
                   <td key={vi} className="px-4 py-3.5 text-center text-carbon/60">
                     {v}
                   </td>

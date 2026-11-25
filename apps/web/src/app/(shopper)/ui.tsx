@@ -18,9 +18,11 @@ export const BTN_PRIMARY = `min-h-11 px-5 inline-flex items-center justify-cente
 export const BTN_SECONDARY = `min-h-11 px-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-white border border-lavender-200 text-spaceCadet-900 text-sm font-semibold shadow-sm hover:bg-lavender-50 transition-colors disabled:opacity-50 ${FOCUS}`;
 /** Quiet text action in the accent colour, still a 44px target. */
 export const BTN_TEXT = `min-h-11 px-2 inline-flex items-center justify-center gap-1.5 rounded-xl text-sm font-semibold text-fuchsia-600 hover:bg-fuchsia-500/10 transition-colors disabled:opacity-50 ${FOCUS}`;
-export const INPUT = `w-full min-h-11 px-3.5 rounded-xl border border-lavender-200 bg-white text-base sm:text-sm text-spaceCadet-900 placeholder:text-heliotrope-400 focus:outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-500/30`;
+export const INPUT =
+  'w-full min-h-11 px-3.5 rounded-xl border border-lavender-200 bg-white text-base sm:text-sm text-spaceCadet-900 placeholder:text-heliotrope-400 focus:outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-500/30';
 /** A native <select> dressed as a pill; the chevron is the browser's own. */
-export const SELECT = `min-h-11 pl-3.5 pr-8 rounded-full border border-lavender-200 bg-white text-sm font-semibold text-spaceCadet-900 hover:border-heliotrope-400 transition-colors focus:outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-500/30`;
+export const SELECT =
+  'min-h-11 pl-3.5 pr-8 rounded-full border border-lavender-200 bg-white text-sm font-semibold text-spaceCadet-900 hover:border-heliotrope-400 transition-colors focus:outline-none focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-500/30';
 export const ROW_BTN = `w-full min-h-12 px-4 flex items-center gap-3 text-left rounded-2xl bg-lavender-50 border border-lavender-100 hover:bg-lavender-100 text-sm font-semibold text-spaceCadet-900 transition-colors disabled:opacity-50 ${FOCUS}`;
 export const SKELETON = 'bg-lavender-100 animate-pulse motion-reduce:animate-none';
 

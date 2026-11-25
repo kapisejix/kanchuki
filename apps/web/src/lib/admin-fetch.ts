@@ -4,7 +4,7 @@
 // cookie is httpOnly, so credentials: 'include' on the fetch call is what
 // actually sends it back — omitting it (as most admin pages historically
 // did, copy-pasting a local getHeaders()) makes every write 403.
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 let cachedCsrfToken: string | null = null;
 let csrfFetchPromise: Promise<string> | null = null;

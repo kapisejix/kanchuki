@@ -276,8 +276,8 @@ for (const vp of VIEWPORTS) {
     // The entry point stays a comfortable tap target rather than shrinking to
     // fit (40px = the site's pill height; sub-24px would fail WCAG 2.2).
     const box = await entry.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.height).toBeGreaterThanOrEqual(40);
+    if (!box) throw new Error('the entry has no layout box');
+    expect(box.height).toBeGreaterThanOrEqual(40);
 
     await expect(page.getByLabel('Search stores')).toBeVisible();
     await expect(page.getByText('Meera Sarees')).toBeVisible();
@@ -310,7 +310,9 @@ for (const vp of VIEWPORTS) {
 
     // The field stays a comfortable size rather than shrinking on a narrow
     // screen — usable without pinch-zoom or sideways scrolling.
-    const height = (await phone.boundingBox())!.height;
+    const phoneBox = await phone.boundingBox();
+    if (!phoneBox) throw new Error('the phone input has no layout box');
+    const height = phoneBox.height;
     expect(height, `the phone input on ${vp.name} is ${height}px tall`).toBeGreaterThanOrEqual(40);
     client.expectClean(`the login page on ${vp.name}`);
   });

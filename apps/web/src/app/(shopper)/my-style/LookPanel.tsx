@@ -26,8 +26,8 @@ export function LookPanel({ view, shortlist, busy, onToggle, onEnquire, onRetry,
   if (view.kind === 'loading') {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" aria-busy="true">
-        {Array.from({ length: 3 }, (_, i) => (
-          <CardSkeleton key={i} />
+        {Array.from({ length: 3 }, (_, i) => `sk-${i}`).map((k) => (
+          <CardSkeleton key={k} />
         ))}
       </div>
     );

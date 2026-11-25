@@ -91,6 +91,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
           <h3 className="text-sm font-bold text-gray-900">Shopping for Family?</h3>
         </div>
         <button
+          type="button"
           onClick={() => setShowForm(!showForm)}
           className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
         >
@@ -104,6 +105,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
 
       {/* My size toggle */}
       <button
+        type="button"
         onClick={() => handleSelect(null)}
         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl mb-2 transition-all ${
           !activeProfile
@@ -124,6 +126,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
       {profiles.map((profile) => (
         <div key={profile.id} className="flex items-center gap-2 mb-1.5">
           <button
+            type="button"
             onClick={() => handleSelect(profile)}
             className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl transition-all ${
               activeProfile?.id === profile.id
@@ -147,6 +150,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
             )}
           </button>
           <button
+            type="button"
             onClick={() => handleRemove(profile.id)}
             className="text-gray-300 hover:text-red-400 transition-colors p-1"
           >
@@ -169,6 +173,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
           <div className="flex flex-wrap gap-1.5">
             {RELATION_OPTIONS.map((rel) => (
               <button
+                type="button"
                 key={rel}
                 onClick={() => {
                   setNewRelation(rel);
@@ -188,6 +193,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
           <div className="flex flex-wrap gap-1.5">
             {SIZE_OPTIONS.map((size) => (
               <button
+                type="button"
                 key={size}
                 onClick={() => setNewSize(size)}
                 className={`px-2 py-1 rounded-full text-[10px] font-medium transition-all ${
@@ -202,6 +208,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
           </div>
 
           <button
+            type="button"
             onClick={handleAdd}
             disabled={!newName.trim() || !newRelation || !newSize}
             className="w-full bg-indigo-600 disabled:bg-indigo-300 text-white text-xs font-semibold py-2 rounded-lg transition-colors"

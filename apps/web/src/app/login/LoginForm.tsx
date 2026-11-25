@@ -320,6 +320,7 @@ export function LoginForm({ returnTo }: Props) {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
+                // biome-ignore lint/a11y/noAutofocus: the OTP field appears right after the code is sent; focus lets the user type it at once
                 autoFocus
                 className="w-full bg-stone-50 border border-stone-200 rounded-lg px-3 py-2.5 text-sm text-stone-900 mb-4 text-center tracking-[0.3em] font-mono focus:outline-none focus:border-amber-500"
                 placeholder="------"

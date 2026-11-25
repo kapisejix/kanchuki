@@ -36,17 +36,21 @@ export function CategoryChips({
   if (categories.length === 0) return null;
 
   return (
-    <div
-      className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide"
-      role="group"
+    <fieldset
+      className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 scrollbar-hide"
       aria-label="Filter by category"
     >
       <span className="text-xs text-gray-500 flex-shrink-0">Category:</span>
-      <button onClick={() => onCategoryChange(null)} className={chipClass(filterCategory === null)}>
+      <button
+        type="button"
+        onClick={() => onCategoryChange(null)}
+        className={chipClass(filterCategory === null)}
+      >
         All ({totalCount})
       </button>
       {categories.map((category) => (
         <button
+          type="button"
           key={category.value}
           onClick={() =>
             onCategoryChange(filterCategory === category.value ? null : category.value)
@@ -56,7 +60,7 @@ export function CategoryChips({
           {category.value} ({category.count})
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }
 
@@ -77,17 +81,21 @@ export function SizeChips({ sizes, filterSize, onSizeChange }: SizeChipsProps) {
   if (sizes.length <= 1) return null;
 
   return (
-    <div
-      className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide"
-      role="group"
+    <fieldset
+      className="flex min-w-0 items-center gap-2 overflow-x-auto pb-1 scrollbar-hide"
       aria-label="Filter by size"
     >
       <span className="text-xs text-gray-500 flex-shrink-0">Size:</span>
-      <button onClick={() => onSizeChange(null)} className={chipClass(filterSize === null)}>
+      <button
+        type="button"
+        onClick={() => onSizeChange(null)}
+        className={chipClass(filterSize === null)}
+      >
         All
       </button>
       {sizes.map((size) => (
         <button
+          type="button"
           key={size.value}
           onClick={() => onSizeChange(filterSize === size.value ? null : size.value)}
           aria-pressed={filterSize === size.value}
@@ -96,7 +104,7 @@ export function SizeChips({ sizes, filterSize, onSizeChange }: SizeChipsProps) {
           {size.value} ({size.count})
         </button>
       ))}
-    </div>
+    </fieldset>
   );
 }
 
@@ -122,11 +130,16 @@ export function FilterBar({
       {/* Price filter */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <span className="text-xs text-gray-500 flex-shrink-0">Price:</span>
-        <button onClick={() => onPriceChange(null)} className={chipClass(filterPrice === null)}>
+        <button
+          type="button"
+          onClick={() => onPriceChange(null)}
+          className={chipClass(filterPrice === null)}
+        >
           All
         </button>
         {PUBLIC_PRICE_BUCKETS.map((bucket) => (
           <button
+            type="button"
             key={bucket.label}
             onClick={() => onPriceChange(filterPrice === bucket.label ? null : bucket.label)}
             className={chipClass(filterPrice === bucket.label)}
@@ -140,11 +153,16 @@ export function FilterBar({
       {colors.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <span className="text-xs text-gray-500 flex-shrink-0">Color:</span>
-          <button onClick={() => onColorChange(null)} className={chipClass(filterColor === null)}>
+          <button
+            type="button"
+            onClick={() => onColorChange(null)}
+            className={chipClass(filterColor === null)}
+          >
             All
           </button>
           {colors.map((color) => (
             <button
+              type="button"
               key={color.value}
               onClick={() => onColorChange(filterColor === color.value ? null : color.value)}
               className={`flex-shrink-0 flex items-center gap-1.5 ${chipClass(filterColor === color.value)}`}

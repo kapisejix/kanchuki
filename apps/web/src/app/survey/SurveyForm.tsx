@@ -220,7 +220,7 @@ export function SurveyForm({
 
     setStatus('sending');
     try {
-      const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
       const res = await fetch(`${apiUrl}/v1/team/survey`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

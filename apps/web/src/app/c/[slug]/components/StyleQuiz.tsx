@@ -3,7 +3,15 @@
 import { Check, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
-const QUESTIONS = [
+interface QuizQuestion {
+  key: string;
+  question: string;
+  icon: string;
+  options: string[];
+  multi?: boolean;
+}
+
+const QUESTIONS: [QuizQuestion, ...QuizQuestion[]] = [
   {
     key: 'occasion',
     question: 'What occasions do you shop for most?',
@@ -92,7 +100,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
   const [done, setDone] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const q = QUESTIONS[step]!;
+  const q = QUESTIONS[step] ?? QUESTIONS[0];
   const currentAnswers = answers[q.key] ?? [];
 
   const toggleOption = useCallback(
@@ -175,9 +183,9 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
     <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
       {/* Progress */}
       <div className="flex items-center gap-1.5 mb-4">
-        {QUESTIONS.map((_, i) => (
+        {QUESTIONS.map((question, i) => (
           <div
-            key={i}
+            key={question.key}
             className={`h-1 flex-1 rounded-full transition-colors ${
               i <= step ? 'bg-cyan-500' : 'bg-gray-100'
             }`}
@@ -198,6 +206,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
           const isActive = currentAnswers.includes(option);
           return (
             <button
+              type="button"
               key={option}
               onClick={() => toggleOption(option)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
@@ -216,6 +225,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
       <div className="flex items-center gap-2">
         {step > 0 && (
           <button
+            type="button"
             onClick={() => setStep(step - 1)}
             className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-3 py-2 transition-colors"
           >
@@ -224,6 +234,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
           </button>
         )}
         <button
+          type="button"
           onClick={handleNext}
           disabled={currentAnswers.length === 0 || saving}
           className="flex-1 bg-cyan-600 disabled:bg-gray-200 text-white text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1 transition-colors"
@@ -244,6 +255,7 @@ export function StyleQuiz({ storeSlug, onComplete }: Props) {
 
       {/* Skip */}
       <button
+        type="button"
         onClick={() => finish({})}
         className="w-full text-center text-[10px] text-gray-400 hover:text-gray-600 mt-2 transition-colors"
       >

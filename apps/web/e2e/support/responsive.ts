@@ -156,15 +156,15 @@ export async function expectRenderedImage(locator: Locator, where: string): Prom
  */
 export async function expectFullyInViewport(locator: Locator, where: string): Promise<void> {
   const box = await locator.boundingBox();
-  expect(box, `${where} has no layout box`).not.toBeNull();
+  if (!box) throw new Error(`${where} has no layout box`);
   const viewport = locator.page().viewportSize();
-  expect(viewport, `${where} needs an explicit viewport`).not.toBeNull();
-  expect(box!.x, `${where} starts off the left edge`).toBeGreaterThanOrEqual(0);
-  expect(box!.y, `${where} starts above the top edge`).toBeGreaterThanOrEqual(0);
-  expect(box!.x + box!.width, `${where} runs past the right edge`).toBeLessThanOrEqual(
-    viewport!.width + 1,
+  if (!viewport) throw new Error(`${where} needs an explicit viewport`);
+  expect(box.x, `${where} starts off the left edge`).toBeGreaterThanOrEqual(0);
+  expect(box.y, `${where} starts above the top edge`).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width, `${where} runs past the right edge`).toBeLessThanOrEqual(
+    viewport.width + 1,
   );
-  expect(box!.y + box!.height, `${where} runs past the bottom edge`).toBeLessThanOrEqual(
-    viewport!.height + 1,
+  expect(box.y + box.height, `${where} runs past the bottom edge`).toBeLessThanOrEqual(
+    viewport.height + 1,
   );
 }

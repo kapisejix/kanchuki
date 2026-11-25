@@ -1,13 +1,13 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 
 /**
  * RouteProgress — Slim animated progress bar at the top of the viewport.
  *
- * Tracks route changes by monitoring pathname + searchParams.
+ * Tracks route changes by monitoring pathname.
  * Shows a smooth progress animation when navigation starts (triggered by
  * loading.tsx mounting) and completes when the new page renders.
  *
@@ -21,13 +21,10 @@ export function RouteProgress() {
   );
 }
 
-/**
- * Inner component that uses useSearchParams — wrapped in Suspense
- * per Next.js requirement for client-side search params access.
- */
+/** Inner component, rendered inside the Suspense boundary above. */
 function RouteProgressInner() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+
   const [isNavigating, setIsNavigating] = useState(false);
   const [progress, setProgress] = useState(0);
   const prevPathRef = useRef(pathname);

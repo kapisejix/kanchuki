@@ -78,7 +78,7 @@ export function ProductGallery({ photos, variants, videos, alt, isSold, isReserv
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [lightboxLoaded, setLightboxLoaded] = useState(false);
-  const [thumbsSwiper, setThumbsSwiper] = useState<SwiperClass | null>(null);
+  const [thumbsSwiper] = useState<SwiperClass | null>(null);
   const mainSwiperRef = useRef<SwiperClass | null>(null);
   const fullscreenSwiperRef = useRef<SwiperClass | null>(null);
 
@@ -260,9 +260,9 @@ export function ProductGallery({ photos, variants, videos, alt, isSold, isReserv
             {/* Dots indicator */}
             {slideCount > 1 && (
               <div className="absolute bottom-3.5 left-20 flex gap-1.5 items-center z-10">
-                {slides.map((_, i) => (
+                {slides.map((s, i) => (
                   <span
-                    key={i}
+                    key={s.url}
                     className={`transition-all duration-200 ${
                       i === index
                         ? 'w-4 h-1.5 rounded-full bg-[#BB3F95]'

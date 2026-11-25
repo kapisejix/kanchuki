@@ -14,8 +14,8 @@
 // Env: set NEXT_PUBLIC_MSG91_WIDGET_ID + NEXT_PUBLIC_MSG91_TOKEN_AUTH as
 // build args (Railway dashboard + apps/web/Dockerfile ARG declarations).
 
-const WIDGET_ID = process.env['NEXT_PUBLIC_MSG91_WIDGET_ID'];
-const TOKEN_AUTH = process.env['NEXT_PUBLIC_MSG91_TOKEN_AUTH'];
+const WIDGET_ID = process.env.NEXT_PUBLIC_MSG91_WIDGET_ID;
+const TOKEN_AUTH = process.env.NEXT_PUBLIC_MSG91_TOKEN_AUTH;
 
 // ─── Global API surface exposed by the widget (exposeMethods: true) ──
 declare global {
@@ -75,7 +75,7 @@ export function loadMsg91Widget(): Promise<boolean> {
         return;
       }
       const script = document.createElement('script');
-      script.src = urls[i]!;
+      script.src = urls[i] ?? '';
       script.async = true;
       script.onload = () => {
         if (typeof window.initSendOTP === 'function') {

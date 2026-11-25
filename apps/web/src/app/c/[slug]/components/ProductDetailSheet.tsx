@@ -24,7 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadCart, productToCartItem, saveCart } from '../lib/cart';
 import { recordCurrentVisitProduct } from '../lib/currentVisit';
@@ -95,7 +95,6 @@ export function ProductDetailSheet({
   onClose,
   onSelectProduct,
 }: Props) {
-  const router = useRouter();
   // Real social proof for this product, if the store has a real count for it.
   const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null);
   const [photoIndex, setPhotoIndex] = useState(0);
@@ -185,6 +184,7 @@ export function ProductDetailSheet({
   // inherit the old one's photo index, variant selection, or stale detail.
   // (Placed after the zoom state declarations so the setters/ref are in
   // scope above this callback.)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: product.id is the reset trigger for the in-place product swap
   useEffect(() => {
     setPhotoIndex(0);
     setVariantPhotoUrl(null);
@@ -216,6 +216,7 @@ export function ProductDetailSheet({
   // instead of just closing the sheet. Push a history entry on mount and
   // close on popstate; the sheet's own close buttons trigger history.back()
   // so Back is always the single source of truth for closing.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only; re-running on a new onClose would push a second history entry
   useEffect(() => {
     let poppedByUser = false;
     window.history.pushState({ kanchukiProductSheet: true }, '');
@@ -246,7 +247,7 @@ export function ProductDetailSheet({
   const spinFrames = detail?.spin_frames ?? [];
   const variants = detail?.variants ?? [];
   const fabricEstimate = detail?.fabric_estimate ?? null;
-  const sizes = detail?.sizes ?? [];
+
   // Roadmap Q / F-033 — the detail API has always returned `videos`, but
   // `PublicProductDetail` never declared the field, so every consumer dropped
   // it silently. Clips with no URL are dropped rather than left as a slide that
@@ -505,7 +506,11 @@ export function ProductDetailSheet({
     retailer.shop_name,
   ]);
 
+  // Photo fading out under the crossfade (ref-tracked previous index).
+  const prevPhoto = prevIndexRef.current !== photoIndex ? photos[prevIndexRef.current] : undefined;
+
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop tap closes; the sheet's back/close buttons are the keyboard path
     <div
       className="fixed inset-0 z-[55] flex flex-col justify-end items-center"
       onClick={closeSheet}
@@ -514,6 +519,7 @@ export function ProductDetailSheet({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       {/* Sheet Container wrapped and centered */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: only stops taps inside the sheet from reaching the backdrop */}
       <div
         className="relative mt-auto bg-white rounded-t-3xl max-h-[92vh] flex flex-col w-full max-w-md mx-auto shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -524,6 +530,7 @@ export function ProductDetailSheet({
             <div className="w-10 h-1 bg-gray-200 rounded-full" />
           </div>
           <button
+            type="button"
             onClick={closeSheet}
             className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
                        transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BB3F95]"
@@ -532,6 +539,7 @@ export function ProductDetailSheet({
             <ArrowLeft size={17} className="text-gray-600" />
           </button>
           <button
+            type="button"
             onClick={closeSheet}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
                        transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BB3F95]"
@@ -544,6 +552,7 @@ export function ProductDetailSheet({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto">
           {/* Photo carousel with crossfade transition + pinch-to-zoom, or 360 viewer */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: tap/double-tap zoom gesture surface; the Prev/Next buttons are the keyboard path */}
           <div
             className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
             onTouchStart={isMediaSlide ? undefined : handleTouchStart}
@@ -597,19 +606,13 @@ export function ProductDetailSheet({
                 }}
               >
                 {/* Previous photo fading out — uses ref-tracked previous index */}
-                {prevIndexRef.current !== photoIndex && photos[prevIndexRef.current] && (
+                {prevPhoto && (
                   <div
                     key={`prev-${photoIndex}`}
                     className="absolute inset-0 opacity-0 animate-fade-out pointer-events-none"
                     style={{ animation: 'fadeOut 0.25s ease-in-out forwards' }}
                   >
-                    <Image
-                      src={photos[prevIndexRef.current]!}
-                      alt=""
-                      fill
-                      sizes="100vw"
-                      className="object-cover"
-                    />
+                    <Image src={prevPhoto} alt="" fill sizes="100vw" className="object-cover" />
                   </div>
                 )}
                 {/* Current photo fading in */}
@@ -724,6 +727,7 @@ export function ProductDetailSheet({
             {/* Navigation arrows — spans photos + the 360 slide */}
             {totalSlides > 1 && !isZoomed && (
               <button
+                type="button"
                 onClick={() => goTo(photoIndex < totalSlides - 1 ? photoIndex + 1 : 0)}
                 className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40 hover:scale-105 transition"
                 aria-label="Next"
@@ -735,9 +739,9 @@ export function ProductDetailSheet({
             {/* Dots — last dot is the 360 slide when present */}
             {totalSlides > 1 && (
               <div className="absolute bottom-3.5 left-20 flex gap-1.5 items-center z-10">
-                {Array.from({ length: totalSlides }).map((_, i) => (
+                {Array.from({ length: totalSlides }, (_, i) => `dot-${i}`).map((k, i) => (
                   <span
-                    key={i}
+                    key={k}
                     className={`transition-all duration-200 ${
                       i === photoIndex
                         ? 'w-4 h-1.5 rounded-full bg-[#BB3F95]'
@@ -758,6 +762,7 @@ export function ProductDetailSheet({
           {has360 && (
             <div className="px-4 pt-3">
               <button
+                type="button"
                 onClick={() => setShowSpinModal(true)}
                 className="w-full flex items-center justify-center gap-2 bg-[#FAF9FE] hover:bg-[#F2F1FA] text-[#231F48] border border-[#E0E1F6]
                          text-xs font-bold py-2.5 rounded-2xl transition-colors shadow-sm"
@@ -810,6 +815,7 @@ export function ProductDetailSheet({
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => void handleShare()}
                   className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-sm border border-[#E0E1F6] hover:border-[#BB3F95] transition"
                   aria-label="Share product"
@@ -817,6 +823,7 @@ export function ProductDetailSheet({
                   <Share2 size={16} />
                 </button>
                 <button
+                  type="button"
                   onClick={() => !isSold && onFavorite(product.id)}
                   disabled={isSold}
                   className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition shadow-sm ${
@@ -904,6 +911,7 @@ export function ProductDetailSheet({
             {!isSold && (
               <div className="space-y-3 pt-2">
                 <button
+                  type="button"
                   onClick={() => setShowConsentModal(true)}
                   className="w-full py-3.5 px-3 rounded-2xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
                 >
@@ -914,6 +922,7 @@ export function ProductDetailSheet({
                 </button>
                 <div className="grid grid-cols-2 gap-3">
                   <button
+                    type="button"
                     onClick={() => onFavorite(product.id)}
                     className={`w-full py-3.5 rounded-2xl border font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
                       isFavorited
@@ -930,6 +939,7 @@ export function ProductDetailSheet({
                     </span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => void handleShare()}
                     className="w-full py-3.5 rounded-2xl border border-[#E0E1F6] bg-white text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition-all active:scale-[0.98]"
                   >
@@ -959,6 +969,7 @@ export function ProductDetailSheet({
                     const isActive = variantColor === v.color && variantPhotoUrl === v.photo_url;
                     return (
                       <button
+                        type="button"
                         key={v.color}
                         onClick={() =>
                           v.photo_url ? handleVariantClick(v.color, v.photo_url) : undefined
@@ -989,6 +1000,7 @@ export function ProductDetailSheet({
           {detail?.try_on_enabled && !isSold && (
             <div className="px-4 pt-2">
               <button
+                type="button"
                 onClick={() => setShowTryOn(true)}
                 className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                   isReserved
@@ -1049,6 +1061,7 @@ export function ProductDetailSheet({
               <div className="flex gap-3 overflow-x-auto -mx-4 px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
                 {relatedProducts.map((rp) => (
                   <button
+                    type="button"
                     key={rp.id}
                     onClick={() => onSelectProduct?.(rp)}
                     className="flex-shrink-0 w-28 snap-start group"
@@ -1100,11 +1113,13 @@ export function ProductDetailSheet({
 
       {/* Fullscreen 360 spin popup */}
       {showSpinModal && has360 && (
+        // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop tap closes; the "Close 360° view" button is the keyboard path
         <div
           className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
           onClick={() => setShowSpinModal(false)}
         >
           <button
+            type="button"
             onClick={() => setShowSpinModal(false)}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center z-10
                        transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
@@ -1112,6 +1127,7 @@ export function ProductDetailSheet({
           >
             <X size={20} className="text-white" />
           </button>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: only stops taps on the viewer from closing the popup */}
           <div
             className="relative w-full h-full max-w-lg max-h-[100vh] aspect-square"
             onClick={(e) => e.stopPropagation()}
@@ -1127,11 +1143,13 @@ export function ProductDetailSheet({
       {/* Fullscreen image viewer — click/tap main photo to open, swipe
           left/right between photos (no arrow buttons), back arrow to close. */}
       {fullscreenOpen && (
+        // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop tap closes; the "Close fullscreen image" button is the keyboard path
         <div
           className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
           onClick={() => setFullscreenOpen(false)}
         >
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               setFullscreenOpen(false);
@@ -1142,6 +1160,7 @@ export function ProductDetailSheet({
           >
             <ArrowLeft size={20} className="text-white" />
           </button>
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: only stops taps on the photo from closing the viewer; swipe is touch-only */}
           <div
             className="relative w-full h-full"
             onClick={(e) => e.stopPropagation()}
@@ -1172,9 +1191,9 @@ export function ProductDetailSheet({
             )}
             {totalPhotos > 1 && (
               <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5">
-                {Array.from({ length: totalPhotos }).map((_, i) => (
+                {Array.from({ length: totalPhotos }, (_, i) => `fs-dot-${i}`).map((k, i) => (
                   <div
-                    key={i}
+                    key={k}
                     className={`rounded-full transition-all ${
                       i === photoIndex ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/40'
                     }`}
@@ -1205,15 +1224,6 @@ export function ProductDetailSheet({
           onClose={() => setShowTryOn(false)}
         />
       )}
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline gap-2 text-sm">
-      <span className="text-gray-400 w-16 flex-shrink-0">{label}</span>
-      <span className="text-gray-800 font-medium">{value}</span>
     </div>
   );
 }

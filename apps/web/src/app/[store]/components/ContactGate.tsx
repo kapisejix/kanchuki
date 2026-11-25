@@ -326,7 +326,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
   // Open in system browser (deep link out of WebView)
   const openInBrowser = () => {
     if (typeof window !== 'undefined') {
-      window.location.href = window.location.href;
+      window.location.assign(window.location.href);
     }
   };
 
@@ -515,6 +515,7 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
             maxLength={6}
             className="w-full bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl px-4 py-3 text-sm text-[#231F48] mb-4 text-center tracking-[0.3em] font-mono focus:outline-none focus:border-[#BB3F95]"
             placeholder="------"
+            // biome-ignore lint/a11y/noAutofocus: the OTP field appears right after the code is sent; focus lets the shopper type it at once
             autoFocus
           />
 
