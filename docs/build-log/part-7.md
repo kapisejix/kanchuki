@@ -927,3 +927,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Change | `packages/db/src/vault.ts`: import `../src/generated/vault/index.js` (same folder from `src/` and `dist/`). `packages/db/package.json` postinstall always generates the vault client (generate needs no DB URL). |
 | Local runs | db tsc 0; vault client generates with no env; built `dist/vault.js` loads the client. vault.test.ts skips without a DB. |
 | Still owner-side | `VAULT_DATABASE_URL` in Railway points at a dead proxy; set a working vault DB URL (and rotate `vault_app`) before snapshots actually land. |
+
+## 2026-11-25 — biome: ignore 5 local tool files
+
+| Area | Change |
+|---|---|
+| Change | `biome.jsonc` `files.ignore` += `.impeccable/hook.cache.json`, `.specify/integration.json`, `.specify/init-options.json`, `.specify/workflows/workflow-registry.json`, `.vscode/mcp.json`. Edited by owner (config-protection hook). |
+| Why | Tool-generated files, not project code. They were the only Biome findings left (format-only). |
+| Local runs | `npx biome check . --max-diagnostics=10000` whole repo: 0 errors, 0 warnings. One-folder cleanup goal done. |

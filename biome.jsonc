@@ -38,7 +38,19 @@
     }
   },
   "files": {
-    "ignore": ["node_modules", "dist", "build", ".next", "*.generated.ts", "packages/db/generated"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      "build",
+      ".next",
+      "*.generated.ts",
+      "packages/db/generated",
+      ".impeccable/hook.cache.json",
+      ".specify/integration.json",
+      ".specify/init-options.json",
+      ".specify/workflows/workflow-registry.json",
+      ".vscode/mcp.json"
+    ]
   },
   // Test files legitimately use three patterns the rules above flag, so the
   // three rules are scoped off for them rather than satisfied with worse code:
