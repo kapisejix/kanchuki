@@ -918,3 +918,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 |---|---|
 | Change | `apps/web/src/app/sections/MarketingSections.tsx`: `comingSoon?` field and its "Coming soon" badge removed from `FEATURES`. No feature set it, so the badge never rendered. No visual change. |
 | Local runs | web tsc 0, eslint and Biome clean on the file. |
+
+## 2026-11-25 — db: vault client loads in prod
+
+| Area | Change |
+|---|---|
+| Bug | Prod API logged `ERR_MODULE_NOT_FOUND` for `generated/vault/index.js`, so no deletion snapshots were saved. Two causes: (1) `dist/vault.js` imported `./generated/vault/` but tsc never copies `src/generated` into `dist`; (2) postinstall only generated the vault client when `VAULT_DATABASE_URL` was set, and the Docker build has no runtime env vars. |
+| Change | `packages/db/src/vault.ts`: import `../src/generated/vault/index.js` (same folder from `src/` and `dist/`). `packages/db/package.json` postinstall always generates the vault client (generate needs no DB URL). |
+| Local runs | db tsc 0; vault client generates with no env; built `dist/vault.js` loads the client. vault.test.ts skips without a DB. |
+| Still owner-side | `VAULT_DATABASE_URL` in Railway points at a dead proxy; set a working vault DB URL (and rotate `vault_app`) before snapshots actually land. |
