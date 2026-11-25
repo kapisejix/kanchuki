@@ -38,8 +38,12 @@ async function getVaultClient(): Promise<VaultClient | null> {
     // './generated/vault/index.js' specifier makes tsc fail with "Cannot find
     // module" wherever that env var is absent (e.g. CI). A non-literal specifier
     // can't be statically resolved by tsc, so it types as `any` instead of erroring.
-    const vaultModulePath = './generated/vault/index.js';
-    const { PrismaClient } = await import(vaultModulePath);
+    // ponytail: '../src/...' resolves to the same folder from src/ (tsx, tests)
+    // and from dist/ (prod build) — tsc never copies src/generated into dist,
+    // so './generated/...' was ERR_MODULE_NOT_FOUND in prod.
+    const vaultModulePath = '../src/generated/vault/index.js';
+    const mod = await import(vaultModulePath);
+    const PrismaClient = mod.PrismaClient ?? mod.default?.PrismaClient;
     _vaultClient = new PrismaClient({
       datasources: { db: { url: process.env.VAULT_DATABASE_URL } },
       log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
