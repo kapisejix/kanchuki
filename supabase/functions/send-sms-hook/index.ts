@@ -1,9 +1,16 @@
 import { serve } from 'https://deno.land/std/http/server.ts';
 import { Webhook } from 'https://esm.sh/standardwebhooks';
 
-const hookSecret = Deno.env.get('SEND_SMS_HOOK_SECRET')!;
-const msg91AuthKey = Deno.env.get('MSG91_AUTHKEY')!;
-const msg91TemplateId = Deno.env.get('MSG91_TEMPLATE_ID')!;
+function requireEnv(name: string): string {
+  const value = Deno.env.get(name);
+  if (!value) throw new Error(`${name} is not set`);
+  return value;
+}
+
+// Fail at cold start, not per request, if the function is misconfigured.
+const hookSecret = requireEnv('SEND_SMS_HOOK_SECRET');
+const msg91AuthKey = requireEnv('MSG91_AUTHKEY');
+const msg91TemplateId = requireEnv('MSG91_TEMPLATE_ID');
 
 serve(async (req) => {
   const payload = await req.text();
@@ -43,7 +50,4 @@ serve(async (req) => {
     }
   }
   return new Response('send failed', { status: 500 });
-
-  if (!res.ok) return new Response('send failed', { status: 500 });
-  return new Response(JSON.stringify({}), { status: 200 });
 });

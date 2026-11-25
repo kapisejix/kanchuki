@@ -1,38 +1,12 @@
 // Scan every .tsx under a root for JSX text/string-expression children that
 // are rendered inside a host element that is NOT <Text>. These are the classic
 // "Text strings must be rendered within a <Text> component" runtime crashes.
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const parser = require('@babel/parser');
 
 const ROOT = process.argv[2] || 'apps/mobile';
 const TEXTISH = new Set(['Text', 'TextInput', 'Animated.Text']);
-// Host (lowercase) + known native containers that cannot host raw text:
-const NON_TEXT_HOSTS = new Set([
-  'view',
-  'scrollview',
-  'flatlist',
-  'pressable',
-  'image',
-  'modal',
-  'View',
-  'ScrollView',
-  'FlatList',
-  'Pressable',
-  'Image',
-  'Modal',
-  'TouchableOpacity',
-  'TouchableHighlight',
-  'TouchableWithoutFeedback',
-  'KeyboardAvoidingView',
-  'SafeAreaView',
-  'Animated.View',
-  'AnimatedPressable',
-  'RefreshControl',
-  'Switch',
-  'ActivityIndicator',
-  'Skeleton',
-]);
 
 function walk(dir, out) {
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -70,7 +44,7 @@ for (const file of walk(ROOT, [])) {
       sourceType: 'module',
       plugins: ['jsx', 'typescript'],
     });
-  } catch (e) {
+  } catch {
     // Ignore parse errors on files with non-standard syntax (rare)
     continue;
   }
@@ -129,5 +103,5 @@ if (findings.length === 0) {
   console.log('CLEAN: no bare string children outside <Text> found.');
 } else {
   console.log(`FOUND ${findings.length} potential issue(s):`);
-  for (const f of findings) console.log('  ' + f);
+  for (const f of findings) console.log(`  ${f}`);
 }

@@ -3,32 +3,12 @@
 // literals are already proven clean; a runtime identifier can still hold a
 // string and trigger the same "Text strings must be rendered within a <Text>"
 // crash.
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const parser = require('@babel/parser');
 
 const ROOT = process.argv[2] || 'apps/mobile';
 const TEXTISH = new Set(['Text', 'TextInput', 'Animated.Text']);
-const SKIP_PROPS = new Set([
-  'key',
-  'style',
-  'className',
-  'accessibilityLabel',
-  'placeholder',
-  'title',
-  'label',
-  'value',
-  'name',
-  'source',
-  'uri',
-  'color',
-  'size',
-  'testID',
-  'hitSlop',
-  'id',
-  'onPress',
-  'data',
-]);
 // Expressions that are likely ReactNode (elements, numbers with validators,
 // booleans are fine in RN but strings are not; null/undefined fine).
 function looksLikeStringish(node) {

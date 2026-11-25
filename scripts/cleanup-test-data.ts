@@ -14,7 +14,7 @@
  * 3. Logs what was cleaned up
  */
 
-const API_URL = process.env['API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.API_URL ?? 'http://localhost:3001';
 const DEMO_PHONE_PREFIX = '999888';
 
 async function getToken(): Promise<string> {

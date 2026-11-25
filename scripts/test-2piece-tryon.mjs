@@ -18,13 +18,13 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 
 // ─── Config from .env ─────────────────────────────────────────
-const R2_ACCOUNT_ID = process.env['R2_ACCOUNT_ID'] ?? '';
-const R2_ACCESS_KEY_ID = process.env['R2_ACCESS_KEY_ID'] ?? '';
-const R2_SECRET_ACCESS_KEY = process.env['R2_SECRET_ACCESS_KEY'] ?? '';
-const R2_BUCKET = process.env['R2_BUCKET_NAME'] ?? 'kanchuki-prod';
-const R2_PUBLIC_URL = process.env['R2_PUBLIC_URL'] ?? '';
-const CATVTON_API_URL = process.env['CATVTON_API_URL'] ?? '';
-const RUNPOD_API_KEY = process.env['RUNPOD_API_KEY'] ?? '';
+const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? '';
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? '';
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? '';
+const R2_BUCKET = process.env.R2_BUCKET_NAME ?? 'kanchuki-prod';
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? '';
+const CATVTON_API_URL = process.env.CATVTON_API_URL ?? '';
+const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY ?? '';
 
 console.log('=== 2-Piece Try-On Test ===');
 console.log('R2:', R2_PUBLIC_URL ? '✅ configured' : '❌ missing');
@@ -81,7 +81,7 @@ try {
 } catch {
   console.log('  ❌ test_garment.jpg not found at repo root');
   console.log('  You can manually set GARMENT_URL env var instead');
-  if (!process.env['GARMENT_URL']) {
+  if (!process.env.GARMENT_URL) {
     console.log('  No GARMENT_URL set either. Exiting.');
     process.exit(1);
   }
@@ -93,7 +93,6 @@ if (garmentBuf) {
   console.log('  Image dimensions:', metadata.width, 'x', metadata.height);
 
   const upperHeight = Math.round((metadata.height ?? 800) * 0.6);
-  const lowerHeight = (metadata.height ?? 800) - upperHeight;
 
   // Crop upper portion
   const upperBuf = await sharp(garmentBuf)

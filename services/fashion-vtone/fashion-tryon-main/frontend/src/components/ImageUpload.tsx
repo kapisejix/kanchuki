@@ -2,7 +2,7 @@
 
 import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 interface ImageUploadProps {
   label: string;
@@ -17,6 +17,7 @@ export default function ImageUpload({
   accept = 'image/png,image/jpeg,image/jpg,image/webp',
   previewUrl,
 }: ImageUploadProps) {
+  const inputId = useId();
   const [isDragging, setIsDragging] = useState(false);
   const [preview, setPreview] = useState<string | null>(previewUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,7 +79,10 @@ export default function ImageUpload({
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+      <label
+        htmlFor={inputId}
+        className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2"
+      >
         {label}
       </label>
       <div
@@ -93,8 +97,16 @@ export default function ImageUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onClick={!preview ? handleClick : undefined}
+        onKeyDown={
+          !preview
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') handleClick();
+              }
+            : undefined
+        }
       >
         <input
+          id={inputId}
           ref={fileInputRef}
           type="file"
           accept={accept}

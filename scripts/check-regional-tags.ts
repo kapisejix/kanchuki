@@ -129,9 +129,7 @@ async function main() {
     );
   } else {
     console.log(
-      `[check-regional-tags] VERDICT: ${keysWithData}/${KEYS.length} keys match live products, so the\n` +
-        '  capability has data behind it. If regional filtering should exist, rebuild it from\n' +
-        '  default_product_attributes (kind = STYLE) rather than reviving the hardcoded list.',
+      `[check-regional-tags] VERDICT: ${keysWithData}/${KEYS.length} keys match live products, so the\n  capability has data behind it. If regional filtering should exist, rebuild it from\n  default_product_attributes (kind = STYLE) rather than reviving the hardcoded list.`,
     );
   }
 }

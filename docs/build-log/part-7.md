@@ -725,7 +725,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Expo Go | Owner checked all screens on 2026-11-24 ("checked all") after reporting the preview, Social tab and AI Video issues above. |
 | Not verified | AI video generation end to end (needs an admin model and styles; costs Fal credits). Reaches phones only with a new Android build. |
 
-## 2026-11-24 — MSG91 reqId, home header, repo-wide Biome format (PRs #337, #338, this PR)
+## 2026-11-24 — MSG91 reqId, home header, repo-wide Biome format (PRs #337, #338, #339)
 
 | Area | Change |
 |---|---|
@@ -735,7 +735,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | tsc 0 in api, web, mobile, shared. Tests: api 3550, web 779, mobile 725, shared 276 passed. Biome left: 865 lint errors and 777 warnings, fixed per package in follow-up PRs. |
 | Not verified | Phone OTP login and home header not checked on a device yet. Reaches phones only with a new app build. |
 
-## 2026-11-24 — Biome: api lint (#340) and console.log in CLI scripts (this PR)
+## 2026-11-24 — Biome: api lint (#340) and console.log in CLI scripts (#341)
 
 | Area | Change |
 |---|---|
@@ -743,14 +743,14 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | console.log | Owner chose a `biome.jsonc` override: `noConsoleLog` off for `scripts/`, `*/scripts/`, `packages/db/prisma/`, `services/fashion-vtone/test-tryon.mjs`, test/spec files and `__mocks__`. These print to the terminal on purpose. App code stays guarded. |
 | Local runs | Biome: 855 errors, 243 warnings (was 772). One `noConsoleLog` left, `packages/db/src/client.ts`, for the db PR. Config only, no code changed. |
 
-## 2026-11-24 — Biome: packages/shared clean (this PR)
+## 2026-11-24 — Biome: packages/shared clean (#342)
 
 | Area | Change |
 |---|---|
 | shared | `normalizeIndianPhone`: dropped two needless `!` on `slice()` and a dead `if` that returned the same value. Same behaviour. |
 | Local runs | `packages/shared`: Biome 0 errors, 0 warnings. tsc 0, tests 276 passed. |
 
-## 2026-11-24 — Biome: packages/db clean (this PR)
+## 2026-11-24 — Biome: packages/db clean (#343)
 
 | Area | Change |
 |---|---|
@@ -759,7 +759,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | `packages/db`: Biome 0 errors, 0 warnings. db tsc 0, tests 25 passed + 4 skipped. api tsc 0. |
 | seed bug | `createRetailer` returned `{ id, sectionIds }` but `createCollections` reads `retailer.shop_name`, so collection slugs used `slugify(undefined)`. Now returns `shop_name` too. `seed.ts` checked alone with tsc: 0 errors (was 3). |
 
-## 2026-11-24 — Biome: packages/ai clean (this PR)
+## 2026-11-24 — Biome: packages/ai clean (#344)
 
 | Area | Change |
 |---|---|
@@ -783,7 +783,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | mobile `src`, `__tests__`, config: Biome 0 errors, 0 warnings. tsc 0. Tests 725 passed. |
 | Not verified | Not opened in Expo Go. Product detail screen touched (props only), worth a look on device. |
 
-## 2026-11-24 — Biome: apps/mobile app/ screens (this PR, mobile 2 of 2)
+## 2026-11-24 — Biome: apps/mobile app/ screens (#346, mobile 2 of 2)
 
 | Area | Change |
 |---|---|
@@ -797,3 +797,19 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Mechanical | `Number.parseInt/parseFloat`, template literal, literal keys, `for...of`. |
 | Local runs | mobile: Biome 0 errors, 0 warnings across src, tests, config and app/ (was 22 errors, 68 warnings in app/). tsc 0. Tests 725 passed. |
 | Not verified | Not opened in Expo Go. Worth a device look: tab-bar Add button, Settings (KYC row, store details), Ratings, campaign edit. |
+
+## 2026-11-25 — Biome: scripts/, services/, supabase/ clean (this PR)
+
+| Area | Change |
+|---|---|
+| Counting | Path-scoped `npx biome check scripts` reports 0. Counted from the whole-repo run filtered to these folders: 65 errors, 38 warnings in 23 files. |
+| DB backup/restore | `parseConnectionUrl` destructures the regex match and throws the existing "Cannot parse" error if any part is missing (was 5-6 `!`). Restore: target-URL check moved after `--list` (list needs no target), so `targetUrl` is a checked string after it; latest-backup and argv reads use guards. Backup-key parser uses `pop()`/`join()`, same output. |
+| e2e-test | `(globalThis as any).__uploadData/__tryonData` replaced by a typed `UploadData` local per step plus `requireUpload()` (clear error if the earlier step failed). |
+| send-sms-hook | Env reads use `requireEnv()` (throws at cold start if a secret is missing, was `!`). Dead code after the final `return` removed. Not deployed by this PR. |
+| Dead code | Unused `NON_TEXT_HOSTS` (scan-text-strings), `SKIP_PROPS` (scan-runtime-text), `objectExists`/`downloadImage` + `HeadObjectCommand` import (fashion-vtone test-tryon), `lowerHeight` (test-2piece-tryon). Each grep-traced to zero references. |
+| Try-on demo frontend | Buttons get `type="button"`; "Garment Category" heading is a `<p>` (it labels a button group, not an input); upload label tied to its input with `useId`; dropzone gets Enter/Space key handler. |
+| Mechanical | `node:` imports, literal keys, template literals, `import type`, self-closing div, argv parsers split the in-expression `i += 1`, `for...of`. |
+| Local runs | scripts/services/supabase: Biome 0 errors, 0 warnings. Whole repo 680 errors, 88 warnings (was 746/126, rest is apps/web). Changed TS scripts tsc'd against `tsconfig.base.json`: no new errors (pre-existing ones listed below). `scan-text-strings` run: CLEAN. No tests cover these files. |
+| Not verified | Supabase function (no Deno locally) and try-on demo frontend (no node_modules) not typechecked; Biome only. |
+| seed-credits | Script read `retailer.try_on_credits`, a column that no longer exists (tsc 6 errors). Now upserts a `RetailerLimitOverride` for `TRY_ON_GENERATION` (100/MONTH), which `effectiveLimit()` reads before the plan limit. tsc 0. Not run (writes to DATABASE_URL). |
+| Found, not fixed | `e2e-test.ts`/`create-catalog-grid.ts` have pre-existing tsc errors (untyped `res.json()`, `import.meta` in CJS, missing `sharp` namespace). |

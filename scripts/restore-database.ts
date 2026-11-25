@@ -69,18 +69,17 @@ interface RestoreOptions {
 
 function parseConnectionUrl(url: string): DbConnectionInfo {
   const pattern = /^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/;
-  const match = url.match(pattern);
-  if (!match)
+  const [, user, password, host, port, database] = url.match(pattern) ?? [];
+  if (!user || !password || !host || !port || !database)
     throw new Error(
-      `Cannot parse database URL. Expected: postgresql://user:password@host:5432/dbname\n` +
-        `Got: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')}`,
+      `Cannot parse database URL. Expected: postgresql://user:password@host:5432/dbname\nGot: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')}`,
     );
   return {
-    user: decodeURIComponent(match[1]!),
-    password: decodeURIComponent(match[2]!),
-    host: match[3]!,
-    port: Number.parseInt(match[4]!, 10),
-    database: match[5]!,
+    user: decodeURIComponent(user),
+    password: decodeURIComponent(password),
+    host,
+    port: Number.parseInt(port, 10),
+    database,
   };
 }
 
@@ -118,18 +117,13 @@ function parseBackupKey(key: string): {
 } {
   const filename = basename(key);
   const withoutExt = filename.replace(/\.sql\.gz$/, '');
-  const tsMatch = withoutExt.match(/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/);
-  const timestamp = tsMatch ? tsMatch[1]!.replace(/T/g, ' ').replace(/-/g, '-') : null;
-  const rest = tsMatch ? withoutExt.slice(tsMatch[1]!.length) : withoutExt;
+  const ts = withoutExt.match(/^(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/)?.[1];
+  const timestamp = ts ? ts.replace(/T/g, ' ').replace(/-/g, '-') : null;
+  const rest = ts ? withoutExt.slice(ts.length) : withoutExt;
   const parts = rest.split('--').filter(Boolean);
-  let label = '';
-  let database = '';
-  if (parts.length >= 2) {
-    label = parts.slice(0, -1).join('--');
-    database = parts[parts.length - 1]!;
-  } else if (parts.length === 1) {
-    database = parts[0]!;
-  }
+  // Last part is the database; everything before it (joined) is the label.
+  const database = parts.pop() ?? '';
+  const label = parts.join('--');
   return { timestamp, label, database };
 }
 
@@ -372,15 +366,17 @@ async function main() {
   };
 
   const keyIndex = args.indexOf('--backup-key');
-  if (keyIndex >= 0 && keyIndex + 1 < args.length) options.backupKey = args[keyIndex + 1]!;
+  if (keyIndex >= 0 && keyIndex + 1 < args.length) options.backupKey = args[keyIndex + 1] ?? null;
 
   const fileIndex = args.indexOf('--file');
-  if (fileIndex >= 0 && fileIndex + 1 < args.length) options.localFile = args[fileIndex + 1]!;
+  if (fileIndex >= 0 && fileIndex + 1 < args.length)
+    options.localFile = args[fileIndex + 1] ?? null;
 
   const targetIndex = args.indexOf('--target');
-  if (targetIndex >= 0 && targetIndex + 1 < args.length) {
-    const val = args[targetIndex + 1]!;
-    options.targetUrl = val === 'BACKUP_DATABASE_URL' ? getEnvVar('BACKUP_DATABASE_URL') : val;
+  const targetArg = targetIndex >= 0 ? args[targetIndex + 1] : undefined;
+  if (targetArg) {
+    options.targetUrl =
+      targetArg === 'BACKUP_DATABASE_URL' ? (getEnvVar('BACKUP_DATABASE_URL') ?? null) : targetArg;
   }
 
   console.log('╔══════════════════════════════════════════════╗');
@@ -388,13 +384,6 @@ async function main() {
   console.log('╚══════════════════════════════════════════════╝\n');
 
   // ── Resolve target ──
-  const targetUrl = options.targetUrl ?? getEnvVar('DATABASE_URL');
-  if (!options.listOnly && !targetUrl) {
-    console.error('✖ No target database specified.');
-    console.error('  Set --target <url>, --target BACKUP_DATABASE_URL, or default DATABASE_URL.');
-    process.exit(1);
-  }
-
   // ── List mode ──
   if (options.listOnly) {
     console.log('── Listing Backups ─────────────────────────────\n');
@@ -403,6 +392,13 @@ async function main() {
     const backups = await listBackups(r2, bucket);
     displayBackups(backups);
     return;
+  }
+
+  const targetUrl = options.targetUrl ?? getEnvVar('DATABASE_URL');
+  if (!targetUrl) {
+    console.error('✖ No target database specified.');
+    console.error('  Set --target <url>, --target BACKUP_DATABASE_URL, or default DATABASE_URL.');
+    process.exit(1);
   }
 
   // ── Resolve backup source ──
@@ -422,11 +418,11 @@ async function main() {
     const bucket = getEnvVar('R2_BUCKET_NAME') ?? 'kanchuki-backups';
     console.log('── Finding latest backup ──────────────────────\n');
     const backups = await listBackups(r2, bucket);
-    if (backups.length === 0) {
+    const [latest] = backups;
+    if (!latest) {
       console.error('✖ No backups found in R2 bucket.');
       process.exit(1);
     }
-    const latest = backups[0]!;
     console.log(`  Latest: ${latest.key} (${formatBytes(latest.size)})\n`);
     localBackupPath = join(backupDir, basename(latest.key));
     console.log('── Downloading backup ─────────────────────────\n');
@@ -450,13 +446,13 @@ async function main() {
   console.log(`  Backup file: ${localBackupPath} (${formatBytes(fileSize)})\n`);
 
   // ── Confirm ──
-  const targetDb = parseConnectionUrl(targetUrl!);
+  const targetDb = parseConnectionUrl(targetUrl);
   console.log('⚠  WARNING: This will OVERWRITE the target database!');
   console.log(`  Target: ${targetDb.database} @ ${targetDb.host}:${targetDb.port}\n`);
 
   // ── Run restore ──
   console.log('── Restoring ───────────────────────────────────\n');
-  const success = await restoreToDatabase(localBackupPath, targetUrl!, options.dryRun);
+  const success = await restoreToDatabase(localBackupPath, targetUrl, options.dryRun);
 
   if (options.dryRun) {
     console.log('\n  [DRY RUN] No changes were made.');
@@ -475,7 +471,7 @@ async function main() {
 
   // ── Verify ──
   console.log('\n── Verification ───────────────────────────────\n');
-  const verified = await verifyRestore(targetUrl!);
+  const verified = await verifyRestore(targetUrl);
 
   console.log('\n╔══════════════════════════════════════════════╗');
   console.log(
