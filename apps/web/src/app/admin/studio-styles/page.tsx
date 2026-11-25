@@ -15,10 +15,10 @@ import {
   Upload,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { VIDEO_DEFAULTS, type VideoFieldValues, VideoFields, VideoModelsCard } from './video';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type StudioStyleRow = {
   id: string;
@@ -131,13 +131,13 @@ export default function StudioStylesPage() {
       <VideoModelsCard setStatus={setStatus} />
 
       {/* Kind filter */}
-      <div
+      <fieldset
         className="flex rounded-lg border border-gray-200 overflow-hidden w-fit"
-        role="group"
         aria-label="Filter by kind"
       >
         {(['ALL', 'IMAGE', 'VIDEO'] as const).map((k) => (
           <button
+            type="button"
             key={k}
             onClick={() => setKindFilter(k)}
             aria-pressed={kindFilter === k}
@@ -150,7 +150,7 @@ export default function StudioStylesPage() {
             {k === 'ALL' ? 'All' : k === 'IMAGE' ? 'Image' : 'Video'}
           </button>
         ))}
-      </div>
+      </fieldset>
 
       {/* New Style Form */}
       <NewStyleForm
@@ -186,7 +186,9 @@ export default function StudioStylesPage() {
 
       {/* Lightbox */}
       {lightbox && (
-        <div
+        <button
+          type="button"
+          aria-label="Close preview"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 cursor-zoom-out"
           onClick={() => setLightbox(null)}
         >
@@ -196,7 +198,7 @@ export default function StudioStylesPage() {
             alt={lightbox.label}
             className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
           />
-        </div>
+        </button>
       )}
     </motion.div>
   );
@@ -259,6 +261,7 @@ function StyleRow({
   setStatus: (s: string) => void;
   setLightbox: (l: { url: string; label: string } | null) => void;
 }) {
+  const fid = useId();
   const [edit, setEdit] = useState({
     label: row.label,
     description: row.description,
@@ -469,6 +472,7 @@ function StyleRow({
         <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
           {(['DRAFT', 'PUBLISHED', 'HIDDEN'] as const).map((s) => (
             <button
+              type="button"
               key={s}
               onClick={() => setEdit((p) => ({ ...p, status: s }))}
               className={`px-2.5 py-1 text-[10px] font-semibold transition-colors ${
@@ -530,6 +534,7 @@ function StyleRow({
 
         {/* Save */}
         <button
+          type="button"
           onClick={save}
           disabled={!hasChanges || saving}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 transition-colors ${
@@ -542,12 +547,14 @@ function StyleRow({
 
         {/* Expand / Thumbnail / Delete */}
         <button
+          type="button"
           onClick={() => setExpanded(!expanded)}
           className="p-1.5 text-gray-400 hover:text-gray-600 shrink-0"
         >
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         <button
+          type="button"
           onClick={() => fileRef.current?.click()}
           className="p-1.5 text-gray-400 hover:text-cyan-600 shrink-0"
           title="Upload thumbnail"
@@ -555,6 +562,7 @@ function StyleRow({
           <Upload size={14} />
         </button>
         <button
+          type="button"
           onClick={deleteRow}
           className="p-1.5 text-gray-400 hover:text-red-600 shrink-0"
           title="Delete"
@@ -574,20 +582,28 @@ function StyleRow({
           >
             <div className="mt-3 space-y-3 pl-15">
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l577`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Description
                 </label>
                 <input
+                  id={`${fid}-l577`}
                   value={edit.description}
                   onChange={(e) => setEdit((p) => ({ ...p, description: e.target.value }))}
                   className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l587`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   {isVideo ? 'Motion prompt' : 'Prompt'}
                 </label>
                 <textarea
+                  id={`${fid}-l587`}
                   value={edit.prompt}
                   onChange={(e) => setEdit((p) => ({ ...p, prompt: e.target.value }))}
                   rows={4}
@@ -597,9 +613,9 @@ function StyleRow({
               {isVideo && <VideoFields value={video} onChange={setVideo} />}
               {row.tab === 'MODEL' && (
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                     Audience (demographics)
-                  </label>
+                  </p>
                   <div className="flex gap-2 mt-1">
                     {DEMOGRAPHICS.map((d) => (
                       <label
@@ -639,6 +655,7 @@ function NewStyleForm({
   open: boolean;
   onToggle: () => void;
 }) {
+  const fid = useId();
   const [slug, setSlug] = useState('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
@@ -705,6 +722,7 @@ function NewStyleForm({
   return (
     <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
       <button
+        type="button"
         onClick={onToggle}
         className="w-full flex items-center gap-2 px-5 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50 transition-colors"
       >
@@ -727,10 +745,14 @@ function NewStyleForm({
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l730`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Slug
                   </label>
                   <input
+                    id={`${fid}-l730`}
                     value={slug}
                     onChange={(e) => {
                       setSlug(
@@ -747,10 +769,14 @@ function NewStyleForm({
                   {slugError && <p className="text-[10px] text-red-500 mt-1">{slugError}</p>}
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l750`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Label
                   </label>
                   <input
+                    id={`${fid}-l750`}
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     placeholder="Pastel Gradient Lounge"
@@ -759,10 +785,14 @@ function NewStyleForm({
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l762`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Description
                 </label>
                 <input
+                  id={`${fid}-l762`}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Soft pastel gradient backdrop"
@@ -770,12 +800,13 @@ function NewStyleForm({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                   Kind
-                </label>
+                </p>
                 <div className="flex gap-2 mt-1 w-64">
                   {(['IMAGE', 'VIDEO'] as const).map((k) => (
                     <button
+                      type="button"
                       key={k}
                       onClick={() => setKind(k)}
                       aria-pressed={kind === k}
@@ -792,10 +823,14 @@ function NewStyleForm({
               </div>
               {kind === 'VIDEO' && <VideoFields value={video} onChange={setVideo} />}
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l795`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   {kind === 'VIDEO' ? 'Motion prompt' : 'Prompt'}
                 </label>
                 <textarea
+                  id={`${fid}-l795`}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   rows={5}
@@ -805,12 +840,13 @@ function NewStyleForm({
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                     Tab
-                  </label>
+                  </p>
                   <div className="flex gap-2 mt-1">
                     {(['PRODUCT', 'MODEL'] as const).map((t) => (
                       <button
+                        type="button"
                         key={t}
                         onClick={() => setTab(t)}
                         className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg border transition-colors ${
@@ -826,10 +862,14 @@ function NewStyleForm({
                 </div>
                 {kind === 'IMAGE' ? (
                   <div>
-                    <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <label
+                      htmlFor={`${fid}-l829`}
+                      className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                    >
                       Engine
                     </label>
                     <select
+                      id={`${fid}-l829`}
                       value={engine}
                       onChange={(e) => setEngine(e.target.value)}
                       className="w-full text-[10px] border border-gray-200 rounded-lg px-2 py-2 mt-1 bg-white"
@@ -846,10 +886,14 @@ function NewStyleForm({
                   <div />
                 )}
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l849`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Sort order
                   </label>
                   <input
+                    id={`${fid}-l849`}
                     type="number"
                     value={sortOrder}
                     onChange={(e) => setSortOrder(Number(e.target.value))}
@@ -858,9 +902,9 @@ function NewStyleForm({
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                   Plans
-                </label>
+                </p>
                 <div className="flex gap-3 mt-1">
                   {PLANS.map((p) => (
                     <label
@@ -884,9 +928,9 @@ function NewStyleForm({
               </div>
               {tab === 'MODEL' && (
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                     Audience
-                  </label>
+                  </p>
                   <div className="flex gap-3 mt-1">
                     {DEMOGRAPHICS.map((d) => (
                       <label
@@ -910,6 +954,7 @@ function NewStyleForm({
                 </div>
               )}
               <button
+                type="button"
                 onClick={submit}
                 disabled={!canSubmit}
                 className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"

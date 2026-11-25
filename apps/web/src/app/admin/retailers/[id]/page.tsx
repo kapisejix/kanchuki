@@ -34,9 +34,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type RetailerDetail = {
   id: string;
@@ -100,6 +100,7 @@ const itemVariants = {
 };
 
 export default function RetailerDetailPage() {
+  const fid = useId();
   const params = useParams();
   const id = params.id as string;
   const [retailer, setRetailer] = useState<RetailerDetail | null>(null);
@@ -633,7 +634,7 @@ export default function RetailerDetailPage() {
 
             {/* F-015: Suspend/Unsuspend */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500">Account</label>
+              <p className="text-xs font-semibold text-gray-500">Account</p>
               {isSuspended ? (
                 <motion.button
                   onClick={async () => {
@@ -694,6 +695,7 @@ export default function RetailerDetailPage() {
               {isSuperAdmin &&
                 (!showDeleteDialog ? (
                   <button
+                    type="button"
                     onClick={() => {
                       setShowDeleteDialog(true);
                       setDeleteConfirmInput('');
@@ -720,6 +722,7 @@ export default function RetailerDetailPage() {
                     />
                     <div className="flex gap-2">
                       <button
+                        type="button"
                         onClick={() => {
                           setShowDeleteDialog(false);
                           setDeleteConfirmInput('');
@@ -729,6 +732,7 @@ export default function RetailerDetailPage() {
                         Cancel
                       </button>
                       <button
+                        type="button"
                         disabled={
                           actionLoading ||
                           deleteConfirmInput.trim() !== (retailer.shop_name || '').trim()
@@ -768,7 +772,7 @@ export default function RetailerDetailPage() {
             {/* Store-directory pin — featured stores sort to the top of
                 /stores and the homepage teaser (public-stores.ts orderBy). */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500">Store Directory</label>
+              <p className="text-xs font-semibold text-gray-500">Store Directory</p>
               {isFeatured ? (
                 <motion.button
                   onClick={async () => {
@@ -883,12 +887,14 @@ export default function RetailerDetailPage() {
                 />
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => setShowSuspendDialog(false)}
                     className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition"
                   >
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={async () => {
                       if (!suspendReasonInput.trim()) return;
                       setActionMsg('');
@@ -930,9 +936,12 @@ export default function RetailerDetailPage() {
 
             {/* Extend trial */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500">Extend Trial</label>
+              <label htmlFor={`${fid}-l933`} className="text-xs font-semibold text-gray-500">
+                Extend Trial
+              </label>
               <div className="flex gap-2">
                 <select
+                  id={`${fid}-l933`}
                   value={extendDays}
                   onChange={(e) => setExtendDays(Number(e.target.value))}
                   className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40"
@@ -958,9 +967,9 @@ export default function RetailerDetailPage() {
 
             {/* Change plan */}
             <div className="space-y-3">
-              <label className="text-xs font-semibold text-gray-500">Change Plan</label>
+              <p className="text-xs font-semibold text-gray-500">Change Plan</p>
               <div className="flex flex-col gap-2">
-                {(['STARTER', 'GROWTH', 'PRO'] as const).map((plan, i) => (
+                {(['STARTER', 'GROWTH', 'PRO'] as const).map((plan) => (
                   <motion.button
                     key={plan}
                     onClick={() => changePlan(plan)}
@@ -1049,6 +1058,7 @@ export default function RetailerDetailPage() {
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => deleteOverride(o.id)}
                       className="p-1 text-gray-300 hover:text-red-500 transition-colors"
                       aria-label={`Remove override for ${o.resource_type}`}
@@ -1117,6 +1127,7 @@ export default function RetailerDetailPage() {
                 />
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     onClick={() => {
                       setShowOverrideForm(false);
                       setOverrideForm({
@@ -1131,6 +1142,7 @@ export default function RetailerDetailPage() {
                     Cancel
                   </button>
                   <button
+                    type="button"
                     onClick={saveOverride}
                     disabled={overrideSaving || !overrideForm.limit_per_period}
                     className="bg-ink-600 flex-1 text-white text-sm font-semibold py-2 rounded-xl hover:shadow-lg disabled:opacity-60 transition"

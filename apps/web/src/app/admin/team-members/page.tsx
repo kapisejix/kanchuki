@@ -21,9 +21,9 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type TeamRole =
   | 'SUPER_ADMIN'
@@ -112,6 +112,7 @@ function MemberModal({
   editMember: TeamMember | null;
   territories: Territory[];
 }) {
+  const fid = useId();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -242,6 +243,7 @@ function MemberModal({
               </div>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
@@ -261,10 +263,14 @@ function MemberModal({
             {!editMember && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  <label
+                    htmlFor={`${fid}-l264`}
+                    className="block text-xs font-semibold text-gray-500 mb-1.5"
+                  >
                     Full Name
                   </label>
                   <input
+                    id={`${fid}-l264`}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Rahul Sharma"
@@ -273,13 +279,19 @@ function MemberModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Email</label>
+                  <label
+                    htmlFor={`${fid}-l276`}
+                    className="block text-xs font-semibold text-gray-500 mb-1.5"
+                  >
+                    Email
+                  </label>
                   <div className="relative">
                     <Mail
                       size={16}
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
                     />
                     <input
+                      id={`${fid}-l276`}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="rahul@kanchuki.app"
@@ -305,13 +317,17 @@ function MemberModal({
                   screens. Optional; email+password stays the primary
                   credential. Show in both create and edit. */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <label
+                htmlFor={`${fid}-l308`}
+                className="block text-xs font-semibold text-gray-500 mb-1.5"
+              >
                 Phone{' '}
                 <span className="text-gray-400 font-normal">
                   (for OTP login to mobile staff screens)
                 </span>
               </label>
               <input
+                id={`${fid}-l308`}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="10-digit mobile number"
@@ -323,10 +339,14 @@ function MemberModal({
             {/* Role */}
             {!editMember && (
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                <label
+                  htmlFor={`${fid}-l326`}
+                  className="block text-xs font-semibold text-gray-500 mb-1.5"
+                >
                   Access Level / Role
                 </label>
                 <select
+                  id={`${fid}-l326`}
                   value={role}
                   onChange={(e) => setRole(e.target.value as TeamRole)}
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
@@ -346,10 +366,14 @@ function MemberModal({
 
             {/* Max Retailers */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <label
+                htmlFor={`${fid}-l349`}
+                className="block text-xs font-semibold text-gray-500 mb-1.5"
+              >
                 Max Retailers (capacity)
               </label>
               <input
+                id={`${fid}-l349`}
                 type="number"
                 value={maxRetailers}
                 onChange={(e) => setMaxRetailers(e.target.value)}
@@ -360,12 +384,12 @@ function MemberModal({
 
             {/* Territory Assignment */}
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <p className="block text-xs font-semibold text-gray-500 mb-1.5">
                 Assigned Territories
                 <span className="text-gray-400 font-normal ml-1">
                   ({selectedTerritories.length} selected)
                 </span>
-              </label>
+              </p>
               <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-50">
                 {territories.length === 0 ? (
                   <div className="px-4 py-6 text-center text-gray-400 text-sm">
@@ -406,12 +430,14 @@ function MemberModal({
 
           <div className="sticky bottom-0 bg-gray-50/80 border-t border-gray-100 px-6 py-4 flex items-center justify-end gap-3">
             <button
+              type="button"
               onClick={onClose}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-200/80 rounded-xl transition"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSave}
               disabled={saving}
               className="bg-ink-600 hover:bg-ink-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg disabled:opacity-60 flex items-center gap-2"
@@ -681,10 +707,10 @@ export default function TeamMembersPage() {
             </thead>
             <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
               {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="border-b border-gray-50">
-                    {[...Array(7)].map((_, j) => (
-                      <td key={j} className="px-4 py-4">
+                Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((k) => (
+                  <tr key={k} className="border-b border-gray-50">
+                    {Array.from({ length: 7 }, (_, j) => `${k}-${j}`).map((c) => (
+                      <td key={c} className="px-4 py-4">
                         <div
                           className="h-4 bg-gray-200/60 rounded animate-pulse"
                           style={{ width: `${40 + Math.random() * 40}%` }}
@@ -798,6 +824,7 @@ export default function TeamMembersPage() {
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <button
+                        type="button"
                         onClick={() => toggleActive(m)}
                         className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition cursor-pointer ${
                           m.is_active
@@ -907,7 +934,7 @@ export default function TeamMembersPage() {
                 >
                   {revealed.emailed
                     ? `Also emailed to ${revealed.email}.`
-                    : `Email was NOT sent (no email provider configured or it failed). Share this password yourself.`}
+                    : 'Email was NOT sent (no email provider configured or it failed). Share this password yourself.'}
                 </p>
               )}
               <p className="text-xs text-gray-600">
@@ -916,12 +943,14 @@ export default function TeamMembersPage() {
               </p>
               <div className="flex justify-end gap-2">
                 <button
+                  type="button"
                   onClick={copyPassword}
                   className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
                 >
                   {copied ? 'Copied' : 'Copy password'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setRevealed(null)}
                   className="bg-ink-600 px-4 py-2 text-xs font-semibold text-white rounded-xl"
                 >

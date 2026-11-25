@@ -814,7 +814,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | seed-credits | Script read `retailer.try_on_credits`, a column that no longer exists (tsc 6 errors). Now upserts a `RetailerLimitOverride` for `TRY_ON_GENERATION` (100/MONTH), which `effectiveLimit()` reads before the plan limit. tsc 0. Not run (writes to DATABASE_URL). |
 | Found, not fixed | `e2e-test.ts`/`create-catalog-grid.ts` have pre-existing tsc errors (untyped `res.json()`, `import.meta` in CJS, missing `sharp` namespace). |
 
-## 2026-11-25 — Biome: apps/web admin root + subfolders a–o (this PR, web 1 of 3)
+## 2026-11-25 — Biome: apps/web admin root + subfolders a–o (#348, web 1 of 3)
 
 | Area | Change |
 |---|---|
@@ -831,3 +831,20 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Mechanical | Literal keys (37), `Number.*`, template literal, `!` swap in AI provider reorder replaced by a guard. |
 | Local runs | Scope: Biome 0 errors, 0 warnings. Whole repo 466 errors, 63 warnings (was 680/88; rest is admin p–z and other web). web tsc 0. web tests 780 passed. |
 | Not verified | Not opened in a browser. Worth a look: admin login, GBP picker, audit-log Search/Clear, SQL results copy cell. |
+
+## 2026-11-25 — Biome: apps/web admin subfolders p–z (this PR, web 2 of 3)
+
+| Area | Change |
+|---|---|
+| Scope | `src/app/admin` subfolders `photo-cleanup-test` … `whatsapp-catalog`. Counted from the whole-repo run: 244 issues (224 errors, 20 warnings) in 31 files. |
+| Buttons | 95 `<button>` got `type="button"`. Only one file has a `<form>` (retailers filter); its submit button was already typed and the new one sits after `</form>`. |
+| Labels | 38 labels tied to their field with `htmlFor` + `useId` (post templates, studio styles, resource packs, AI config, extend trial, team member modal, support ticket panel). AI config fields repeat per config key, so their ids include the key. 14 labels that head a group of buttons or checkboxes, not one field, are now `<p>`. |
+| Dead code | `rows` state in plan features and plan limits (set, never read; the save handlers no longer parse the response just to update it), AI config `testResult` (only ever set to null), rate limits `formatWindow`, ratings `containerVariants`/`itemVariants`, unused map index params. |
+| Hooks | `load` wrapped in `useCallback` and added to effect deps in 5 pages. GST report `load` is a `useCallback` on year/month/page, replacing its eslint-disable. `key()` helper in plan features/limits moved to module scope. Suits designs pre-select uses a functional update, so the mount effect no longer reads `selectedCategory`. Retailers list and suits designs reload effects kept with `biome-ignore` + reason. |
+| Non-null `!` | WhatsApp catalog reads `overview?.retailers ?? []`; theme reset falls back to the current value; suit category draft skips an unknown id; design name built once before the request; sample lightbox click guarded. |
+| Overlays | Post templates, studio styles and suits designs lightboxes are `<button aria-label="Close preview">` (EXCLUDED markers kept). Studio styles kind filter is a `<fieldset>`. Referral leaderboard and survey rows keep mouse row-click (`biome-ignore`); the shop/store name is now a button as the keyboard control. Social rows: the View button already was. Video model toggle `role="switch"` gets `aria-checked`. |
+| Keys | Skeleton lists use `sk-N` / `${row}-${j}` keys; GST month options keyed by name. Try-on usage tables keep index keys with `biome-ignore` (value arrays, no id). |
+| Other | Support tickets: lucide `Ticket` icon imported as `TicketIcon` (clashed with the `Ticket` type). Photo-cleanup videos keep `biome-ignore` for captions (AI clips with no speech). |
+| Mechanical | Literal keys (31), template literals, `Number.*`, `**`. |
+| Local runs | Scope: Biome 0 errors, 0 warnings. Whole repo 242 errors, 43 warnings (was 466/63; rest is `src/app/c` and other web). web tsc 0, eslint 0 on changed files. web tests 780 passed. |
+| Not verified | Not opened in a browser. Worth a look: plan features/limits toggles, studio styles kind filter (fieldset), lightboxes, referral/survey row buttons. |

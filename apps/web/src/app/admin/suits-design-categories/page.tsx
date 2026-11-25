@@ -3,9 +3,9 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { Link2, Loader2, Plus, Save, Tags, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type RelatedRef = { id: string; name: string; slug: string };
 
@@ -34,16 +34,16 @@ export default function SuitsDesignCategoriesPage() {
   const [newSort, setNewSort] = useState('');
   const [drafts, setDrafts] = useState<Record<string, CategoryPatch>>({});
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch(`${API_URL}/v1/admin/showcase-design-categories`, adminGetOptions());
     const json = await res.json();
     setRows(json.data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   // Silent refetch after any successful write keeps chips + counts in sync
   // without flashing the whole-page loader.
@@ -57,10 +57,10 @@ export default function SuitsDesignCategoriesPage() {
   const draft = (row: CategoryRow): CategoryPatch => drafts[row.id] ?? { ...row };
 
   const patchDraft = (id: string, patch: Partial<CategoryPatch>) =>
-    setDrafts((prev) => ({
-      ...prev,
-      [id]: { ...(prev[id] ?? rows.find((r) => r.id === id)!), ...patch },
-    }));
+    setDrafts((prev) => {
+      const base = prev[id] ?? rows.find((r) => r.id === id);
+      return base ? { ...prev, [id]: { ...base, ...patch } } : prev;
+    });
 
   const save = async (id: string) => {
     const d = drafts[id];
@@ -246,6 +246,7 @@ export default function SuitsDesignCategoriesPage() {
           />
         </div>
         <button
+          type="button"
           onClick={create}
           className="flex items-center gap-2 px-4 py-2.5 bg-ink-600 hover:bg-ink-500 text-white text-sm font-medium rounded-xl transition-colors"
         >
@@ -296,6 +297,7 @@ export default function SuitsDesignCategoriesPage() {
                   )}
                 </code>
                 <button
+                  type="button"
                   onClick={() => toggleActive(row)}
                   className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full transition ${
                     row.is_active
@@ -314,6 +316,7 @@ export default function SuitsDesignCategoriesPage() {
                 <div className="flex items-center gap-1 ml-auto">
                   {drafts[row.id] && (
                     <button
+                      type="button"
                       onClick={() => save(row.id)}
                       className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-ink-600 hover:bg-ink-500 rounded-xl transition-colors"
                     >
@@ -322,6 +325,7 @@ export default function SuitsDesignCategoriesPage() {
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={() => remove(row)}
                     disabled={row.design_count > 0}
                     title={
@@ -420,6 +424,7 @@ function RelatedPicker({
       })}
       {dirty && (
         <button
+          type="button"
           onClick={async () => {
             setSaving(true);
             await onSave(row.id, ids);

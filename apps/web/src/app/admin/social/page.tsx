@@ -15,9 +15,9 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ export default function SocialPage() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [disconnectError, setDisconnectError] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const [accountsRes, statsRes, postsRes] = await Promise.all([
         fetch(`${API_URL}/v1/admin/social/accounts`, adminGetOptions()),
@@ -120,11 +120,11 @@ export default function SocialPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load social data');
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const handleDisconnect = async (id: string) => {
     setDisconnectError('');
@@ -172,6 +172,7 @@ export default function SocialPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => void load()}
           className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl px-4 py-2 transition-colors"
         >
@@ -223,6 +224,7 @@ export default function SocialPage() {
       <motion.div variants={itemVariants} className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         {(['accounts', 'posts'] as const).map((t) => (
           <button
+            type="button"
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -255,6 +257,7 @@ export default function SocialPage() {
               </thead>
               <tbody>
                 {accounts.map((account) => (
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: row click is a mouse shortcut; the View button is the keyboard control
                   <tr
                     key={account.id}
                     className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer"
@@ -294,6 +297,7 @@ export default function SocialPage() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelected(account);
@@ -430,6 +434,7 @@ export default function SocialPage() {
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setDetailOpen(false)}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
@@ -456,6 +461,7 @@ export default function SocialPage() {
 
                 <div className="pt-3 border-t border-gray-100">
                   <button
+                    type="button"
                     onClick={() => void handleDisconnect(selected.id)}
                     disabled={disconnecting === selected.id}
                     className="w-full bg-red-50 hover:bg-red-100 text-red-600 font-medium text-sm rounded-xl px-4 py-2.5 transition-colors disabled:opacity-50"

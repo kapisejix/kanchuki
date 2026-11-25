@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { CheckSquare, Loader2, Save, Sparkles, Square } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 type FeatureKey =
@@ -140,15 +140,14 @@ const PLAN_ACCENT: Record<Plan, string> = {
 
 // ─── Page ──────────────────────────────────────────────────────────────
 
+const key = (plan: Plan, featureKey: FeatureKey) => `${plan}:${featureKey}`;
+
 export default function PlanFeaturesPage() {
-  const [rows, setRows] = useState<PlanFeature[]>([]);
   const [cells, setCells] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [prices, setPrices] = useState<Partial<Record<Plan, number>>>({});
-
-  const key = (plan: Plan, featureKey: FeatureKey) => `${plan}:${featureKey}`;
 
   useEffect(() => {
     fetch(`${API_URL}/v1/admin/plan-pricing`, adminGetOptions())
@@ -162,8 +161,6 @@ export default function PlanFeaturesPage() {
         const res = await fetch(`${API_URL}/v1/admin/plan-features`, adminGetOptions());
         const json = await res.json();
         const data: PlanFeature[] = json.data ?? [];
-        setRows(data);
-
         const next: Record<string, boolean> = {};
         for (const row of data) {
           next[key(row.plan, row.feature_key as FeatureKey)] = row.enabled;
@@ -200,11 +197,6 @@ export default function PlanFeaturesPage() {
         body: JSON.stringify({ plan, feature_key: featureKey, enabled }),
       });
       if (!res.ok) throw new Error('Save failed');
-      const json = await res.json();
-      setRows((prev) => {
-        const others = prev.filter((r) => !(r.plan === plan && r.feature_key === featureKey));
-        return [...others, json.data];
-      });
       setStatus(
         `✅ ${FEATURES.find((f) => f.key === featureKey)?.label} — ${PLAN_LABELS[plan].name}: ${enabled ? 'ON' : 'OFF'}`,
       );

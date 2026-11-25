@@ -17,14 +17,14 @@ import {
   Save,
   Search,
   Store,
-  Ticket,
+  Ticket as TicketIcon,
   Trash2,
   UserCheck,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type TicketStatus = 'OPEN' | 'ASSIGNED' | 'RESOLVED' | 'CLOSED';
 
@@ -103,6 +103,7 @@ function TicketDetailPanel({
   onClose: () => void;
   onUpdated: () => void;
 }) {
+  const fid = useId();
   const [status, setStatus] = useState(ticket.status);
   const [assignedTo, setAssignedTo] = useState(ticket.assigned_to_id ?? '');
   const [note, setNote] = useState(ticket.note ?? '');
@@ -126,7 +127,7 @@ function TicketDetailPanel({
       if (assignedTo !== (ticket.assigned_to_id ?? '')) body.assigned_to_id = assignedTo || null;
       if (note !== (ticket.note ?? '')) body.note = note;
       if (ticket.ticket_type === 'CATALOG_UPLOAD') {
-        const priceNum = quotedPrice.trim() === '' ? NaN : parseInt(quotedPrice, 10);
+        const priceNum = quotedPrice.trim() === '' ? Number.NaN : Number.parseInt(quotedPrice, 10);
         if (
           !Number.isNaN(priceNum) &&
           priceNum >= 0 &&
@@ -170,10 +171,11 @@ function TicketDetailPanel({
     >
       <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Ticket size={16} className="text-ink-500" />
+          <TicketIcon size={16} className="text-ink-500" />
           <span className="text-sm font-bold text-gray-900">Ticket Detail</span>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer"
         >
@@ -200,10 +202,11 @@ function TicketDetailPanel({
 
         {/* Status */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Status</label>
+          <p className="block text-xs font-semibold text-gray-500 mb-1.5">Status</p>
           <div className="flex gap-1.5 flex-wrap">
             {statusOptions.map((s) => (
               <button
+                type="button"
                 key={s}
                 onClick={() => setStatus(s)}
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition cursor-pointer ${
@@ -220,8 +223,14 @@ function TicketDetailPanel({
 
         {/* Assignment */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Assigned To</label>
+          <label
+            htmlFor={`${fid}-l223`}
+            className="block text-xs font-semibold text-gray-500 mb-1.5"
+          >
+            Assigned To
+          </label>
           <select
+            id={`${fid}-l223`}
             value={assignedTo}
             onChange={(e) => setAssignedTo(e.target.value)}
             className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
@@ -259,7 +268,10 @@ function TicketDetailPanel({
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <label
+                htmlFor={`${fid}-l262`}
+                className="block text-xs font-semibold text-gray-500 mb-1.5"
+              >
                 Quoted Price (₹)
               </label>
               <div className="relative">
@@ -268,6 +280,7 @@ function TicketDetailPanel({
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  id={`${fid}-l262`}
                   type="number"
                   min={0}
                   value={quotedPrice}
@@ -285,9 +298,9 @@ function TicketDetailPanel({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <p className="block text-xs font-semibold text-gray-500 mb-1.5">
                 Proposed Visit Slots
-              </label>
+              </p>
               {slots.length > 0 && (
                 <div className="space-y-1.5 mb-2">
                   {slots.map((slot) => (
@@ -310,6 +323,7 @@ function TicketDetailPanel({
                         )}
                       </span>
                       <button
+                        type="button"
                         onClick={() => setSlots((prev) => prev.filter((s) => s !== slot))}
                         disabled={ticket.confirmed_slot === slot}
                         className="text-gray-400 hover:text-red-500 disabled:opacity-30 cursor-pointer"
@@ -328,6 +342,7 @@ function TicketDetailPanel({
                   className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ink-500/40 focus:border-ink-400 transition"
                 />
                 <button
+                  type="button"
                   onClick={addSlot}
                   disabled={!newSlot || slots.length >= 10}
                   className="px-3 rounded-xl border border-gray-200 text-gray-500 hover:text-ink-600 hover:border-ink-300 disabled:opacity-40 cursor-pointer"
@@ -341,8 +356,14 @@ function TicketDetailPanel({
 
         {/* Note */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Internal Note</label>
+          <label
+            htmlFor={`${fid}-l344`}
+            className="block text-xs font-semibold text-gray-500 mb-1.5"
+          >
+            Internal Note
+          </label>
           <textarea
+            id={`${fid}-l344`}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={4}
@@ -362,6 +383,7 @@ function TicketDetailPanel({
 
       <div className="sticky bottom-0 bg-gray-50/80 border-t border-gray-100 px-5 py-4">
         <button
+          type="button"
           onClick={handleSave}
           disabled={saving}
           className="bg-ink-600 hover:bg-ink-500 w-full text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
@@ -505,7 +527,7 @@ export default function SupportTicketsPage() {
           <TicketStatsCard icon={UserCheck} label="Assigned" value={stats.assigned} />
           <TicketStatsCard icon={CheckCircle2} label="Resolved" value={stats.resolved} />
           <TicketStatsCard icon={X} label="Closed" value={stats.closed} />
-          <TicketStatsCard icon={Ticket} label="Total" value={stats.total} />
+          <TicketStatsCard icon={TicketIcon} label="Total" value={stats.total} />
           <TicketStatsCard icon={MapPin} label="Visit Req." value={stats.requires_visit} />
         </motion.div>
       )}
@@ -577,10 +599,10 @@ export default function SupportTicketsPage() {
               </thead>
               <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
                 {loading ? (
-                  [...Array(5)].map((_, i) => (
-                    <tr key={i} className="border-b border-gray-50">
-                      {[...Array(6)].map((_, j) => (
-                        <td key={j} className="px-4 py-4">
+                  Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((k) => (
+                    <tr key={k} className="border-b border-gray-50">
+                      {Array.from({ length: 6 }, (_, j) => `${k}-${j}`).map((c) => (
+                        <td key={c} className="px-4 py-4">
                           <div
                             className="h-4 bg-gray-200/60 rounded animate-pulse"
                             style={{ width: `${40 + Math.random() * 40}%` }}
@@ -597,7 +619,7 @@ export default function SupportTicketsPage() {
                         animate={{ scale: 1 }}
                         transition={{ type: 'spring', stiffness: 200, damping: 15 }}
                       >
-                        <Ticket size={40} className="mx-auto mb-3 text-gray-300" />
+                        <TicketIcon size={40} className="mx-auto mb-3 text-gray-300" />
                         <p className="text-sm font-medium">No tickets found</p>
                         <p className="text-xs mt-1 text-gray-400">
                           All clear — no open support requests

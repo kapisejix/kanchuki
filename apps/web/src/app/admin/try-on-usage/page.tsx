@@ -4,7 +4,7 @@ import { adminGetOptions } from '@/lib/admin-fetch';
 import { Cpu, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Usage = {
   totals: {
@@ -180,8 +180,10 @@ function Table({
             </tr>
           ) : (
             rows.map((r, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: rows are plain value arrays with no id; the table is replaced whole per window
               <tr key={i} className="border-t border-gray-100 text-gray-900">
                 {r.map((c, j) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: cells are positional columns
                   <td key={j} className="py-1 pr-4">
                     {c}
                   </td>

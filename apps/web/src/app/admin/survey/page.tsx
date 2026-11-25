@@ -21,7 +21,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { LIKERT_LEVELS, type Question, SECTIONS } from '../../survey/translations';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type SurveySubmission = {
   id: string;
@@ -111,6 +111,7 @@ export default function SurveySubmissionsPage() {
           </div>
         </div>
         <button
+          type="button"
           onClick={() => load(cursor ?? undefined)}
           disabled={loading}
           className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40"
@@ -156,13 +157,17 @@ export default function SurveySubmissionsPage() {
               </thead>
               <tbody>
                 {rows.map((r) => (
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: row click is a mouse shortcut; the store-name button is the keyboard control
                   <tr
                     key={r.id}
                     onClick={() => setSelected(r)}
                     className="border-b border-gray-50 last:border-0 hover:bg-amber-50/50 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">
-                      {String(r.metadata.storeName ?? '—')}
+                      {/* Keyboard control for the row: its click bubbles to the row's onClick */}
+                      <button type="button" className="text-left hover:underline">
+                        {String(r.metadata.storeName ?? '—')}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {String(r.metadata.ownerName ?? '—')}
@@ -195,6 +200,7 @@ export default function SurveySubmissionsPage() {
       {(cursorStack.length > 0 || hasMore) && !loading && (
         <div className="flex items-center justify-center gap-3">
           <button
+            type="button"
             onClick={handlePrev}
             disabled={cursorStack.length === 0}
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40"
@@ -203,6 +209,7 @@ export default function SurveySubmissionsPage() {
           </button>
           <span className="text-xs text-gray-400 font-mono">Page {cursorStack.length + 1}</span>
           <button
+            type="button"
             onClick={handleNext}
             disabled={!hasMore}
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-40"
@@ -247,6 +254,7 @@ export default function SurveySubmissionsPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setSelected(null)}
                 className="p-1.5 rounded-lg hover:bg-gray-100"
               >

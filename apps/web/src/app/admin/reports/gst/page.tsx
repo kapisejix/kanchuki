@@ -15,9 +15,9 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -125,7 +125,7 @@ export default function GstReportPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ year: String(year) });
@@ -163,12 +163,11 @@ export default function GstReportPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [year, month, page]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- load reads year/month/page from closure; deps list covers every input
   useEffect(() => {
     load();
-  }, [year, month, page]);
+  }, [load]);
 
   const maxGst = Math.max(...monthly.map((m) => m.gst), 1);
 
@@ -197,13 +196,14 @@ export default function GstReportPage() {
             >
               <option value={0}>All Months</option>
               {MONTHS.map((m, i) => (
-                <option key={i} value={i + 1}>
+                <option key={m} value={i + 1}>
                   {m}
                 </option>
               ))}
             </select>
             <div className="flex items-center gap-1">
               <button
+                type="button"
                 onClick={() => setYear((y) => y - 1)}
                 className="p-2 rounded-lg hover:bg-gray-100"
               >
@@ -211,6 +211,7 @@ export default function GstReportPage() {
               </button>
               <span className="text-sm font-medium px-2">{year}</span>
               <button
+                type="button"
                 onClick={() => setYear((y) => y + 1)}
                 className="p-2 rounded-lg hover:bg-gray-100"
               >
@@ -410,6 +411,7 @@ export default function GstReportPage() {
                     </span>
                     <div className="flex gap-2">
                       <button
+                        type="button"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
                         className="px-3 py-1 rounded-lg text-sm border border-gray-200 disabled:opacity-40 hover:bg-gray-50"
@@ -417,6 +419,7 @@ export default function GstReportPage() {
                         Previous
                       </button>
                       <button
+                        type="button"
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={page === totalPages}
                         className="px-3 py-1 rounded-lg text-sm border border-gray-200 disabled:opacity-40 hover:bg-gray-50"

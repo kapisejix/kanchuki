@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type ReviewStats = {
   total_reviews: number;
@@ -47,16 +47,6 @@ type Pagination = {
   limit: number;
   total: number;
   pages: number;
-};
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 25 } },
 };
 
 function StarDisplay({ rating, size = 14 }: { rating: number; size?: number }) {
@@ -304,6 +294,7 @@ export default function AdminRatingsPage() {
             </span>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -311,6 +302,7 @@ export default function AdminRatingsPage() {
                 <ChevronLeft size={16} />
               </button>
               <button
+                type="button"
                 onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
                 disabled={page === pagination.pages}
                 className="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -423,6 +415,7 @@ function ReviewRow({
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {!review.is_flagged && (
             <button
+              type="button"
               onClick={onFlag}
               className="p-1.5 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
               title="Flag for review"
@@ -432,6 +425,7 @@ function ReviewRow({
           )}
           {!review.is_hidden ? (
             <button
+              type="button"
               onClick={onHide}
               className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
               title="Hide review"
@@ -440,6 +434,7 @@ function ReviewRow({
             </button>
           ) : (
             <button
+              type="button"
               onClick={onUnhide}
               className="p-1.5 rounded-lg text-gray-400 hover:text-green-500 hover:bg-green-50 transition-colors"
               title="Restore review"

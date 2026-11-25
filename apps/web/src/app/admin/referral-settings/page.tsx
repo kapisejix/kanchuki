@@ -23,10 +23,10 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Handshake, Loader2, Save } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { type BonusType, type Cadence, type Settings, buildPatch } from './build-patch';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 /** Everything editing-side as a string, so a half-typed number is representable. */
 type Draft = {
@@ -148,7 +148,7 @@ export default function ReferralSettingsPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/v1/admin/referral-settings`, adminGetOptions());
       if (!res.ok) throw new Error(await apiError(res, 'Could not load referral settings'));
@@ -162,11 +162,11 @@ export default function ReferralSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const patch = (p: Partial<Draft>) => setDraft((prev) => (prev ? { ...prev, ...p } : prev));
 

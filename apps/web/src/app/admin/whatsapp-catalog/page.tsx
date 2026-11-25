@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -156,6 +156,7 @@ export default function WhatsAppCatalogPage() {
   };
 
   const health = overview?.health;
+  const retailers = overview?.retailers ?? [];
 
   return (
     <motion.div
@@ -240,6 +241,7 @@ export default function WhatsAppCatalogPage() {
                 Retailers
               </h2>
               <button
+                type="button"
                 onClick={() => void load()}
                 className="text-xs font-medium text-gray-400 hover:text-ink-600 transition-colors flex items-center gap-1.5"
               >
@@ -248,7 +250,7 @@ export default function WhatsAppCatalogPage() {
               </button>
             </div>
 
-            {overview!.retailers.length === 0 ? (
+            {retailers.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="w-14 h-14 mx-auto rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-3">
                   <Store size={22} className="text-gray-300" />
@@ -284,7 +286,7 @@ export default function WhatsAppCatalogPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {overview!.retailers.map((r, i) => (
+                    {retailers.map((r, i) => (
                       <motion.tr
                         key={r.retailer_id}
                         initial={{ opacity: 0, x: -10 }}
@@ -353,6 +355,7 @@ export default function WhatsAppCatalogPage() {
                           {fmtDate(r.last_synced_at)}
                         </td>
                         <td className="px-6 py-3.5">
+                          {/* biome-ignore lint/a11y/useKeyWithClickEvents: only stops the action buttons' clicks from also opening the row; not a control itself */}
                           <div
                             className="flex items-center justify-end gap-2"
                             onClick={(e) => e.stopPropagation()}
@@ -393,9 +396,9 @@ export default function WhatsAppCatalogPage() {
 
       {!overview && !error && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+          {Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => (
             <div
-              key={i}
+              key={k}
               className="bg-white/80 rounded-2xl border border-gray-200/80 p-5 animate-pulse"
             >
               <div className="h-3 bg-gray-200/80 rounded w-20 mb-3" />
@@ -576,6 +579,7 @@ function RetailerDetailModal({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
             aria-label="Close"

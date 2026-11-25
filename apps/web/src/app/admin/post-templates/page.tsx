@@ -13,9 +13,9 @@ import {
   Upload,
 } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type PostTemplateRow = {
   id: string;
@@ -149,7 +149,9 @@ export default function PostTemplatesPage() {
       </div>
 
       {lightbox && (
-        <div
+        <button
+          type="button"
+          aria-label="Close preview"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 cursor-zoom-out"
           onClick={() => setLightbox(null)}
         >
@@ -159,7 +161,7 @@ export default function PostTemplatesPage() {
             alt={lightbox.label}
             className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
           />
-        </div>
+        </button>
       )}
     </motion.div>
   );
@@ -178,6 +180,7 @@ function TemplateRow({
   setStatus: (s: string) => void;
   setLightbox: (l: { url: string; label: string } | null) => void;
 }) {
+  const fid = useId();
   const [edit, setEdit] = useState({
     name: row.name,
     description: row.description ?? '',
@@ -364,6 +367,7 @@ function TemplateRow({
         <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
           {CONTEXTS.map((c) => (
             <button
+              type="button"
               key={c}
               onClick={() => setEdit((p) => ({ ...p, context: c }))}
               className={`px-2.5 py-1 text-[10px] font-semibold transition-colors ${
@@ -395,6 +399,7 @@ function TemplateRow({
         <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
           {STATUSES.map((s) => (
             <button
+              type="button"
               key={s}
               onClick={() => setEdit((p) => ({ ...p, status: s }))}
               className={`px-2.5 py-1 text-[10px] font-semibold transition-colors ${
@@ -440,6 +445,7 @@ function TemplateRow({
 
         {/* Save */}
         <button
+          type="button"
           onClick={save}
           disabled={!hasChanges || saving}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 transition-colors ${
@@ -454,12 +460,14 @@ function TemplateRow({
 
         {/* Expand / Thumbnail / Delete */}
         <button
+          type="button"
           onClick={() => setExpanded(!expanded)}
           className="p-1.5 text-gray-400 hover:text-gray-600 shrink-0"
         >
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         <button
+          type="button"
           onClick={() => fileRef.current?.click()}
           className="p-1.5 text-gray-400 hover:text-violet-600 shrink-0"
           title="Upload thumbnail"
@@ -467,6 +475,7 @@ function TemplateRow({
           <Upload size={14} />
         </button>
         <button
+          type="button"
           onClick={deleteRow}
           className="p-1.5 text-gray-400 hover:text-red-600 shrink-0"
           title="Delete"
@@ -487,10 +496,14 @@ function TemplateRow({
             <div className="mt-3 space-y-3 pl-15">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l490`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Description
                   </label>
                   <input
+                    id={`${fid}-l490`}
                     value={edit.description}
                     onChange={(e) => setEdit((p) => ({ ...p, description: e.target.value }))}
                     className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white"
@@ -498,10 +511,14 @@ function TemplateRow({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l501`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Occasion
                   </label>
                   <input
+                    id={`${fid}-l501`}
                     value={edit.occasion}
                     onChange={(e) => setEdit((p) => ({ ...p, occasion: e.target.value }))}
                     className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white"
@@ -510,11 +527,15 @@ function TemplateRow({
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l513`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Caption template — placeholders: {'{product_name}'} {'{product_names}'}{' '}
                   {'{price}'} {'{category}'} {'{link}'} {'{store_name}'} {'{festival}'}
                 </label>
                 <textarea
+                  id={`${fid}-l513`}
                   value={edit.caption_template}
                   onChange={(e) => setEdit((p) => ({ ...p, caption_template: e.target.value }))}
                   rows={3}
@@ -523,10 +544,14 @@ function TemplateRow({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l526`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Hashtags (comma-separated)
                 </label>
                 <input
+                  id={`${fid}-l526`}
                   value={edit.hashtags}
                   onChange={(e) => setEdit((p) => ({ ...p, hashtags: e.target.value }))}
                   className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white font-mono"
@@ -554,6 +579,7 @@ function NewTemplateForm({
   open: boolean;
   onToggle: () => void;
 }) {
+  const fid = useId();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [context, setContext] = useState<'POST' | 'CAMPAIGN' | 'BOTH'>('POST');
@@ -612,6 +638,7 @@ function NewTemplateForm({
   return (
     <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
       <button
+        type="button"
         onClick={onToggle}
         className="w-full flex items-center gap-2 px-5 py-3 text-sm font-bold text-gray-800 hover:bg-gray-50 transition-colors"
       >
@@ -634,10 +661,14 @@ function NewTemplateForm({
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l637`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Name
                   </label>
                   <input
+                    id={`${fid}-l637`}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Diwali Carousel"
@@ -645,10 +676,14 @@ function NewTemplateForm({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l648`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Occasion
                   </label>
                   <input
+                    id={`${fid}-l648`}
                     value={occasion}
                     onChange={(e) => setOccasion(e.target.value)}
                     placeholder="Diwali, Wedding…"
@@ -656,10 +691,14 @@ function NewTemplateForm({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l659`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Sort order
                   </label>
                   <input
+                    id={`${fid}-l659`}
                     type="number"
                     value={sortOrder}
                     onChange={(e) => setSortOrder(Number(e.target.value))}
@@ -668,10 +707,14 @@ function NewTemplateForm({
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l671`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Description
                 </label>
                 <input
+                  id={`${fid}-l671`}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Festive multi-product post with hashtags"
@@ -680,12 +723,13 @@ function NewTemplateForm({
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                     Context
-                  </label>
+                  </p>
                   <div className="flex gap-2 mt-1">
                     {CONTEXTS.map((c) => (
                       <button
+                        type="button"
                         key={c}
                         onClick={() => setContext(c)}
                         className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg border transition-colors ${
@@ -700,10 +744,14 @@ function NewTemplateForm({
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <label
+                    htmlFor={`${fid}-l703`}
+                    className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Post type hint
                   </label>
                   <select
+                    id={`${fid}-l703`}
                     value={postType}
                     onChange={(e) => setPostType(e.target.value)}
                     className="w-full text-[10px] border border-gray-200 rounded-lg px-2 py-2 mt-1 bg-white"
@@ -717,12 +765,13 @@ function NewTemplateForm({
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                     Status
-                  </label>
+                  </p>
                   <div className="flex gap-2 mt-1">
                     {STATUSES.map((s) => (
                       <button
+                        type="button"
                         key={s}
                         onClick={() => setStatusLocal(s)}
                         className={`flex-1 text-[10px] font-semibold py-1.5 rounded-lg border transition-colors ${
@@ -738,11 +787,15 @@ function NewTemplateForm({
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l741`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Caption template — placeholders: {'{product_name}'} {'{price}'} {'{link}'}{' '}
                   {'{store_name}'} {'{festival}'}
                 </label>
                 <textarea
+                  id={`${fid}-l741`}
                   value={captionTemplate}
                   onChange={(e) => setCaptionTemplate(e.target.value)}
                   rows={3}
@@ -751,10 +804,14 @@ function NewTemplateForm({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <label
+                  htmlFor={`${fid}-l754`}
+                  className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Hashtags (comma-separated)
                 </label>
                 <input
+                  id={`${fid}-l754`}
                   value={hashtags}
                   onChange={(e) => setHashtags(e.target.value)}
                   className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mt-1 bg-white font-mono"
@@ -762,9 +819,9 @@ function NewTemplateForm({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
                   Plans
-                </label>
+                </p>
                 <div className="flex gap-3 mt-1">
                   {PLANS.map((p) => (
                     <label
@@ -787,6 +844,7 @@ function NewTemplateForm({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={submit}
                 disabled={!canSubmit}
                 className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"

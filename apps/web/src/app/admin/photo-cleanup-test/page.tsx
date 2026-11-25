@@ -45,7 +45,7 @@ import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import EffectsCatalog, { type UseEffectArgs } from './EffectsCatalog';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type BackgroundImage = { id: string; name: string; image_url: string; is_active: boolean };
 
@@ -184,9 +184,7 @@ const PROMO_PRESETS: {
     model: 'kling_25_turbo_pro',
     aspect: '9:16',
     seconds: 5,
-    prompt:
-      'Slow cinematic dolly push-in toward the subject, the camera easing forward at a steady pace, background gently going soft. Subtle natural cloth movement only. ' +
-      PROMO_HOLD,
+    prompt: `Slow cinematic dolly push-in toward the subject, the camera easing forward at a steady pace, background gently going soft. Subtle natural cloth movement only. ${PROMO_HOLD}`,
   },
   {
     code: 'MOTION_PULL_BACK_REVEAL',
@@ -194,9 +192,7 @@ const PROMO_PRESETS: {
     model: 'kling_25_turbo_pro',
     aspect: '9:16',
     seconds: 6,
-    prompt:
-      'Camera starts close on the fabric detail and smoothly pulls back to reveal the full garment, one continuous move, no cut. Gentle ambient cloth motion. ' +
-      PROMO_HOLD,
+    prompt: `Camera starts close on the fabric detail and smoothly pulls back to reveal the full garment, one continuous move, no cut. Gentle ambient cloth motion. ${PROMO_HOLD}`,
   },
   {
     code: 'MOTION_SAREE_PALLU_SWAY',
@@ -204,9 +200,7 @@ const PROMO_PRESETS: {
     model: 'kling_26_pro',
     aspect: '9:16',
     seconds: 6,
-    prompt:
-      'A gentle breeze lifts the loose draped end of the garment so it floats and sways, then settles softly back into place. Realistic lightweight-fabric physics, slow and graceful, the rest of the garment nearly still. ' +
-      PROMO_HOLD,
+    prompt: `A gentle breeze lifts the loose draped end of the garment so it floats and sways, then settles softly back into place. Realistic lightweight-fabric physics, slow and graceful, the rest of the garment nearly still. ${PROMO_HOLD}`,
   },
   {
     code: 'MOTION_TWIRL_FLARE',
@@ -214,9 +208,7 @@ const PROMO_PRESETS: {
     model: 'kling_26_pro',
     aspect: '9:16',
     seconds: 8,
-    prompt:
-      'The model turns a single full spin, the skirt flaring outward into a wide circle from the momentum, then falling back into place as the turn completes. Fluid, joyful, well-lit, realistic heavy-skirt physics. ' +
-      PROMO_HOLD,
+    prompt: `The model turns a single full spin, the skirt flaring outward into a wide circle from the momentum, then falling back into place as the turn completes. Fluid, joyful, well-lit, realistic heavy-skirt physics. ${PROMO_HOLD}`,
   },
   {
     code: 'MOTION_TURN_TO_CAMERA',
@@ -224,9 +216,7 @@ const PROMO_PRESETS: {
     model: 'kling_25_turbo_pro',
     aspect: '9:16',
     seconds: 5,
-    prompt:
-      'The model begins facing three-quarters away, then turns smoothly and naturally to face the camera, settling into a still front-facing pose. One clean motion, garment drape following the turn realistically. ' +
-      PROMO_HOLD,
+    prompt: `The model begins facing three-quarters away, then turns smoothly and naturally to face the camera, settling into a still front-facing pose. One clean motion, garment drape following the turn realistically. ${PROMO_HOLD}`,
   },
   {
     code: 'MOTION_BREEZE_AND_HAIR',
@@ -234,9 +224,7 @@ const PROMO_PRESETS: {
     model: 'seedance_1_pro_fast',
     aspect: '9:16',
     seconds: 5,
-    prompt:
-      "A barely-there breeze gently moves the model's hair and the loosest edges of the garment while the pose is held. Minimal, cinemagraph-like motion, everything else still. " +
-      PROMO_HOLD,
+    prompt: `A barely-there breeze gently moves the model's hair and the loosest edges of the garment while the pose is held. Minimal, cinemagraph-like motion, everything else still. ${PROMO_HOLD}`,
   },
 ];
 
@@ -761,11 +749,11 @@ export default function PhotoCleanupTestPage() {
               return;
             }
             // Exponential backoff: 2s, 4s, 8s, 16s (capped)
-            const delay = Math.min(2000 * Math.pow(2, attempts - 1), 16_000);
+            const delay = Math.min(2000 * 2 ** (attempts - 1), 16_000);
             tryOnPollRef.current = setTimeout(poll, delay);
           } catch {
             // Transient network hiccup — keep polling with backoff
-            const delay = Math.min(2000 * Math.pow(2, attempts - 1), 16_000);
+            const delay = Math.min(2000 * 2 ** (attempts - 1), 16_000);
             tryOnPollRef.current = setTimeout(poll, delay);
           }
         };
@@ -1409,6 +1397,7 @@ export default function PhotoCleanupTestPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
             onClick={runBench}
             disabled={!productFile || benchBusy || benchEngines.length === 0}
             className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
@@ -1766,6 +1755,7 @@ export default function PhotoCleanupTestPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={runPromoVideo}
           disabled={!productFile || promoBusy}
           className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
@@ -1796,6 +1786,7 @@ export default function PhotoCleanupTestPage() {
                   </button>
                   <ArrowRight size={14} className="text-gray-400 shrink-0" />
                   <div className="flex-1 h-40 rounded-lg overflow-hidden bg-black">
+                    {/* biome-ignore lint/a11y/useMediaCaption: AI-generated garment clip with no speech, so there is nothing to caption */}
                     <video
                       src={r.resultUrl}
                       controls
@@ -1846,6 +1837,7 @@ export default function PhotoCleanupTestPage() {
           </label>
         )}
         <button
+          type="button"
           onClick={run}
           disabled={!canRun}
           className="ml-auto flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
@@ -1905,7 +1897,9 @@ export default function PhotoCleanupTestPage() {
                         type="button"
                         className="w-12 aspect-square relative rounded-lg overflow-hidden bg-gray-100 shrink-0 ring-1 ring-cyan-200 cursor-zoom-in hover:opacity-90 transition-opacity"
                         title="Click to enlarge"
-                        onClick={() => setLightbox({ url: r.sampleUrl!, label: 'Sample target' })}
+                        onClick={() =>
+                          r.sampleUrl && setLightbox({ url: r.sampleUrl, label: 'Sample target' })
+                        }
                       >
                         <Image
                           src={r.sampleUrl}
@@ -2028,6 +2022,7 @@ export default function PhotoCleanupTestPage() {
               </button>
             </div>
             {lightbox.url.toLowerCase().endsWith('.mp4') ? (
+              // biome-ignore lint/a11y/useMediaCaption: AI-generated garment clip with no speech, so there is nothing to caption
               <video
                 src={lightbox.url}
                 controls
@@ -2223,6 +2218,7 @@ function Dropzone({
         }}
       />
       <button
+        type="button"
         onClick={() => inputRef.current?.click()}
         disabled={disabled}
         className={`w-full flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-xl text-xs text-gray-500 hover:border-cyan-400 hover:text-cyan-600 transition-colors disabled:opacity-40 ${
