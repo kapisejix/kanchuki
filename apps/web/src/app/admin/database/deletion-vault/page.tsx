@@ -221,6 +221,7 @@ export default function DeletionVaultPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: refetch on filter change only; fetchEntries also depends on cursor, and re-running on cursor would reload on every page
   useEffect(() => {
     fetchEntries();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceTable, sourceId, retailerId]);
 
   // ── Reset filters ────────────────────────────────────────────
