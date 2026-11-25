@@ -85,6 +85,7 @@ export default function DeploymentsPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: run on mount + filter change only; loadDeployments also depends on cursor and re-adding it would reload on pagination
   useEffect(() => {
     loadDeployments(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   return (

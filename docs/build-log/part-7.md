@@ -867,3 +867,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Customer-visible | Try-on preview alt is "Your upload" (was "Your photo"). Otherwise no intended visual change: card name `<button>` and `<output>` keep their classes; fieldsets get `min-w-0`. |
 | Local runs | Scope: Biome 0 errors, 0 warnings. Whole repo 5 format-only issues in tool files (`.specify/`, `.impeccable/`, `.vscode/mcp.json`), 0 lint. web tsc 0, eslint 0 on changed files. web tests 780 passed (89 files). Playwright e2e specs type-check but were not run. |
 | Not verified | Not opened in a browser. Worth a look on a phone: collection grid card tap + name, filter chip rows scroll, my-style occasion/sort rows, product sheet backdrop close, design gallery / fabric glossary modals. |
+
+## 2026-11-25 — web eslint: restore 2 exhaustive-deps disables (#348 regression)
+
+| Area | Change |
+|---|---|
+| Cause | #348 (b76e0a73) replaced `eslint-disable-next-line react-hooks/exhaustive-deps` with `biome-ignore`, so web eslint showed 2 warnings: admin deletion vault (`fetchEntries`) and admin deployments (`loadDeployments`). |
+| Fix | `// eslint-disable-next-line react-hooks/exhaustive-deps` put back on the line above each deps array; `biome-ignore` stays above `useEffect`. No behavior change. |
+| Local runs | web eslint `src e2e` 0 errors 0 warnings. Whole-repo Biome 0 lint (5 format-only tool files). web tsc 0, 780 tests passed. |
