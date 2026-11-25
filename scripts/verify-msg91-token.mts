@@ -7,7 +7,7 @@
 // this script shows the RAW response from a real token so we can lock it down.
 //
 // Usage:
-//   npx tsx scripts/verify-msg91-token.ts "<jwt_token_from_otp_widget>"
+//   npx tsx scripts/verify-msg91-token.mts "<jwt_token_from_otp_widget>"
 //
 // Reads MSG91_AUTHKEY from the root .env. Get a real token by completing an
 // OTP verification in the widget (mobile app / billing page) and capturing
@@ -23,7 +23,7 @@ if (!AUTHKEY) {
 }
 if (!token) {
   console.error(
-    'Pass the widget JWT as the first argument: npx tsx scripts/verify-msg91-token.ts "<jwt>"',
+    'Pass the widget JWT as the first argument: npx tsx scripts/verify-msg91-token.mts "<jwt>"',
   );
   process.exit(1);
 }

@@ -8,7 +8,7 @@
 // exactly ONE AI call (one vision extract).
 //
 // Usage:
-//   npx tsx scripts/studio-garment-audit.ts <image-path-or-url> \
+//   npx tsx scripts/studio-garment-audit.mts <image-path-or-url> \
 //     [--category "Ladies Suit"] [--subtype "Kurta Set"] [--product-type Readymade]
 //
 // Product flags simulate the tagger's row so the gate can be tested against the
@@ -63,7 +63,7 @@ function readDimensions(buffer: Buffer): { width: number; height: number } | nul
 const image = process.argv[2];
 if (!image || image.startsWith('--')) {
   console.error(
-    'Usage: npx tsx scripts/studio-garment-audit.ts <image-path-or-url> [--category X] [--subtype Y] [--product-type Z]',
+    'Usage: npx tsx scripts/studio-garment-audit.mts <image-path-or-url> [--category X] [--subtype Y] [--product-type Z]',
   );
   process.exit(1);
 }

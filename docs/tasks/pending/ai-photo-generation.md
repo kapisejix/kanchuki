@@ -98,7 +98,7 @@ The gap is **not mainly resolution or `image_size`** (an earlier draft over-weig
 | Item | Status | Evidence | What's left |
 |---|---|---|---|
 | `expectedParts()` / `detectGarmentParts()` / `missingParts()` + prompt clauses | 🟡 built, **uncommitted** | `garment-parts.ts`, 23 tests, §4 | wire into the pipeline |
-| Diagnostic audit tool | 🟡 built, **uncommitted**, never run with live keys | `scripts/studio-garment-audit.ts` | run it on real photos to measure how often a bottom is actually missing |
+| Diagnostic audit tool | 🟡 built, **uncommitted**, never run with live keys | `scripts/studio-garment-audit.mts` | run it on real photos to measure how often a bottom is actually missing |
 | Order decided: complete-set → try-on → scene (forced by garment-conditioning) | ✅ decided | §5 R1 | — |
 | Gating decided: gate on product data (owner) | ✅ decided | §5 R1 | mapping still config-only, not yet read by the pipeline |
 | R1 generate the missing salwar in the same fabric/print/colour | 🔴 left | — | build the complete-set pass **before** try-on |
@@ -504,11 +504,11 @@ The committed work this session is `c1ca817b` (engine/photo path rebuilt, `subty
 |---|---|---|
 | `apps/api/src/lib/garment-parts.ts` | The **detector and prompt clauses** the set-completeness requirement needs. `expectedParts(product)` derives what a product *should* consist of from `subtype`/`category`; `detectGarmentParts(image)` asks vision what is *actually visible* (structured JSON schema, provider failover via `runVisionAsk`); `missingParts(expected, visible)` = the gap; `partNoun()` / `setCompletenessClause()` / `framingClause()` build the prompt text. | 🟡 built, tested 23/23, uncommitted |
 | `apps/api/src/lib/garment-parts.test.ts` | 23 tests, incl. the case that pins the actual complaint (a kurta-set photo with no visible salwar must report a missing bottom) and the inverse guard (a kurti sold alone must **not**). Drill-verified: stripping the "set implies a bottom" rule fails 3 tests. | 🟡 |
-| `scripts/studio-garment-audit.ts` | The **diagnostic tool** — runs `expectedParts` → `detectGarmentParts` → `missingParts` against real product photos and prints what is missing, so the gap is measured rather than guessed. Needs live keys to be useful. | 🟡 |
+| `scripts/studio-garment-audit.mts` | The **diagnostic tool** — runs `expectedParts` → `detectGarmentParts` → `missingParts` against real product photos and prints what is missing, so the gap is measured rather than guessed. Needs live keys to be useful. | 🟡 |
 
 **Deliberately not wired in yet.** Nothing calls these from the pipeline. Wiring them is a product decision (R1 gating, R5 compression, R6 disclosure) that is still open — see §10. The detector is also the cheapest way to *prove* the diagnosis before changing generation behaviour.
 
-**What to run to diagnose:** `scripts/studio-garment-audit.ts` with `FAL_API_KEY` (or `GEMINI_API_KEY`) set and real photo URLs. Output tells you, per product, which parts the vision pass sees and therefore which products would trigger set-completion. Until that runs, the rate of "missing salwar" across a real catalog is unknown.
+**What to run to diagnose:** `scripts/studio-garment-audit.mts` with `FAL_API_KEY` (or `GEMINI_API_KEY`) set and real photo URLs. Output tells you, per product, which parts the vision pass sees and therefore which products would trigger set-completion. Until that runs, the rate of "missing salwar" across a real catalog is unknown.
 
 ---
 
