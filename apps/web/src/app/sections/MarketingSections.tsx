@@ -312,7 +312,6 @@ const FEATURES: {
   desc: string;
   accent: ColorAccent;
   span: string;
-  comingSoon?: boolean;
 }[] = [
   {
     icon: Camera,
@@ -376,13 +375,6 @@ function FeaturesSection() {
                   className={`font-display text-lg font-semibold mb-2 ${ACCENT_TEXT[feature.accent]}`}
                 >
                   {feature.title}
-                  {feature.comingSoon && (
-                    <span
-                      className={`ml-2 text-xs font-medium ${feature.accent === 'fern' ? 'bg-carbon/10 text-carbon/70' : 'bg-white/20 text-white/80'} px-2 py-0.5 rounded-full`}
-                    >
-                      Coming soon
-                    </span>
-                  )}
                 </h3>
                 <p className={`text-sm leading-relaxed ${ACCENT_SUBTLE[feature.accent]}`}>
                   {feature.desc}
