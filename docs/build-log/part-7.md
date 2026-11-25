@@ -918,3 +918,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 |---|---|
 | Change | `apps/web/src/app/sections/MarketingSections.tsx`: `comingSoon?` field and its "Coming soon" badge removed from `FEATURES`. No feature set it, so the badge never rendered. No visual change. |
 | Local runs | web tsc 0, eslint and Biome clean on the file. |
+
+## 2026-11-25 — biome: ignore 5 local tool files
+
+| Area | Change |
+|---|---|
+| Change | `biome.jsonc` `files.ignore` += `.impeccable/hook.cache.json`, `.specify/integration.json`, `.specify/init-options.json`, `.specify/workflows/workflow-registry.json`, `.vscode/mcp.json`. Edited by owner (config-protection hook). |
+| Why | Tool-generated files, not project code. They were the only Biome findings left (format-only). |
+| Local runs | `npx biome check . --max-diagnostics=10000` whole repo: 0 errors, 0 warnings. One-folder cleanup goal done. |
