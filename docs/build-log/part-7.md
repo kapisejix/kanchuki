@@ -896,3 +896,10 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Change | `"target": "ES2017"` added to `apps/web/tsconfig.json`. It had no target, so TS used ES5 and rejected for…of over Map/Set (TS2802). |
 | Runtime | None: web is `noEmit` and Next compiles with SWC, which ignores `target`. Existing `for…of Array.from(...)` workarounds (cart.ts, install-prompt.ts) left as they are. |
 | Local runs | web tsc 0, eslint `src e2e` 0/0, 780 tests passed. Whole-repo Biome 0 lint (5 format-only tool files). |
+
+## 2026-11-25 — web Playwright: webServer timeout 120 s → 300 s
+
+| Area | Change |
+|---|---|
+| Change | `apps/web/playwright.config.ts` `webServer.timeout` 120_000 → 300_000. A cold `next dev` compile locally takes longer than 120 s, so the admin suite timed out before the server was up unless one was pre-started. Test config only. |
+| Local runs | web tsc 0, eslint 0/0, 780 tests passed. Whole-repo Biome 0 lint (5 format-only tool files). |

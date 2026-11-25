@@ -46,7 +46,8 @@ export default defineConfig({
     command: 'pnpm exec turbo build --filter=@kanchuki/shared && pnpm --filter @kanchuki/web dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    // Cold `next dev` compile takes longer than 120 s locally.
+    timeout: 300_000,
     // Pin the API origin for the server Playwright starts. NOTE: with
     // reuseExistingServer (non-CI), an already-running dev server keeps its
     // own env — harmless here because the spec intercepts every /v1/* call
