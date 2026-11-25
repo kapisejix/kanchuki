@@ -48,3 +48,6 @@ try {
   console.error('Request failed:', err instanceof Error ? err.message : err);
   process.exit(1);
 }
+
+// Makes this file a module so its top-level await type-checks; no runtime effect.
+export {};

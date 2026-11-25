@@ -35,22 +35,29 @@ let RETAILER_ID = '';
 
 // ── Helpers ────────────────────────────────────────────────────────
 
+// Loose reader for API JSON: every field the steps use is checked at runtime and
+// a mismatch throws, so a full response type per endpoint would add nothing here.
+// biome-ignore lint/suspicious/noExplicitAny: untyped API JSON, fields checked at runtime
+type ApiJson = any;
+
 async function api(
   path: string,
   options: { method?: string; body?: unknown; auth?: boolean; raw?: boolean } = {},
-) {
+): Promise<ApiJson> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (options.auth && TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
 
   const res = await fetch(`${API}${path}`, {
     method: options.method ?? 'GET',
     headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    ...(options.body ? { body: JSON.stringify(options.body) } : {}),
     signal: AbortSignal.timeout(30_000),
   });
 
   if (options.raw) return res;
-  const json = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
+  const json: ApiJson = await res
+    .json()
+    .catch(() => ({ error: { message: `HTTP ${res.status}` } }));
   if (!res.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
   return json;
 }

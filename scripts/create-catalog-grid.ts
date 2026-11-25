@@ -13,6 +13,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Metadata } from 'sharp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,7 +39,7 @@ async function main() {
   console.log('🎨 Creating multi-item catalog grid image...\n');
 
   // Load all images and get their dimensions
-  const loaded: { buffer: Buffer; metadata: sharp.Metadata }[] = [];
+  const loaded: { buffer: Buffer; metadata: Metadata }[] = [];
 
   for (const item of GRID_ITEMS) {
     const fullPath = resolve(DEMO_DIR, item.file);

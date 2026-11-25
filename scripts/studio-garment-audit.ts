@@ -163,3 +163,6 @@ if (!expected.completable) {
   console.log('  If the RENDER still comes back missing a piece, the problem is the scene prompt');
   console.log('  or the framing, not the gate.');
 }
+
+// Makes this file a module so its top-level await type-checks; no runtime effect.
+export {};

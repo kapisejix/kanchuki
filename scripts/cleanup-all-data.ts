@@ -85,7 +85,7 @@ async function cleanup(): Promise<void> {
     // Record so the transaction client cast is explicit (no `any`).
     const txModels = tx as unknown as Record<
       (typeof WIPE_ORDER)[number],
-      { deleteMany: () => Promise<{ count: number }> }
+      { deleteMany: (args: object) => Promise<{ count: number }> }
     >;
     for (const model of WIPE_ORDER) {
       const res = await txModels[model].deleteMany({});

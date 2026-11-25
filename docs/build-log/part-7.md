@@ -875,3 +875,16 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Cause | #348 (b76e0a73) replaced `eslint-disable-next-line react-hooks/exhaustive-deps` with `biome-ignore`, so web eslint showed 2 warnings: admin deletion vault (`fetchEntries`) and admin deployments (`loadDeployments`). |
 | Fix | `// eslint-disable-next-line react-hooks/exhaustive-deps` put back on the line above each deps array; `biome-ignore` stays above `useEffect`. No behavior change. |
 | Local runs | web eslint `src e2e` 0 errors 0 warnings. Whole-repo Biome 0 lint (5 format-only tool files). web tsc 0, 780 tests passed. |
+
+## 2026-11-25 — scripts/ type-check: new scripts/tsconfig.json, 48 errors → 0
+
+| Area | Change |
+|---|---|
+| Config | New `scripts/tsconfig.json` (extends `tsconfig.base.json`, module ESNext, moduleResolution Bundler, noEmit, types node). Check with `npx tsc -p scripts/tsconfig.json`. tsx never type-checks, so these 48 errors were invisible. |
+| e2e-test.ts (18) | `api()` returns a named `ApiJson` (`any` + `biome-ignore`: every field is checked at runtime). Request `body` is only set when present (exactOptionalPropertyTypes). |
+| seed-demo-products-radha.ts (16) | Loop uses `group.items.entries()`, so `item` is never `undefined`. |
+| studio-garment-audit.ts, verify-msg91-token.ts (7) | `export {}` so top-level await type-checks. |
+| Small ones | cleanup-r2-product-images: `if (!obj) break` guard. verify-backdrop-tones: `files` `as const`. cleanup-all-data: cast type `deleteMany(args: object)`. create-catalog-grid: `import type { Metadata } from 'sharp'`. apply-commission-migration: `scripts/pg.d.ts` with `declare module 'pg'` (owner choice, no new devDep). |
+| Runtime | No change to how any script runs. |
+| Found, not fixed | studio-garment-audit.ts and verify-msg91-token.ts use top-level await, so their documented `npx tsx ...` run fails ("Top-level await is currently not supported with the cjs output format"): the root package.json has no `"type": "module"`. Same before and after `export {}`. `node scripts/<file>.ts` runs them. |
+| Local runs | scripts tsc 0. Whole-repo Biome 0 lint (5 format-only tool files). No tests cover scripts/. |

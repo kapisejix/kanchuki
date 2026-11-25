@@ -12,7 +12,7 @@ const files = [
     'scripts/demo/2026-08-08-starter-backdrops/backdrop-dark-1600x2000.jpg',
     'dark (expect luminance < 0.35)',
   ],
-];
+] as const;
 
 for (const [path, expect] of files) {
   const buf = readFileSync(path);
