@@ -115,9 +115,7 @@ export default function BulkImportScreen() {
     let doneCount = 0;
     let failCount = 0;
 
-    for (let i = 0; i < photos.length; i++) {
-      const photo = photos[i]!;
-
+    for (const [i, photo] of photos.entries()) {
       // Mark as uploading
       setStatuses((prev) => {
         const next = [...prev];
@@ -199,7 +197,7 @@ export default function BulkImportScreen() {
     if (failedIndices.length === 0) return;
 
     // Keep only failed photos, reset
-    const failedPhotos = failedIndices.map((i) => photos[i]!);
+    const failedPhotos = photos.filter((_, i) => failedIndices.includes(i));
     setPhotos(failedPhotos);
     setStep('pick');
   }, [statuses, photos]);

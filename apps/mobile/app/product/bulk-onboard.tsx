@@ -210,8 +210,8 @@ export default function BulkOnboardScreen() {
       prev.map((it, i) => {
         if (i !== index) return it;
         const currentIdx = sections.findIndex((s) => s.id === it.sectionId);
-        const next = sections[(currentIdx + 1) % sections.length]!;
-        return { ...it, sectionId: next.id };
+        const next = sections[(currentIdx + 1) % sections.length];
+        return next ? { ...it, sectionId: next.id } : it;
       }),
     );
   };

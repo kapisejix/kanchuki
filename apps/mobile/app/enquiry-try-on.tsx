@@ -166,14 +166,14 @@ export default function EnquiryTryOnScreen() {
     };
   }, [close, leave, exit]);
 
-  const trackPhoto = (uri: string) => {
+  const trackPhoto = useCallback((uri: string) => {
     if (exited.current) {
       // Arrived after exit (e.g. compress finished late): delete right away.
       void cleanupSession({ photoUris: [uri], jobIds: [] });
       return;
     }
     if (!photoUris.current.includes(uri)) photoUris.current.push(uri);
-  };
+  }, []);
 
   const takePhoto = (uri: string) => {
     trackPhoto(uri);
@@ -257,7 +257,7 @@ export default function EnquiryTryOnScreen() {
         runningRef.current = false;
       }
     },
-    [photoUri, onItem, loadQuota],
+    [photoUri, onItem, loadQuota, trackPhoto],
   );
 
   const toggle = (id: string) =>

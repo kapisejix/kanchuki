@@ -88,7 +88,7 @@ export default function PromotionFormScreen() {
       Alert.alert('Missing info', 'Give the promotion a code, e.g. DIWALI10.');
       return;
     }
-    const value = parseInt(discountValue, 10);
+    const value = Number.parseInt(discountValue, 10);
     if (!value || value <= 0 || (discountType === 'PERCENT' && value > 100)) {
       Alert.alert(
         'Invalid discount',
@@ -98,7 +98,7 @@ export default function PromotionFormScreen() {
       );
       return;
     }
-    const min = Math.round((parseFloat(minOrder) || 0) * 100);
+    const min = Math.round((Number.parseFloat(minOrder) || 0) * 100);
     const payload = {
       code: code.trim(),
       discount_type: discountType,
@@ -108,8 +108,8 @@ export default function PromotionFormScreen() {
     };
     setSaving(true);
     try {
-      if (isEdit) {
-        await growthApi.updatePromotion(editingId!, payload);
+      if (editingId) {
+        await growthApi.updatePromotion(editingId, payload);
       } else {
         await growthApi.createPromotion(payload);
       }

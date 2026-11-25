@@ -769,7 +769,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | safe-fetch | SSRF check destructures IPv4 octets and fails closed (treated as private) if one is missing. Unreachable after `isIP() === 4`, kept as a guard. |
 | Local runs | `packages/ai`: Biome 0 errors, 0 warnings (was 8 warnings). ai tsc 0, tests 209 passed. api tsc 0. |
 
-## 2026-11-24 — Biome: apps/mobile src, tests, config (this PR, mobile 1 of 2)
+## 2026-11-24 — Biome: apps/mobile src, tests, config (#345, mobile 1 of 2)
 
 | Area | Change |
 |---|---|
@@ -782,3 +782,18 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Tests | Promise-resolver assignments and `forEach` rewritten; RC-123 pin updated to `headers.Authorization`. |
 | Local runs | mobile `src`, `__tests__`, config: Biome 0 errors, 0 warnings. tsc 0. Tests 725 passed. |
 | Not verified | Not opened in Expo Go. Product detail screen touched (props only), worth a look on device. |
+
+## 2026-11-24 — Biome: apps/mobile app/ screens (this PR, mobile 2 of 2)
+
+| Area | Change |
+|---|---|
+| Retailer type | New `RetailerMe` in `src/lib/api/retailer.ts` (fields of GET /v1/retailers/me the screens read) replaces `Record<string, any>` in 7 screens incl. Settings, KYC modal and Store details modal. |
+| Expo env | `showcase-designs/view/[id]`: `process.env['EXPO_PUBLIC_WEB_URL']` → dot form. Expo only inlines the dot form, so the bracket form always fell back to `https://kanchuki.app`. |
+| Other `any` | Ratings typed with existing `ReviewSummary`/`ProductReview`/`StoreReview`; root query retry reads a typed error shape; Text/TextInput default font set in one loop; 6 `router.push(... as any)` dropped (typed routes accept them). |
+| Tab bar Add button | Spread of all tab-bar props replaced by the 4 that `AnimatedPressable` reads (`onLongPress`, `disabled`, `accessibilityState`, `testID`). No runtime change: it ignored the rest. |
+| `!` removed | Guards instead: throw-guard in query/mutation fns (campaign edit, videos, translate, showcase create/save, category picker), first-item checks (scan, collection WhatsApp queue, catalog import), `entries()` loops (bulk upload, catalog detect), optional chaining on guarded lists (home, analytics). Onboarding shows coords only when both are set. |
+| Keys | Analytics bars keyed by date label, GST month chips by month name. |
+| Hooks | `trackPhoto` (enquiry try-on) wrapped in `useCallback` and added to `run` deps; `roleLabel` (staff) moved to module scope; extra `queryClient` dep dropped (settings/social). 4 reset/retry triggers (`visible` ×2, join `reload`, social create `postType` RC-131) kept with `biome-ignore` + reason. |
+| Mechanical | `Number.parseInt/parseFloat`, template literal, literal keys, `for...of`. |
+| Local runs | mobile: Biome 0 errors, 0 warnings across src, tests, config and app/ (was 22 errors, 68 warnings in app/). tsc 0. Tests 725 passed. |
+| Not verified | Not opened in Expo Go. Worth a device look: tab-bar Add button, Settings (KYC row, store details), Ratings, campaign edit. |

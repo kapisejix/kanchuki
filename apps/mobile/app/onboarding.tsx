@@ -685,8 +685,8 @@ export default function OnboardingScreen() {
                   {latitude ? 'Location saved' : 'Get location from map'}
                 </Text>
                 <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">
-                  {latitude
-                    ? `${latitude.toFixed(4)}, ${longitude!.toFixed(4)} — tap to update`
+                  {latitude !== null && longitude !== null
+                    ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)} — tap to update`
                     : 'Auto-detect your shop position for Google Maps directions'}
                 </Text>
               </View>

@@ -108,8 +108,9 @@ export default function CatalogImportScreen() {
 
       if (result.canceled || result.assets.length === 0) return;
 
-      if (result.assets.length === 1) {
-        const uri = result.assets[0]!.uri;
+      const [onlyAsset] = result.assets;
+      if (result.assets.length === 1 && onlyAsset) {
+        const uri = onlyAsset.uri;
         const compressed = await ImageManipulator.manipulateAsync(
           uri,
           [{ resize: { width: 1400 } }],
@@ -162,9 +163,9 @@ export default function CatalogImportScreen() {
 
       setStep('detecting');
       const merged: CatalogDetectedItem[] = [];
-      for (let i = 0; i < uploadedUrls.length; i++) {
+      for (const [i, url] of uploadedUrls.entries()) {
         try {
-          const detected = await catalogImportApi.detectItems(uploadedUrls[i]!);
+          const detected = await catalogImportApi.detectItems(url);
           for (const item of detected.data.items) {
             merged.push({
               ...item,

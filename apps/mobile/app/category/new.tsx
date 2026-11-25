@@ -43,7 +43,10 @@ export default function NewCategoryScreen() {
 
   const { data: productDetail, isLoading: detailLoading } = useQuery({
     queryKey: ['product', 'detail-for-category', selectedProductId],
-    queryFn: () => productApi.get(selectedProductId!),
+    queryFn: () => {
+      if (!selectedProductId) throw new Error('No product selected');
+      return productApi.get(selectedProductId);
+    },
     enabled: !!selectedProductId && showPhotoPicker,
   });
 

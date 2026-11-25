@@ -61,6 +61,9 @@ const ROLE_OPTIONS: { value: 'manager' | 'salesperson'; label: string; descripti
 
 // ─── Add / Edit Staff Modal (FR-1) ────────────────────────────────
 
+const roleLabel = (role: string) =>
+  role === 'manager' ? 'Manager' : role === 'salesperson' ? 'Salesperson' : role;
+
 function AddStaffModal({
   visible,
   onClose,
@@ -589,9 +592,6 @@ export default function StaffScreen() {
     },
     [handleSendWhatsApp],
   );
-
-  const roleLabel = (role: string) =>
-    role === 'manager' ? 'Manager' : role === 'salesperson' ? 'Salesperson' : role;
 
   const renderActive = useCallback(
     ({ item }: { item: StaffMember }) => (

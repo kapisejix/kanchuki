@@ -148,7 +148,7 @@ export default function IntegrationsScreen() {
                     configured={data?.instagram?.configured ?? false}
                     configuredAt={data?.instagram?.configured_at ?? null}
                     metaLabel={data?.instagram?.handle ? `@${data.instagram.handle}` : undefined}
-                    onConfigure={() => router.push('/growth/integrations/instagram' as any)}
+                    onConfigure={() => router.push('/growth/integrations/instagram')}
                     onDisconnect={() => {
                       Alert.alert(
                         'Disconnect Instagram?',
@@ -178,7 +178,7 @@ export default function IntegrationsScreen() {
                     configured={data?.facebook?.configured ?? false}
                     configuredAt={data?.facebook?.configured_at ?? null}
                     metaLabel={data?.facebook?.page_name ?? undefined}
-                    onConfigure={() => router.push('/growth/integrations/facebook' as any)}
+                    onConfigure={() => router.push('/growth/integrations/facebook')}
                     onDisconnect={() => {
                       Alert.alert(
                         'Disconnect Facebook?',
@@ -209,7 +209,7 @@ export default function IntegrationsScreen() {
                 subtitle="Verified green-tick broadcasts, interactive catalog buttons, and 1-click cart links"
                 configured={data?.whatsapp?.configured ?? false}
                 configuredAt={data?.whatsapp?.configured_at ?? null}
-                onConfigure={() => router.push('/growth/integrations/whatsapp' as any)}
+                onConfigure={() => router.push('/growth/integrations/whatsapp')}
                 onDisconnect={() => {
                   Alert.alert(
                     'Disconnect WhatsApp API?',
@@ -249,7 +249,7 @@ export default function IntegrationsScreen() {
                     subtitle="Create local ad campaigns across Instagram & Facebook"
                     configured={data?.facebook_ads.configured ?? false}
                     configuredAt={data?.facebook_ads.configured_at ?? null}
-                    onConfigure={() => router.push('/growth/integrations/fb-ads' as any)}
+                    onConfigure={() => router.push('/growth/integrations/fb-ads')}
                     onDisconnect={() => {
                       Alert.alert(
                         'Disconnect Facebook Ads?',
@@ -280,7 +280,7 @@ export default function IntegrationsScreen() {
                 subtitle="Manage Google LSA and Search campaigns for local shoppers"
                 configured={data?.google_ads.configured ?? false}
                 configuredAt={data?.google_ads.configured_at ?? null}
-                onConfigure={() => router.push('/growth/integrations/google-ads' as any)}
+                onConfigure={() => router.push('/growth/integrations/google-ads')}
                 onDisconnect={() => {
                   Alert.alert(
                     'Disconnect Google Ads?',

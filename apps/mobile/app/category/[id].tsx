@@ -57,6 +57,7 @@ function EditCategoryModal({
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: visible is the reset trigger (reopening the modal discards unsaved edits)
   useEffect(() => {
     if (category) {
       setName(category.name);

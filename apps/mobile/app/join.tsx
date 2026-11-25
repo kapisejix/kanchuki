@@ -38,6 +38,7 @@ export default function JoinScreen() {
   // Fetch the invite summary when the token appears. On a deep-link cold start
   // the param may not be populated on first render — this refetches when it
   // does, and short-circuits once we've loaded it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reload is the Retry trigger, bumped to re-run the fetch
   useEffect(() => {
     if (!token) return;
     let cancelled = false;

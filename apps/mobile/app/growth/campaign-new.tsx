@@ -271,7 +271,10 @@ export default function CampaignFormScreen() {
   // Edit mode — prefill from the existing campaign.
   const { data: existingData, isLoading: existingLoading } = useQuery({
     queryKey: ['growth', 'campaign', editingId],
-    queryFn: () => growthApi.campaign(editingId!),
+    queryFn: () => {
+      if (!editingId) throw new Error('Missing campaign id');
+      return growthApi.campaign(editingId);
+    },
     enabled: isEdit,
   });
   const existing = existingData?.data;
@@ -389,12 +392,12 @@ export default function CampaignFormScreen() {
     if (colorsList.length) audience.colors = colorsList;
     if (stylesList.length) audience.styles = stylesList;
     if (fabricsList.length) audience.fabrics = fabricsList;
-    const min = Math.round((parseFloat(minSpent) || 0) * 100);
-    const max = Math.round((parseFloat(maxBudget) || 0) * 100);
+    const min = Math.round((Number.parseFloat(minSpent) || 0) * 100);
+    const max = Math.round((Number.parseFloat(maxBudget) || 0) * 100);
     if (min > 0) audience.min_total_spent_paise = min;
     if (max > 0) audience.max_budget_paise = max;
     if (type === 'REACTIVATION' && inactiveDays) {
-      audience.inactive_days = Math.max(1, Math.min(3650, parseInt(inactiveDays, 10) || 60));
+      audience.inactive_days = Math.max(1, Math.min(3650, Number.parseInt(inactiveDays, 10) || 60));
     }
     if (neverPurchased) audience.never_purchased = true;
     if (sources.length) audience.sources = sources;
@@ -423,8 +426,8 @@ export default function CampaignFormScreen() {
       return;
     }
     if (type === 'AB_TEST') {
-      const pctA = parseInt(abA.pct, 10) || 0;
-      const pctB = parseInt(abB.pct, 10) || 0;
+      const pctA = Number.parseInt(abA.pct, 10) || 0;
+      const pctB = Number.parseInt(abB.pct, 10) || 0;
       if (!abA.label.trim() || !abB.label.trim() || !abA.message.trim() || !abB.message.trim()) {
         Alert.alert('Missing info', 'Both A/B variants need a label and a message.');
         return;
@@ -461,16 +464,16 @@ export default function CampaignFormScreen() {
               {
                 label: abA.label.trim(),
                 message_template: abA.message.trim(),
-                send_pct: parseInt(abA.pct, 10),
+                send_pct: Number.parseInt(abA.pct, 10),
                 product_ids: abA.products,
-                send_delay_min: abA.delay ? parseInt(abA.delay, 10) : undefined,
+                send_delay_min: abA.delay ? Number.parseInt(abA.delay, 10) : undefined,
               },
               {
                 label: abB.label.trim(),
                 message_template: abB.message.trim(),
-                send_pct: parseInt(abB.pct, 10),
+                send_pct: Number.parseInt(abB.pct, 10),
                 product_ids: abB.products,
-                send_delay_min: abB.delay ? parseInt(abB.delay, 10) : undefined,
+                send_delay_min: abB.delay ? Number.parseInt(abB.delay, 10) : undefined,
               },
             ],
           }
@@ -857,7 +860,7 @@ export default function CampaignFormScreen() {
                     Split must total 100%
                   </Text>
                   <Text className="text-xs font-semibold text-spaceCadet-900">
-                    {(parseInt(abA.pct, 10) || 0) + (parseInt(abB.pct, 10) || 0)}%
+                    {(Number.parseInt(abA.pct, 10) || 0) + (Number.parseInt(abB.pct, 10) || 0)}%
                   </Text>
                 </View>
               </View>

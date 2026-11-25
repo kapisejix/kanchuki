@@ -85,7 +85,10 @@ export default function TranslateScreen() {
     void
   >({
     mutationFn: () => {
-      if (mode === 'description') return growthApi.generateDescription(picked!.id, language);
+      if (mode === 'description') {
+        if (!picked) throw new Error('Pick a product first');
+        return growthApi.generateDescription(picked.id, language);
+      }
       return growthApi.translateMessage(
         messageInput.trim(),
         language,

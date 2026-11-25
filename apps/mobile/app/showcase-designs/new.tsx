@@ -61,7 +61,8 @@ export default function NewShowcaseDesignScreen() {
         const suggestion = await showcaseDesignsApi.suggest(info.r2_key);
         const s = suggestion.data;
         if (s.color) setDetectedColor(s.color);
-        if (s.name) setName((prev) => (prev.trim() ? prev : s.name!));
+        const suggestedName = s.name;
+        if (suggestedName) setName((prev) => (prev.trim() ? prev : suggestedName));
       } catch {
         // AI unavailable — leave the name blank for manual entry.
       } finally {
@@ -75,12 +76,14 @@ export default function NewShowcaseDesignScreen() {
   };
 
   const create = useMutation({
-    mutationFn: () =>
-      showcaseDesignsApi.create({
-        category_id: categoryId!,
+    mutationFn: () => {
+      if (!categoryId || !rawR2Key) throw new Error('Pick a category and a photo first');
+      return showcaseDesignsApi.create({
+        category_id: categoryId,
         name: name.trim() ? name.trim() : null,
-        raw_r2_key: rawR2Key!,
-      }),
+        raw_r2_key: rawR2Key,
+      });
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['showcase-designs'] });
       router.back();

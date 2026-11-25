@@ -49,14 +49,12 @@ ExpoSplashScreen.preventAutoHideAsync();
 // className "inheritance" only covers CSS vars — not fontFamily. Patching the
 // default here is the one-place fix instead of adding font-sans to every Text
 // in the app; individual screens can still override with className="font-sans-*".
-(Text as unknown as { defaultProps: Record<string, unknown> }).defaultProps = {
-  ...(Text as unknown as { defaultProps?: Record<string, unknown> }).defaultProps,
-  style: [{ fontFamily: 'Inter_400Regular' }, (Text as any).defaultProps?.style],
-};
-(TextInput as unknown as { defaultProps: Record<string, unknown> }).defaultProps = {
-  ...(TextInput as unknown as { defaultProps?: Record<string, unknown> }).defaultProps,
-  style: [{ fontFamily: 'Inter_400Regular' }, (TextInput as any).defaultProps?.style],
-};
+for (const C of [Text, TextInput] as unknown as { defaultProps?: Record<string, unknown> }[]) {
+  C.defaultProps = {
+    ...C.defaultProps,
+    style: [{ fontFamily: 'Inter_400Regular' }, C.defaultProps?.style],
+  };
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,8 +65,13 @@ const queryClient = new QueryClient({
       staleTime: 60_000, // 1 min — don't refetch immediately on mount
       gcTime: 24 * 60 * 60 * 1000, // 24h — survive background kill for offline use
       retry: (failureCount, error) => {
-        const status = (error as any)?.status ?? (error as any)?.response?.status;
-        const code = (error as any)?.code;
+        const e = error as {
+          status?: number;
+          code?: string;
+          response?: { status?: number };
+        } | null;
+        const status = e?.status ?? e?.response?.status;
+        const code = e?.code;
         if (status === 401 || status === 403 || status === 404 || code === 'UNAUTHORIZED') {
           return false;
         }

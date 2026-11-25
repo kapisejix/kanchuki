@@ -6,7 +6,7 @@ import { FlatList, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { ProductGridSkeleton } from '../../src/components/Skeleton';
-import { type ProductCategory, categoryApi, retailerApi } from '../../src/lib/api';
+import { type ProductCategory, type RetailerMe, categoryApi, retailerApi } from '../../src/lib/api';
 import { useScreenInsets } from '../../src/lib/safe-area';
 
 export default function CategoryListScreen() {
@@ -22,7 +22,7 @@ export default function CategoryListScreen() {
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
   });
-  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data;
+  const retailerProfile = (retailerData as { data: RetailerMe } | undefined)?.data;
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
