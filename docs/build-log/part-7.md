@@ -903,3 +903,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 |---|---|
 | Change | `apps/web/playwright.config.ts` `webServer.timeout` 120_000 → 300_000. A cold `next dev` compile locally takes longer than 120 s, so the admin suite timed out before the server was up unless one was pre-started. Test config only. |
 | Local runs | web tsc 0, eslint 0/0, 780 tests passed. Whole-repo Biome 0 lint (5 format-only tool files). |
+
+## 2026-11-25 — scripts: top-level-await scripts renamed to .mts
+
+| Area | Change |
+|---|---|
+| Change | `scripts/studio-garment-audit.ts` → `.mts`, `scripts/verify-msg91-token.ts` → `.mts`. Usage lines in both, plus `docs/tasks/pending/launch-readiness.md` and `docs/tasks/pending/ai-photo-generation.md`, updated. Old names in done/archive/build-log entries left as history. |
+| Why | Both use top-level await. The root package.json has no `"type": "module"`, so tsx compiled `.ts` to CJS and failed ("Top-level await is currently not supported with the cjs output format"). `.mts` is always ESM. |
+| Local runs | `npx tsx scripts/<file>.mts` with no args: both start and print their usage/env message. scripts tsc 0 (`scripts/tsconfig.json` already includes `**/*.mts`). Whole-repo Biome 0 lint (5 format-only tool files). |
