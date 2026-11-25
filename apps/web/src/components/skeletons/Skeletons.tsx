@@ -16,7 +16,7 @@ function ShimmerOverlay() {
     <div className="absolute inset-0 -translate-x-full overflow-hidden">
       <motion.div
         animate={{ x: ['-100%', '200%'] }}
-        transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+        transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1.5, ease: 'easeInOut' }}
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
       />
     </div>
@@ -67,8 +67,8 @@ function Card({ lines = 3 }: { lines?: number }) {
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/80 p-6 overflow-hidden relative">
       <ShimmerOverlay />
-      {Array.from({ length: lines }).map((_, i) => (
-        <P key={i} className="h-4 mb-3 last:mb-0 rounded" style={{ width: `${60 - i * 12}%` }} />
+      {Array.from({ length: lines }, (_, i) => `sk-${i}`).map((k, i) => (
+        <P key={k} className="h-4 mb-3 last:mb-0 rounded" style={{ width: `${60 - i * 12}%` }} />
       ))}
     </div>
   );
@@ -81,18 +81,18 @@ function Table({ rows = 8, cols = 6 }: { rows?: number; cols?: number }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50/80">
-              {Array.from({ length: cols }).map((_, i) => (
-                <th key={i} className="px-4 py-3.5">
+              {Array.from({ length: cols }, (_, i) => `sk-${i}`).map((k) => (
+                <th key={k} className="px-4 py-3.5">
                   <P className="h-3 w-16 rounded" />
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {Array.from({ length: rows }).map((_, r) => (
-              <tr key={r} className="border-b border-gray-50">
-                {Array.from({ length: cols }).map((_, c) => (
-                  <td key={c} className="px-4 py-4">
+            {Array.from({ length: rows }, (_, r) => `sk-${r}`).map((k, r) => (
+              <tr key={k} className="border-b border-gray-50">
+                {Array.from({ length: cols }, (_, c) => `${k}-${c}`).map((kc, c) => (
+                  <td key={kc} className="px-4 py-4">
                     <P className="h-4 rounded" style={{ width: `${45 + ((r + c) % 4) * 12}%` }} />
                   </td>
                 ))}
@@ -108,8 +108,8 @@ function Table({ rows = 8, cols = 6 }: { rows?: number; cols?: number }) {
 function RowCards({ count = 4 }: { count?: number }) {
   return (
     <div className="space-y-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-white border border-gray-200 rounded-2xl p-5">
+      {Array.from({ length: count }, (_, i) => `sk-${i}`).map((k) => (
+        <div key={k} className="bg-white border border-gray-200 rounded-2xl p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-2">
               <P className="h-4 w-3/4 rounded" />
@@ -143,8 +143,8 @@ export function PageSkeleton({ variant = 'table' }: { variant?: SkeletonVariant 
       {variant === 'dashboard' && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <MetricCard key={i} />
+            {Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => (
+              <MetricCard key={k} />
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

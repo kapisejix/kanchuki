@@ -182,6 +182,7 @@ export function FabricGlossary({ fabric }: Props) {
   return (
     <>
       <button
+        type="button"
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-700 font-medium transition-colors"
       >
@@ -190,17 +191,20 @@ export function FabricGlossary({ fabric }: Props) {
       </button>
 
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-sm w-full mx-4 p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          {/* Backdrop tap closes; the close button inside is the keyboard path. */}
+          <button
+            type="button"
+            aria-label="Close"
+            tabIndex={-1}
+            className="absolute inset-0 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div className="relative bg-white rounded-2xl max-w-sm w-full mx-4 p-5 shadow-xl">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-gray-900 capitalize">{fabric}</h3>
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center"
               >
@@ -230,6 +234,7 @@ export function FabricGlossary({ fabric }: Props) {
             </div>
 
             <button
+              type="button"
               onClick={() => setOpen(false)}
               className="w-full mt-4 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >

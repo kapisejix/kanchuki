@@ -149,7 +149,9 @@ describe('quiz result (problem 6)', () => {
     let finishSave!: (r: Response) => void;
     fetchMock.mockImplementation((url: string) =>
       url === '/api/passport/style-quiz'
-        ? new Promise<Response>((r) => (finishSave = r))
+        ? new Promise<Response>((r) => {
+            finishSave = r;
+          })
         : Promise.resolve(feed()),
     );
     render(<MyStylePage />);

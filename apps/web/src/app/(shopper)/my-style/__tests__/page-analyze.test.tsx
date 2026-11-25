@@ -22,10 +22,17 @@ vi.mock('../AnalyzeSheet', () => ({
     onDone: (g?: unknown) => void;
     mode?: string;
   }) => (
+    // biome-ignore lint/a11y/useSemanticElements: test stub mirrors the real sheet's role="dialog" so getByRole queries match
     <div role="dialog" aria-label={mode === 'garment' ? 'Find similar' : 'Read my photo'}>
-      <button onClick={() => onDone()}>stub-done</button>
-      <button onClick={() => onDone(GARMENT)}>stub-done-garment</button>
-      <button onClick={onClose}>stub-close</button>
+      <button type="button" onClick={() => onDone()}>
+        stub-done
+      </button>
+      <button type="button" onClick={() => onDone(GARMENT)}>
+        stub-done-garment
+      </button>
+      <button type="button" onClick={onClose}>
+        stub-close
+      </button>
     </div>
   ),
 }));

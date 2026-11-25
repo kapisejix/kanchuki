@@ -55,10 +55,8 @@ const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m
 const PickedForYou = dynamic(() => import('./PickedForYou').then((m) => m.PickedForYou), {
   ssr: false,
 });
-const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
+
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
-// Feature flags for customer catalog screen
-const REGIONAL_FILTERS_ENABLED = false;
 
 interface CatalogFilters {
   category: string | null;
@@ -111,17 +109,6 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
   const [filterColor, setFilterColor] = useState<string | null>(null);
   const [filterSize, setFilterSize] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-
-  const [showQuiz, setShowQuiz] = useState(false);
-  const [quizDone, setQuizDone] = useState(false);
-
-  // Check if quiz was already completed for this store
-  useEffect(() => {
-    try {
-      const existing = localStorage.getItem(`kanchuki_quiz_${slug}`);
-      if (existing) setQuizDone(true);
-    } catch {}
-  }, [slug]);
 
   // (The F-302 checkout-status probe is gone: checkout was removed, its web
   // proxy route deleted with it in 76c5acdb, and the leftover call 404'd on
@@ -418,6 +405,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
                           aria-label="Get directions to store"
                         >
                           <svg
+                            aria-hidden="true"
                             width="10"
                             height="10"
                             viewBox="0 0 24 24"
@@ -440,6 +428,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
 
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
+                  type="button"
                   onClick={() => setShowFilters((v) => !v)}
                   className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
                     showFilters || filterPrice || filterColor || filterSize
@@ -452,6 +441,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => void handleShare()}
                   className="w-10 h-10 rounded-2xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center text-[#231F48] hover:bg-[#F8F7FC] transition-all active:scale-90"
                   aria-label="Share collection"
@@ -523,6 +513,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
                 Try clearing a filter to see more of the collection
               </p>
               <button
+                type="button"
                 onClick={() => {
                   setFilterCategory(null);
                   setFilterPrice(null);
@@ -558,6 +549,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 mt-5">
                   <button
+                    type="button"
                     onClick={() => goToPage(Math.max(1, page - 1))}
                     disabled={page === 1 || loading}
                     className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
@@ -568,6 +560,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
                     Page {page} of {totalPages}
                   </span>
                   <button
+                    type="button"
                     onClick={() => goToPage(Math.min(totalPages, page + 1))}
                     disabled={page === totalPages || loading}
                     className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
@@ -647,6 +640,7 @@ export function CollectionView({ collection, slug, store, productsApiPath, googl
               <span className="text-[10px] font-semibold">Saved</span>
             </Link>
             <button
+              type="button"
               onClick={handleEnquireAll}
               className="flex flex-col items-center justify-center gap-0.5 py-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all"
             >
@@ -669,7 +663,7 @@ interface CardProps {
   onTap: () => void;
   collectionSlug?: string;
   priority?: boolean;
-  onTryOn?: (product: PublicProduct) => void;
+
   // Whole-store chip map, fetched once per collection load (see above).
   socialProof?: SocialProof | null;
 }
@@ -680,7 +674,6 @@ function ProductCard({
   onFavorite,
   onTap,
   priority,
-  onTryOn,
   socialProof,
 }: CardProps) {
   const isSold = product.status === 'SOLD';
@@ -692,6 +685,7 @@ function ProductCard({
   const proofChip = socialProofChip(socialProof?.products[product.id], socialProof?.window ?? null);
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: the whole card is a tap target; the name button below is the keyboard path and its click bubbles here
     <div
       onClick={onTap}
       className={`group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md border border-[#E0E1F6] transition-all p-1.5 cursor-pointer flex flex-col justify-between ${
@@ -738,6 +732,7 @@ function ProductCard({
         {/* Floating circular heart button at bottom-right of photo (Point 9 Discovery Spec) */}
         {!isSold && (
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onFavorite(product.id);
@@ -755,9 +750,12 @@ function ProductCard({
 
       {/* Info: Title & Price */}
       <div className="px-2 pt-2.5 pb-1">
-        <p className="text-xs font-bold text-[#231F48] font-sans truncate">
+        <button
+          type="button"
+          className="block w-full text-left text-xs font-bold text-[#231F48] font-sans truncate"
+        >
           {product.name ?? product.category ?? 'Ethnic Wear'}
-        </p>
+        </button>
         <div className="flex items-center justify-between mt-0.5">
           <p className="text-xs font-extrabold text-[#231F48] font-sans tabular-nums">
             {formatPriceRange(product.price_min, product.price_max)}

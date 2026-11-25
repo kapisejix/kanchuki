@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 // anywhere else in this codebase either) — the honesty gate in
 // docs/PLAN.md (Content Style Guide) forbids inventing one, so the
 // WhatsApp card only appears once NEXT_PUBLIC_WHATSAPP_NUMBER is set.
-const WHATSAPP_NUMBER = process.env['NEXT_PUBLIC_WHATSAPP_NUMBER'];
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
 
 export default function ContactPage() {
   return (

@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bricolage_Grotesque } from 'next/font/google';
 import { usePathname } from 'next/navigation';
-import { ReactNode, Suspense } from 'react';
+import { type ReactNode, Suspense } from 'react';
 
 // Scoped display font for the customer collection route.
 // next/font/google in a client component works fine — the CSS is compiled at

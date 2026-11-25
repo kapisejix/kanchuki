@@ -165,8 +165,12 @@ describe('PageTransitionWrapper with AnimatePresence', () => {
       const [page, setPage] = useState('a');
       return (
         <>
-          <button onClick={() => setPage('b')}>Go B</button>
-          <button onClick={() => setPage('c')}>Go C</button>
+          <button type="button" onClick={() => setPage('b')}>
+            Go B
+          </button>
+          <button type="button" onClick={() => setPage('c')}>
+            Go C
+          </button>
           <AnimatePresence mode="wait">
             <PageTransitionWrapper key={page}>
               <div>Page {page}</div>

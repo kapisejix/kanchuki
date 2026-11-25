@@ -16,7 +16,7 @@ import {
 } from '@/components/site/Chrome';
 import NearMeBar from '@/components/site/NearMeBar';
 import StoreCard from '@/components/site/StoreCard';
-import { type ColorAccent } from '@/components/site/accents';
+import type { ColorAccent } from '@/components/site/accents';
 import { type StoreCardData, locationParams, useUserLocation } from '@/lib/nearby-stores';
 import { type PlanPrices, getPlanPricing, productsLabel } from '@/lib/plan-pricing';
 import { AnimatePresence, motion, useInView } from 'framer-motion';
@@ -242,7 +242,7 @@ function StatsBar() {
   } | null>(null);
 
   useEffect(() => {
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     fetch(`${apiUrl}/v1/public/stats`)
       .then((r) => r.json())
       .then((res) => {
@@ -251,29 +251,29 @@ function StatsBar() {
       .catch(() => {});
   }, []);
 
-  const hasData = liveStats && liveStats.total_retailers > 0;
+  const live = liveStats && liveStats.total_retailers > 0 ? liveStats : null;
   // Honesty gate (docs/PLAN.md (Content Style Guide)): live numbers
   // only. If the stats API is unreachable or empty, show the label with a
   // dash — never a fabricated count.
   const stats = [
     {
       label: 'Products digitized',
-      value: hasData ? liveStats!.total_products.toLocaleString('en-IN') : '—',
+      value: live ? live.total_products.toLocaleString('en-IN') : '—',
       icon: Shirt,
     },
     {
       label: 'Collection links shared',
-      value: hasData ? liveStats!.total_collections.toLocaleString('en-IN') : '—',
+      value: live ? live.total_collections.toLocaleString('en-IN') : '—',
       icon: Share2,
     },
     {
       label: 'Retailers onboarded',
-      value: hasData ? liveStats!.total_retailers.toLocaleString('en-IN') : '—',
+      value: live ? live.total_retailers.toLocaleString('en-IN') : '—',
       icon: Store,
     },
     {
       label: 'Customer enquiries this month',
-      value: hasData ? liveStats!.enquiries_this_month.toLocaleString('en-IN') : '—',
+      value: live ? live.enquiries_this_month.toLocaleString('en-IN') : '—',
       icon: MessageCircle,
     },
   ];
@@ -516,6 +516,7 @@ function ComparisonMatrix() {
                 >
                   <td className="px-5 py-4 text-carbon/70 font-medium">{row.name}</td>
                   {row.cols.map((v, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: positional cells aligned to the header columns; values repeat
                     <td key={i} className="px-4 py-4 text-center text-lg">
                       {v ? (
                         <span className="text-cobalt-600">✓</span>
@@ -528,9 +529,9 @@ function ComparisonMatrix() {
               ))}
               <tr className="bg-volt/30">
                 <td className="px-5 py-4 font-semibold text-carbon">Kanchuki</td>
-                {[true, true, true].map((_, i) => (
+                {['a', 'b', 'c'].map((k) => (
                   <td
-                    key={i}
+                    key={k}
                     className="px-4 py-4 text-center text-lg font-semibold text-cobalt-700"
                   >
                     ✓
@@ -559,7 +560,7 @@ function StoreTeaser() {
 
   useEffect(() => {
     let cancelled = false;
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     const params = new URLSearchParams({ pageSize: '6', ...locationParams(coords) });
     fetch(`${apiUrl}/v1/public/stores?${params}`)
       .then((r) => r.json())
@@ -684,7 +685,7 @@ function TestimonialsSection() {
           className="grid sm:grid-cols-3 gap-6"
         >
           {testimonials.map((t, i) => (
-            <motion.div key={i} variants={fadeUp}>
+            <motion.div key={t.name} variants={fadeUp}>
               {/* No star rating here — these are honest "coming soon"
                   placeholders, not real reviews. */}
               <div
@@ -845,11 +846,12 @@ function FaqSection() {
         >
           {FAQS.map((faq, i) => (
             <motion.div
-              key={i}
+              key={faq.q}
               variants={fadeUp}
               className={`bg-white rounded-2xl border transition-colors duration-300 ${openIndex === i ? 'border-cobalt-500' : 'border-carbon/10 hover:border-carbon/25'}`}
             >
               <button
+                type="button"
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-500 focus-visible:ring-offset-2 rounded-2xl"
                 aria-expanded={openIndex === i}
@@ -871,6 +873,7 @@ function FaqSection() {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                     id={`faq-panel-${i}`}
+                    // biome-ignore lint/a11y/useSemanticElements: framer-motion collapsible panel; role=region pairs with the toggle's aria-controls
                     role="region"
                   >
                     <div className="px-6 pb-5 text-sm text-carbon/60 leading-relaxed border-t border-carbon/10 pt-4">

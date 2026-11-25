@@ -48,8 +48,6 @@ export function DesignsBrowse({ store, profile, initialData, initialCategory }: 
   // Server renders the initial feed (with initialCategory applied, when set);
   // only chip clicks refetch through the proxy.
   const chips = useMemo(() => deriveChips(data), [data]);
-  const activeChip = chips.find((c) => c.slug === activeSlug);
-  const title = activeChip ? `${activeChip.name} Designs` : 'Designs';
 
   const load = useCallback(
     async (slug: string | null) => {
@@ -113,6 +111,7 @@ export function DesignsBrowse({ store, profile, initialData, initialCategory }: 
         {chips.length > 0 && (
           <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-hide">
             <button
+              type="button"
               onClick={() => void load(null)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-bold transition-all ${
                 !activeSlug
@@ -124,6 +123,7 @@ export function DesignsBrowse({ store, profile, initialData, initialCategory }: 
             </button>
             {chips.map((c) => (
               <button
+                type="button"
                 key={c.slug}
                 onClick={() => void load(c.slug)}
                 className={`flex-shrink-0 px-3.5 py-1.5 rounded-full border text-xs font-bold transition-all ${

@@ -106,7 +106,7 @@ const KNOWN_SLUGS = new Set(['festive-edit', 'office-edit']);
 // Suits Designs fixtures. Typed against the storefront pages' own contract so a
 // field rename fails `tsc` here rather than leaving this spec green against a
 // shape the app no longer accepts (the RC-008 class).
-const DESIGNS: PublicShowcaseDesign[] = [
+const DESIGNS: [PublicShowcaseDesign, ...PublicShowcaseDesign[]] = [
   {
     id: 'design-1',
     name: 'Festive Lehenga',
@@ -124,7 +124,7 @@ const DESIGNS: PublicShowcaseDesign[] = [
 ];
 
 const DESIGN_DETAIL: PublicShowcaseDesignDetail = {
-  ...DESIGNS[0]!,
+  ...DESIGNS[0],
   created_at: '2026-09-01T10:00:00.000Z',
 };
 
@@ -427,7 +427,8 @@ test('collection page renders and interactions are client-side (no full reload)'
     preload: 'metadata',
     poster: ALL_PRODUCTS[0].primary_photo_url,
   });
-  const desktop = page.viewportSize()!;
+  const desktop = page.viewportSize();
+  if (!desktop) throw new Error('the test needs an explicit viewport');
   await page.setViewportSize({ width: 360, height: 780 });
   await expect(clip).toBeVisible();
   await page.screenshot({ path: 'test-results/t7c-sheet-video-360.png' });
@@ -455,7 +456,7 @@ test('collection pages work offline via the service worker', async ({ context, p
   await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible();
   await page.waitForFunction(() => {
     const img = document.querySelector('img[alt="Festive Design 1"]') as HTMLImageElement | null;
-    return img !== null && img.complete && img.naturalWidth > 0;
+    return img?.complete && img.naturalWidth > 0;
   });
 
   // 3. Prime the /api/c StaleWhileRevalidate cache: paginate to page 2 online
@@ -485,7 +486,7 @@ test('collection pages work offline via the service worker', async ({ context, p
   //    — wait for the image to actually finish loading from the SW cache.
   await page.waitForFunction(() => {
     const img = document.querySelector('img[alt="Festive Design 1"]') as HTMLImageElement | null;
-    return img !== null && img.complete && img.naturalWidth > 0;
+    return img?.complete && img.naturalWidth > 0;
   });
 
   // 6. Paginate offline — /api/c SWR cache serves the last-known page 2

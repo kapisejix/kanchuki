@@ -91,7 +91,7 @@ export default function MyProfilePage() {
   // is surfaced rather than swallowed (RC-003).
   async function loadStyles() {
     setStylesStatus('loading');
-    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
     try {
       const res = await fetch(`${apiUrl}/v1/public/attributes?kind=STYLE`);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -137,7 +137,10 @@ export default function MyProfilePage() {
         wishlist_count: wlData ? (wlData.items ?? []).length : null,
       });
       // Initialize style chips from account preferences
-      setSelectedStyles((account as any).pref_styles ?? []);
+      // /me returns pref_styles too; the shared PassportAccount type does not list it.
+      setSelectedStyles(
+        (account as PassportAccount & { pref_styles?: string[] }).pref_styles ?? [],
+      );
       // Nominee and the profiling opt-out live on the preferences endpoint
       // (not in /me). Without loading profiling_enabled an opted-out shopper
       // saw the box ticked again on every visit (RC-083).
@@ -243,7 +246,7 @@ export default function MyProfilePage() {
       a.download = `kanchuki-data-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       alert('Failed to export data. Please try again.');
     } finally {
       setExporting(false);
@@ -258,7 +261,7 @@ export default function MyProfilePage() {
       const res = await fetch('/api/passport/delete', { method: 'POST' });
       if (!res.ok) throw new Error('Delete failed');
       window.location.href = '/';
-    } catch (err) {
+    } catch {
       alert('Failed to delete account. Please try again.');
     } finally {
       setDeleting(false);
@@ -378,7 +381,12 @@ export default function MyProfilePage() {
         )}
         {stylesNotice && <p className="mt-3 text-xs text-heliotrope-500">{stylesNotice}</p>}
         {selectedStyles.length > 0 && (
-          <button onClick={savePreferences} disabled={saving} className={`${BTN_PRIMARY} mt-4`}>
+          <button
+            type="button"
+            onClick={savePreferences}
+            disabled={saving}
+            className={`${BTN_PRIMARY} mt-4`}
+          >
             {saving && (
               <Loader2 aria-hidden className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             )}
@@ -479,6 +487,7 @@ export default function MyProfilePage() {
           />
           <div className="flex flex-wrap gap-2">
             <button
+              type="button"
               onClick={() => saveNominee(false)}
               disabled={nomineeBusy || !nomineeName.trim() || nomineePhone.length !== 10}
               className={BTN_PRIMARY}
@@ -490,6 +499,7 @@ export default function MyProfilePage() {
             </button>
             {nomineeSaved && (
               <button
+                type="button"
                 onClick={() => saveNominee(true)}
                 disabled={nomineeBusy}
                 className={BTN_SECONDARY}
@@ -507,7 +517,7 @@ export default function MyProfilePage() {
         title="Your Data"
         description="Under the Digital Personal Data Protection Act, 2023, you can request a copy of all data we hold about you, or ask us to delete it."
       >
-        <button onClick={exportData} disabled={exporting} className={ROW_BTN}>
+        <button type="button" onClick={exportData} disabled={exporting} className={ROW_BTN}>
           {exporting ? (
             <Loader2
               aria-hidden
@@ -532,6 +542,7 @@ export default function MyProfilePage() {
           undone.
         </p>
         <button
+          type="button"
           onClick={deleteAccount}
           disabled={deleting}
           className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold shadow-lg shadow-red-600/20 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 focus-visible:ring-offset-2"

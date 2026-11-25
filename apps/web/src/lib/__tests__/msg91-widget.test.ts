@@ -12,8 +12,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env['NEXT_PUBLIC_MSG91_WIDGET_ID'];
-  delete process.env['NEXT_PUBLIC_MSG91_TOKEN_AUTH'];
+  delete process.env.NEXT_PUBLIC_MSG91_WIDGET_ID;
+  delete process.env.NEXT_PUBLIC_MSG91_TOKEN_AUTH;
 });
 
 describe('extractReqId', () => {
@@ -89,14 +89,14 @@ describe('widgetErrorMessage', () => {
 
 describe('isMsg91WidgetConfigured', () => {
   it('is true when both build vars are set', async () => {
-    process.env['NEXT_PUBLIC_MSG91_WIDGET_ID'] = 'widget-id';
-    process.env['NEXT_PUBLIC_MSG91_TOKEN_AUTH'] = 'token-auth';
+    process.env.NEXT_PUBLIC_MSG91_WIDGET_ID = 'widget-id';
+    process.env.NEXT_PUBLIC_MSG91_TOKEN_AUTH = 'token-auth';
     const { isMsg91WidgetConfigured } = await import('../msg91-widget');
     expect(isMsg91WidgetConfigured()).toBe(true);
   });
 
   it('is false when either var is missing', async () => {
-    process.env['NEXT_PUBLIC_MSG91_WIDGET_ID'] = 'widget-id';
+    process.env.NEXT_PUBLIC_MSG91_WIDGET_ID = 'widget-id';
     const { isMsg91WidgetConfigured } = await import('../msg91-widget');
     expect(isMsg91WidgetConfigured()).toBe(false);
   });

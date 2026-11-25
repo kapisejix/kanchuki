@@ -89,12 +89,12 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
             <div key={review.id} className="border-t border-gray-50 pt-3 first:border-0 first:pt-0">
               <div className="flex items-center gap-2 mb-1">
                 <div className="flex items-center gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
+                  {[1, 2, 3, 4, 5].map((n) => (
                     <Star
-                      key={i}
+                      key={n}
                       size={11}
                       className={
-                        i < review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
+                        n <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
                       }
                     />
                   ))}
@@ -125,6 +125,7 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
       {/* Show more */}
       {reviews.length > 3 && !showAll && (
         <button
+          type="button"
           onClick={() => setShowAll(true)}
           className="mt-3 text-xs font-medium text-cyan-600 hover:text-cyan-700 transition-colors"
         >

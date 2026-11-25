@@ -832,7 +832,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | Scope: Biome 0 errors, 0 warnings. Whole repo 466 errors, 63 warnings (was 680/88; rest is admin p–z and other web). web tsc 0. web tests 780 passed. |
 | Not verified | Not opened in a browser. Worth a look: admin login, GBP picker, audit-log Search/Clear, SQL results copy cell. |
 
-## 2026-11-25 — Biome: apps/web admin subfolders p–z (this PR, web 2 of 3)
+## 2026-11-25 — Biome: apps/web admin subfolders p–z (#349, web 2 of 3)
 
 | Area | Change |
 |---|---|
@@ -848,3 +848,22 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Mechanical | Literal keys (31), template literals, `Number.*`, `**`. |
 | Local runs | Scope: Biome 0 errors, 0 warnings. Whole repo 242 errors, 43 warnings (was 466/63; rest is `src/app/c` and other web). web tsc 0, eslint 0 on changed files. web tests 780 passed. |
 | Not verified | Not opened in a browser. Worth a look: plan features/limits toggles, studio styles kind filter (fieldset), lightboxes, referral/survey row buttons. |
+
+## 2026-11-25 — Biome: apps/web outside admin (this PR, web 3 of 3)
+
+| Area | Change |
+|---|---|
+| Scope | Everything in `apps/web` not under `src/app/admin`: `src/app/c`, `(shopper)`, `[store]`, sections, components, lib, e2e, small pages. Counted from the whole-repo run: 280 issues (237 errors, 43 warnings) in 82 files. |
+| Buttons | 108 `<button>` got `type="button"`. None sits inside a `<form>`; the 5 files with forms (KidsForm, StarPicker review form, contact, survey, ContactGate) already typed theirs, and none of the 31 touched components renders inside one. |
+| Labels | 4 labels tied to their field with `htmlFor` + `useId` (enquiry consent name/phone, social connect phone/OTP). |
+| Types | Consent modal reads `name`/`price_min`/`primary_photo_url` from the real `PublicProduct` type instead of `any`; `photos` via an `in` check. My-profile `pref_styles` typed as an intersection instead of `any`. Style quiz `QUESTIONS` typed as a non-empty tuple. |
+| Non-null `!` | e2e box/viewport checks throw a named error instead of `!`; regex captures use `?? ''`; marketing live stats use a narrowed `live` value; promo banner, design gallery, survey cookie, msg91 script URL and the product sheet's fading photo are guarded. |
+| Dead code | Collection view: unused `StyleQuiz` dynamic import, `REGIONAL_FILTERS_ENABLED`, quiz state + its localStorage effect (never read), `onTryOn` card prop (no caller passes it). Product sheet: `router`, `sizes`, `InfoRow`. Design gallery `CATEGORY_ICONS` + `retailerName` param, review form `retailerId`, gallery thumbs setter, shopper layout `account` state, designs `title`, RouteProgress `useSearchParams` call, page transition `itemVariants`. |
+| Overlays | Design gallery and fabric glossary backdrops are a `<button aria-label>` behind the card (no more `stopPropagation`). Product sheet backdrop/zoom/360/fullscreen layers keep their handlers with `biome-ignore` + reason; each already has a real close or Prev/Next button. Collection card keeps row-click (`biome-ignore`); the product name is now the keyboard button. |
+| Semantics | Chip rows (category, size, occasion, sort) are `<fieldset>` with `min-w-0` so they still shrink and scroll. Status notes (quiz note, near-me message, report-sent) are `<output class="block">`. Framer-motion dialogs (`Sheet`, `PassportSheet`), FAQ `role="region"` panels and star-picker radios keep their ARIA with `biome-ignore` + reason. |
+| Hooks | Refetch/reset triggers (my-style `nonce`, stores filters + `retryToken`, product swap `product.id`, mount-only history push) kept with `biome-ignore` + reason. |
+| Iteration | web tsconfig has no `target` (TS default ES5), so a Map/Set can't be iterated with for…of. `cart.ts` and `install-prompt.ts` use `for…of Array.from(...)`. |
+| Kept with reason | `autoFocus` on OTP fields shown after a code is sent (ContactGate, login, staff) and the single-field staff login; 3 JSON-LD `dangerouslySetInnerHTML` (static data, `<` escaped); positional table cells. |
+| Customer-visible | Try-on preview alt is "Your upload" (was "Your photo"). Otherwise no intended visual change: card name `<button>` and `<output>` keep their classes; fieldsets get `min-w-0`. |
+| Local runs | Scope: Biome 0 errors, 0 warnings. Whole repo 5 format-only issues in tool files (`.specify/`, `.impeccable/`, `.vscode/mcp.json`), 0 lint. web tsc 0, eslint 0 on changed files. web tests 780 passed (89 files). Playwright e2e specs type-check but were not run. |
+| Not verified | Not opened in a browser. Worth a look on a phone: collection grid card tap + name, filter chip rows scroll, my-style occasion/sort rows, product sheet backdrop close, design gallery / fabric glossary modals. |

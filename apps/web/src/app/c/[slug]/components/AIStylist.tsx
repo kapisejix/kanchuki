@@ -139,6 +139,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
           screen (and the only focusable control). */}
       {!open && (
         <button
+          type="button"
           onClick={openOverlay}
           className="fixed bottom-24 right-4 z-40 w-14 h-14 bg-gradient-to-br from-[#231F48] to-[#560A39] text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all active:scale-90 hover:-translate-y-0.5"
           aria-label="Open AI Stylist"
@@ -173,6 +174,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
             </div>
           </div>
           <button
+            type="button"
             onClick={closeOverlay}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
           >
@@ -197,6 +199,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
               <div className="space-y-2">
                 {(suggestions ?? []).map((s) => (
                   <button
+                    type="button"
                     key={s}
                     onClick={() => void handleSubmit(s)}
                     className="w-full text-left bg-gray-50 hover:bg-cyan-50 border border-gray-100 hover:border-cyan-200 rounded-xl px-3 py-2.5 text-xs text-gray-700 transition-colors"
@@ -219,6 +222,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
             <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
               <p className="text-sm text-red-600">{error}</p>
               <button
+                type="button"
                 onClick={() => {
                   setError(null);
                   setResults(null);
@@ -247,6 +251,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                 <div className="space-y-3">
                   {results.recommendations.map((rec) => (
                     <button
+                      type="button"
                       key={rec.product_id}
                       onClick={() => onProductTap?.(rec.product_id)}
                       className="w-full flex gap-3 bg-white border border-gray-100 rounded-2xl p-3 hover:border-cyan-200 hover:shadow-sm transition-all text-left"
@@ -288,6 +293,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
                 </div>
               )}
               <button
+                type="button"
                 onClick={() => {
                   setResults(null);
                   setQuery('');
@@ -320,6 +326,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
               disabled={loading}
             />
             <button
+              type="button"
               onClick={() => {
                 void handleSubmit(query);
                 setQuery('');

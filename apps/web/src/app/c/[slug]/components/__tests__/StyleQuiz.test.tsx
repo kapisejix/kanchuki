@@ -90,7 +90,11 @@ describe('StyleQuiz save', () => {
 
   it('a double click sends one request (sync ref guard, RC-015)', async () => {
     let resolve!: (r: Response) => void;
-    fetchMock.mockReturnValue(new Promise<Response>((r) => (resolve = r)));
+    fetchMock.mockReturnValue(
+      new Promise<Response>((r) => {
+        resolve = r;
+      }),
+    );
     render(<StyleQuiz storeSlug="shop" />);
 
     const save = completeQuiz();

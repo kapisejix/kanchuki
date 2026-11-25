@@ -27,15 +27,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   SILHOUETTE: 'Kurti / Silhouette',
 };
 
-const CATEGORY_ICONS: Record<string, string> = {
-  NECKLINE: '✂️',
-  BLOUSE_BACK: '👗',
-  Sleeve: '💪',
-  SALWAR: '👖',
-  SILHOUETTE: '👗',
-};
-
-export function DesignGallery({ retailerPhone, retailerName }: Props) {
+export function DesignGallery({ retailerPhone }: Props) {
   const [designs, setDesigns] = useState<Design[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -51,7 +43,8 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
           // Auto-select first category
           if (json.data.length > 0) {
             const cats = Array.from(new Set(json.data.map((d) => d.category)));
-            if (cats.length > 0) setActiveCategory(cats[0]!);
+            const [first] = cats;
+            if (first) setActiveCategory(first);
           }
         }
       })
@@ -106,6 +99,7 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
         <div className="flex gap-1.5 overflow-x-auto mb-3 scrollbar-hide">
           {categories.map((cat) => (
             <button
+              type="button"
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all ${
@@ -123,6 +117,7 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
         <div className="grid grid-cols-3 gap-2">
           {filteredDesigns.map((design) => (
             <button
+              type="button"
               key={design.id}
               onClick={() => setSelectedDesign(design)}
               className="group relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 border border-gray-100 hover:border-pink-200 transition-colors"
@@ -144,14 +139,16 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
 
       {/* Design detail modal */}
       {selectedDesign && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setSelectedDesign(null)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-sm w-full mx-4 overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          {/* Backdrop tap closes; the Close buttons inside are the keyboard path. */}
+          <button
+            type="button"
+            aria-label="Close preview"
+            tabIndex={-1}
+            className="absolute inset-0 cursor-default"
+            onClick={() => setSelectedDesign(null)}
+          />
+          <div className="relative bg-white rounded-2xl max-w-sm w-full mx-4 overflow-hidden">
             <div className="relative aspect-[3/4] bg-gray-100">
               <Image
                 src={selectedDesign.image_url}
@@ -161,6 +158,7 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
                 sizes="400px"
               />
               <button
+                type="button"
                 onClick={() => setSelectedDesign(null)}
                 className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 flex items-center justify-center"
               >
@@ -180,6 +178,7 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
             )}
             <div className="p-4 space-y-2">
               <button
+                type="button"
                 onClick={() => handleShare(selectedDesign)}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
@@ -187,6 +186,7 @@ export function DesignGallery({ retailerPhone, retailerName }: Props) {
                 Share to Tailor via WhatsApp
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedDesign(null)}
                 className="w-full text-xs text-gray-500 hover:text-gray-700 py-2 transition-colors"
               >

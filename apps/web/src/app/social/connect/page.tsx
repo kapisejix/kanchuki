@@ -11,7 +11,7 @@ import { appLink } from '@/lib/deep-links';
 //
 // Session handling mirrors the billing page (phone-OTP → Supabase session in
 // sessionStorage → Bearer token on API calls).
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const TOKEN_KEY = 'kanchuki_social_token';
@@ -79,6 +79,7 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 export default function SocialConnectPage() {
+  const fid = useId();
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp' | 'connected' | 'error'>('phone');
@@ -230,10 +231,14 @@ export default function SocialConnectPage() {
 
         {step === 'phone' && (
           <div className="bg-white rounded-xl p-5 shadow-sm border border-carbon/10">
-            <label className="block text-xs font-semibold text-carbon/60 uppercase tracking-wide mb-1.5">
+            <label
+              htmlFor={`${fid}-phone`}
+              className="block text-xs font-semibold text-carbon/60 uppercase tracking-wide mb-1.5"
+            >
               Mobile Number
             </label>
             <input
+              id={`${fid}-phone`}
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="9876543210"
@@ -241,6 +246,7 @@ export default function SocialConnectPage() {
               className="w-full border border-carbon/15 rounded-lg px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-volt"
             />
             <button
+              type="button"
               onClick={() => void sendOtp()}
               disabled={sending || phone.length !== 10}
               className="w-full bg-carbon text-cream rounded-lg py-3 text-sm font-semibold disabled:opacity-40"
@@ -252,10 +258,14 @@ export default function SocialConnectPage() {
 
         {step === 'otp' && (
           <div className="bg-white rounded-xl p-5 shadow-sm border border-carbon/10">
-            <label className="block text-xs font-semibold text-carbon/60 uppercase tracking-wide mb-1.5">
+            <label
+              htmlFor={`${fid}-otp`}
+              className="block text-xs font-semibold text-carbon/60 uppercase tracking-wide mb-1.5"
+            >
               6-digit OTP
             </label>
             <input
+              id={`${fid}-otp`}
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="123456"
@@ -263,6 +273,7 @@ export default function SocialConnectPage() {
               className="w-full border border-carbon/15 rounded-lg px-4 py-3 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-volt"
             />
             <button
+              type="button"
               onClick={() => void verifyOtp()}
               disabled={sending || otp.length !== 6}
               className="w-full bg-carbon text-cream rounded-lg py-3 text-sm font-semibold disabled:opacity-40"
@@ -270,6 +281,7 @@ export default function SocialConnectPage() {
               {sending ? 'Verifying…' : 'Verify & Continue'}
             </button>
             <button
+              type="button"
               onClick={() => setStep('phone')}
               className="w-full text-carbon/50 text-xs mt-3 hover:text-carbon"
             >
@@ -285,6 +297,7 @@ export default function SocialConnectPage() {
               posting access for Kanchuki.
             </p>
             <button
+              type="button"
               onClick={() => void connectFacebook()}
               disabled={sending}
               className="w-full bg-[#1877F2] text-white rounded-lg py-3 text-sm font-semibold disabled:opacity-60"
@@ -292,6 +305,7 @@ export default function SocialConnectPage() {
               {sending ? 'Opening Facebook…' : 'Connect Facebook Page'}
             </button>
             <button
+              type="button"
               onClick={logout}
               className="w-full text-carbon/50 text-xs mt-3 hover:text-carbon"
             >

@@ -12,4 +12,4 @@
 // `||` (not `??`) so a defined-but-empty API_URL="" falls through instead of
 // becoming the base URL and breaking every server fetch.
 export const API_URL =
-  process.env['API_URL'] || process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3001';
+  process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';

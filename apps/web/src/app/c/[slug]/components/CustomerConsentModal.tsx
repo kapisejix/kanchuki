@@ -6,7 +6,7 @@ import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from 
 import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanchuki/shared';
 import { ArrowLeft, MessageSquare, ShieldCheck, User, X } from 'lucide-react';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 interface Props {
   product: PublicProduct | PublicProductDetail;
@@ -25,6 +25,7 @@ export function CustomerConsentModal({
   productUrl,
   onClose,
 }: Props) {
+  const fid = useId();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [consentWhatsApp, setConsentWhatsApp] = useState(true);
@@ -61,8 +62,8 @@ export function CustomerConsentModal({
       collectionTitle,
       products: [
         {
-          name: (product as any).name ?? null,
-          price_min: (product as any).price_min ?? null,
+          name: product.name ?? null,
+          price_min: product.price_min ?? null,
           sku: (product as PublicProductDetail).sku ?? null,
           product_url: productUrl,
         },
@@ -79,7 +80,8 @@ export function CustomerConsentModal({
     onClose();
   };
 
-  const primaryPhoto = (product as any).primary_photo_url || (product as any).photos?.[0] || null;
+  const primaryPhoto =
+    product.primary_photo_url || ('photos' in product ? product.photos[0] : null) || null;
 
   // A bottom sheet on phones and a centred dialog from `sm:` up. Its inputs
   // scroll with the panel (there is no separate footer), but the panel is
@@ -97,6 +99,7 @@ export function CustomerConsentModal({
       {/* Top Navigation */}
       <div className="flex justify-between items-center mb-4">
         <button
+          type="button"
           onClick={onClose}
           className="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-sm border border-[#E0E1F6] hover:border-[#BB3F95] transition"
           aria-label="Back"
@@ -112,6 +115,7 @@ export function CustomerConsentModal({
           </span>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-sm border border-[#E0E1F6] hover:border-[#BB3F95] transition"
           aria-label="Close"
@@ -123,7 +127,7 @@ export function CustomerConsentModal({
       {/* Header Title */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-1">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
             Boutique Direct Connect
           </span>
@@ -176,12 +180,16 @@ export function CustomerConsentModal({
       {/* Customer Details Form */}
       <div className="p-4 bg-white rounded-[24px] border border-[#E0E1F6] space-y-3.5 mb-4 shadow-sm">
         <div>
-          <label className="text-[10px] uppercase tracking-wider font-extrabold text-[#6B4773] block mb-1">
+          <label
+            htmlFor={`${fid}-name`}
+            className="text-[10px] uppercase tracking-wider font-extrabold text-[#6B4773] block mb-1"
+          >
             Your Full Name (Optional)
           </label>
           <div className="w-full bg-[#FAF9FE] rounded-2xl p-2.5 px-3.5 text-xs text-[#231F48] border border-[#E0E1F6] flex items-center gap-2.5 focus-within:border-[#231F48] focus-within:bg-white transition">
             <User size={15} className="text-[#928EB2]" />
             <input
+              id={`${fid}-name`}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -192,7 +200,10 @@ export function CustomerConsentModal({
         </div>
 
         <div>
-          <label className="text-[10px] uppercase tracking-wider font-extrabold text-[#6B4773] block mb-1">
+          <label
+            htmlFor={`${fid}-phone`}
+            className="text-[10px] uppercase tracking-wider font-extrabold text-[#6B4773] block mb-1"
+          >
             WhatsApp Mobile Number (Optional)
           </label>
           <div className="w-full bg-[#FAF9FE] rounded-2xl p-2.5 px-3.5 text-xs text-[#231F48] border border-[#E0E1F6] flex items-center gap-2.5 focus-within:border-[#231F48] focus-within:bg-white transition">
@@ -200,6 +211,7 @@ export function CustomerConsentModal({
               🇮🇳 +91
             </span>
             <input
+              id={`${fid}-phone`}
               type="tel"
               value={phone}
               onChange={(e) => {
@@ -232,11 +244,21 @@ export function CustomerConsentModal({
             >
               I agree to receive product photos, pricing, and order updates on WhatsApp and accept
               Kanchuki&apos;s{' '}
-              <a href="/privacy" target="_blank" className="text-[#BB3F95] font-bold underline">
+              <a
+                href="/privacy"
+                target="_blank"
+                className="text-[#BB3F95] font-bold underline"
+                rel="noreferrer"
+              >
                 Privacy Policy
               </a>{' '}
               and{' '}
-              <a href="/terms" target="_blank" className="text-[#BB3F95] font-bold underline">
+              <a
+                href="/terms"
+                target="_blank"
+                className="text-[#BB3F95] font-bold underline"
+                rel="noreferrer"
+              >
                 Terms of Service
               </a>
               .

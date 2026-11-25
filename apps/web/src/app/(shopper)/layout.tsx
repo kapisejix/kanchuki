@@ -20,14 +20,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-interface PassportAccount {
-  id: string;
-  name: string | null;
-  phone_masked: string;
-  usual_size: string | null;
-  city: string | null;
-}
-
 export default function ShopperLayout({
   children,
 }: {
@@ -35,7 +27,7 @@ export default function ShopperLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [account, setAccount] = useState<PassportAccount | null>(null);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,7 +52,6 @@ export default function ShopperLayout({
           router.replace(loginUrl);
           return;
         }
-        setAccount(session);
         setLoading(false);
       })
       .catch(() => {

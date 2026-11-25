@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     };
 
     // Verify secret
-    const expected = process.env['REVALIDATION_SECRET'];
+    const expected = process.env.REVALIDATION_SECRET;
     if (!expected || body.secret !== expected) {
       return NextResponse.json(
         { error: { code: 'UNAUTHORIZED', message: 'Invalid secret', status: 401 } },

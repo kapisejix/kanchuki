@@ -144,6 +144,7 @@ export function Navbar({ ctaHref = '/pricing' }: { ctaHref?: string }) {
         </div>
 
         <button
+          type="button"
           onClick={() => setMobileOpen(!mobileOpen)}
           className="md:hidden p-2 text-carbon/70 hover:text-carbon"
           aria-label="Toggle menu"

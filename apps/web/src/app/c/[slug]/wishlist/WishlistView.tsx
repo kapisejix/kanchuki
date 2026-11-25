@@ -226,6 +226,7 @@ export function WishlistView({ collection, slug, store, backHref }: Props) {
             <span className="text-[10px] font-semibold">Saved</span>
           </Link>
           <button
+            type="button"
             onClick={handleSendPicks}
             disabled={picks.length === 0}
             className="flex flex-col items-center justify-center gap-0.5 py-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all disabled:text-gray-300"

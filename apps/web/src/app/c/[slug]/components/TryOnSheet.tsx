@@ -187,6 +187,7 @@ export function TryOnSheet({
           </span>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-sm border border-[#E0E1F6] hover:border-[#BB3F95] transition"
           aria-label="Close"
@@ -279,7 +280,7 @@ export function TryOnSheet({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={previewUrl}
-              alt="Your photo"
+              alt="Your upload"
               className="w-28 h-36 object-cover rounded-2xl mx-auto mb-4 border border-[#E0E1F6]"
             />
           )}

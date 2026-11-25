@@ -34,6 +34,7 @@ export default function RootError({
           <p className="text-xs text-sand-400 font-mono mb-4">Digest: {error.digest}</p>
         )}
         <button
+          type="button"
           onClick={reset}
           className="px-5 py-2.5 bg-ink-600 hover:bg-ink-700 text-white text-sm font-semibold rounded-full transition-colors"
         >

@@ -60,9 +60,9 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
     ? collectionPath.startsWith(`/${storeSlug}/categories/`) ||
       collectionPath === `/${storeSlug}/all`
       ? collectionPath
-      : collectionPath.includes(`/all-`) || collectionPath.endsWith('/all')
+      : collectionPath.includes('/all-') || collectionPath.endsWith('/all')
         ? `/${storeSlug}/all`
-        : collectionPath.includes(`/cat-`)
+        : collectionPath.includes('/cat-')
           ? `/${storeSlug}/categories/${collectionPath.slice(collectionPath.indexOf('/cat-') + 5)}`
           : collectionPath
     : collectionPath;
@@ -276,6 +276,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         {!isSold && (
           <div className="space-y-3 pt-2">
             <button
+              type="button"
               onClick={() => setShowConsentModal(true)}
               className="w-full py-4 px-5 rounded-3xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2.5 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
             >

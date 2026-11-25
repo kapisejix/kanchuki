@@ -19,6 +19,7 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
           className={`bg-white rounded-2xl border transition-colors duration-300 ${openIndex === i ? 'border-cobalt-500' : 'border-carbon/10 hover:border-carbon/25'}`}
         >
           <button
+            type="button"
             onClick={() => setOpenIndex(openIndex === i ? null : i)}
             className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt-500 focus-visible:ring-offset-2 rounded-2xl"
             aria-expanded={openIndex === i}
@@ -40,6 +41,7 @@ export function FaqAccordion({ items }: { items: { q: string; a: string }[] }) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
                 id={`faq-${item.q}`}
+                // biome-ignore lint/a11y/useSemanticElements: framer-motion collapsible panel; role=region pairs with the toggle's aria-controls
                 role="region"
               >
                 <div className="px-6 pb-5 text-sm text-carbon/60 leading-relaxed border-t border-carbon/10 pt-4">

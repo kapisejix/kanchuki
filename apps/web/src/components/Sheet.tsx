@@ -107,6 +107,7 @@ export function Sheet({
       {open && (
         <motion.div
           {...overlayAnimation}
+          // biome-ignore lint/a11y/useSemanticElements: framer-motion overlay; a native <dialog> needs showModal() and top-layer stacking this sheet does not use
           role="dialog"
           aria-label={ariaLabel}
           className={['fixed inset-0', overlayClassName].filter(Boolean).join(' ')}

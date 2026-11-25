@@ -62,6 +62,7 @@ export function DesignShareActions({ name, permalink, imageUrl }: Props) {
   return (
     <div className="mt-6 flex flex-col gap-2.5">
       <button
+        type="button"
         onClick={() => void handleShare()}
         className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl bg-[#231F48] text-white text-sm font-bold shadow-lg shadow-[#231F48]/20 hover:bg-[#2E2957] transition-colors"
       >
@@ -70,6 +71,7 @@ export function DesignShareActions({ name, permalink, imageUrl }: Props) {
       </button>
       <div className="flex gap-2.5">
         <button
+          type="button"
           onClick={handleWhatsApp}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white border border-[#E0E1F6] text-[#231F48] text-sm font-bold shadow-sm hover:border-[#25D366]/50 transition-colors"
         >
@@ -77,6 +79,7 @@ export function DesignShareActions({ name, permalink, imageUrl }: Props) {
           WhatsApp
         </button>
         <button
+          type="button"
           onClick={() => void handleCopy()}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white border border-[#E0E1F6] text-[#231F48] text-sm font-bold shadow-sm hover:border-[#BB3F95] transition-colors"
         >

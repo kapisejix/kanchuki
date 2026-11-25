@@ -36,11 +36,7 @@ export default function NearMeBar({ loc, radiusKm, empty }: Props) {
           Show stores near me
         </button>
       )}
-      {message && (
-        <p role="status" className="text-sm text-carbon/60">
-          {message}
-        </p>
-      )}
+      {message && <output className="block text-sm text-carbon/60">{message}</output>}
     </div>
   );
 }

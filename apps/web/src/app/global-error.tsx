@@ -77,6 +77,7 @@ export default function GlobalError({
               </p>
             )}
             <button
+              type="button"
               onClick={reset}
               style={{
                 padding: '10px 20px',

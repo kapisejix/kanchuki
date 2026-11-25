@@ -1,4 +1,4 @@
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 /** max_products: the cap the server enforces (RC-179); null = unlimited. */
