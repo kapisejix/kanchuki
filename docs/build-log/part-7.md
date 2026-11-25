@@ -888,3 +888,11 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Runtime | No change to how any script runs. |
 | Found, not fixed | studio-garment-audit.ts and verify-msg91-token.ts use top-level await, so their documented `npx tsx ...` run fails ("Top-level await is currently not supported with the cjs output format"): the root package.json has no `"type": "module"`. Same before and after `export {}`. `node scripts/<file>.ts` runs them. |
 | Local runs | scripts tsc 0. Whole-repo Biome 0 lint (5 format-only tool files). No tests cover scripts/. |
+
+## 2026-11-25 — apps/web tsconfig: target ES2017
+
+| Area | Change |
+|---|---|
+| Change | `"target": "ES2017"` added to `apps/web/tsconfig.json`. It had no target, so TS used ES5 and rejected for…of over Map/Set (TS2802). |
+| Runtime | None: web is `noEmit` and Next compiles with SWC, which ignores `target`. Existing `for…of Array.from(...)` workarounds (cart.ts, install-prompt.ts) left as they are. |
+| Local runs | web tsc 0, eslint `src e2e` 0/0, 780 tests passed. Whole-repo Biome 0 lint (5 format-only tool files). |
