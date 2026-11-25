@@ -40,7 +40,7 @@ async function api(
   options: { method?: string; body?: unknown; auth?: boolean; raw?: boolean } = {},
 ) {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (options.auth && TOKEN) headers['Authorization'] = `Bearer ${TOKEN}`;
+  if (options.auth && TOKEN) headers.Authorization = `Bearer ${TOKEN}`;
 
   const res = await fetch(`${API}${path}`, {
     method: options.method ?? 'GET',
@@ -53,6 +53,18 @@ async function api(
   const json = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
   if (!res.ok) throw new Error(json.error?.message ?? `HTTP ${res.status}`);
   return json;
+}
+
+/** Shape of the presigned-upload responses this script reads. */
+interface UploadData {
+  upload_url: string;
+  r2_key: string;
+  public_url?: string;
+}
+
+function requireUpload(data: UploadData | undefined): UploadData {
+  if (!data) throw new Error('No upload data from the previous step');
+  return data;
 }
 
 function imageFile(relPath: string) {
@@ -92,9 +104,9 @@ function test(name: string, fn: () => Promise<void>) {
 // ── Main ───────────────────────────────────────────────────────────
 
 async function main() {
-  console.log(`\n╔══════════════════════════════════════╗`);
-  console.log(`║   🚀 Kanchuki E2E Test Suite        ║`);
-  console.log(`╚══════════════════════════════════════╝\n`);
+  console.log('\n╔══════════════════════════════════════╗');
+  console.log('║   🚀 Kanchuki E2E Test Suite        ║');
+  console.log('╚══════════════════════════════════════╝\n');
   console.log(`  API:       ${API}`);
   console.log(`  Demo dir:  ${DEMO_DIR}`);
   console.log(`  Skip try-on: ${SKIP_TRYON}`);
@@ -142,6 +154,7 @@ async function main() {
 
   for (const [i, filename] of productFiles.entries()) {
     const label = `Product ${i + 1}: ${filename}`;
+    let uploadData: UploadData | undefined;
 
     await test(`${label}: Get upload URL`, async () => {
       const file = imageFile(filename);
@@ -151,13 +164,12 @@ async function main() {
         body: { filename: file.name, content_type: file.contentType, size_bytes: file.sizeBytes },
       });
       if (!res.data?.upload_url) throw new Error('No upload URL');
-      (globalThis as any).__uploadData = res.data;
+      uploadData = res.data;
     })();
 
     await test(`${label}: Upload to R2`, async () => {
-      const uploadData = (globalThis as any).__uploadData;
       const file = imageFile(filename);
-      const putRes = await fetch(uploadData.upload_url, {
+      const putRes = await fetch(requireUpload(uploadData).upload_url, {
         method: 'PUT',
         headers: { 'Content-Type': file.contentType },
         body: file.buffer,
@@ -168,13 +180,13 @@ async function main() {
 
     let productId = '';
     await test(`${label}: Create product`, async () => {
-      const uploadData = (globalThis as any).__uploadData;
+      const upload = requireUpload(uploadData);
       const res = await api('/v1/products', {
         method: 'POST',
         auth: true,
         body: {
-          photo_r2_key: uploadData.r2_key,
-          photo_url: uploadData.public_url,
+          photo_r2_key: upload.r2_key,
+          photo_url: upload.public_url,
           price_min: 199900,
           price_max: 299900,
         },
@@ -218,8 +230,9 @@ async function main() {
   if (!SKIP_TRYON) {
     console.log('\n── Step 4: Try-On Flow ───────────────────────────────');
 
-    if (createdProductIds.length > 0) {
-      const targetProductId = createdProductIds[0]!;
+    const [targetProductId] = createdProductIds;
+    if (targetProductId) {
+      let tryonData: UploadData | undefined;
 
       await test('Get try-on upload URL', async () => {
         const file = imageFile('model front.jpg');
@@ -229,13 +242,12 @@ async function main() {
           body: { content_type: file.contentType, size_bytes: file.sizeBytes },
         });
         if (!res.data?.upload_url) throw new Error('No upload URL');
-        (globalThis as any).__tryonData = res.data;
+        tryonData = res.data;
       })();
 
       await test('Upload model photo to R2', async () => {
-        const data = (globalThis as any).__tryonData;
         const file = imageFile('model front.jpg');
-        const putRes = await fetch(data.upload_url, {
+        const putRes = await fetch(requireUpload(tryonData).upload_url, {
           method: 'PUT',
           headers: { 'Content-Type': file.contentType },
           body: file.buffer,
@@ -245,7 +257,7 @@ async function main() {
       })();
 
       await test('Initiate try-on', async () => {
-        const data = (globalThis as any).__tryonData;
+        const data = requireUpload(tryonData);
         const res = await api('/v1/try-on/initiate', {
           method: 'POST',
           auth: true,
@@ -277,7 +289,7 @@ async function main() {
   console.log(`  Total: ${total}  |  ✅ ${passed} passed  |  ❌ ${failed} failed`);
   if (errors.length > 0) {
     console.log();
-    errors.forEach((e) => console.log(e));
+    for (const e of errors) console.log(e);
   }
   console.log();
   if (failed > 0) {

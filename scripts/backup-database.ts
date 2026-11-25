@@ -79,22 +79,22 @@ interface BackupMetadata {
 function parseConnectionUrl(url: string): DbConnectionInfo {
   // postgresql://user:password@host:port/dbname
   const pattern = /^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/;
-  const match = url.match(pattern);
-  if (!match)
+  const [, user, password, host, port, rawDatabase] = url.match(pattern) ?? [];
+  // Strip any query string / fragment (e.g. Supabase pooler URLs end with
+  // "/dbname?pgbouncer=true") — the query params are NOT part of the
+  // database name, and leaving them in breaks both the pg_dump -d argument
+  // and the backup filename ('?' is illegal in Windows filenames).
+  const database = rawDatabase?.split(/[?#]/)[0];
+  if (!user || !password || !host || !port || !database)
     throw new Error(
-      `Cannot parse DATABASE_URL. Expected format: postgresql://user:password@host:5432/dbname\n` +
-        `Got: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')} (password masked)`,
+      `Cannot parse DATABASE_URL. Expected format: postgresql://user:password@host:5432/dbname\nGot: ${url.replace(/\/\/[^:]+:([^@]+)@/, '//user:***@')} (password masked)`,
     );
   return {
-    user: decodeURIComponent(match[1]!),
-    password: decodeURIComponent(match[2]!),
-    host: match[3]!,
-    port: Number.parseInt(match[4]!, 10),
-    // Strip any query string / fragment (e.g. Supabase pooler URLs end with
-    // "/dbname?pgbouncer=true") — the query params are NOT part of the
-    // database name, and leaving them in breaks both the pg_dump -d argument
-    // and the backup filename ('?' is illegal in Windows filenames).
-    database: match[5]!.split(/[?#]/)[0]!,
+    user: decodeURIComponent(user),
+    password: decodeURIComponent(password),
+    host,
+    port: Number.parseInt(port, 10),
+    database,
   };
 }
 
@@ -446,9 +446,7 @@ async function main() {
   };
 
   const labelIndex = args.indexOf('--label');
-  if (labelIndex >= 0 && labelIndex + 1 < args.length) {
-    options.label = args[labelIndex + 1]!;
-  }
+  if (labelIndex >= 0) options.label = args[labelIndex + 1] ?? '';
 
   const startTime = Date.now();
   const metadata: Partial<BackupMetadata> = {

@@ -1,7 +1,7 @@
 'use client';
 
 import Navbar from '@/components/Navbar';
-import { TryOnResult } from '@/types';
+import type { TryOnResult } from '@/types';
 import { ArrowLeft, Download, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -46,7 +46,7 @@ export default function ResultPage() {
         <Navbar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <div className="text-center">
-            <div className="animate-spin w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <div className="animate-spin w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full mx-auto mb-4" />
             <p className="text-zinc-600 dark:text-zinc-400">Loading result...</p>
           </div>
         </div>
@@ -124,6 +124,7 @@ export default function ResultPage() {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <button
+            type="button"
             onClick={handleTryAnother}
             className="flex items-center gap-2 px-8 py-4 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-full font-semibold transition-colors"
           >
@@ -132,6 +133,7 @@ export default function ResultPage() {
           </button>
 
           <button
+            type="button"
             onClick={handleDownload}
             className="flex items-center gap-2 px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full font-semibold transition-colors shadow-lg shadow-purple-500/50"
           >

@@ -143,8 +143,9 @@ async function main(): Promise<void> {
   const outcomes: Outcome[] = [];
   let cursor = 0;
   const workers = Array.from({ length: CONCURRENCY }, async () => {
-    while (cursor < keys.length) {
-      const item = keys[cursor]!;
+    for (;;) {
+      const item = keys[cursor];
+      if (!item) break;
       cursor += 1;
       await processObject(item.key, item.size, outcomes);
     }
@@ -167,10 +168,10 @@ async function main(): Promise<void> {
 
   console.log('════════ Compression Report ════════');
   console.log(`Scanned:           ${outcomes.length}`);
-  console.log(`Compressed:        ${byKind['compressed']}`);
+  console.log(`Compressed:        ${byKind.compressed}`);
   console.log(`Already ≤80KB:     ${byKind['already-fine']}`);
-  console.log(`Skipped (non-img): ${byKind['skipped']}`);
-  console.log(`Failed:            ${byKind['failed']}`);
+  console.log(`Skipped (non-img): ${byKind.skipped}`);
+  console.log(`Failed:            ${byKind.failed}`);
   console.log('');
   const saved = beforeBytes - afterBytes;
   console.log(`Image bytes before:  ${formatBytes(beforeBytes)}`);

@@ -52,8 +52,7 @@ export function assertSafeBaseUrl(raw) {
   const hit = PROD_HOSTS.find((h) => host === h || host.endsWith(`.${h}`));
   if (hit) {
     throw new Error(
-      `Refusing to load-test production (${host} matches ${hit}). Point LOADTEST_BASE_URL at a ` +
-        'staging service. There is no override for this on purpose.',
+      `Refusing to load-test production (${host} matches ${hit}). Point LOADTEST_BASE_URL at a staging service. There is no override for this on purpose.`,
     );
   }
   return base;
@@ -81,10 +80,7 @@ export function parseRate(raw) {
   }
   if (n > SAFE_RATE_PER_MINUTE) {
     throw new Error(
-      `LOADTEST_RATE=${n} exceeds the ${SAFE_RATE_PER_MINUTE}/min this script allows itself. ` +
-        `The API rate-limits at ${RATE_LIMIT_PER_MINUTE}/min PER IP, and one generator is one IP, ` +
-        'so a higher rate measures the limiter, not the API. Raise the limiter on staging (a code ' +
-        'change) or run generators from several IPs.',
+      `LOADTEST_RATE=${n} exceeds the ${SAFE_RATE_PER_MINUTE}/min this script allows itself. The API rate-limits at ${RATE_LIMIT_PER_MINUTE}/min PER IP, and one generator is one IP, so a higher rate measures the limiter, not the API. Raise the limiter on staging (a code change) or run generators from several IPs.`,
     );
   }
   return n;
@@ -95,8 +91,7 @@ export function requireToken(raw, name = 'LOADTEST_BEARER') {
   const token = String(raw ?? '').trim();
   if (!token) {
     throw new Error(
-      `${name} is not set. The authenticated mix needs a real Supabase access token — see ` +
-        'docs/references/guides/load-testing.md §"Getting the bearer token".',
+      `${name} is not set. The authenticated mix needs a real Supabase access token — see docs/references/guides/load-testing.md §"Getting the bearer token".`,
     );
   }
   if (token.split('.').length !== 3) {

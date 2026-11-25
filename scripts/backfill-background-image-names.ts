@@ -36,8 +36,8 @@ async function nameBackgroundScene(buf: Buffer, url: string): Promise<string | n
     const cleaned = answer
       .trim()
       .replace(/^["']|["']$/g, '')
-      .split(/[\n.]/)[0]!
-      .trim()
+      .split(/[\n.]/)[0]
+      ?.trim()
       .slice(0, 100);
     return cleaned || null;
   } catch (err) {

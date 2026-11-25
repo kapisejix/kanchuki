@@ -3,7 +3,7 @@
 import ImageUpload from '@/components/ImageUpload';
 import Navbar from '@/components/Navbar';
 import { tryOnGarment } from '@/lib/api';
-import { Category } from '@/types';
+import type { Category } from '@/types';
 import { Loader2, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -92,9 +92,9 @@ export default function UploadPage() {
 
             {/* Category Selection */}
             <div className="mb-8">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+              <p className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
                 Garment Category
-              </label>
+              </p>
               <div className="grid grid-cols-3 gap-4">
                 {(['tops', 'bottoms', 'one-pieces'] as Category[]).map((cat) => (
                   <button

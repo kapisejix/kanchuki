@@ -31,7 +31,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`  Found retailer:`);
+  console.log('  Found retailer:');
   console.log(`    ID:     ${retailer.id}`);
   console.log(`    Shop:   ${retailer.shop_name || '(not set — test account)'}`);
   console.log(`    Plan:   ${retailer.plan}`);
@@ -45,7 +45,7 @@ async function main() {
   });
 
   console.log(`✅ Updated try-on credits: ${retailer.try_on_credits} → ${updated.try_on_credits}`);
-  console.log(`   The test retailer now has 100 try-on credits available.`);
+  console.log('   The test retailer now has 100 try-on credits available.');
   console.log();
 
   // Also upgrade them to GROWTH plan so they have proper limits

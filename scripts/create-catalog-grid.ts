@@ -99,7 +99,9 @@ async function main() {
     const top = margin + row * cellH;
 
     // Resize each image to uniform cell size (maintain aspect ratio with crop)
-    const resized = await sharp(loaded[i]!.buffer)
+    const img = loaded[i];
+    if (!img) continue;
+    const resized = await sharp(img.buffer)
       .resize(maxCellW, maxCellH, {
         fit: 'inside',
         background: { r: 255, g: 255, b: 255, alpha: 1 },
@@ -156,19 +158,21 @@ async function main() {
   console.log(`  ✅ Saved: catalog-grid.jpg (${(stats / 1024).toFixed(0)} KB)`);
 
   // Also create a variant with different colors by recoloring one image
-  console.log(`\n  Creating variant: catalog-grid-mixed.jpg`);
+  console.log('\n  Creating variant: catalog-grid-mixed.jpg');
 
   // For the mixed variant, flip product 03 horizontally (different presentation)
   const mixedOps = [...compositeOps];
-  if (mixedOps.length >= 3) {
-    const flipped = await sharp(loaded[2]!.buffer)
+  const third = loaded[2];
+  const thirdOp = mixedOps[2];
+  if (third && thirdOp) {
+    const flipped = await sharp(third.buffer)
       .resize(maxCellW, maxCellH, {
         fit: 'inside',
         background: { r: 255, g: 255, b: 255, alpha: 1 },
       })
       .flop()
       .toBuffer();
-    mixedOps[2] = { ...mixedOps[2]!, input: flipped };
+    mixedOps[2] = { ...thirdOp, input: flipped };
   }
 
   const mixedResult = await sharp(whiteBackground)
@@ -185,9 +189,9 @@ async function main() {
   writeFileSync(mixedPath, mixedFinal);
   console.log(`  ✅ Saved: catalog-grid-mixed.jpg (${(mixedFinal.length / 1024).toFixed(0)} KB)`);
 
-  console.log(`\n🎉 Done! Test images created.`);
-  console.log(`  Run: npx tsx scripts/catalog-import-e2e.ts --image catalog-grid.jpg`);
-  console.log(`  Run: npx tsx scripts/catalog-import-e2e.ts --image catalog-grid-mixed.jpg`);
+  console.log('\n🎉 Done! Test images created.');
+  console.log('  Run: npx tsx scripts/catalog-import-e2e.ts --image catalog-grid.jpg');
+  console.log('  Run: npx tsx scripts/catalog-import-e2e.ts --image catalog-grid-mixed.jpg');
 }
 
 main().catch((err) => {

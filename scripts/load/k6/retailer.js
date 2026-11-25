@@ -76,8 +76,7 @@ export function setup() {
   });
   if (me.status === 401 || me.status === 403) {
     fail(
-      `setup: GET /v1/retailers/me returned ${me.status} — the bearer token is missing, expired or ` +
-        'not a staging retailer. See docs/references/guides/load-testing.md.',
+      `setup: GET /v1/retailers/me returned ${me.status} — the bearer token is missing, expired or not a staging retailer. See docs/references/guides/load-testing.md.`,
     );
   }
   if (me.status !== 200) {

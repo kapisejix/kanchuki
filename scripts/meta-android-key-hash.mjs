@@ -144,7 +144,12 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i += 1) {
     const key = argv[i];
     if (!key.startsWith('--')) continue;
-    args[key.slice(2)] = argv[i + 1]?.startsWith('--') ? 'true' : argv[(i += 1)];
+    if (argv[i + 1]?.startsWith('--')) {
+      args[key.slice(2)] = 'true';
+    } else {
+      i += 1;
+      args[key.slice(2)] = argv[i];
+    }
   }
   return args;
 }
@@ -213,7 +218,7 @@ if (args.keystore) {
       `  keytool -list -v -keystore "${args.keystore}" -alias <alias>   # then copy the SHA1 line`,
     );
     console.log(
-      `  npx eas credentials -p android                                  # SHA-1 fingerprint\n`,
+      '  npx eas credentials -p android                                  # SHA-1 fingerprint\n',
     );
     process.exit(1);
   }

@@ -19,20 +19,20 @@ import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // ─── Config ────────────────────────────────────────────────
 
-const VTONE_API_URL = process.env['VTONE_API_URL'] ?? 'http://localhost:8000';
-const R2_ENDPOINT = process.env['R2_ACCOUNT_ID']
-  ? `https://${process.env['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com`
+const VTONE_API_URL = process.env.VTONE_API_URL ?? 'http://localhost:8000';
+const R2_ENDPOINT = process.env.R2_ACCOUNT_ID
+  ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
   : undefined;
-const R2_ACCESS_KEY = process.env['R2_ACCESS_KEY_ID'];
-const R2_SECRET_KEY = process.env['R2_SECRET_ACCESS_KEY'];
-const R2_BUCKET = process.env['R2_BUCKET_NAME'];
-const R2_PUBLIC_URL = process.env['R2_PUBLIC_URL'];
+const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID;
+const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY;
+const R2_BUCKET = process.env.R2_BUCKET_NAME;
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;
 
 const TEST_PREFIX = 'scratch-test-vtone';
 
@@ -65,25 +65,6 @@ async function uploadToR2(key, buffer, contentType) {
     }),
   );
   return R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${key}` : `https://${R2_BUCKET}.r2.dev/${key}`;
-}
-
-async function objectExists(key) {
-  if (!s3) return false;
-  try {
-    await s3.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: key }));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// ─── Image Download ────────────────────────────────────────
-
-async function downloadImage(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`);
-  const buffer = Buffer.from(await res.arrayBuffer());
-  return buffer;
 }
 
 // ─── Main ──────────────────────────────────────────────────
