@@ -911,3 +911,10 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Change | `scripts/studio-garment-audit.ts` → `.mts`, `scripts/verify-msg91-token.ts` → `.mts`. Usage lines in both, plus `docs/tasks/pending/launch-readiness.md` and `docs/tasks/pending/ai-photo-generation.md`, updated. Old names in done/archive/build-log entries left as history. |
 | Why | Both use top-level await. The root package.json has no `"type": "module"`, so tsx compiled `.ts` to CJS and failed ("Top-level await is currently not supported with the cjs output format"). `.mts` is always ESM. |
 | Local runs | `npx tsx scripts/<file>.mts` with no args: both start and print their usage/env message. scripts tsc 0 (`scripts/tsconfig.json` already includes `**/*.mts`). Whole-repo Biome 0 lint (5 format-only tool files). |
+
+## 2026-11-25 — web: dead `comingSoon` prop removed from landing features
+
+| Area | Change |
+|---|---|
+| Change | `apps/web/src/app/sections/MarketingSections.tsx`: `comingSoon?` field and its "Coming soon" badge removed from `FEATURES`. No feature set it, so the badge never rendered. No visual change. |
+| Local runs | web tsc 0, eslint and Biome clean on the file. |
