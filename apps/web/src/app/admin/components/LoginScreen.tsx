@@ -15,14 +15,15 @@ import {
   Shield,
   Smartphone,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type LoginTab = 'password' | 'otp';
 type FlowState = 'login' | 'forgot_password' | 'reset_password';
 
 export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: string) => void }) {
+  const fid = useId();
   const [tab, setTab] = useState<LoginTab>('password');
   const [flow, setFlow] = useState<FlowState>('login');
 
@@ -50,6 +51,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
   const [shakeKey, setShakeKey] = useState(0);
   const emailRef = useRef<HTMLInputElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tab and flow are the refocus triggers (each step swaps the form)
   useEffect(() => {
     emailRef.current?.focus();
   }, [tab, flow]);
@@ -381,13 +383,19 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
           {flow === 'login' && tab === 'password' && (
             <form onSubmit={handlePasswordLogin} className="space-y-4">
               <div className="group">
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Email</label>
+                <label
+                  htmlFor={`${fid}-l1`}
+                  className="block text-xs font-medium text-gray-400 mb-1.5 ml-1"
+                >
+                  Email
+                </label>
                 <div className="relative">
                   <Mail
                     size={16}
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
+                    id={`${fid}-l1`}
                     ref={emailRef}
                     type="email"
                     value={email}
@@ -403,7 +411,9 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
 
               <div className="group">
                 <div className="flex items-center justify-between mb-1.5 ml-1">
-                  <label className="text-xs font-medium text-gray-400">Password</label>
+                  <label htmlFor={`${fid}-l2`} className="text-xs font-medium text-gray-400">
+                    Password
+                  </label>
                   <button
                     type="button"
                     onClick={() => {
@@ -423,6 +433,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
+                    id={`${fid}-l2`}
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -469,7 +480,10 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               {!otpSent ? (
                 <form onSubmit={handleSendOtp} className="space-y-4">
                   <div className="group">
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">
+                    <label
+                      htmlFor={`${fid}-l3`}
+                      className="block text-xs font-medium text-gray-400 mb-1.5 ml-1"
+                    >
                       Mobile Number or Email
                     </label>
                     <div className="relative">
@@ -478,6 +492,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                       />
                       <input
+                        id={`${fid}-l3`}
                         type="text"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
@@ -511,7 +526,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                 <form onSubmit={handleVerifyOtp} className="space-y-4">
                   <div className="group">
                     <div className="flex items-center justify-between mb-1.5 ml-1">
-                      <label className="text-xs font-medium text-gray-400">
+                      <label htmlFor={`${fid}-l4`} className="text-xs font-medium text-gray-400">
                         Code sent to {otpDestination}
                       </label>
                       <button
@@ -532,12 +547,14 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                       />
                       <input
+                        id={`${fid}-l4`}
                         type="text"
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                         placeholder="6-digit OTP code"
                         maxLength={6}
                         className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-base text-white tracking-widest placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-colors font-mono"
+                        // biome-ignore lint/a11y/noAutofocus: focus moves to the code field of the step the user just opened
                         autoFocus
                         disabled={loading}
                         required
@@ -571,7 +588,10 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
           {flow === 'forgot_password' && (
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="group">
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">
+                <label
+                  htmlFor={`${fid}-l5`}
+                  className="block text-xs font-medium text-gray-400 mb-1.5 ml-1"
+                >
                   Team Member Email
                 </label>
                 <div className="relative">
@@ -580,11 +600,13 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
+                    id={`${fid}-l5`}
                     type="email"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="name@kanchuki.app"
                     className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 transition-colors"
+                    // biome-ignore lint/a11y/noAutofocus: focus moves to the only field of the step the user just opened
                     autoFocus
                     disabled={loading}
                     required
@@ -619,7 +641,10 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
           {flow === 'reset_password' && (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="group">
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">
+                <label
+                  htmlFor={`${fid}-l6`}
+                  className="block text-xs font-medium text-gray-400 mb-1.5 ml-1"
+                >
                   6-Digit Verification Code
                 </label>
                 <div className="relative">
@@ -628,12 +653,14 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
+                    id={`${fid}-l6`}
                     type="text"
                     value={resetCode}
                     onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="Enter code"
                     maxLength={6}
                     className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-white/30 font-mono tracking-widest"
+                    // biome-ignore lint/a11y/noAutofocus: focus moves to the code field of the step the user just opened
                     autoFocus
                     disabled={loading || resetSuccess}
                     required
@@ -642,7 +669,10 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
               </div>
 
               <div className="group">
-                <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">
+                <label
+                  htmlFor={`${fid}-l7`}
+                  className="block text-xs font-medium text-gray-400 mb-1.5 ml-1"
+                >
                   New Password
                 </label>
                 <div className="relative">
@@ -651,6 +681,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: strin
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-gray-200 transition-colors"
                   />
                   <input
+                    id={`${fid}-l7`}
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}

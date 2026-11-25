@@ -18,7 +18,7 @@ import {
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type OperationCounts = {
   pending_count: number;
@@ -135,9 +135,9 @@ export default function OperationsPage() {
       {/* Loading state */}
       {loading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[...Array(3)].map((_, i) => (
+          {Array.from({ length: 3 }, (_, i) => `sk-${i}`).map((k) => (
             <div
-              key={i}
+              key={k}
               className="bg-white/80 rounded-2xl border border-gray-200/80 p-6 animate-pulse"
             >
               <div className="h-12 bg-gray-200/60 rounded-xl mb-4" />

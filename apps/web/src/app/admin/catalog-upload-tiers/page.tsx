@@ -3,9 +3,9 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { CalendarClock, Gift, Loader2, Package, Plus, Save, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Tier = {
   id: string;
@@ -15,6 +15,7 @@ type Tier = {
 };
 
 export default function CatalogUploadTiersPage() {
+  const fid = useId();
   const [tiers, setTiers] = useState<Tier[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -28,7 +29,7 @@ export default function CatalogUploadTiersPage() {
   const [promoSaving, setPromoSaving] = useState(false);
   const [promoStatus, setPromoStatus] = useState('');
 
-  const loadPromo = async () => {
+  const loadPromo = useCallback(async () => {
     const res = await fetch(`${API_URL}/v1/admin/settings/catalog-upload-promo`, adminGetOptions());
     const json = await res.json();
     const p = json.data;
@@ -38,7 +39,7 @@ export default function CatalogUploadTiersPage() {
     });
     setPromoActive(!!p.active);
     setPromoLoading(false);
-  };
+  }, []);
 
   const savePromo = async () => {
     setPromoSaving(true);
@@ -63,17 +64,17 @@ export default function CatalogUploadTiersPage() {
     }
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, adminGetOptions());
     const json = await res.json();
     setTiers(json.data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load();
     loadPromo();
-  }, []);
+  }, [load, loadPromo]);
 
   const updateTier = (id: string, patch: Partial<Tier>) => {
     setTiers((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -93,7 +94,7 @@ export default function CatalogUploadTiersPage() {
         }),
       });
       if (!res.ok) throw new Error('Save failed');
-      setStatus(`✅ Tier saved`);
+      setStatus('✅ Tier saved');
     } catch (err) {
       setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
     } finally {
@@ -213,10 +214,14 @@ export default function CatalogUploadTiersPage() {
 
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+            <label
+              htmlFor={`${fid}-l1`}
+              className="block text-xs font-semibold text-gray-500 mb-1.5"
+            >
               Free item limit
             </label>
             <input
+              id={`${fid}-l1`}
               type="number"
               value={promo.free_item_limit}
               onChange={(e) => setPromo((p) => ({ ...p, free_item_limit: e.target.value }))}
@@ -226,11 +231,15 @@ export default function CatalogUploadTiersPage() {
             <p className="text-[10px] text-gray-400 mt-1">Empty = offer disabled</p>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+            <label
+              htmlFor={`${fid}-l2`}
+              className="block text-xs font-semibold text-gray-500 mb-1.5"
+            >
               <CalendarClock size={12} className="inline mr-1 -mt-0.5" />
               Offer ends (local time)
             </label>
             <input
+              id={`${fid}-l2`}
               type="datetime-local"
               value={promo.expires_at}
               onChange={(e) => setPromo((p) => ({ ...p, expires_at: e.target.value }))}
@@ -239,6 +248,7 @@ export default function CatalogUploadTiersPage() {
             <p className="text-[10px] text-gray-400 mt-1">Empty = runs until cleared</p>
           </div>
           <button
+            type="button"
             onClick={savePromo}
             disabled={promoSaving}
             className={`text-sm font-semibold px-5 py-2.5 rounded-xl transition flex items-center gap-2 disabled:opacity-60 ${
@@ -307,6 +317,7 @@ export default function CatalogUploadTiersPage() {
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => save(tier)}
                       disabled={saving === tier.id}
                       className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
@@ -319,6 +330,7 @@ export default function CatalogUploadTiersPage() {
                       )}
                     </button>
                     <button
+                      type="button"
                       onClick={() => remove(tier.id)}
                       className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                       aria-label="Delete tier"
@@ -360,6 +372,7 @@ export default function CatalogUploadTiersPage() {
               </td>
               <td className="px-3 py-2">
                 <button
+                  type="button"
                   onClick={create}
                   disabled={saving === 'new'}
                   className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"

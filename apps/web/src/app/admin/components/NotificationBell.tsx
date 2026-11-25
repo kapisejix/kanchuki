@@ -6,7 +6,7 @@ import { AlertCircle, Bell, ExternalLink, HardDrive, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Alert = {
   id: string;

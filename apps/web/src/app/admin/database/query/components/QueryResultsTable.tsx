@@ -117,6 +117,7 @@ export function QueryResultsTable({
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={onCopyJson}
             className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5 shadow-2xs"
           >
@@ -124,6 +125,7 @@ export function QueryResultsTable({
             <span>Copy JSON</span>
           </button>
           <button
+            type="button"
             onClick={onDownloadCsv}
             className="px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5 shadow-2xs"
           >
@@ -153,6 +155,7 @@ export function QueryResultsTable({
           </thead>
           <tbody className="divide-y divide-gray-200/60 bg-white">
             {result.rows.map((row, rowIdx) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: result rows have no id; the whole table is replaced on each query
               <tr key={rowIdx} className="hover:bg-violet-50/30 transition-colors">
                 <td className="w-12 px-3 py-2 text-center text-gray-400 font-sans text-[10px] select-none bg-gray-50/50 border-r border-gray-200">
                   {rowIdx + 1}
@@ -173,6 +176,7 @@ export function QueryResultsTable({
                       {isJson ? (
                         <div>
                           <button
+                            type="button"
                             onClick={() =>
                               setExpandedJson((prev) => ({ ...prev, [cellId]: !prev[cellId] }))
                             }
@@ -188,9 +192,10 @@ export function QueryResultsTable({
                           )}
                         </div>
                       ) : (
-                        <div
+                        <button
+                          type="button"
                           onClick={() => copyValue(display, cellId)}
-                          className="cursor-pointer group flex items-center justify-between gap-1"
+                          className="w-full text-left cursor-pointer group flex items-center justify-between gap-1"
                           title="Click to copy"
                         >
                           <span className="truncate">{display}</span>
@@ -201,7 +206,7 @@ export function QueryResultsTable({
                               <Copy size={11} />
                             )}
                           </span>
-                        </div>
+                        </button>
                       )}
                     </td>
                   );

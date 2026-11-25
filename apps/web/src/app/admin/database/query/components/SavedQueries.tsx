@@ -46,6 +46,7 @@ export function SavedQueries({
           <span className="text-xs text-gray-500 font-mono">({savedQueries.length})</span>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
         >
@@ -76,15 +77,18 @@ export function SavedQueries({
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
                     className="flex-1 text-xs px-2 py-1 bg-white border border-violet-300 rounded-lg focus:outline-none"
+                    // biome-ignore lint/a11y/noAutofocus: focus moves into the rename field the user just opened
                     autoFocus
                   />
                   <button
+                    type="button"
                     onClick={() => handleSaveRename(q.id)}
                     className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
                   >
                     <Check size={14} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => setEditingId(null)}
                     className="p-1 text-gray-400 hover:bg-gray-100 rounded"
                   >
@@ -96,6 +100,7 @@ export function SavedQueries({
                   <span className="text-xs font-bold text-gray-900 truncate">{q.name}</span>
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => handleStartRename(q)}
                       className="p-1 text-gray-400 hover:text-gray-600 rounded"
                       title="Rename"
@@ -103,6 +108,7 @@ export function SavedQueries({
                       <Edit3 size={12} />
                     </button>
                     <button
+                      type="button"
                       onClick={() => onDeleteQuery(q.id)}
                       className="p-1 text-gray-400 hover:text-red-600 rounded"
                       title="Delete"
@@ -118,6 +124,7 @@ export function SavedQueries({
               </pre>
 
               <button
+                type="button"
                 onClick={() => {
                   onSelectQuery(q.query);
                   onClose();

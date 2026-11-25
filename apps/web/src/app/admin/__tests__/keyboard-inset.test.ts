@@ -58,6 +58,7 @@ const ADOPTED: string[] = [
   'customers/page.tsx',
   'database/query/page.tsx',
   'festivals/page.tsx',
+  'gbp/page.tsx',
   'operations/pending/page.tsx',
   'photo-cleanup-test/EffectsCatalog.tsx',
   'retailers/[id]/page.tsx',

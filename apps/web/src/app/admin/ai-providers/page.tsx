@@ -20,9 +20,9 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type ProviderType = 'ANTHROPIC' | 'OPENAI_COMPAT' | 'GEMINI';
 
@@ -92,6 +92,7 @@ function VisionBadge({ modelName }: { modelName: string }) {
 }
 
 export default function AiProvidersPage() {
+  const fid = useId();
   const [rows, setRows] = useState<AiProviderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('');
@@ -118,7 +119,11 @@ export default function AiProvidersPage() {
     const swapIdx = idx + direction;
     if (idx < 0 || swapIdx < 0 || swapIdx >= rows.length) return;
     const next = [...rows];
-    [next[idx], next[swapIdx]] = [next[swapIdx]!, next[idx]!];
+    const a = next[idx];
+    const b = next[swapIdx];
+    if (!a || !b) return;
+    next[idx] = b;
+    next[swapIdx] = a;
     setRows(next);
     setBusy(true);
     try {
@@ -329,6 +334,7 @@ export default function AiProvidersPage() {
               {/* Priority controls */}
               <div className="flex flex-col gap-0.5">
                 <button
+                  type="button"
                   onClick={() => reorder(row.id, -1)}
                   disabled={index === 0 || busy}
                   className="p-0.5 text-gray-300 hover:text-ink-600 disabled:opacity-30 transition-colors"
@@ -338,6 +344,7 @@ export default function AiProvidersPage() {
                 </button>
                 <span className="text-center text-[10px] font-mono text-gray-400">{index + 1}</span>
                 <button
+                  type="button"
                   onClick={() => reorder(row.id, 1)}
                   disabled={index === rows.length - 1 || busy}
                   className="p-0.5 text-gray-300 hover:text-ink-600 disabled:opacity-30 transition-colors"
@@ -372,6 +379,7 @@ export default function AiProvidersPage() {
               </div>
 
               <button
+                type="button"
                 onClick={() => toggleActive(row)}
                 disabled={busy}
                 className={`p-2 rounded-xl transition-colors ${
@@ -387,6 +395,7 @@ export default function AiProvidersPage() {
                 <Power size={16} />
               </button>
               <button
+                type="button"
                 onClick={() => openEdit(row)}
                 disabled={busy}
                 className="p-2 rounded-xl text-gray-400 hover:text-ink-600 hover:bg-ink-50 transition-colors disabled:opacity-50"
@@ -395,6 +404,7 @@ export default function AiProvidersPage() {
                 <Edit3 size={16} />
               </button>
               <button
+                type="button"
                 onClick={() => remove(row)}
                 disabled={busy}
                 className="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
@@ -427,6 +437,7 @@ export default function AiProvidersPage() {
               {editing ? 'Edit AI provider' : 'Add AI provider'}
             </h2>
             <button
+              type="button"
               onClick={() => setShowForm(false)}
               className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
               aria-label="Close"
@@ -437,8 +448,11 @@ export default function AiProvidersPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Provider type</label>
+              <label htmlFor={`${fid}-l1`} className="text-xs font-medium text-gray-600 block mb-1">
+                Provider type
+              </label>
               <select
+                id={`${fid}-l1`}
                 value={form.provider_type}
                 onChange={(e) =>
                   setForm({ ...form, provider_type: e.target.value as ProviderType })
@@ -461,8 +475,11 @@ export default function AiProvidersPage() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-600 block mb-1">Label</label>
+              <label htmlFor={`${fid}-l2`} className="text-xs font-medium text-gray-600 block mb-1">
+                Label
+              </label>
               <input
+                id={`${fid}-l2`}
                 value={form.label}
                 onChange={(e) => setForm({ ...form, label: e.target.value })}
                 placeholder="e.g. Claude Sonnet"
@@ -472,8 +489,14 @@ export default function AiProvidersPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">Model name</label>
+                <label
+                  htmlFor={`${fid}-l3`}
+                  className="text-xs font-medium text-gray-600 block mb-1"
+                >
+                  Model name
+                </label>
                 <input
+                  id={`${fid}-l3`}
                   value={form.model_name}
                   onChange={(e) => setForm({ ...form, model_name: e.target.value })}
                   placeholder="e.g. claude-sonnet-4-5"
@@ -487,10 +510,14 @@ export default function AiProvidersPage() {
                 )}
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">
+                <label
+                  htmlFor={`${fid}-l4`}
+                  className="text-xs font-medium text-gray-600 block mb-1"
+                >
                   Lite model <span className="text-gray-400">(color detect)</span>
                 </label>
                 <input
+                  id={`${fid}-l4`}
                   value={form.lite_model_name}
                   onChange={(e) => setForm({ ...form, lite_model_name: e.target.value })}
                   placeholder="e.g. claude-haiku"
@@ -508,10 +535,14 @@ export default function AiProvidersPage() {
 
             {form.provider_type === 'OPENAI_COMPAT' && (
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">
+                <label
+                  htmlFor={`${fid}-l5`}
+                  className="text-xs font-medium text-gray-600 block mb-1"
+                >
                   Base URL <span className="text-gray-400">(default: api.openai.com)</span>
                 </label>
                 <input
+                  id={`${fid}-l5`}
                   value={form.base_url}
                   onChange={(e) => setForm({ ...form, base_url: e.target.value })}
                   placeholder="https://openrouter.ai/api/v1"
@@ -522,8 +553,14 @@ export default function AiProvidersPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">API key name</label>
+                <label
+                  htmlFor={`${fid}-l6`}
+                  className="text-xs font-medium text-gray-600 block mb-1"
+                >
+                  API key name
+                </label>
                 <input
+                  id={`${fid}-l6`}
                   value={form.api_key_name}
                   onChange={(e) => setForm({ ...form, api_key_name: e.target.value })}
                   placeholder="OPENROUTER_API_KEY"
@@ -534,10 +571,14 @@ export default function AiProvidersPage() {
                 </p>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">
+                <label
+                  htmlFor={`${fid}-l7`}
+                  className="text-xs font-medium text-gray-600 block mb-1"
+                >
                   Credits per call
                 </label>
                 <input
+                  id={`${fid}-l7`}
                   value={form.credits_per_call}
                   onChange={(e) => setForm({ ...form, credits_per_call: e.target.value })}
                   type="number"
@@ -557,12 +598,14 @@ export default function AiProvidersPage() {
             </p>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => setShowForm(false)}
                 className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={saveForm}
                 disabled={busy}
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-ink-500 text-white rounded-xl hover:bg-ink-600 disabled:opacity-50 transition-colors"

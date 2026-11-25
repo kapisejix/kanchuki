@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Stats = {
   total_retailers: number;

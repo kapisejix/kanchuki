@@ -2,9 +2,9 @@
 
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { Loader2, Plus, Receipt, Save } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // §6.11 — keyword → HSN rules for WhatsApp catalog items. First active rule
 // (by sort order) with a keyword found in the product's name/category/
@@ -52,7 +52,7 @@ export default function HsnRulesPage() {
     is_active: true,
   });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/v1/admin/hsn-rules`, adminGetOptions());
       if (!res.ok) throw new Error(await apiError(res));
@@ -64,11 +64,11 @@ export default function HsnRulesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const send = async (
     key: string,

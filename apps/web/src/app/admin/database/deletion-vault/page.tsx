@@ -18,9 +18,9 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -148,6 +148,7 @@ function TableBadge({ table }: { table: string }) {
 // ─── Main Page ─────────────────────────────────────────────────
 
 export default function DeletionVaultPage() {
+  const fid = useId();
   const [entries, setEntries] = useState<VaultEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [vaultConfigured, setVaultConfigured] = useState(true);
@@ -212,13 +213,14 @@ export default function DeletionVaultPage() {
     [cursor, sourceTable, sourceId, retailerId],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the filters are the reset triggers
   useEffect(() => {
     setCursor(null);
   }, [sourceTable, sourceId, retailerId]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refetch on filter change only; fetchEntries also depends on cursor, and re-running on cursor would reload on every page
   useEffect(() => {
     fetchEntries();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceTable, sourceId, retailerId]);
 
   // ── Reset filters ────────────────────────────────────────────
@@ -299,8 +301,11 @@ export default function DeletionVaultPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Source table filter */}
             <div>
-              <label className="text-[10px] text-gray-400 block mb-1">Source Table</label>
+              <label htmlFor={`${fid}-l1`} className="text-[10px] text-gray-400 block mb-1">
+                Source Table
+              </label>
               <select
+                id={`${fid}-l1`}
                 value={sourceTable}
                 onChange={(e) => setSourceTable(e.target.value)}
                 className="w-full text-xs px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-300"
@@ -315,13 +320,16 @@ export default function DeletionVaultPage() {
 
             {/* Source ID search */}
             <div>
-              <label className="text-[10px] text-gray-400 block mb-1">Source ID</label>
+              <label htmlFor={`${fid}-l2`} className="text-[10px] text-gray-400 block mb-1">
+                Source ID
+              </label>
               <div className="relative">
                 <Search
                   size={12}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  id={`${fid}-l2`}
                   type="text"
                   value={sourceId}
                   onChange={(e) => setSourceId(e.target.value)}
@@ -333,13 +341,16 @@ export default function DeletionVaultPage() {
 
             {/* Retailer ID search */}
             <div>
-              <label className="text-[10px] text-gray-400 block mb-1">Retailer ID</label>
+              <label htmlFor={`${fid}-l3`} className="text-[10px] text-gray-400 block mb-1">
+                Retailer ID
+              </label>
               <div className="relative">
                 <Search
                   size={12}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
                 />
                 <input
+                  id={`${fid}-l3`}
                   type="text"
                   value={retailerId}
                   onChange={(e) => setRetailerId(e.target.value)}
@@ -388,8 +399,8 @@ export default function DeletionVaultPage() {
       {/* ── Loading State ───────────────────────────────────────── */}
       {loading && vaultConfigured && (
         <motion.div variants={itemVariants} className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white/80 rounded-xl border border-gray-200/80 p-5">
+          {Array.from({ length: 3 }, (_, i) => `sk-${i}`).map((k) => (
+            <div key={k} className="bg-white/80 rounded-xl border border-gray-200/80 p-5">
               <div className="h-4 bg-gray-200/80 rounded w-3/4 mb-3 animate-pulse" />
               <div className="h-3 bg-gray-200/80 rounded w-1/2 animate-pulse" />
             </div>
@@ -427,6 +438,7 @@ export default function DeletionVaultPage() {
             {/* Table body */}
             {entries.map((entry) => (
               <div key={entry.id}>
+                {/* biome-ignore lint/a11y/useKeyWithClickEvents: row click is a mouse shortcut; the chevron button is the keyboard control */}
                 <div
                   className="flex items-center gap-4 px-5 py-3.5 border-b border-gray-100/60 hover:bg-gray-50/50 transition-colors cursor-pointer last:border-b-0"
                   onClick={() => toggleRow(entry.id)}
@@ -458,7 +470,16 @@ export default function DeletionVaultPage() {
                     </span>
                   </div>
                   <div className="w-10 shrink-0 text-right">
-                    <button className="p-1 text-gray-300 hover:text-gray-500 transition-colors">
+                    <button
+                      type="button"
+                      aria-label={expandedRows.has(entry.id) ? 'Hide details' : 'Show details'}
+                      aria-expanded={expandedRows.has(entry.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRow(entry.id);
+                      }}
+                      className="p-1 text-gray-300 hover:text-gray-500 transition-colors"
+                    >
                       {expandedRows.has(entry.id) ? (
                         <ChevronUp size={14} />
                       ) : (

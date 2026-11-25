@@ -64,7 +64,7 @@ import { createPortal } from 'react-dom';
 
 type Leaf = { label: string; href: string; icon: LucideIcon; superAdminOnly?: boolean };
 type Group = { label: string; icon: LucideIcon; superAdminOnly?: boolean; children: Leaf[] };
-type NavItem = Leaf | Group | { separator: true };
+type NavItem = Leaf | Group;
 
 const FLYOUT_WIDTH = 224;
 
@@ -309,8 +309,7 @@ export function Sidebar({
   // access list says so. The flag is per-entry and easy to forget when adding a
   // route — deriving from the list is what keeps the nav from advertising a
   // surface that the API and the page guard would both refuse (RC-034).
-  // Accepts NavItem (including `{ separator: true }`) and narrows, so a
-  // separator or a group is never mistaken for a link.
+  // Accepts NavItem and narrows, so a group is never mistaken for a link.
   const isSuperAdminOnlyItem = (entry: NavItem) => {
     const href = 'href' in entry ? entry.href : undefined;
     const flagged = 'superAdminOnly' in entry && entry.superAdminOnly === true;
@@ -392,11 +391,7 @@ export function Sidebar({
 
         {/* Navigation */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-4">
-          {filteredNavItems.map((item, index) => {
-            if ('separator' in item) {
-              return <div key={`sep-${index}`} className="my-2 border-t border-white/[0.08]" />;
-            }
-
+          {filteredNavItems.map((item) => {
             if ('children' in item) {
               const isGroupActive = item.children.some((c) => isLinkActive(c.href));
               const isOpen = openGroup?.label === item.label;

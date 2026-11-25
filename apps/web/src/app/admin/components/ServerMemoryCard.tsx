@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Now = { rss_mb: number; heap_used_mb: number; native_other_mb: number };
 

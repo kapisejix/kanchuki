@@ -26,9 +26,9 @@ import {
   Store,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type BugReportSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 type BugReportStatus = 'NEW' | 'REVIEWED' | 'IN_PROGRESS' | 'RESOLVED' | 'DISMISSED';
@@ -115,6 +115,7 @@ function BugReportDetailPanel({
   onClose: () => void;
   onUpdated: () => void;
 }) {
+  const fid = useId();
   const [status, setStatus] = useState(report.status);
   const [severity, setSeverity] = useState(report.severity);
   const [adminNote, setAdminNote] = useState(report.admin_note ?? '');
@@ -172,6 +173,7 @@ function BugReportDetailPanel({
           <span className="text-sm font-bold text-gray-900">Bug Report</span>
         </div>
         <button
+          type="button"
           onClick={onClose}
           className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer"
         >
@@ -198,7 +200,7 @@ function BugReportDetailPanel({
 
         {/* Description */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Description</label>
+          <p className="block text-xs font-semibold text-gray-500 mb-1.5">Description</p>
           <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3.5 leading-relaxed">
             {report.description}
           </p>
@@ -206,10 +208,11 @@ function BugReportDetailPanel({
 
         {/* Status */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Status</label>
+          <p className="block text-xs font-semibold text-gray-500 mb-1.5">Status</p>
           <div className="flex gap-1.5 flex-wrap">
             {statusOptions.map((s) => (
               <button
+                type="button"
                 key={s}
                 onClick={() => setStatus(s)}
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition cursor-pointer ${
@@ -226,10 +229,11 @@ function BugReportDetailPanel({
 
         {/* Severity */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Severity</label>
+          <p className="block text-xs font-semibold text-gray-500 mb-1.5">Severity</p>
           <div className="flex gap-1.5 flex-wrap">
             {severityOptions.map((s) => (
               <button
+                type="button"
                 key={s}
                 onClick={() => setSeverity(s)}
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition cursor-pointer ${
@@ -261,9 +265,7 @@ function BugReportDetailPanel({
         {/* Error message */}
         {report.error_message && (
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-              Auto-captured Error
-            </label>
+            <p className="block text-xs font-semibold text-gray-500 mb-1.5">Auto-captured Error</p>
             <div className="bg-red-50 border border-red-200 rounded-xl p-3.5">
               <p className="text-xs text-red-700 font-mono leading-relaxed break-all">
                 {report.error_message}
@@ -275,8 +277,9 @@ function BugReportDetailPanel({
         {/* Screenshot */}
         {report.screenshot_url && (
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Screenshot</label>
+            <p className="block text-xs font-semibold text-gray-500 mb-1.5">Screenshot</p>
             <button
+              type="button"
               onClick={() => setShowScreenshot(true)}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:border-ink-300 transition cursor-pointer"
             >
@@ -293,9 +296,7 @@ function BugReportDetailPanel({
         {/* Retailer notes */}
         {report.notes && (
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-              Retailer Notes
-            </label>
+            <p className="block text-xs font-semibold text-gray-500 mb-1.5">Retailer Notes</p>
             <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3.5 italic">
               &ldquo;{report.notes}&rdquo;
             </p>
@@ -304,8 +305,11 @@ function BugReportDetailPanel({
 
         {/* Admin note */}
         <div>
-          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Admin Response</label>
+          <label htmlFor={`${fid}-l1`} className="block text-xs font-semibold text-gray-500 mb-1.5">
+            Admin Response
+          </label>
           <textarea
+            id={`${fid}-l1`}
             value={adminNote}
             onChange={(e) => setAdminNote(e.target.value)}
             rows={3}
@@ -327,6 +331,7 @@ function BugReportDetailPanel({
       {/* Save button */}
       <div className="sticky bottom-0 bg-gray-50/80 border-t border-gray-100 px-5 py-4">
         <button
+          type="button"
           onClick={handleSave}
           disabled={saving}
           className="bg-ink-600 hover:bg-ink-500 w-full text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
@@ -363,7 +368,10 @@ function BugReportDetailPanel({
               alt="Bug report screenshot"
               className="max-w-full max-h-full rounded-2xl shadow-2xl object-contain"
             />
-            <button className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition cursor-pointer">
+            <button
+              type="button"
+              className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition cursor-pointer"
+            >
               <X size={20} />
             </button>
           </motion.div>
@@ -556,10 +564,10 @@ export default function BugReportsPage() {
               </thead>
               <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
                 {loading ? (
-                  [...Array(5)].map((_, i) => (
-                    <tr key={i} className="border-b border-gray-50">
-                      {[...Array(6)].map((_, j) => (
-                        <td key={j} className="px-4 py-4">
+                  Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((row) => (
+                    <tr key={row} className="border-b border-gray-50">
+                      {Array.from({ length: 6 }, (_, j) => `${row}-${j}`).map((cell) => (
+                        <td key={cell} className="px-4 py-4">
                           <div
                             className="h-4 bg-gray-200/60 rounded animate-pulse"
                             style={{ width: `${40 + Math.random() * 40}%` }}

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Gate = {
   name: string;
@@ -296,9 +296,9 @@ export default function DeploymentGatePage() {
                 Gate Check History
               </h2>
               <div className="space-y-2">
-                {history.map((item, i) => (
+                {history.map((item) => (
                   <div
-                    key={i}
+                    key={`${item.checked_at}-${item.action}`}
                     className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-gray-50/50 transition-colors"
                   >
                     {item.result === 'passed' ? (

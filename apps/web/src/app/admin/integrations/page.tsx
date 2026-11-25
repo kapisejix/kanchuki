@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, KeyRound, Loader2, Save, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Category = 'AI' | 'PAYMENT' | 'STORAGE' | 'WHATSAPP';
 
@@ -178,6 +178,7 @@ export default function IntegrationsPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => {
             setLoading(true);
             void load();
@@ -192,6 +193,7 @@ export default function IntegrationsPage() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           <button
+            type="button"
             onClick={() => setSelectedCategory('ALL')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
               selectedCategory === 'ALL'
@@ -203,6 +205,7 @@ export default function IntegrationsPage() {
           </button>
           {availableCategories.map((cat) => (
             <button
+              type="button"
               key={cat}
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
@@ -281,6 +284,7 @@ export default function IntegrationsPage() {
                       </span>
                       {row.configured && (
                         <button
+                          type="button"
                           onClick={() => void toggleActive(row)}
                           disabled={busy === row.key_name}
                           className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50"
@@ -333,6 +337,7 @@ export default function IntegrationsPage() {
                         ) : null}
                       </div>
                       <button
+                        type="button"
                         onClick={() => void save(row)}
                         disabled={busy === row.key_name}
                         className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
@@ -346,6 +351,7 @@ export default function IntegrationsPage() {
                       </button>
                       {row.configured && (
                         <button
+                          type="button"
                           onClick={() => void remove(row)}
                           disabled={busy === row.key_name}
                           className="p-1.5 text-gray-400 hover:text-red-600 disabled:opacity-50 transition-colors"

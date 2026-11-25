@@ -4,7 +4,7 @@ import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { CheckCircle2, Flag, Loader2, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // Shopper "Report this AI content" queue (Google Play AI-Generated Content policy). Reports are
 // text only; the AI output itself is never stored. Retailer reports from the mobile app are in

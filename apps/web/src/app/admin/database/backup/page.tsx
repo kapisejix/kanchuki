@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -367,6 +367,7 @@ export default function DatabaseBackupPage() {
                 {/* CLI commands */}
                 <div className="mt-3 space-y-1.5">
                   {triggerResult.commands.map((cmd, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: server-built command list, shown once, lines may repeat
                     <div key={i} className="flex items-center gap-2">
                       <code className="flex-1 text-[11px] font-mono bg-emerald-100/80 text-emerald-700 px-3 py-1.5 rounded-lg overflow-x-auto whitespace-nowrap">
                         {cmd}
@@ -387,6 +388,7 @@ export default function DatabaseBackupPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setTriggerResult(null)}
                 className="text-emerald-400 hover:text-emerald-600"
               >
@@ -431,6 +433,7 @@ export default function DatabaseBackupPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setRestoreResult(null)}
                 className="text-amber-400 hover:text-amber-600"
               >
@@ -444,8 +447,8 @@ export default function DatabaseBackupPage() {
       {/* ── Loading State ───────────────────────────────────────── */}
       {loading && (
         <motion.div variants={itemVariants} className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white/80 rounded-xl border border-gray-200/80 p-5">
+          {Array.from({ length: 3 }, (_, i) => `sk-${i}`).map((k) => (
+            <div key={k} className="bg-white/80 rounded-xl border border-gray-200/80 p-5">
               <div className="h-4 bg-gray-200/80 rounded w-3/4 mb-3 animate-pulse" />
               <div className="h-3 bg-gray-200/80 rounded w-1/2 animate-pulse" />
             </div>
@@ -494,6 +497,7 @@ export default function DatabaseBackupPage() {
             {/* Table body */}
             {backups.map((backup) => (
               <div key={backup.key}>
+                {/* biome-ignore lint/a11y/useKeyWithClickEvents: row click is a mouse shortcut; the chevron button is the keyboard control */}
                 <div
                   className="flex items-center gap-4 px-5 py-3.5 border-b border-gray-100/60 hover:bg-gray-50/50 transition-colors cursor-pointer last:border-b-0"
                   onClick={() => toggleRow(backup.key)}
@@ -545,6 +549,9 @@ export default function DatabaseBackupPage() {
                       </motion.button>
                     )}
                     <button
+                      type="button"
+                      aria-label={expandedRows.has(backup.key) ? 'Hide details' : 'Show details'}
+                      aria-expanded={expandedRows.has(backup.key)}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleRow(backup.key);

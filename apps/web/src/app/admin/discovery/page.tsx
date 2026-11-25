@@ -11,9 +11,9 @@ import {
   Phone,
   Store,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ export default function DiscoveryPage() {
     setPlace('');
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       // Only retailers with coordinates can appear in "Near Me" discovery, so ask the
       // API for just those (has_location) and walk its cursor, 100 per page (API max).
@@ -126,11 +126,11 @@ export default function DiscoveryPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load retailer locations');
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const filtered = (nearby?.retailers ?? retailers ?? []).filter((r) => {
     if (!search) return true;
@@ -142,8 +142,6 @@ export default function DiscoveryPage() {
       r.phone.includes(q)
     );
   });
-
-  const selected = filtered.find((r) => r.id === selectedId);
 
   return (
     <motion.div

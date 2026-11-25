@@ -4,9 +4,9 @@ import { Sheet } from '@/components/Sheet';
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CalendarDays, type LucideIcon, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -69,7 +69,7 @@ export default function FestivalsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Festival | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/v1/admin/festivals`, adminGetOptions());
       const json = await res.json();
@@ -81,11 +81,11 @@ export default function FestivalsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load festivals');
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const remove = async (f: Festival) => {
     if (!window.confirm(`Delete "${f.name}"? Campaigns already created for it keep their name.`))
@@ -227,6 +227,7 @@ export default function FestivalsPage() {
                       <td className="px-6 py-3.5">
                         <div className="flex items-center justify-end gap-1">
                           <button
+                            type="button"
                             onClick={() => {
                               setEditing(f);
                               setFormOpen(true);
@@ -237,6 +238,7 @@ export default function FestivalsPage() {
                             <Pencil size={15} />
                           </button>
                           <button
+                            type="button"
                             onClick={() => void remove(f)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             aria-label={`Delete ${f.name}`}
@@ -282,6 +284,7 @@ function FestivalFormModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const fid = useId();
   const [name, setName] = useState(festival?.name ?? '');
   const [region, setRegion] = useState(festival?.region ?? 'PAN_INDIA');
   const [startsAt, setStartsAt] = useState(() => (festival ? festival.starts_at.slice(0, 10) : ''));
@@ -346,6 +349,7 @@ function FestivalFormModal({
           {festival ? 'Edit Festival' : 'Add Festival'}
         </h3>
         <button
+          type="button"
           onClick={onClose}
           className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
           aria-label="Close"
@@ -356,19 +360,26 @@ function FestivalFormModal({
 
       <div className="space-y-4">
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Festival Name</label>
+          <label htmlFor={`${fid}-l1`} className="text-xs font-semibold text-gray-500 mb-1.5 block">
+            Festival Name
+          </label>
           <input
+            id={`${fid}-l1`}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Diwali, Pongal, Wedding Season…"
+            // biome-ignore lint/a11y/noAutofocus: focus moves into the modal the user just opened
             autoFocus
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
           />
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Region / State</label>
+          <label htmlFor={`${fid}-l2`} className="text-xs font-semibold text-gray-500 mb-1.5 block">
+            Region / State
+          </label>
           <input
+            id={`${fid}-l2`}
             value={region}
             onChange={(e) => setRegion(e.target.value)}
             placeholder="PAN_INDIA or a state, e.g. TAMIL_NADU"
@@ -389,8 +400,14 @@ function FestivalFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Starts</label>
+            <label
+              htmlFor={`${fid}-l3`}
+              className="text-xs font-semibold text-gray-500 mb-1.5 block"
+            >
+              Starts
+            </label>
             <input
+              id={`${fid}-l3`}
               type="date"
               value={startsAt}
               onChange={(e) => setStartsAt(e.target.value)}
@@ -398,8 +415,14 @@ function FestivalFormModal({
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Ends</label>
+            <label
+              htmlFor={`${fid}-l4`}
+              className="text-xs font-semibold text-gray-500 mb-1.5 block"
+            >
+              Ends
+            </label>
             <input
+              id={`${fid}-l4`}
               type="date"
               value={endsAt}
               min={startsAt}
@@ -435,6 +458,7 @@ function FestivalFormModal({
             )}
           </motion.button>
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-3 rounded-xl"
           >

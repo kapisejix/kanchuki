@@ -3,9 +3,9 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { LayoutGrid, Loader2, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type DefaultCategory = {
   id: string;
@@ -22,16 +22,16 @@ export default function DefaultCategoriesPage() {
   const [newName, setNewName] = useState('');
   const [newSort, setNewSort] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch(`${API_URL}/v1/admin/default-categories`, adminGetOptions());
     const json = await res.json();
     setCategories(json.data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const update = (id: string, patch: Partial<DefaultCategory>) => {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
@@ -180,6 +180,7 @@ export default function DefaultCategoriesPage() {
                 </td>
                 <td className="px-3 py-2">
                   <button
+                    type="button"
                     onClick={() => {
                       update(cat.id, { is_active: !cat.is_active });
                       void save({ ...cat, is_active: !cat.is_active });
@@ -199,6 +200,7 @@ export default function DefaultCategoriesPage() {
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => save(cat)}
                       disabled={saving === cat.id}
                       className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
@@ -211,6 +213,7 @@ export default function DefaultCategoriesPage() {
                       )}
                     </button>
                     <button
+                      type="button"
                       onClick={() => remove(cat.id)}
                       className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                       aria-label="Delete category"
@@ -243,6 +246,7 @@ export default function DefaultCategoriesPage() {
               <td className="px-3 py-2" />
               <td className="px-3 py-2">
                 <button
+                  type="button"
                   onClick={create}
                   disabled={saving === 'new'}
                   className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"

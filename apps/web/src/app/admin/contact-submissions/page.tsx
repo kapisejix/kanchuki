@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // Same vocabulary as the public form (apps/web/src/app/contact/ContactForm.tsx)
 // and the API's CONTACT_TOPICS (apps/api/src/routes/public/public-misc.ts).
@@ -190,6 +190,7 @@ export default function ContactSubmissionsPage() {
           <span className="text-xs font-semibold text-gray-500">Topic</span>
           <div className="flex flex-wrap gap-2">
             <button
+              type="button"
               onClick={() => handleTopicChange('')}
               className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
                 topic === ''
@@ -201,6 +202,7 @@ export default function ContactSubmissionsPage() {
             </button>
             {TOPICS.map((t) => (
               <button
+                type="button"
                 key={t}
                 onClick={() => handleTopicChange(t)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
@@ -230,9 +232,9 @@ export default function ContactSubmissionsPage() {
       {/* Loading skeleton */}
       {loading && messages.length === 0 && (
         <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
+          {Array.from({ length: 3 }, (_, i) => `sk-${i}`).map((k, i) => (
             <motion.div
-              key={i}
+              key={k}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}

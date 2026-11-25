@@ -1,9 +1,10 @@
 'use client';
 
+import { Sheet } from '@/components/Sheet';
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Status = {
   connected: boolean;
@@ -280,17 +281,15 @@ export default function AdminGbpPage() {
         )}
       </section>
 
-      {picking && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
-          onClick={() => setPicking(null)}
-        >
-          <div
-            role="dialog"
-            aria-label="Pick Google location"
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Sheet
+        open={picking !== null}
+        onClose={() => setPicking(null)}
+        ariaLabel="Pick Google location"
+        overlayClassName="z-50 bg-black/60 flex items-center justify-center p-4"
+        panelClassName="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col"
+      >
+        {picking && (
+          <>
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900">
                 Link {picking.retailer.shop_name} to…
@@ -327,9 +326,9 @@ export default function AdminGbpPage() {
                 ))
               )}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Sheet>
     </div>
   );
 }

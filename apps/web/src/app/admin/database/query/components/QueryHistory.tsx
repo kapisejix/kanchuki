@@ -31,6 +31,7 @@ export function QueryHistory({
         <div className="flex items-center gap-1">
           {history.length > 0 && (
             <button
+              type="button"
               onClick={onClearHistory}
               className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
               title="Clear History"
@@ -39,6 +40,7 @@ export function QueryHistory({
             </button>
           )}
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
           >
@@ -55,9 +57,9 @@ export function QueryHistory({
             <p className="text-xs">No query history recorded yet.</p>
           </div>
         ) : (
-          history.map((entry, i) => (
+          history.map((entry) => (
             <div
-              key={i}
+              key={`${entry.timestamp}-${entry.query}`}
               className="p-3 rounded-xl border border-gray-200 bg-gray-50/60 hover:bg-gray-100/80 transition-colors group relative"
             >
               <div className="flex items-center justify-between mb-1.5 text-[10px] text-gray-500 font-mono">
@@ -85,6 +87,7 @@ export function QueryHistory({
               )}
 
               <button
+                type="button"
                 onClick={() => {
                   onSelectQuery(entry.query);
                   onClose();

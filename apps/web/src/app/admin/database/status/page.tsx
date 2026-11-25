@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -231,8 +231,8 @@ export default function DatabaseStatusPage() {
       {/* ── Loading State ───────────────────────────────────────── */}
       {loading && (
         <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white/80 rounded-2xl border border-gray-200/80 p-6">
+          {Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => (
+            <div key={k} className="bg-white/80 rounded-2xl border border-gray-200/80 p-6">
               <div className="h-5 bg-gray-200/80 rounded w-1/3 mb-4 animate-pulse" />
               <div className="space-y-3">
                 <div className="h-3 bg-gray-200/80 rounded w-full animate-pulse" />
@@ -360,9 +360,9 @@ export default function DatabaseStatusPage() {
                       </>
                     )}
                   </div>
-                  {status.replica?.lag_seconds !== null && (
+                  {status.replica && status.replica.lag_seconds !== null && (
                     <span className="text-xs text-gray-400">
-                      Replication lag: {formatLag(status.replica!.lag_seconds)}
+                      Replication lag: {formatLag(status.replica.lag_seconds)}
                     </span>
                   )}
                 </div>
@@ -396,7 +396,9 @@ export default function DatabaseStatusPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {status.backup.latest_key ? (
-                      <StatusBadge healthy={(status.backup.latest_age_hours ?? Infinity) < 48} />
+                      <StatusBadge
+                        healthy={(status.backup.latest_age_hours ?? Number.POSITIVE_INFINITY) < 48}
+                      />
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">
                         No Backups

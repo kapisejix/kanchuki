@@ -29,6 +29,7 @@ export default function AdminError({
           </pre>
         )}
         <button
+          type="button"
           onClick={reset}
           className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800"
         >

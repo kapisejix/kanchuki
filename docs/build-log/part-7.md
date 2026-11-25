@@ -798,7 +798,7 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | mobile: Biome 0 errors, 0 warnings across src, tests, config and app/ (was 22 errors, 68 warnings in app/). tsc 0. Tests 725 passed. |
 | Not verified | Not opened in Expo Go. Worth a device look: tab-bar Add button, Settings (KYC row, store details), Ratings, campaign edit. |
 
-## 2026-11-25 — Biome: scripts/, services/, supabase/ clean (this PR)
+## 2026-11-25 — Biome: scripts/, services/, supabase/ clean (#347)
 
 | Area | Change |
 |---|---|
@@ -813,3 +813,21 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Not verified | Supabase function (no Deno locally) and try-on demo frontend (no node_modules) not typechecked; Biome only. |
 | seed-credits | Script read `retailer.try_on_credits`, a column that no longer exists (tsc 6 errors). Now upserts a `RetailerLimitOverride` for `TRY_ON_GENERATION` (100/MONTH), which `effectiveLimit()` reads before the plan limit. tsc 0. Not run (writes to DATABASE_URL). |
 | Found, not fixed | `e2e-test.ts`/`create-catalog-grid.ts` have pre-existing tsc errors (untyped `res.json()`, `import.meta` in CJS, missing `sharp` namespace). |
+
+## 2026-11-25 — Biome: apps/web admin root + subfolders a–o (this PR, web 1 of 3)
+
+| Area | Change |
+|---|---|
+| Scope | `src/app/admin` root files plus subfolders `activity` … `operations`. Counted from the whole-repo run: 239 issues (214 errors, 25 warnings) in 43 files. |
+| Buttons | 94 `<button>` got `type="button"`. Each was checked: none sits inside a `<form>` (the 4 files with forms already typed their in-form buttons). |
+| Labels | 34 labels tied to their field with `htmlFor` + `useId` (AI providers, commission ×2 modals, login, festivals, deletion vault, catalog tiers, bug report note). 6 bug-report labels that head a group or text, not a field, are now `<p>`. |
+| Bug: DB status | `database/status`: `status.replica?.lag_seconds !== null` was true when `replica` is `null`, then `status.replica!.lag_seconds` threw. Now checks `status.replica &&` first. |
+| Audit log | Two effects (mount + filter change, both with eslint-disables) merged into one keyed on `fetchLogs`. Clear no longer fires a second fetch with the old filters. Next-page reads a local cursor instead of `!`. |
+| Hooks | `load` wrapped in `useCallback` and added to effect deps in 8 pages. Reset/trigger effects kept with `biome-ignore` + reason (login refocus, sidebar close on route, deletion-vault filters, deployments filter). |
+| Overlays | GBP location picker now uses the shared `<Sheet>` (added to the keyboard-inset test's ADOPTED list). Background lightbox and SQL copy cell are `<button>`s. Backup and vault rows keep mouse row-click (`biome-ignore`, reason given); their chevron is the keyboard control and now has `aria-label`/`aria-expanded`. The vault chevron did nothing on its own before. |
+| Dead code | Sidebar `separator` nav type + branch (no separators in `NAV_ITEMS`), commission `onRefresh` prop (never read), discovery `selected` (never read), unused map index params. |
+| Keys | Skeleton lists use `sk-N` string keys; bursts, gate history and query history keyed by their fields. SQL result rows and backup command lines keep index keys with `biome-ignore` (no id, list replaced whole). |
+| Kept with reason | 8 `autoFocus` on the field of a dialog/step the user just opened; dashboard skeleton `role="status"` (`<output>` would only allow phrasing content). |
+| Mechanical | Literal keys (37), `Number.*`, template literal, `!` swap in AI provider reorder replaced by a guard. |
+| Local runs | Scope: Biome 0 errors, 0 warnings. Whole repo 466 errors, 63 warnings (was 680/88; rest is admin p–z and other web). web tsc 0. web tests 780 passed. |
+| Not verified | Not opened in a browser. Worth a look: admin login, GBP picker, audit-log Search/Clear, SQL results copy cell. |

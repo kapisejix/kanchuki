@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ServerMemoryCard } from './components/ServerMemoryCard';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Stats = {
   total_retailers: number;
@@ -233,13 +233,14 @@ export default function AdminDashboard() {
       )}
 
       {!stats && !error && (
+        // biome-ignore lint/a11y/useSemanticElements: <output> only allows phrasing content; this is a block skeleton grid
         <div
           role="status"
           aria-label="Loading dashboard"
           className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 lg:grid-cols-4"
         >
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white p-6">
+          {Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => (
+            <div key={k} className="bg-white p-6">
               <div className="mb-4 h-3 w-20 rounded bg-gray-100" />
               <div className="mb-2 h-8 w-16 rounded bg-gray-100" />
               <div className="h-3 w-24 rounded bg-gray-100" />
