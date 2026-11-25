@@ -92,6 +92,7 @@ export function SchemaBrowser({
           </div>
         </div>
         <button
+          type="button"
           onClick={onRefresh}
           disabled={schemaLoading}
           className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
@@ -126,6 +127,7 @@ export function SchemaBrowser({
               >
                 {/* Schema Header */}
                 <button
+                  type="button"
                   onClick={() => onToggleSchema(sch.schema_name)}
                   className="w-full px-3 py-2.5 flex items-center justify-between text-left hover:bg-gray-100/70 transition-colors"
                 >
@@ -161,6 +163,7 @@ export function SchemaBrowser({
                           <div key={table.table_name}>
                             <div className="flex items-center justify-between px-3 py-2 hover:bg-gray-50/80 transition-colors group">
                               <button
+                                type="button"
                                 onClick={() => onToggleTable(tableKey)}
                                 className="flex items-center gap-2 flex-1 text-left"
                               >
@@ -176,6 +179,7 @@ export function SchemaBrowser({
                                 </span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() => onSelectTable(table.table_name)}
                                 className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-violet-50 hover:text-violet-600 transition-colors opacity-0 group-hover:opacity-100"
                               >

@@ -23,9 +23,9 @@ import {
   Wallet,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -282,7 +282,6 @@ export default function CommissionPage() {
               onAdd={() => setFormOpen(true)}
               onExport={(months) => void exportCsv(months)}
               onRowClick={setDetailExpense}
-              onRefresh={refreshMonth}
             />
           )}
         </>
@@ -291,9 +290,9 @@ export default function CommissionPage() {
       {/* Loading skeleton */}
       {!overview && !error && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+          {Array.from({ length: 4 }, (_, i) => `sk-${i}`).map((k) => (
             <div
-              key={i}
+              key={k}
               className="bg-white/80 rounded-2xl border border-gray-200/80 p-5 animate-pulse"
             >
               <div className="h-3 bg-gray-200/80 rounded w-20 mb-3" />
@@ -426,7 +425,6 @@ function ExpenditureTab({
   onAdd,
   onExport,
   onRowClick,
-  onRefresh,
 }: {
   month: string;
   monthOptions: string[];
@@ -435,7 +433,6 @@ function ExpenditureTab({
   onAdd: () => void;
   onExport: (months: number) => void;
   onRowClick: (expense: Expense) => void;
-  onRefresh: () => void;
 }) {
   const summary = data?.summary;
 
@@ -455,6 +452,7 @@ function ExpenditureTab({
         <div className="flex items-center gap-1.5 flex-wrap">
           {monthOptions.slice(0, 6).map((p) => (
             <button
+              type="button"
               key={p}
               onClick={() => onMonthChange(p)}
               className={`text-xs font-medium rounded-full px-3 py-1.5 border transition-colors ${
@@ -619,6 +617,7 @@ function ExportMenu({ onExport }: { onExport: (months: number) => void }) {
             </p>
             {EXPORT_RANGES.map((r) => (
               <button
+                type="button"
                 key={r.months}
                 onClick={() => {
                   setOpen(false);
@@ -649,6 +648,7 @@ function AddExpenseModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const fid = useId();
   const [period, setPeriod] = useState(defaultMonth);
   const [amountRs, setAmountRs] = useState('');
   const [category, setCategory] = useState('');
@@ -657,7 +657,7 @@ function AddExpenseModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const amountPaise = Math.round((parseFloat(amountRs) || 0) * 100);
+  const amountPaise = Math.round((Number.parseFloat(amountRs) || 0) * 100);
   const canSubmit = amountPaise > 0 && category.trim().length > 0 && date && !saving;
 
   const submit = async () => {
@@ -709,6 +709,7 @@ function AddExpenseModal({
           Add Expense
         </h3>
         <button
+          type="button"
           onClick={onClose}
           className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
           aria-label="Close"
@@ -719,10 +720,11 @@ function AddExpenseModal({
 
       <div className="space-y-4">
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+          <label htmlFor={`${fid}-l1`} className="text-xs font-semibold text-gray-500 mb-1.5 block">
             Commission Month
           </label>
           <select
+            id={`${fid}-l1`}
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
             className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-white outline-none focus:border-ink-400"
@@ -736,16 +738,20 @@ function AddExpenseModal({
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Amount (₹)</label>
+          <label htmlFor={`${fid}-l2`} className="text-xs font-semibold text-gray-500 mb-1.5 block">
+            Amount (₹)
+          </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
               ₹
             </span>
             <input
+              id={`${fid}-l2`}
               value={amountRs}
               onChange={(e) => setAmountRs(e.target.value.replace(/[^\d.]/g, ''))}
               inputMode="decimal"
               placeholder="0.00"
+              // biome-ignore lint/a11y/noAutofocus: focus moves into the modal the user just opened
               autoFocus
               className="w-full border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm font-semibold text-gray-900 outline-none focus:border-ink-400 tabular-nums"
             />
@@ -753,10 +759,11 @@ function AddExpenseModal({
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+          <label htmlFor={`${fid}-l3`} className="text-xs font-semibold text-gray-500 mb-1.5 block">
             Where / Category
           </label>
           <input
+            id={`${fid}-l3`}
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="e.g. Instagram ads, Travel, Software, Staff…"
@@ -765,8 +772,11 @@ function AddExpenseModal({
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Date</label>
+          <label htmlFor={`${fid}-l4`} className="text-xs font-semibold text-gray-500 mb-1.5 block">
+            Date
+          </label>
           <input
+            id={`${fid}-l4`}
             type="date"
             value={date}
             max={istDate(new Date().toISOString())}
@@ -776,10 +786,11 @@ function AddExpenseModal({
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+          <label htmlFor={`${fid}-l5`} className="text-xs font-semibold text-gray-500 mb-1.5 block">
             Notes / Explanation
           </label>
           <textarea
+            id={`${fid}-l5`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Why was this spent? Add detail for your records…"
@@ -832,6 +843,7 @@ function ExpenseDetailModal({
   onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
+  const fid = useId();
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -855,7 +867,7 @@ function ExpenseDetailModal({
     setEditing(true);
   };
 
-  const amountPaise = Math.round((parseFloat(amountRs) || 0) * 100);
+  const amountPaise = Math.round((Number.parseFloat(amountRs) || 0) * 100);
   const canSave = amountPaise > 0 && category.trim().length > 0 && date && !saving;
 
   const save = async () => {
@@ -927,6 +939,7 @@ function ExpenseDetailModal({
               Edit Expense
             </h3>
             <button
+              type="button"
               onClick={() => setEditing(false)}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
               aria-label="Cancel editing"
@@ -937,10 +950,14 @@ function ExpenseDetailModal({
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+              <label
+                htmlFor={`${fid}-l6`}
+                className="text-xs font-semibold text-gray-500 mb-1.5 block"
+              >
                 Commission Month
               </label>
               <select
+                id={`${fid}-l6`}
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 bg-white outline-none focus:border-ink-400"
@@ -954,12 +971,18 @@ function ExpenseDetailModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Amount (₹)</label>
+              <label
+                htmlFor={`${fid}-l7`}
+                className="text-xs font-semibold text-gray-500 mb-1.5 block"
+              >
+                Amount (₹)
+              </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
                   ₹
                 </span>
                 <input
+                  id={`${fid}-l7`}
                   value={amountRs}
                   onChange={(e) => setAmountRs(e.target.value.replace(/[^\d.]/g, ''))}
                   inputMode="decimal"
@@ -969,10 +992,14 @@ function ExpenseDetailModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+              <label
+                htmlFor={`${fid}-l8`}
+                className="text-xs font-semibold text-gray-500 mb-1.5 block"
+              >
                 Where / Category
               </label>
               <input
+                id={`${fid}-l8`}
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-ink-400"
@@ -980,8 +1007,14 @@ function ExpenseDetailModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Date</label>
+              <label
+                htmlFor={`${fid}-l9`}
+                className="text-xs font-semibold text-gray-500 mb-1.5 block"
+              >
+                Date
+              </label>
               <input
+                id={`${fid}-l9`}
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -990,10 +1023,14 @@ function ExpenseDetailModal({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+              <label
+                htmlFor={`${fid}-l10`}
+                className="text-xs font-semibold text-gray-500 mb-1.5 block"
+              >
                 Notes / Explanation
               </label>
               <textarea
+                id={`${fid}-l10`}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
@@ -1027,6 +1064,7 @@ function ExpenseDetailModal({
                 )}
               </motion.button>
               <button
+                type="button"
                 onClick={() => setEditing(false)}
                 className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-3 rounded-xl"
               >
@@ -1043,6 +1081,7 @@ function ExpenseDetailModal({
               <Tag size={20} className="text-amber-500" />
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
               aria-label="Close"
@@ -1096,6 +1135,7 @@ function ExpenseDetailModal({
                   {deleting ? 'Deleting…' : 'Yes, delete'}
                 </motion.button>
                 <button
+                  type="button"
                   onClick={() => setConfirming(false)}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2.5 rounded-xl"
                 >
@@ -1104,6 +1144,7 @@ function ExpenseDetailModal({
               </div>
             ) : (
               <button
+                type="button"
                 onClick={() => setConfirming(true)}
                 className="w-full flex items-center justify-center gap-2 text-red-600 hover:text-red-500 hover:bg-red-50 text-sm font-medium py-2.5 rounded-xl transition-colors"
               >

@@ -14,9 +14,9 @@ import {
   Store,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ export default function AggregatorsPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<ChannelSync | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const [syncsRes, statsRes] = await Promise.all([
         fetch(`${API_URL}/v1/admin/aggregators`, adminGetOptions()),
@@ -122,11 +122,11 @@ export default function AggregatorsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load aggregator data');
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   return (
     <motion.div
@@ -326,6 +326,7 @@ export default function AggregatorsPage() {
                             </a>
                           )}
                           <button
+                            type="button"
                             onClick={() => {
                               setSelected(s);
                               setDetailOpen(true);
@@ -418,6 +419,7 @@ function DetailModal({ sync, onClose }: { sync: ChannelSync; onClose: () => void
             {CHANNEL_LABELS[sync.channel] ?? sync.channel} Connection
           </h3>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
             aria-label="Close"

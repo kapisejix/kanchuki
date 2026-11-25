@@ -16,7 +16,7 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Customer = {
   id: string;
@@ -165,10 +165,10 @@ export default function CustomersPage() {
             </thead>
             <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
               {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="border-b border-gray-50">
-                    {[...Array(7)].map((_, j) => (
-                      <td key={j} className="px-4 py-4">
+                Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((row) => (
+                  <tr key={row} className="border-b border-gray-50">
+                    {Array.from({ length: 7 }, (_, j) => `${row}-${j}`).map((cell) => (
+                      <td key={cell} className="px-4 py-4">
                         <div
                           className="h-4 bg-gray-200/60 rounded animate-pulse"
                           style={{ width: `${40 + Math.random() * 40}%` }}
@@ -352,12 +352,14 @@ export default function CustomersPage() {
           />
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setBlockDialog(null)}
               className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={async () => {
                 if (!blockReason.trim()) return;
                 setActionMsg('');

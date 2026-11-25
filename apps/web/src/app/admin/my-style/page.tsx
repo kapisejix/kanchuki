@@ -7,7 +7,7 @@ import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { Loader2, Palette } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Family = { id: string; name: string; aliases: string[]; is_active: boolean };
 type PaletteRow = {
@@ -69,7 +69,9 @@ function useData<T>(path: string) {
       .then(setData)
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'));
   }, [path]);
-  useEffect(reload, [reload]);
+  useEffect(() => {
+    reload();
+  }, [reload]);
   return { data, error, reload };
 }
 
@@ -90,6 +92,7 @@ export default function MyStyleAdminPage() {
       <div className="flex gap-2 border-b border-gray-200" role="tablist">
         {TABS.map((t) => (
           <button
+            type="button"
             key={t}
             role="tab"
             aria-selected={tab === t}
@@ -173,6 +176,7 @@ function Colours() {
           />
         </label>
         <button
+          type="button"
           className={btn}
           disabled={busy || !name.trim()}
           onClick={async () => {
@@ -203,7 +207,12 @@ function FamilyRow({ f, busy, save }: { f: Family; busy: boolean; save: (b: obje
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
-      <button className={btn} disabled={busy} onClick={() => save({ aliases: list(text) })}>
+      <button
+        type="button"
+        className={btn}
+        disabled={busy}
+        onClick={() => save({ aliases: list(text) })}
+      >
         Save
       </button>
       <label className="flex items-center gap-1 text-xs text-gray-600">
@@ -287,6 +296,7 @@ function PaletteCell({
         </label>
       </div>
       <button
+        type="button"
         className={btn}
         disabled={busy}
         onClick={() => save({ good_families: list(good), avoid_families: list(avoid) })}
@@ -402,6 +412,7 @@ function Trends() {
         </label>
         <div className="flex items-end">
           <button
+            type="button"
             className={btn}
             disabled={busy || f.label.trim().length < 2}
             onClick={() =>

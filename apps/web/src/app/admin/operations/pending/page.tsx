@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type PendingOperation = {
   id: string;
@@ -225,10 +225,12 @@ export default function PendingApprovalsPage() {
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="Reason for rejection..."
             className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 min-h-[100px]"
+            // biome-ignore lint/a11y/noAutofocus: focus moves into the reject dialog the user just opened
             autoFocus
           />
           <div className="flex items-center justify-end gap-3 mt-4">
             <button
+              type="button"
               onClick={() => {
                 setRejectModal(null);
                 setRejectReason('');

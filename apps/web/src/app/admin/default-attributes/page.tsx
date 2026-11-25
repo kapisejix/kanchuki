@@ -3,9 +3,9 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { Loader2, Plus, Save, Sparkles, Tags, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Kind = 'STYLE' | 'FABRIC';
 const KINDS: { value: Kind; label: string }[] = [
@@ -30,17 +30,17 @@ export default function DefaultAttributesPage() {
   const [newName, setNewName] = useState('');
   const [newSort, setNewSort] = useState('');
 
-  const load = async (k: Kind) => {
+  const load = useCallback(async (k: Kind) => {
     setLoading(true);
     const res = await fetch(`${API_URL}/v1/admin/default-attributes?kind=${k}`, adminGetOptions());
     const json = await res.json();
     setAttributes(json.data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load(kind);
-  }, [kind]);
+  }, [kind, load]);
 
   const update = (id: string, patch: Partial<DefaultAttribute>) => {
     setAttributes((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
@@ -143,6 +143,7 @@ export default function DefaultAttributesPage() {
       <div className="flex gap-2">
         {KINDS.map((k) => (
           <button
+            type="button"
             key={k.value}
             onClick={() => setKind(k.value)}
             className={`px-4 py-2 text-sm font-medium rounded-xl transition-colors ${
@@ -203,6 +204,7 @@ export default function DefaultAttributesPage() {
                   </td>
                   <td className="px-3 py-2">
                     <button
+                      type="button"
                       onClick={() => {
                         update(attr.id, { is_active: !attr.is_active });
                         void save({ ...attr, is_active: !attr.is_active });
@@ -222,6 +224,7 @@ export default function DefaultAttributesPage() {
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
                       <button
+                        type="button"
                         onClick={() => save(attr)}
                         disabled={saving === attr.id}
                         className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
@@ -234,6 +237,7 @@ export default function DefaultAttributesPage() {
                         )}
                       </button>
                       <button
+                        type="button"
                         onClick={() => remove(attr.id)}
                         className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                         aria-label="Delete attribute"
@@ -266,6 +270,7 @@ export default function DefaultAttributesPage() {
                 <td className="px-3 py-2" />
                 <td className="px-3 py-2">
                   <button
+                    type="button"
                     onClick={create}
                     disabled={saving === 'new'}
                     className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"

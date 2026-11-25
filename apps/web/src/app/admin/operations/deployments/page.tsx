@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Deployment = {
   id: string;
@@ -82,7 +82,7 @@ export default function DeploymentsPage() {
     [cursor, filter],
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- run on mount + filter change only; loadDeployments also depends on cursor and re-adding it would reload on pagination
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run on mount + filter change only; loadDeployments also depends on cursor and re-adding it would reload on pagination
   useEffect(() => {
     loadDeployments(true);
   }, [filter]);
@@ -173,7 +173,10 @@ export default function DeploymentsPage() {
                   </div>
                 </div>
                 {d.status === 'failed' && (
-                  <button className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1 shrink-0"
+                  >
                     <RotateCcw size={12} />
                     Rollback
                   </button>

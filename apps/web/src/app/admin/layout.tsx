@@ -30,7 +30,7 @@ const LoginScreen = nextDynamic(() => import('./components/LoginScreen'), {
 
 // ── API URL ──────────────────────────────────────────────────────
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ── Main Layout ──────────────────────────────────────────────────
 
@@ -87,11 +87,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [router]);
 
   // Close mobile sidebar on route change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the close trigger
   useEffect(() => {
     setMobileSidebarOpen(false);
   }, [pathname]);
 
-  const handleLogin = (token: string, role?: string) => {
+  const handleLogin = (_token: string, role?: string) => {
     const userRole = role ?? sessionStorage.getItem('admin_role') ?? 'SUPER_ADMIN';
     setAdminRole(userRole);
     if (userRole === 'MARKETING_AGENT' || userRole === 'SUPPORT_AGENT') {

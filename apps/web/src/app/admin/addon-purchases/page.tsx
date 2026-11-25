@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { IndianRupee, Loader2, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Purchase = {
   id: string;
@@ -242,7 +242,7 @@ export default function AddonPurchasesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {top_buyers.map((buyer, i) => (
+                    {top_buyers.map((buyer) => (
                       <tr
                         key={buyer.retailer_id}
                         className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"

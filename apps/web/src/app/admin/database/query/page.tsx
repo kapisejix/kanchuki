@@ -30,7 +30,7 @@ import type {
   SchemaResponse,
 } from './components/types';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -336,6 +336,7 @@ LIMIT 20;`);
           {/* Action Drawer Toggles */}
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => {
                 setShowSchema(!showSchema);
                 if (!showSchema) void fetchSchema();
@@ -351,6 +352,7 @@ LIMIT 20;`);
             </button>
 
             <button
+              type="button"
               onClick={() => setShowSaved(true)}
               className="px-3 py-2 rounded-xl border border-gray-700 bg-gray-800/80 text-xs font-semibold text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-1.5"
             >
@@ -359,6 +361,7 @@ LIMIT 20;`);
             </button>
 
             <button
+              type="button"
               onClick={() => setShowHistory(true)}
               className="px-3 py-2 rounded-xl border border-gray-700 bg-gray-800/80 text-xs font-semibold text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-1.5"
             >
@@ -373,6 +376,7 @@ LIMIT 20;`);
           <span className="text-xs font-semibold text-gray-400 mr-1">Templates:</span>
           {SAMPLE_QUERIES.map((sample) => (
             <button
+              type="button"
               key={sample.label}
               onClick={() => loadSample(sample.query)}
               className="px-3 py-1 rounded-full text-xs font-medium bg-gray-800/60 border border-gray-700/60 text-gray-300 hover:text-white hover:border-violet-500/60 transition-colors"
@@ -426,6 +430,7 @@ LIMIT 20;`);
                 <span className="text-xs font-bold text-gray-300">SQL Editor (Monaco)</span>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => setShowSaveDialog(true)}
                     className="px-3 py-1.5 rounded-xl border border-gray-700 bg-gray-900/60 text-xs font-semibold text-gray-300 hover:text-white transition-colors flex items-center gap-1"
                   >
@@ -433,6 +438,7 @@ LIMIT 20;`);
                     <span>Save Query</span>
                   </button>
                   <button
+                    type="button"
                     onClick={handleRun}
                     disabled={loading || !isValid}
                     className="px-4 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md"
@@ -505,16 +511,19 @@ LIMIT 20;`);
             value={saveQueryName}
             onChange={(e) => setSaveQueryName(e.target.value)}
             className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500"
+            // biome-ignore lint/a11y/noAutofocus: focus moves into the save dialog the user just opened
             autoFocus
           />
           <div className="flex justify-end gap-2">
             <button
+              type="button"
               onClick={() => setShowSaveDialog(false)}
               className="px-3 py-1.5 rounded-xl border border-gray-700 text-xs font-semibold text-gray-400 hover:text-white"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSaveQuery}
               disabled={!saveQueryName.trim()}
               className="px-4 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-xs font-bold text-white"

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type AuditLogEntry = {
   id: string;
@@ -204,6 +204,7 @@ function AuditLogRow({ entry }: { entry: AuditLogEntry }) {
     >
       {/* Main row (always visible) */}
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-3 sm:gap-4 px-4 py-3.5 text-left hover:bg-gray-50/50 transition-colors"
       >
@@ -357,11 +358,11 @@ export default function AuditLogPage() {
     [committedFilters],
   );
 
-  // Load on mount — runs once because committedFilters is stable
+  // Load on mount, and again whenever Search/Clear commits a new filter object
+  // (fetchLogs is rebuilt from committedFilters).
   useEffect(() => {
     fetchLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchLogs]);
 
   const handleSearch = () => {
     // Commit the current filter inputs to trigger API call
@@ -382,21 +383,13 @@ export default function AuditLogPage() {
     setCommittedFilters({});
     setCursorStack([]);
     setCurrentCursor(undefined);
-    fetchLogs(undefined);
   };
 
-  // When committed filters change (after Search click), fetch with new filters
-  useEffect(() => {
-    if (Object.keys(committedFilters).length > 0 || logs.length > 0) {
-      fetchLogs();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [committedFilters]);
-
   const handleNext = () => {
-    if (pagination?.cursor) {
+    const next = pagination?.cursor;
+    if (next) {
       setCursorStack((prev) => (currentCursor ? [...prev, currentCursor] : prev));
-      fetchLogs(pagination.cursor!, true);
+      fetchLogs(next, true);
     }
   };
 
@@ -514,9 +507,9 @@ export default function AuditLogPage() {
       {/* Loading skeleton */}
       {loading && logs.length === 0 && (
         <div className="space-y-2">
-          {[...Array(5)].map((_, i) => (
+          {Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((k, i) => (
             <motion.div
-              key={i}
+              key={k}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}

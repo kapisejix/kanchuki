@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type LogEntry = {
   id: string;
@@ -179,8 +179,11 @@ export default function ActivityFeedPage() {
             <span className="text-xs text-red-500">(&gt;20/hr threshold)</span>
           </div>
           <div className="space-y-1.5">
-            {bursts.map((b, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm">
+            {bursts.map((b) => (
+              <div
+                key={`${b.action}-${b.resource_type}-${b.actor_type}`}
+                className="flex items-center gap-3 text-sm"
+              >
                 <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-md text-xs font-medium">
                   {b.count}x
                 </span>
@@ -237,8 +240,8 @@ export default function ActivityFeedPage() {
       <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         {loading ? (
           <div className="space-y-1 p-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3 py-3 px-3">
+            {Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((k) => (
+              <div key={k} className="flex items-center gap-3 py-3 px-3">
                 <div className="w-8 h-8 bg-gray-200/60 rounded-xl animate-pulse" />
                 <div className="flex-1 space-y-1">
                   <div className="h-4 bg-gray-200/60 rounded w-3/4 animate-pulse" />
@@ -324,6 +327,7 @@ export default function ActivityFeedPage() {
             <span className="text-xs text-gray-400">{total} total entries</span>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={handlePrev}
                 disabled={cursorHistory.length === 0}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"
@@ -335,6 +339,7 @@ export default function ActivityFeedPage() {
                 Page {cursorHistory.length + 1}
               </span>
               <button
+                type="button"
                 onClick={handleNext}
                 disabled={!hasMore}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"

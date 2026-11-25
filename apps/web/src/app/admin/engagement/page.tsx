@@ -5,7 +5,7 @@ import { AlertTriangle, Eye, Heart, MessageSquare, Search, TrendingUp } from 'lu
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type TopEntry = { value: string; count: number };
 type ProductInfo = { name: string | null; sku: string | null; thumbnail_url: string | null };

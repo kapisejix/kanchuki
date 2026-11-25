@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { BarChart3, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type UsageRow = {
   retailer_id: string;
@@ -84,6 +84,7 @@ function Pager({
       </span>
       <div className="flex items-center gap-2">
         <button
+          type="button"
           onClick={() => onPage(Math.max(1, page - 1))}
           disabled={page === 1}
           aria-label="Previous page"
@@ -92,6 +93,7 @@ function Pager({
           <ChevronLeft size={16} />
         </button>
         <button
+          type="button"
           onClick={() => onPage(Math.min(pages, page + 1))}
           disabled={page === pages}
           aria-label="Next page"
@@ -244,7 +246,7 @@ export default function AiUsagePage() {
                       <td
                         className={`px-4 py-3 text-right ${pct !== null && pct >= 80 ? 'font-semibold text-amber-600' : 'text-gray-700'}`}
                       >
-                        {pct === null ? '—' : `${pct}% of ${limit!.toLocaleString()}`}
+                        {pct === null || !limit ? '—' : `${pct}% of ${limit.toLocaleString()}`}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-700">
                         {r.studio_shoots.toLocaleString()}

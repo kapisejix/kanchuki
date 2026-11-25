@@ -4,9 +4,9 @@ import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Image as ImageIcon, Loader2, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type BackgroundImage = {
   id: string;
@@ -24,16 +24,16 @@ export default function BackgroundImagesPage() {
   const [status, setStatus] = useState('');
   const [preview, setPreview] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch(`${API_URL}/v1/admin/background-images`, adminGetOptions());
     const json = await res.json();
     setRows(json.data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const deleteRow = async (row: BackgroundImage) => {
     if (!confirm(`Delete "${row.name}"? Products using it fall back to Auto backdrop.`)) return;
@@ -142,6 +142,7 @@ export default function BackgroundImagesPage() {
                 <span className="text-xs font-medium text-gray-700 truncate">{row.name}</span>
                 <div className="flex items-center shrink-0">
                   <button
+                    type="button"
                     onClick={() => toggleActive(row)}
                     className={`p-1.5 rounded-lg transition-colors ${
                       row.is_active
@@ -153,6 +154,7 @@ export default function BackgroundImagesPage() {
                     {row.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
                   </button>
                   <button
+                    type="button"
                     onClick={() => deleteRow(row)}
                     className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                     aria-label="Delete"
@@ -197,7 +199,9 @@ export default function BackgroundImagesPage() {
       </div>
 
       {preview && (
-        <div
+        <button
+          type="button"
+          aria-label="Close preview"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 cursor-zoom-out"
           onClick={() => setPreview(null)}
         >
@@ -207,7 +211,7 @@ export default function BackgroundImagesPage() {
             alt="Background full size"
             className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
           />
-        </div>
+        </button>
       )}
     </motion.div>
   );
