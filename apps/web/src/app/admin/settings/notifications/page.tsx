@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type NotificationPreferences = {
   backup_failure: { enabled: boolean; channels: ('admin_bell' | 'email')[] };
@@ -146,6 +146,7 @@ export default function NotificationsSettingsPage() {
     description: string;
   }) => (
     <button
+      type="button"
       onClick={() => setExpandedSection(expandedSection === id ? null : id)}
       className="w-full flex items-center justify-between px-5 py-4 bg-white/50 hover:bg-white/80 rounded-xl border border-gray-200/60 transition cursor-pointer"
     >
@@ -252,8 +253,8 @@ export default function NotificationsSettingsPage() {
       {/* Loading */}
       {loading ? (
         <motion.div variants={itemVariants} className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white/60 rounded-xl border border-gray-200/60 p-6">
+          {Array.from({ length: 3 }, (_, i) => `sk-${i}`).map((k) => (
+            <div key={k} className="bg-white/60 rounded-xl border border-gray-200/60 p-6">
               <div className="h-5 bg-gray-200/60 rounded w-1/3 mb-3 animate-pulse" />
               <div className="h-3 bg-gray-200/60 rounded w-2/3 animate-pulse" />
             </div>
@@ -355,6 +356,7 @@ export default function NotificationsSettingsPage() {
                         </p>
                         <div className="flex gap-3">
                           <button
+                            type="button"
                             onClick={() => toggleChannel('admin_bell')}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition cursor-pointer ${
                               prefs.backup_failure.channels.includes('admin_bell')
@@ -366,6 +368,7 @@ export default function NotificationsSettingsPage() {
                             Admin Bell
                           </button>
                           <button
+                            type="button"
                             onClick={() => toggleChannel('email')}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition cursor-pointer ${
                               prefs.backup_failure.channels.includes('email')
@@ -418,6 +421,7 @@ export default function NotificationsSettingsPage() {
                           <div className="flex items-center gap-1">
                             {[1, 2, 3, 5].map((n) => (
                               <button
+                                type="button"
                                 key={n}
                                 onClick={() =>
                                   setPrefs({

@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 const INDIAN_STATES = [
   'Andhra Pradesh',
@@ -154,6 +154,7 @@ function RetailersContent() {
     }
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: searchParams is the reload trigger; filters change only through the form submit, which loads by itself
   useEffect(() => {
     loadRetailers(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -343,6 +344,7 @@ function RetailersContent() {
         <div className="flex items-center justify-between bg-red-50/80 border border-red-200 rounded-xl px-4 py-2.5">
           <span className="text-sm text-red-700 font-medium">{selected.size} selected</span>
           <button
+            type="button"
             onClick={bulkDelete}
             disabled={deleting}
             className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition disabled:opacity-60"
@@ -392,10 +394,10 @@ function RetailersContent() {
             </thead>
             <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
               {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="border-b border-gray-50">
-                    {[...Array(11)].map((_, j) => (
-                      <td key={j} className="px-4 py-4">
+                Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((k) => (
+                  <tr key={k} className="border-b border-gray-50">
+                    {Array.from({ length: 11 }, (_, j) => `${k}-${j}`).map((c) => (
+                      <td key={c} className="px-4 py-4">
                         <div
                           className="h-4 bg-gray-200/60 rounded animate-pulse"
                           style={{ width: `${40 + Math.random() * 40}%` }}
@@ -421,7 +423,7 @@ function RetailersContent() {
                   </td>
                 </tr>
               ) : (
-                retailers.map((r, i) => {
+                retailers.map((r) => {
                   const trialEnd = r.trial_ends_at ? new Date(r.trial_ends_at) : null;
                   const isExpiring =
                     trialEnd &&

@@ -29,9 +29,9 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Overview = {
   conversions_total: number;
@@ -474,7 +474,7 @@ export default function ReferralMonitorPage() {
   const [confirmTrigger, setConfirmTrigger] = useState(false);
   const [triggerResult, setTriggerResult] = useState<PayoutSummary | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -493,11 +493,11 @@ export default function ReferralMonitorPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const triggerPayouts = async () => {
     setTriggering(true);
@@ -684,14 +684,21 @@ export default function ReferralMonitorPage() {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {leaderboard.map((r, i) => (
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: row click is a mouse shortcut; the shop-name button is the keyboard control
                   <tr
                     key={r.referrer_id}
                     onClick={() => setDetailId(r.referrer_id)}
                     className={`cursor-pointer hover:bg-ink-50/40 transition-colors ${detailId === r.referrer_id ? 'bg-ink-50/60' : ''}`}
                   >
                     <td className="px-5 py-3 text-gray-400">{i + 1}</td>
-                    <td className="px-3 py-3 text-gray-900 font-medium max-w-[220px] truncate">
-                      {r.shop_name}
+                    <td className="px-3 py-3 text-gray-900 font-medium max-w-[220px]">
+                      {/* Keyboard control for the row: its click bubbles to the row's onClick */}
+                      <button
+                        type="button"
+                        className="block max-w-full truncate text-left hover:underline"
+                      >
+                        {r.shop_name}
+                      </button>
                     </td>
                     <td className="px-3 py-3 font-mono text-xs text-gray-500">{r.code ?? '—'}</td>
                     <td className="px-3 py-3 text-right text-gray-600">{r.conversions_total}</td>

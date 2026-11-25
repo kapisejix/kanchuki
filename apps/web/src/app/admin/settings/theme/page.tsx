@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from 'react';
 import PhonePreview from './PhonePreview';
 import ShowcaseWatermarkSettings from './ShowcaseWatermarkSettings';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 
@@ -155,7 +155,7 @@ export default function ThemeSettingsPage() {
   const resetToken = (key: keyof PaletteState) =>
     setPalette((prev) => ({
       ...prev,
-      [key]: PALETTE_FIELDS.find((f) => f.key === key)!.default,
+      [key]: PALETTE_FIELDS.find((f) => f.key === key)?.default ?? prev[key],
     }));
 
   const isValid = PALETTE_FIELDS.every((f) => HEX_RE.test(palette[f.key]));
@@ -320,6 +320,7 @@ export default function ThemeSettingsPage() {
                             }`}
                           />
                           <button
+                            type="button"
                             onClick={() => resetToken(f.key)}
                             title={`Reset to default (${f.default})`}
                             className="p-1.5 text-gray-300 hover:text-cyan-600 transition-colors"
@@ -346,6 +347,7 @@ export default function ThemeSettingsPage() {
                     );
                     return (
                       <button
+                        type="button"
                         key={p.name}
                         onClick={() => setPalette(p.palette)}
                         className={`flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl border transition-all ${

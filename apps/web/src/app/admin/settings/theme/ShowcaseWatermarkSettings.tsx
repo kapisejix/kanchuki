@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type WatermarkGravity =
   | 'northwest'
@@ -239,6 +239,7 @@ export default function ShowcaseWatermarkSettings() {
               />
               <div className="flex items-center gap-2 mt-2">
                 <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={busy !== null}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium rounded-lg disabled:opacity-60 transition-colors"
@@ -248,6 +249,7 @@ export default function ShowcaseWatermarkSettings() {
                 </button>
                 {draft.logo_r2_key && (
                   <button
+                    type="button"
                     onClick={clearLogo}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
                   >
@@ -348,6 +350,7 @@ export default function ShowcaseWatermarkSettings() {
 
           <div className="flex items-center justify-end border-t border-gray-100 pt-4">
             <button
+              type="button"
               onClick={handleSave}
               disabled={saving || !isDirty}
               className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/25 disabled:opacity-60"

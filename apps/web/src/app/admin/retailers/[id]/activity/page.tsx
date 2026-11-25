@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type LogEntry = {
   id: string;
@@ -179,8 +179,8 @@ export default function RetailerActivityPage() {
       <div className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         {loading && logs.length === 0 ? (
           <div className="space-y-1 p-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3 py-3 px-3">
+            {Array.from({ length: 5 }, (_, i) => `sk-${i}`).map((k) => (
+              <div key={k} className="flex items-center gap-3 py-3 px-3">
                 <div className="w-8 h-8 bg-gray-200/60 rounded-xl animate-pulse" />
                 <div className="flex-1 space-y-1">
                   <div className="h-4 bg-gray-200/60 rounded w-3/4 animate-pulse" />
@@ -277,6 +277,7 @@ export default function RetailerActivityPage() {
             <span className="text-xs text-gray-400">{total} total entries</span>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={handlePrev}
                 disabled={cursorHistory.length === 0}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"
@@ -287,6 +288,7 @@ export default function RetailerActivityPage() {
                 Page {cursorHistory.length + 1}
               </span>
               <button
+                type="button"
                 onClick={handleNext}
                 disabled={!hasMore}
                 className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 transition"

@@ -4,7 +4,7 @@ import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Session = {
   id: string;

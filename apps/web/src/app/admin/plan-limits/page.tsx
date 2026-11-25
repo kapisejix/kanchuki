@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Gauge, IndianRupee, Loader2, Save, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 // From the shared constant — this page used to carry its own union AND array,
@@ -57,8 +57,9 @@ type PriceCellState = { monthly: string };
 const paiseToRupees = (paise: number) => String(paise / 100);
 const rupeesToPaise = (rupees: string) => Math.round(Number(rupees) * 100);
 
+const key = (plan: Plan, resourceType: ResourceType) => `${plan}:${resourceType}`;
+
 export default function PlanLimitsPage() {
-  const [rows, setRows] = useState<PlanLimit[]>([]);
   const [cells, setCells] = useState<Record<string, CellState>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
@@ -75,8 +76,6 @@ export default function PlanLimitsPage() {
   const [customerCells, setCustomerCells] = useState<Record<string, CustomerCell>>({});
   const [savingCustomer, setSavingCustomer] = useState<string | null>(null);
 
-  const key = (plan: Plan, resourceType: ResourceType) => `${plan}:${resourceType}`;
-
   useEffect(() => {
     async function load() {
       const [limitsRes, pricingRes, customerRes] = await Promise.all([
@@ -86,8 +85,6 @@ export default function PlanLimitsPage() {
       ]);
       const limitsJson = await limitsRes.json();
       const data: PlanLimit[] = limitsJson.data ?? [];
-      setRows(data);
-
       const next: Record<string, CellState> = {};
       for (const row of data) {
         next[key(row.plan, row.resource_type)] = {
@@ -242,11 +239,6 @@ export default function PlanLimitsPage() {
         }),
       });
       if (!res.ok) throw new Error('Save failed');
-      const json = await res.json();
-      setRows((prev) => {
-        const others = prev.filter((r) => !(r.plan === plan && r.resource_type === resourceType));
-        return [...others, json.data];
-      });
       setStatus(`✅ ${plan} / ${resourceType} saved`);
     } catch (err) {
       setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`);
@@ -334,6 +326,7 @@ export default function PlanLimitsPage() {
 
                 <td className="px-3 py-2">
                   <button
+                    type="button"
                     onClick={() => savePrice(plan)}
                     disabled={savingPrice === plan}
                     className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
@@ -404,6 +397,7 @@ export default function PlanLimitsPage() {
                           ))}
                         </select>
                         <button
+                          type="button"
                           onClick={() => save(plan, resourceType)}
                           disabled={saving === k}
                           className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"
@@ -505,6 +499,7 @@ export default function PlanLimitsPage() {
                     </td>
                     <td className="px-3 py-2">
                       <button
+                        type="button"
                         onClick={() => saveCustomer(row.resource_type)}
                         disabled={savingCustomer === row.resource_type}
                         className="p-1.5 text-gray-400 hover:text-ink-600 disabled:opacity-50 transition-colors"

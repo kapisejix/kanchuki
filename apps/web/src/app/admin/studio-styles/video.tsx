@@ -6,7 +6,7 @@ import { Film, Loader2 } from 'lucide-react';
 // F-034 T6: VIDEO style fields + the promo video models card for /admin/studio-styles.
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export const ASPECTS = ['9:16', '4:5', '1:1'] as const;
 export type VideoFieldValues = { default_aspect: string; duration_sec: number; no_person: boolean };
@@ -228,6 +228,7 @@ export function VideoModelsCard({ setStatus }: { setStatus: (s: string) => void 
                           <input
                             type="checkbox"
                             role="switch"
+                            aria-checked={m.enabled}
                             checked={m.enabled}
                             disabled={busy === m.model_key}
                             onChange={() => toggle(m)}

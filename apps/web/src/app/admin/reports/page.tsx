@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type AgentReport = {
   id: string;
@@ -269,19 +269,19 @@ export default function ReportsPage() {
 
       {/* Tab navigation */}
       <div className="flex items-center gap-2 bg-white border border-gray-200/80 rounded-xl p-1.5 w-fit">
-        <button onClick={() => setActiveTab('agents')} className={tabClass('agents')}>
+        <button type="button" onClick={() => setActiveTab('agents')} className={tabClass('agents')}>
           <div className="flex items-center gap-2">
             <Users size={15} />
             Agent Performance
           </div>
         </button>
-        <button onClick={() => setActiveTab('gaps')} className={tabClass('gaps')}>
+        <button type="button" onClick={() => setActiveTab('gaps')} className={tabClass('gaps')}>
           <div className="flex items-center gap-2">
             <MapPin size={15} />
             Coverage Gaps
           </div>
         </button>
-        <button onClick={() => setActiveTab('funnel')} className={tabClass('funnel')}>
+        <button type="button" onClick={() => setActiveTab('funnel')} className={tabClass('funnel')}>
           <div className="flex items-center gap-2">
             <Activity size={15} />
             Activation Funnel

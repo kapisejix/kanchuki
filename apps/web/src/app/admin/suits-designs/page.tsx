@@ -6,7 +6,7 @@ import { Eye, EyeOff, Image as ImageIcon, Loader2, Sparkles, Trash2, Upload } fr
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type DesignOwner = { type: 'global' } | { type: 'retailer'; id: string; shop_name: string | null };
 
@@ -81,6 +81,7 @@ export default function SuitsDesignsPage() {
       .catch(() => {});
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scope and ownerId are the reload triggers; load is a plain per-render function
   useEffect(() => {
     load(scope, ownerId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,9 +96,8 @@ export default function SuitsDesignsPage() {
         setCategories(cats);
         // Pre-select the first ACTIVE category so the upload button is never
         // dead on arrival — inactive categories stay pickable for curation.
-        if (!selectedCategory && cats.length > 0) {
-          setSelectedCategory((cats.find((c) => c.is_active) ?? cats[0])!.id);
-        }
+        const first = cats.find((c) => c.is_active) ?? cats[0];
+        if (first) setSelectedCategory((cur) => cur || first.id);
       })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -157,14 +157,13 @@ export default function SuitsDesignsPage() {
 
       // Server watermarks the raw upload (showcase-watermark.ts) — the admin
       // only ever sends the raw R2 key + category; owner defaults to global.
+      const name = designName.trim() || suggestedName;
       const create = await fetch(`${API_URL}/v1/admin/showcase-designs`, {
         ...(await adminMutateOptions()),
         method: 'POST',
         body: JSON.stringify({
           category_id: selectedCategory,
-          ...(designName.trim() || suggestedName
-            ? { name: (designName.trim() || suggestedName)! }
-            : {}),
+          ...(name ? { name } : {}),
           raw_r2_key: data.r2_key,
         }),
       });
@@ -328,6 +327,7 @@ export default function SuitsDesignsPage() {
               onChange={handleFileSelect}
             />
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading || categories.length === 0}
               className="flex items-center gap-2 px-4 py-2.5 bg-ink-600 hover:bg-ink-500 text-white text-sm font-medium rounded-xl disabled:opacity-60 transition-colors"
@@ -350,6 +350,7 @@ export default function SuitsDesignsPage() {
               ] as { key: Scope; label: string }[]
             ).map((opt) => (
               <button
+                type="button"
                 key={opt.key}
                 onClick={() => {
                   setScope(opt.key);
@@ -427,6 +428,7 @@ export default function SuitsDesignsPage() {
                 </span>
                 <div className="flex items-center shrink-0">
                   <button
+                    type="button"
                     onClick={() => toggleActive(row)}
                     className={`p-1.5 rounded-lg transition-colors ${
                       row.is_active
@@ -442,6 +444,7 @@ export default function SuitsDesignsPage() {
                     {row.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
                   </button>
                   <button
+                    type="button"
                     onClick={() => deleteRow(row)}
                     className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                     aria-label={`Delete ${row.name ?? 'design'}`}
@@ -484,7 +487,9 @@ export default function SuitsDesignsPage() {
       </div>
 
       {preview && (
-        <div
+        <button
+          type="button"
+          aria-label="Close preview"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 cursor-zoom-out"
           onClick={() => setPreview(null)}
         >
@@ -494,7 +499,7 @@ export default function SuitsDesignsPage() {
             alt="Design full size"
             className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
           />
-        </div>
+        </button>
       )}
     </motion.div>
   );

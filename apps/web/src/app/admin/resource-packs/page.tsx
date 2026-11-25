@@ -3,9 +3,9 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { Layers, Loader2, Pencil, Plus, Power, Save, Trash2, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 type ResourceType =
@@ -82,6 +82,7 @@ const formToPayload = (f: FormState) => ({
 });
 
 export default function ResourcePacksPage() {
+  const fid = useId();
   const [rows, setRows] = useState<ResourcePack[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -89,16 +90,16 @@ export default function ResourcePacksPage() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const res = await fetch(`${API_URL}/v1/admin/resource-packs`, adminGetOptions());
     const json = await res.json();
     setRows(json.data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const patch = (p: Partial<FormState>) => setForm((prev) => ({ ...prev, ...p }));
 
@@ -155,7 +156,7 @@ export default function ResourcePacksPage() {
           });
       if (!res.ok) throw new Error('Save failed');
       await load();
-      setStatus(editingId ? `✅ Pack updated` : `✅ Pack added — live on the dashboard config`);
+      setStatus(editingId ? '✅ Pack updated' : '✅ Pack added — live on the dashboard config');
       cancelEdit();
     } catch (e) {
       setStatus(`❌ ${e instanceof Error ? e.message : 'Save failed'}`);
@@ -187,7 +188,7 @@ export default function ResourcePacksPage() {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Delete failed');
-      setStatus(`✅ Pack deleted`);
+      setStatus('✅ Pack deleted');
       if (editingId === row.id) cancelEdit();
       await load();
     } catch (e) {
@@ -247,6 +248,7 @@ export default function ResourcePacksPage() {
           </div>
           {editingId && (
             <button
+              type="button"
               onClick={cancelEdit}
               className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
             >
@@ -257,8 +259,14 @@ export default function ResourcePacksPage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div className="col-span-2">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Resource</label>
+            <label
+              htmlFor={`${fid}-l260`}
+              className="block text-xs font-semibold text-gray-500 mb-1"
+            >
+              Resource
+            </label>
             <select
+              id={`${fid}-l260`}
               value={form.resource_type}
               onChange={(e) => patch({ resource_type: e.target.value as ResourceType })}
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-ink-500/50"
@@ -271,10 +279,14 @@ export default function ResourcePacksPage() {
             </select>
           </div>
           <div className="col-span-2">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
+            <label
+              htmlFor={`${fid}-l274`}
+              className="block text-xs font-semibold text-gray-500 mb-1"
+            >
               Label (shown at checkout)
             </label>
             <input
+              id={`${fid}-l274`}
               value={form.label}
               onChange={(e) => patch({ label: e.target.value })}
               placeholder="20 promo videos"
@@ -282,8 +294,14 @@ export default function ResourcePacksPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Pack size</label>
+            <label
+              htmlFor={`${fid}-l285`}
+              className="block text-xs font-semibold text-gray-500 mb-1"
+            >
+              Pack size
+            </label>
             <input
+              id={`${fid}-l285`}
               type="number"
               min={1}
               value={form.pack_size}
@@ -293,8 +311,14 @@ export default function ResourcePacksPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Unit label</label>
+            <label
+              htmlFor={`${fid}-l296`}
+              className="block text-xs font-semibold text-gray-500 mb-1"
+            >
+              Unit label
+            </label>
             <input
+              id={`${fid}-l296`}
               value={form.unit_label}
               onChange={(e) => patch({ unit_label: e.target.value })}
               placeholder="videos"
@@ -302,8 +326,14 @@ export default function ResourcePacksPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Price (₹)</label>
+            <label
+              htmlFor={`${fid}-l305`}
+              className="block text-xs font-semibold text-gray-500 mb-1"
+            >
+              Price (₹)
+            </label>
             <input
+              id={`${fid}-l305`}
               type="number"
               min={0}
               step="0.01"
@@ -314,8 +344,14 @@ export default function ResourcePacksPage() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Sort order</label>
+            <label
+              htmlFor={`${fid}-l317`}
+              className="block text-xs font-semibold text-gray-500 mb-1"
+            >
+              Sort order
+            </label>
             <input
+              id={`${fid}-l317`}
               type="number"
               min={0}
               value={form.sort_order}
@@ -366,6 +402,7 @@ export default function ResourcePacksPage() {
           </label>
 
           <button
+            type="button"
             onClick={save}
             disabled={saving}
             className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-ink-600 hover:bg-ink-700 disabled:opacity-50 rounded-lg transition-colors"
@@ -430,6 +467,7 @@ export default function ResourcePacksPage() {
                 </td>
                 <td className="px-3 py-3">
                   <button
+                    type="button"
                     onClick={() => toggleActive(row)}
                     className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full border transition-colors ${
                       row.is_active
@@ -444,6 +482,7 @@ export default function ResourcePacksPage() {
                 <td className="px-3 py-3">
                   <div className="flex items-center justify-end gap-1">
                     <button
+                      type="button"
                       onClick={() => startEdit(row)}
                       className="p-1.5 text-gray-400 hover:text-ink-600 transition-colors"
                       aria-label={`Edit ${row.label}`}
@@ -451,6 +490,7 @@ export default function ResourcePacksPage() {
                       <Pencil size={14} />
                     </button>
                     <button
+                      type="button"
                       onClick={() => remove(row)}
                       className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                       aria-label={`Delete ${row.label}`}

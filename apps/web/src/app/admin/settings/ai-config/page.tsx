@@ -3,9 +3,9 @@
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import { AlertCircle, Cpu, Loader2, RefreshCw, Save } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 
-const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 type AiConfigEntry = {
   model: string;
@@ -18,12 +18,12 @@ type AiConfigEntry = {
 type AiConfigs = Record<string, AiConfigEntry>;
 
 export default function AiConfigPage() {
+  const fid = useId();
   const [configs, setConfigs] = useState<AiConfigs>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [testResult, setTestResult] = useState<string | null>(null);
 
   const loadConfigs = useCallback(async () => {
     setLoading(true);
@@ -55,7 +55,6 @@ export default function AiConfigPage() {
     setSaving(true);
     setError('');
     setSuccess('');
-    setTestResult(null);
     try {
       const payload: Record<
         string,
@@ -158,8 +157,14 @@ export default function AiConfigPage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Model</label>
+                <label
+                  htmlFor={`${fid}-${key}-l161`}
+                  className="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  Model
+                </label>
                 <input
+                  id={`${fid}-${key}-l161`}
                   type="text"
                   value={entry.model}
                   onChange={(e) => updateConfig(key, 'model', e.target.value)}
@@ -167,9 +172,15 @@ export default function AiConfigPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Temperature</label>
+                <label
+                  htmlFor={`${fid}-${key}-l170`}
+                  className="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  Temperature
+                </label>
                 <div className="flex items-center gap-2">
                   <input
+                    id={`${fid}-${key}-l170`}
                     type="range"
                     min={0}
                     max={2}
@@ -186,8 +197,14 @@ export default function AiConfigPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Max Tokens</label>
+                <label
+                  htmlFor={`${fid}-${key}-l189`}
+                  className="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  Max Tokens
+                </label>
                 <input
+                  id={`${fid}-${key}-l189`}
                   type="number"
                   min={0}
                   max={100000}
@@ -198,8 +215,14 @@ export default function AiConfigPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Timeout (ms)</label>
+                <label
+                  htmlFor={`${fid}-${key}-l201`}
+                  className="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  Timeout (ms)
+                </label>
                 <input
+                  id={`${fid}-${key}-l201`}
                   type="number"
                   min={1000}
                   max={600000}
