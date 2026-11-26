@@ -944,3 +944,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Change | API `GET /v1/auth/otp/widget-config` returns `{ widget_id, token_auth }` from Railway `MSG91_WIDGET_ID` / `MSG91_WIDGET_TOKEN` at runtime (never the authkey). Mobile `loadMsg91OtpConfig()` and web `loadMsg91Widget()` fetch it; unset/unreachable falls back to the classic API OTP. Hardcoded keys removed from `eas.json`, `msg91-otp.ts`, web Dockerfile ARGs, both `.env.example`. `isMsg91WidgetConfigured` removed. |
 | Local runs | tsc 0 (api, web, mobile); web tests 52/52, mobile auth + msg91 19/19, api routes 2073/2073; Biome clean on changed files. |
 | Still owner-side | Set `MSG91_WIDGET_ID`, `MSG91_WIDGET_TOKEN`, new `MSG91_AUTHKEY` on the API service before merge; drop `NEXT_PUBLIC_MSG91_*` from web; delete the hardcoded keys in `.github/workflows/android-release.yml:15-16` (CI file, owner edit); allow web requests on the widget in MSG91; one new EAS build. |
+
+## 2026-11-26 — auth: MSG91 widget token check reads the phone from `message`
+
+| Area | Change |
+|---|---|
+| Bug | Web `/billing` OTP: the widget verified the code and MSG91 showed "Access Token Verified", but `POST /v1/auth/otp/verify` returned 401 "Could not verify the phone number. Try again." `verifyMsg91WidgetToken` looked for the phone in `data.mobile` / `data.identifier` / `mobile` / `identifier` / `widget.*`; the real success reply is `{ "type": "success", "message": "91XXXXXXXXXX" }` (MSG91 API reference + a production integration write-up). The shape had never been checked against a real token. |
+| Change | PR #362 (fa64563d): log MSG91 `http`/`type`/`code`/`message` when the check is rejected or the reply is not JSON — never the token or authkey. PR #363 (605c11e1): accept a phone-shaped (`^\+?\d{10,13}$`) top-level `message` as the identifier, still exact-matched to the claimed phone; when no identifier is found, log the reply's shape with masked values. |
+| Local runs | Biome clean; msg91-otp + auth-msg91 + passport-otp 65/65; tsc 0. Throwaway test (deleted) ran the real check + real route with MSG91's documented reply: HTTP 200, retailer session. |
+| Verified | Owner logged in on https://kanchuki.app/billing with a real retailer phone, 2026-11-26. Mobile uses the same server check (no new build needed for this fix); not yet tested on device. |

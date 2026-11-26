@@ -66,7 +66,7 @@ Pilot: running on Railway with real retailers (20 rows). Public launch: **not re
 - [ ] One load test against staging — scripts built 2026-09-24 (`scripts/load/k6/`, runbook in `docs/SCALING.md` Load Testing); the actual run against staging is still open
 - [x] Disaster-recovery runbook — built 2026-09-24 (launch §7A.4, `docs/SECURITY.md`)
 - [x] Retailer-facing retention/deletion notice for training photos — built 2026-09-24 (launch §7A.6)
-- [ ] Lock the MSG91 `verifyAccessToken` response shape: `npx tsx scripts/verify-msg91-token.mts "<widget_jwt>"`
+- [x] Lock the MSG91 `verifyAccessToken` response shape — done 2026-11-26: success is `{ type: "success", message: "91XXXXXXXXXX" }` (PR #363, BUILD-LOG part-7)
 - [x] Re-test every RC-### entry — 40/40 pass 2026-09-24 (launch §7A.7, BUILD-LOG part-6). RCs minted since (RC-041…RC-047) carry their own tests; re-run before the next production release
 - [ ] RC re-test pass for RC-041…RC-176 (136 entries since the last full pass); each has unit tests, none re-tested end to end
 - [ ] Migration history cannot rebuild a fresh DB (RC-159; production unaffected, matters for disaster recovery). Migrations are applied by hand; never run `prisma migrate deploy` (DEPLOY.md)
