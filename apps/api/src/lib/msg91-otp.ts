@@ -313,6 +313,7 @@ export async function verifyMsg91WidgetToken(token: string, expectedPhone: strin
   }
 
   let json: Record<string, unknown> | null = null;
+  let httpStatus = 0;
   try {
     const res = await fetch(`${MSG91_BASE}/widget/verifyAccessToken`, {
       method: 'POST',
@@ -320,6 +321,7 @@ export async function verifyMsg91WidgetToken(token: string, expectedPhone: strin
       body: JSON.stringify({ authkey, 'access-token': token }),
       signal: AbortSignal.timeout(MSG91_FETCH_TIMEOUT_MS),
     });
+    httpStatus = res.status;
     json = (await res.json()) as Record<string, unknown>;
   } catch (err) {
     // A vendor timeout is not a bad code — surface it as 503, not INVALID_OTP
@@ -327,11 +329,20 @@ export async function verifyMsg91WidgetToken(token: string, expectedPhone: strin
     if (err instanceof DOMException && err.name === 'TimeoutError') {
       throw new AppError('OTP_VERIFY_FAILED', 'Verification timed out. Try again.', 503);
     }
+    // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+    console.log(
+      `[auth] msg91 verifyAccessToken failed http=${httpStatus} err=${err instanceof Error ? err.message : String(err)}`,
+    );
     throw new AppError('INVALID_OTP', 'Could not verify the OTP. Try again.', 401);
   }
 
   const typeOk = json?.type === 'success' || json?.success === true || json?.status === 'success';
   if (!typeOk) {
+    // MSG91's rejection reason only — never the token or authkey.
+    // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+    console.log(
+      `[auth] msg91 verifyAccessToken rejected http=${httpStatus} type=${String(json?.type)} code=${String(json?.code)} message=${String(json?.message)}`,
+    );
     throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
   }
 
