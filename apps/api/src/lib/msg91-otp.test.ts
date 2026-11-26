@@ -281,6 +281,7 @@ describe('verifyMsg91WidgetToken', () => {
     ['success+mobile top-level', { success: true, mobile: '919876543210' }],
     ['status+data.identifier', { status: 'success', data: { identifier: '919876543210' } }],
     ['type+widget.identifier', { type: 'success', widget: { identifier: '919876543210' } }],
+    ['type+message identifier', { type: 'success', message: '919876543210' }],
   ])('accepts the %s response shape', async (_name, response) => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => response } as Response);
     await expect(verifyMsg91WidgetToken('jwt.token.here', '9876543210')).resolves.toBeUndefined();
