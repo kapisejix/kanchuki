@@ -279,6 +279,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+/** Redacted JSON shape for logs: keys kept, values masked, never a token. */
+function describeShape(value: unknown, depth = 0): string {
+  if (depth > 3) return '…';
+  if (Array.isArray(value)) return `[${value.length}]`;
+  if (isRecord(value)) {
+    const parts = Object.entries(value).map(([k, v]) => `${k}:${describeShape(v, depth + 1)}`);
+    return `{${parts.join(',')}}`;
+  }
+  if (typeof value === 'string') {
+    if (/^\+?\d{6,15}$/.test(value)) return `"…${value.slice(-4)}"`;
+    return value.length > 40 ? `str(${value.length})` : JSON.stringify(value);
+  }
+  return String(value);
+}
+
 function firstNonEmpty(...values: unknown[]): string | undefined {
   for (const value of values) {
     if (typeof value === 'string' && value.length > 0) return value;
@@ -355,9 +370,18 @@ export async function verifyMsg91WidgetToken(token: string, expectedPhone: strin
     json?.identifier,
     widget?.mobile,
     widget?.identifier,
+    // Some MSG91 versions return the identifier as the success `message`.
+    // Only a phone-shaped string counts; it is still exact-matched below.
+    typeof json?.message === 'string' && /^\+?\d{10,13}$/.test(json.message)
+      ? json.message
+      : undefined,
   );
 
   if (!mobile) {
+    // Response shape is undocumented — log keys + masked values (digits → last 4,
+    // long strings → length only) so the identifier's location can be found.
+    // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+    console.log(`[auth] msg91 verifyAccessToken no identifier shape=${describeShape(json)}`);
     throw new AppError('INVALID_OTP', 'Could not verify the phone number. Try again.', 401);
   }
 
