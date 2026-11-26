@@ -215,6 +215,10 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     data: {
       widget_id: process.env.MSG91_WIDGET_ID || null,
       token_auth: process.env.MSG91_WIDGET_TOKEN || null,
+      // MSG91 tokens are Web-only or Mobile-only, so the app gets its own pair.
+      // ponytail: id falls back to the web id (one widget, two tokens).
+      widget_id_mobile: process.env.MSG91_WIDGET_ID_MOBILE || process.env.MSG91_WIDGET_ID || null,
+      token_auth_mobile: process.env.MSG91_WIDGET_TOKEN_MOBILE || null,
     },
   }));
 

@@ -38,9 +38,9 @@ export const authApi = {
    */
   /** MSG91 widget credentials from the API's Railway env (null = unset). */
   widgetConfig: () =>
-    request<{ data: { widget_id: string | null; token_auth: string | null } }>(
-      '/v1/auth/otp/widget-config',
-    ),
+    request<{
+      data: { widget_id_mobile: string | null; token_auth_mobile: string | null };
+    }>('/v1/auth/otp/widget-config'),
 
   sendOtp: (phone: string, opts?: { widget?: boolean }) =>
     request<{ data: { message: string; phone: string; bypass?: boolean } }>('/v1/auth/otp/send', {
