@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  isMsg91WidgetConfigured,
   loadMsg91Widget,
   retryOtpViaWidget,
   sendOtpViaWidget,
@@ -89,11 +88,9 @@ export function LoginForm({ returnTo }: Props) {
   // third-party CDN cannot take login down.
   useEffect(() => {
     let cancelled = false;
-    if (isMsg91WidgetConfigured()) {
-      void loadMsg91Widget().then((ready) => {
-        if (!cancelled) setWidgetReady(ready);
-      });
-    }
+    void loadMsg91Widget().then((ready) => {
+      if (!cancelled) setWidgetReady(ready);
+    });
     return () => {
       cancelled = true;
     };

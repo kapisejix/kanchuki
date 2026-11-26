@@ -17,7 +17,6 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  isMsg91WidgetConfigured,
   loadMsg91Widget,
   retryOtpViaWidget,
   sendOtpViaWidget,
@@ -188,11 +187,9 @@ function LoginCard({
   // OTP flow is the fallback), so a blocked third-party CDN never breaks login.
   useEffect(() => {
     let cancelled = false;
-    if (isMsg91WidgetConfigured()) {
-      void loadMsg91Widget().then((ready) => {
-        if (!cancelled) setWidgetReady(ready);
-      });
-    }
+    void loadMsg91Widget().then((ready) => {
+      if (!cancelled) setWidgetReady(ready);
+    });
     return () => {
       cancelled = true;
     };

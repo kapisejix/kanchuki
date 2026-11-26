@@ -40,10 +40,6 @@ RUN pnpm install --frozen-lockfile || pnpm install --frozen-lockfile
 # since Next.js inlines these into the client bundle during `next build`.
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_R2_PUBLIC_URL
-# MSG91 OTP widget (real OTP flow) — client-visible by MSG91's design (they
-# only authorize this widget). Unset → billing login falls back to the API OTP.
-ARG NEXT_PUBLIC_MSG91_WIDGET_ID
-ARG NEXT_PUBLIC_MSG91_TOKEN_AUTH
 # Sentry: NEXT_PUBLIC_SENTRY_DSN is inlined into the client bundle by
 # `next build`; SENTRY_AUTH_TOKEN/ORG/PROJECT drive source-map upload in
 # withSentryConfig. All no-op if unset.
@@ -53,8 +49,6 @@ ARG SENTRY_ORG
 ARG SENTRY_PROJECT
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_R2_PUBLIC_URL=$NEXT_PUBLIC_R2_PUBLIC_URL
-ENV NEXT_PUBLIC_MSG91_WIDGET_ID=$NEXT_PUBLIC_MSG91_WIDGET_ID
-ENV NEXT_PUBLIC_MSG91_TOKEN_AUTH=$NEXT_PUBLIC_MSG91_TOKEN_AUTH
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT

@@ -41,7 +41,6 @@ vi.mock('@/lib/passport-client', async (importOriginal) => {
 // the store ContactGate suite); pinning it off keeps this test hermetic — it
 // never reaches for an external script.
 vi.mock('@/lib/msg91-widget', () => ({
-  isMsg91WidgetConfigured: () => false,
   loadMsg91Widget: async () => false,
   sendOtpViaWidget: async () => ({ ok: false }),
   verifyOtpViaWidget: async () => ({ ok: false }),

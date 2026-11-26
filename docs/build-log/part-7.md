@@ -935,3 +935,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Change | `biome.jsonc` `files.ignore` += `.impeccable/hook.cache.json`, `.specify/integration.json`, `.specify/init-options.json`, `.specify/workflows/workflow-registry.json`, `.vscode/mcp.json`. Edited by owner (config-protection hook). |
 | Why | Tool-generated files, not project code. They were the only Biome findings left (format-only). |
 | Local runs | `npx biome check . --max-diagnostics=10000` whole repo: 0 errors, 0 warnings. One-folder cleanup goal done. |
+
+## 2026-11-26 — auth: MSG91 widget keys from Railway, none in repo
+
+| Area | Change |
+|---|---|
+| Bug | No OTP SMS after the owner rotated the MSG91 authkey/token. The widget id + tokenAuth were hardcoded in `apps/mobile/eas.json` and as a fallback in `msg91-otp.ts`, and baked into web as `NEXT_PUBLIC_MSG91_*` build args, so a rotation needed code edits + rebuilds. |
+| Change | API `GET /v1/auth/otp/widget-config` returns `{ widget_id, token_auth }` from Railway `MSG91_WIDGET_ID` / `MSG91_WIDGET_TOKEN` at runtime (never the authkey). Mobile `loadMsg91OtpConfig()` and web `loadMsg91Widget()` fetch it; unset/unreachable falls back to the classic API OTP. Hardcoded keys removed from `eas.json`, `msg91-otp.ts`, web Dockerfile ARGs, both `.env.example`. `isMsg91WidgetConfigured` removed. |
+| Local runs | tsc 0 (api, web, mobile); web tests 52/52, mobile auth + msg91 19/19, api routes 2073/2073; Biome clean on changed files. |
+| Still owner-side | Set `MSG91_WIDGET_ID`, `MSG91_WIDGET_TOKEN`, new `MSG91_AUTHKEY` on the API service before merge; drop `NEXT_PUBLIC_MSG91_*` from web; delete the hardcoded keys in `.github/workflows/android-release.yml:15-16` (CI file, owner edit); allow web requests on the widget in MSG91; one new EAS build. |
