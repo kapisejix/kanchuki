@@ -4,8 +4,8 @@
 // folders, no Expo config plugin): it does NOT run in Expo Go. Builds must go
 // through EAS or `expo run:*` so the native code is compiled in.
 //
-// When the API returns no widget credentials (Railway MSG91_WIDGET_ID /
-// MSG91_WIDGET_TOKEN unset) or in Expo Go, isMsg91OtpConfigured() is false and the
+// When the API returns no widget credentials (Railway MSG91_WIDGET_ID_MOBILE /
+// MSG91_WIDGET_TOKEN_MOBILE unset) or in Expo Go, isMsg91OtpConfigured() is false and the
 // auth screens fall back to the legacy API OTP flow, so the app stays usable.
 //
 // The SDK's responses are untyped (`any`) — every extraction here is
@@ -47,8 +47,8 @@ function getSdk(): Msg91Sdk | null {
   return sdk;
 }
 
-// Widget id + tokenAuth come from the API (Railway env MSG91_WIDGET_ID /
-// MSG91_WIDGET_TOKEN) at runtime — never baked into the build or the repo, so
+// Widget id + tokenAuth come from the API (Railway env MSG91_WIDGET_ID_MOBILE /
+// MSG91_WIDGET_TOKEN_MOBILE) at runtime — never baked into the build or the repo, so
 // rotating them is a Railway change, not a new APK.
 let WIDGET_ID: string | null = null;
 let TOKEN_AUTH: string | null = null;
@@ -69,8 +69,8 @@ export async function loadMsg91OtpConfig(): Promise<boolean> {
   if (!WIDGET_ID || !TOKEN_AUTH) {
     try {
       const res = await authApi.widgetConfig();
-      WIDGET_ID = res.data?.widget_id ?? null;
-      TOKEN_AUTH = res.data?.token_auth ?? null;
+      WIDGET_ID = res.data?.widget_id_mobile ?? null;
+      TOKEN_AUTH = res.data?.token_auth_mobile ?? null;
     } catch (e) {
       console.warn('[msg91] widget config fetch failed, falling back to API:', e);
     }
