@@ -12,7 +12,7 @@ import { logError } from '../../src/lib/errors';
 import {
   extractMsg91AccessToken,
   extractMsg91ReqId,
-  isMsg91OtpConfigured,
+  loadMsg91OtpConfig,
   sendMsg91Otp,
 } from '../../src/lib/msg91-otp';
 import { WEB_URL } from '../../src/lib/web-url';
@@ -38,7 +38,7 @@ export default function PhoneScreen() {
     setErrorMsg(null);
     try {
       const digits = normalizeIndianPhone(phone);
-      const willUseWidget = isMsg91OtpConfigured();
+      const willUseWidget = await loadMsg91OtpConfig();
 
       // 1. Check with backend API (handles Railway OTP_TEST_BYPASS test phones).
       // RC (versioncode-5-changes.md #2): when the native widget will send its

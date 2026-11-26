@@ -36,7 +36,7 @@ vi.mock('../../src/lib/web-url', () => ({ WEB_URL: 'https://web.test' }));
 vi.mock('../../src/lib/errors', () => ({ logError: vi.fn(), showError: vi.fn() }));
 
 vi.mock('../../src/lib/msg91-otp', () => ({
-  isMsg91OtpConfigured: mockWidgetConfigured,
+  loadMsg91OtpConfig: mockWidgetConfigured,
   sendMsg91Otp: mockWidgetSend,
   extractMsg91ReqId: (r: { reqId?: string }) => r?.reqId,
   extractMsg91AccessToken: (r: { token?: string }) => r?.token,

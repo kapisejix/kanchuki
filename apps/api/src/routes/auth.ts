@@ -205,6 +205,19 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
 }
 
 export const authRoutes: FastifyPluginAsync = async (server) => {
+  // ─── GET /auth/otp/widget-config ────────────────────────────────
+  // MSG91 widget id + tokenAuth, read from Railway env at RUNTIME so rotating
+  // them never needs a web rebuild or a new app build, and no key lives in the
+  // repo. Both are client-visible by MSG91's design (they only authorize this
+  // widget) — the secret MSG91_AUTHKEY is never returned. null = unset, and
+  // the clients fall back to the classic API OTP flow.
+  server.get('/otp/widget-config', async () => ({
+    data: {
+      widget_id: process.env.MSG91_WIDGET_ID || null,
+      token_auth: process.env.MSG91_WIDGET_TOKEN || null,
+    },
+  }));
+
   // ─── POST /auth/otp/send ────────────────────────────────────────
   server.post('/otp/send', async (request, reply) => {
     const body = SendOtpSchema.safeParse(request.body);

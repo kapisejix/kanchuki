@@ -4,8 +4,8 @@
 // folders, no Expo config plugin): it does NOT run in Expo Go. Builds must go
 // through EAS or `expo run:*` so the native code is compiled in.
 //
-// When EXPO_PUBLIC_MSG91_WIDGET_ID / EXPO_PUBLIC_MSG91_TOKEN_AUTH are unset
-// (e.g. an Expo Go dev build), isMsg91OtpConfigured() returns false and the
+// When the API returns no widget credentials (Railway MSG91_WIDGET_ID /
+// MSG91_WIDGET_TOKEN unset) or in Expo Go, isMsg91OtpConfigured() is false and the
 // auth screens fall back to the legacy API OTP flow, so the app stays usable.
 //
 // The SDK's responses are untyped (`any`) — every extraction here is
@@ -19,6 +19,7 @@
 // Expo Go, where the native module isn't linked, even though the widget is
 // never used there (isMsg91OtpConfigured() is false). The module scope only
 import { NativeModules } from 'react-native';
+import { authApi } from './api/auth';
 
 type Msg91Sdk = typeof import('@msg91comm/sendotp-react-native');
 let sdk: Msg91Sdk | null = null;
@@ -46,17 +47,35 @@ function getSdk(): Msg91Sdk | null {
   return sdk;
 }
 
-// EXPO_PUBLIC_* vars are statically inlined at build time (dot access keeps
-// expo lint's no-dynamic-env-var rule happy — the API_URL client uses the
-// same pattern).
-const WIDGET_ID = process.env.EXPO_PUBLIC_MSG91_WIDGET_ID || '366871673575383335383835';
-const TOKEN_AUTH = process.env.EXPO_PUBLIC_MSG91_TOKEN_AUTH || '505769TIAaX1pQa6a649a52P1';
+// Widget id + tokenAuth come from the API (Railway env MSG91_WIDGET_ID /
+// MSG91_WIDGET_TOKEN) at runtime — never baked into the build or the repo, so
+// rotating them is a Railway change, not a new APK.
+let WIDGET_ID: string | null = null;
+let TOKEN_AUTH: string | null = null;
 
 let initialized = false;
 
-/** True when the build was compiled with real MSG91 widget credentials AND native module is linked. */
+/** True once the widget credentials are loaded AND the native module is linked. */
 export function isMsg91OtpConfigured(): boolean {
   return Boolean(hasNativeMsg91Module() && WIDGET_ID && TOKEN_AUTH);
+}
+
+/**
+ * Fetch the widget credentials once (cached on success). Resolves to
+ * isMsg91OtpConfigured(); any failure → false → classic API OTP fallback.
+ */
+export async function loadMsg91OtpConfig(): Promise<boolean> {
+  if (!hasNativeMsg91Module()) return false;
+  if (!WIDGET_ID || !TOKEN_AUTH) {
+    try {
+      const res = await authApi.widgetConfig();
+      WIDGET_ID = res.data?.widget_id ?? null;
+      TOKEN_AUTH = res.data?.token_auth ?? null;
+    } catch (e) {
+      console.warn('[msg91] widget config fetch failed, falling back to API:', e);
+    }
+  }
+  return isMsg91OtpConfigured();
 }
 
 function initWidget(): void {

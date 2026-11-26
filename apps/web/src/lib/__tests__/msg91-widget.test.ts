@@ -5,15 +5,10 @@
  * window.* globals and can't run headless — they're thin promise/callback
  * bridges over the extraction helpers tested here.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 beforeEach(() => {
   vi.resetModules();
-});
-
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_MSG91_WIDGET_ID;
-  delete process.env.NEXT_PUBLIC_MSG91_TOKEN_AUTH;
 });
 
 describe('extractReqId', () => {
@@ -87,17 +82,17 @@ describe('widgetErrorMessage', () => {
   });
 });
 
-describe('isMsg91WidgetConfigured', () => {
-  it('is true when both build vars are set', async () => {
-    process.env.NEXT_PUBLIC_MSG91_WIDGET_ID = 'widget-id';
-    process.env.NEXT_PUBLIC_MSG91_TOKEN_AUTH = 'token-auth';
-    const { isMsg91WidgetConfigured } = await import('../msg91-widget');
-    expect(isMsg91WidgetConfigured()).toBe(true);
-  });
-
-  it('is false when either var is missing', async () => {
-    process.env.NEXT_PUBLIC_MSG91_WIDGET_ID = 'widget-id';
-    const { isMsg91WidgetConfigured } = await import('../msg91-widget');
-    expect(isMsg91WidgetConfigured()).toBe(false);
+describe('loadMsg91Widget', () => {
+  it('resolves false (API OTP fallback) when the API has no widget credentials', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ data: { widget_id: null, token_auth: null } }),
+      })),
+    );
+    const { loadMsg91Widget } = await import('../msg91-widget');
+    await expect(loadMsg91Widget()).resolves.toBe(false);
+    vi.unstubAllGlobals();
   });
 });

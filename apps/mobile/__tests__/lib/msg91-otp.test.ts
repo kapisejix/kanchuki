@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('react-native', () => ({ NativeModules: {} }));
+vi.mock('../../src/lib/api/auth', () => ({ authApi: { widgetConfig: vi.fn() } }));
 
 import { extractMsg91ReqId } from '../../src/lib/msg91-otp';
 

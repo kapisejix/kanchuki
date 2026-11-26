@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  isMsg91WidgetConfigured,
   loadMsg91Widget,
   retryOtpViaWidget,
   sendOtpViaWidget,
@@ -117,11 +116,9 @@ export function ContactGate({ slug, profile, onSuccess, children }: Props) {
   // fallback), so a blocked third-party CDN never breaks the gate.
   useEffect(() => {
     let cancelled = false;
-    if (isMsg91WidgetConfigured()) {
-      void loadMsg91Widget().then((ready) => {
-        if (!cancelled) setWidgetReady(ready);
-      });
-    }
+    void loadMsg91Widget().then((ready) => {
+      if (!cancelled) setWidgetReady(ready);
+    });
     return () => {
       cancelled = true;
     };

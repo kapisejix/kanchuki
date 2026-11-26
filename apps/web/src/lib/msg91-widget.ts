@@ -6,16 +6,30 @@
 // token is never trusted client-side.
 //
 // The widget script is a third-party dependency (verify.msg91.com with a
-// verify.phone91.com fallback) and only loads when
-// NEXT_PUBLIC_MSG91_WIDGET_ID / NEXT_PUBLIC_MSG91_TOKEN_AUTH are set at build
-// time. Callers fall back to the API OTP flow when the widget is unconfigured,
-// blocked, or fails to load — login must never depend on a third-party CDN.
-//
-// Env: set NEXT_PUBLIC_MSG91_WIDGET_ID + NEXT_PUBLIC_MSG91_TOKEN_AUTH as
-// build args (Railway dashboard + apps/web/Dockerfile ARG declarations).
+// verify.phone91.com fallback) and only loads when the API returns widget
+// credentials (Railway API env MSG91_WIDGET_ID + MSG91_WIDGET_TOKEN). Callers
+// fall back to the API OTP flow when the widget is unconfigured, blocked, or
+// fails to load — login must never depend on a third-party CDN.
 
-const WIDGET_ID = process.env.NEXT_PUBLIC_MSG91_WIDGET_ID;
-const TOKEN_AUTH = process.env.NEXT_PUBLIC_MSG91_TOKEN_AUTH;
+// Widget id + tokenAuth are fetched from the API at runtime (Railway env
+// MSG91_WIDGET_ID / MSG91_WIDGET_TOKEN) — no key in the repo or the build, and
+// rotating them needs no web rebuild.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+
+async function fetchWidgetConfig(): Promise<{ widgetId: string; tokenAuth: string } | null> {
+  try {
+    const res = await fetch(`${API_URL}/v1/auth/otp/widget-config`);
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      data?: { widget_id?: string | null; token_auth?: string | null };
+    };
+    const widgetId = json.data?.widget_id;
+    const tokenAuth = json.data?.token_auth;
+    return widgetId && tokenAuth ? { widgetId, tokenAuth } : null;
+  } catch {
+    return null;
+  }
+}
 
 // ─── Global API surface exposed by the widget (exposeMethods: true) ──
 declare global {
@@ -43,10 +57,6 @@ declare global {
   }
 }
 
-export function isMsg91WidgetConfigured(): boolean {
-  return Boolean(WIDGET_ID && TOKEN_AUTH);
-}
-
 let loadStarted = false;
 let loadResult: Promise<boolean> | null = null;
 
@@ -56,14 +66,23 @@ let loadResult: Promise<boolean> | null = null;
  * from any screen; idempotent.
  */
 export function loadMsg91Widget(): Promise<boolean> {
-  if (!isMsg91WidgetConfigured() || typeof window === 'undefined') {
-    return Promise.resolve(false);
-  }
+  if (typeof window === 'undefined') return Promise.resolve(false);
   if (typeof window.sendOtp === 'function') return Promise.resolve(true);
   if (loadStarted) return loadResult ?? Promise.resolve(false);
 
   loadStarted = true;
-  loadResult = new Promise<boolean>((resolve) => {
+  loadResult = fetchWidgetConfig().then((config) => {
+    if (!config) {
+      loadStarted = false; // unset/unreachable → classic API OTP; retry on next mount
+      return false;
+    }
+    return injectWidgetScript(config.widgetId, config.tokenAuth);
+  });
+  return loadResult;
+}
+
+function injectWidgetScript(widgetId: string, tokenAuth: string): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
     const urls = [
       'https://verify.msg91.com/otp-provider.js',
       'https://verify.phone91.com/otp-provider.js',
@@ -80,8 +99,8 @@ export function loadMsg91Widget(): Promise<boolean> {
       script.onload = () => {
         if (typeof window.initSendOTP === 'function') {
           window.initSendOTP({
-            widgetId: WIDGET_ID,
-            tokenAuth: TOKEN_AUTH,
+            widgetId,
+            tokenAuth,
             exposeMethods: true, // bind window.sendOtp/verifyOtp/retryOtp, no built-in UI
             // The current otp-provider.js throws "success callback function
             // missing !" at init unless success is a function — and never
@@ -117,7 +136,6 @@ export function loadMsg91Widget(): Promise<boolean> {
     };
     attempt();
   });
-  return loadResult;
 }
 
 // ─── Response extraction (the widget's callbacks are untyped) ──────
