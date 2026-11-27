@@ -495,7 +495,7 @@ describe('ranking + paging', () => {
     it('labels a card from the shopper own measurements and the product chart', async () => {
       DB = [withChart('a')];
       mockSession.mockResolvedValue(account({ bust_cm: 87 }));
-      expect(await sizeOf()).toEqual({ size: 'M' });
+      expect(await sizeOf()).toEqual({ size: 'M', chart: 'store' });
     });
 
     it('says "between" when the dimensions disagree', async () => {
@@ -509,7 +509,7 @@ describe('ranking + paging', () => {
         }),
       ];
       mockSession.mockResolvedValue(account({ bust_cm: 87, hip_cm: 98 }));
-      expect(await sizeOf()).toEqual({ size: 'L', between: ['M', 'L'] });
+      expect(await sizeOf()).toEqual({ size: 'L', between: ['M', 'L'], chart: 'store' });
     });
 
     it('is null without measurements', async () => {
@@ -525,6 +525,47 @@ describe('ranking + paging', () => {
       mockSession.mockResolvedValue(account({ bust_cm: 87 }));
       expect(await sizeOf('a')).toBeNull();
       expect(await sizeOf('b')).toBeNull();
+    });
+
+    const kurti = (id: string, over: Record<string, unknown> = {}) =>
+      withChart(id, { size_chart: null, audience: 'WOMEN', category: 'Kurti', ...over });
+
+    it('falls back to the standard chart for stitched women wear', async () => {
+      DB = [kurti('a')];
+      mockSession.mockResolvedValue(account({ bust_cm: 91 }));
+      expect(await sizeOf()).toEqual({ size: 'M', chart: 'standard' });
+    });
+
+    it('stays silent when the product lists no sizes (option A)', async () => {
+      DB = [kurti('a', { sizes: [] })];
+      mockSession.mockResolvedValue(account({ bust_cm: 91 }));
+      expect(await sizeOf()).toBeNull();
+    });
+
+    it('a store chart wins even when it has no answer', async () => {
+      DB = [kurti('a', { sizes: ['M', 'XL'], size_chart: { XL: { bust: [100, 104] } } })];
+      mockSession.mockResolvedValue(account({ bust_cm: 91 }));
+      expect(await sizeOf()).toEqual({ size: 'XL', chart: 'store' });
+      mockSession.mockResolvedValue(account({ bust_cm: 110 }));
+      expect(await sizeOf()).toBeNull();
+    });
+
+    it('the kids feed never labels a size and has no size_matches', async () => {
+      DB = [withChart('a', { audience: 'GIRLS', category: 'Kurti' })];
+      mockSession.mockResolvedValue(account({ bust_cm: 87 }));
+      const res = (await feed({ kids: true })).json();
+      expect(res.data.length).toBe(1);
+      expect(res.data[0].suggested_size).toBeNull();
+      expect(res.meta.size_matches).toBeNull();
+    });
+
+    it('meta.size_matches counts the products that get a size', async () => {
+      DB = [kurti('a'), kurti('b'), kurti('c', { category: 'Saree' })];
+      expect((await feed()).json().meta.size_matches).toBeNull();
+      mockSession.mockResolvedValue(account({ bust_cm: 91 }));
+      expect((await feed()).json().meta.size_matches).toBe(2);
+      mockSession.mockResolvedValue(account({ bust_cm: 150 }));
+      expect((await feed()).json().meta.size_matches).toBe(0);
     });
 
     it('never reorders or removes anything: the same ids with and without measurements', async () => {

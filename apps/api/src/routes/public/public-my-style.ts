@@ -22,6 +22,7 @@ import {
   occasionTargets,
   parseGarmentDescriptor,
   parseSizeChart,
+  standardChartFor,
   suggestSize,
 } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
@@ -144,12 +145,19 @@ const unauthorized = { error: { code: 'UNAUTHORIZED', message: 'Passport session
 // One feed/complete-look card. Prices stay paise (RC-055).
 type Body = Parameters<typeof suggestSize>[0];
 
+// Phase 4: the store's own chart wins (even when it has no answer); otherwise the standard women's
+// chart for stitched wear. Shared by the card and meta.size_matches so the two never disagree.
+function sizeFor(p: CandidateRow, body: Body) {
+  const store = parseSizeChart(p.size_chart);
+  const s = suggestSize(body, store ?? standardChartFor(p), p.sizes);
+  return s ? { ...s, chart: store ? ('store' as const) : ('standard' as const) } : null;
+}
+
 async function toCard(p: CandidateRow, distanceKm: number | null, body?: Body | null) {
-  // Spec step 4: a label only. It never filters or reorders, and without measurements or a valid
-  // chart it is null (never a guess).
-  const chart = body ? parseSizeChart(p.size_chart) : null;
+  // Spec step 4: a label only. It never filters or reorders, and without measurements or a chart
+  // it is null (never a guess).
   return {
-    suggested_size: body ? suggestSize(body, chart, p.sizes) : null,
+    suggested_size: body ? sizeFor(p, body) : null,
     ...(await toPublicProductSummary(p)),
     color_family: p.color_family,
     distance_km: distanceKm,
@@ -388,8 +396,9 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
       }
 
       // Only a shopper who saved measurements (which needs their consent) gets size labels.
+      // Never on the kids feed: these are the parent's measurements, not the child's.
       const bodyMeasurements =
-        account.bust_cm || account.waist_cm || account.hip_cm
+        !b.kids && (account.bust_cm || account.waist_cm || account.hip_cm)
           ? {
               bust_cm: account.bust_cm,
               waist_cm: account.waist_cm,
@@ -421,6 +430,11 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           tabs,
           // Occasion tab only: how many products carry the requested tag (else null).
           occasion_matches: occasionMatches,
+          // Phase 4 payoff counter: candidates in this feed that get a size. Null without
+          // measurements or on the kids feed.
+          size_matches: bodyMeasurements
+            ? inRange.filter((p) => sizeFor(p, bodyMeasurements) !== null).length
+            : null,
           location_scope: locationScope,
           rationale_source: 'rules' as const,
           // D6: the saved gender this feed filtered by; null = showing all adult wear.
