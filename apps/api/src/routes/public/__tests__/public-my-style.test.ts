@@ -568,6 +568,61 @@ describe('ranking + paging', () => {
       expect((await feed()).json().meta.size_matches).toBe(0);
     });
 
+    describe('usual size (B2): a label only', () => {
+      const plain = (id: string, over: Record<string, unknown> = {}) =>
+        row(id, store('1'), { sizes: ['S', 'M'], size_chart: null, ...over } as object);
+
+      it('never filters the feed: a product without that size is still returned', async () => {
+        DB = [plain('a'), plain('b', { sizes: ['XL'] })];
+        mockSession.mockResolvedValue(account({ usual_size: 'M' }));
+        expect(ids(await feed()).sort()).toEqual(['a', 'b']);
+      });
+
+      it('the Size dropdown alone filters, whatever the usual size', async () => {
+        DB = [plain('a'), plain('b', { sizes: ['L'] })];
+        mockSession.mockResolvedValue(account({ usual_size: 'M' }));
+        expect(ids(await feed({ size: 'l' }))).toEqual(['b']);
+      });
+
+      it('labels a product that lists the usual size, any case', async () => {
+        DB = [plain('a'), plain('b', { sizes: ['s', 'm'] })];
+        mockSession.mockResolvedValue(account({ usual_size: 'M' }));
+        expect(await sizeOf('a')).toEqual({ size: 'M', chart: 'usual' });
+        expect(await sizeOf('b')).toEqual({ size: 'M', chart: 'usual' });
+      });
+
+      it('no label when the product does not list it or lists no sizes', async () => {
+        DB = [plain('a', { sizes: ['L'] }), plain('b', { sizes: [] })];
+        mockSession.mockResolvedValue(account({ usual_size: 'M' }));
+        expect(await sizeOf('a')).toBeNull();
+        expect(await sizeOf('b')).toBeNull();
+      });
+
+      it('measurements win; usual size covers what they cannot answer', async () => {
+        DB = [
+          kurti('a', { sizes: ['M', 'L'] }),
+          plain('b', { audience: 'MEN', category: 'Shirt' }),
+        ];
+        mockSession.mockResolvedValue(account({ bust_cm: 97, usual_size: 'M' }));
+        expect(await sizeOf('a')).toEqual({ size: 'L', chart: 'standard' });
+        expect(await sizeOf('b')).toEqual({ size: 'M', chart: 'usual' });
+      });
+
+      it('the kids feed never labels from the usual size', async () => {
+        DB = [plain('a', { audience: 'GIRLS', category: 'Kurti' })];
+        mockSession.mockResolvedValue(account({ usual_size: 'M' }));
+        const res = (await feed({ kids: true })).json();
+        expect(res.data[0].suggested_size).toBeNull();
+        expect(res.meta.size_matches).toBeNull();
+      });
+
+      it('size_matches counts usual-size labels', async () => {
+        DB = [plain('a'), plain('b'), plain('c', { sizes: ['XL'] })];
+        mockSession.mockResolvedValue(account({ usual_size: 'M' }));
+        expect((await feed()).json().meta.size_matches).toBe(2);
+      });
+    });
+
     it('never reorders or removes anything: the same ids with and without measurements', async () => {
       DB = [withChart('a'), withChart('b', { size_chart: null })];
       const without = ids(await feed());

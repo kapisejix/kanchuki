@@ -152,17 +152,30 @@ type Body = Parameters<typeof suggestSize>[0];
 
 // Phase 4: the store's own chart wins (even when it has no answer); otherwise the standard women's
 // chart for stitched wear. Shared by the card and meta.size_matches so the two never disagree.
-function sizeFor(p: CandidateRow, body: Body) {
-  const store = parseSizeChart(p.size_chart);
-  const s = suggestSize(body, store ?? standardChartFor(p), p.sizes);
-  return s ? { ...s, chart: store ? ('store' as const) : ('standard' as const) } : null;
+// Measurements win; the saved usual size (B2) labels what they cannot answer, only on a product
+// that lists it. A label only: nothing here filters or reorders.
+function sizeFor(p: CandidateRow, body: Body | null, usual: string | null = null) {
+  if (body) {
+    const store = parseSizeChart(p.size_chart);
+    const s = suggestSize(body, store ?? standardChartFor(p), p.sizes);
+    if (s) return { ...s, chart: store ? ('store' as const) : ('standard' as const) };
+  }
+  if (usual && p.sizes.some((x) => x.toUpperCase() === usual)) {
+    return { size: usual, chart: 'usual' as const };
+  }
+  return null;
 }
 
-async function toCard(p: CandidateRow, distanceKm: number | null, body?: Body | null) {
+async function toCard(
+  p: CandidateRow,
+  distanceKm: number | null,
+  body: Body | null = null,
+  usual: string | null = null,
+) {
   // Spec step 4: a label only. It never filters or reorders, and without measurements or a chart
   // it is null (never a guess).
   return {
-    suggested_size: body ? sizeFor(p, body) : null,
+    suggested_size: sizeFor(p, body, usual),
     ...(await toPublicProductSummary(p)),
     color_family: p.color_family,
     distance_km: distanceKm,
@@ -249,7 +262,8 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         city: account.city?.trim() || null,
         radiusKm: b.radius_km,
         budgetMax: b.budget_max ?? account.budget_max ?? undefined,
-        size: (b.size ?? account.usual_size)?.toUpperCase(),
+        // The Size dropdown only. The saved usual size labels cards, never filters (B2).
+        size: b.size?.toUpperCase(),
         undertone: account.skin_undertone,
         depth: account.skin_depth,
         audience: b.kids ? 'kids' : 'adults',
@@ -410,13 +424,15 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
               hip_cm: account.hip_cm,
             }
           : null;
+      // B2: the saved usual size, as a label fallback. Never on the kids feed (it is the parent's).
+      const usualSize = b.kids ? null : (account.usual_size?.toUpperCase() ?? null);
       const byId = new Map(inRange.map((p) => [p.id, p]));
       const pageItems = ranked.slice((b.page - 1) * b.limit, b.page * b.limit);
       const data = await Promise.all(
         pageItems.map((item) => {
           const p = byId.get(item.id);
           if (!p) throw new Error(`my-style: ranked id ${item.id} not in candidates`);
-          return toCard(p, item.distance_km, bodyMeasurements).then((card) => ({
+          return toCard(p, item.distance_km, bodyMeasurements, usualSize).then((card) => ({
             ...card,
             reasons: cardReasons(item, p.sizes, b.size?.toUpperCase(), b.kids),
           }));
@@ -435,11 +451,12 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           tabs,
           // Occasion tab only: how many products carry the requested tag (else null).
           occasion_matches: occasionMatches,
-          // Phase 4 payoff counter: candidates in this feed that get a size. Null without
-          // measurements or on the kids feed.
-          size_matches: bodyMeasurements
-            ? inRange.filter((p) => sizeFor(p, bodyMeasurements) !== null).length
-            : null,
+          // Phase 4 payoff counter: candidates in this feed that get a size (measurements or
+          // usual size). Null with neither saved, or on the kids feed.
+          size_matches:
+            bodyMeasurements || usualSize
+              ? inRange.filter((p) => sizeFor(p, bodyMeasurements, usualSize) !== null).length
+              : null,
           location_scope: locationScope,
           rationale_source: 'rules' as const,
           // D6: the saved gender this feed filtered by; null = showing all adult wear.
@@ -562,7 +579,6 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
             city: account.city?.trim() || null,
             radiusKm: q.radius_km,
             budgetMax: account.budget_max ?? undefined,
-            size: account.usual_size?.toUpperCase(),
             undertone: account.skin_undertone,
             depth: account.skin_depth,
             extraWhere: { id: { not: anchor.id }, ...slotWhere(slot) },

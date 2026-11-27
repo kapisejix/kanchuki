@@ -269,6 +269,18 @@ describe('Phase 3: gender default (D6) on complete-look', () => {
   });
   const slotIds = (res: Parameters<typeof slots>[0]) =>
     slots(res).flatMap((s) => s.items.map((i) => i.id));
+  it('a saved usual size never filters the complements (B2)', async () => {
+    mockSession.mockResolvedValue({
+      ...account,
+      customer_account: { ...account.customer_account, usual_size: 'XL' },
+    });
+    const res = await look();
+    expect(slots(res).map((s) => s.key)).toEqual(['dupatta', 'bottom']);
+    for (const [arg] of mockFindMany.mock.calls) {
+      expect(JSON.stringify(arg.where)).not.toContain('"has":"XL"');
+    }
+  });
+
   it('a FEMALE account gets no MEN complements', async () => {
     mockSession.mockResolvedValue({
       ...account,
