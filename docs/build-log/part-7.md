@@ -982,3 +982,17 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | shared 279/279, ai 214/214, API 3579 passed (12 skipped), web 847/847 before review fixes, my-style web 225/225 + API job/sweep/privacy 42/42 after; tsc 0 for shared/ai/api/web; Biome clean on touched paths. API typecheck needs `pnpm --filter @kanchuki/ai build` first (api reads `@kanchuki/ai` types from dist). |
 | Merged | PR #366 (1703357f), 2026-11-27. |
 | Not done | Not device-tested. FaceDetector is flag-only in most browsers, so face checks mostly skip (MediaPipe = new dependency, needs approval). No example photos on the how-to card. `manual` source allowed but no manual-pick UI. On-device rejections are not counted. Adjust only on the result sheet, not PaletteCard. |
+
+## 2026-11-27 — My Style: customer-profile Phase 3 (Style Passport, D6, D7)
+
+| Area | Change |
+|---|---|
+| Why | Research `docs/tasks/pending/customer-profile-research.md` §7.1, §7.4, §10 Phase 3; owner decisions D6 (feed by gender + toggle) and D7 (Passport on `/my-profile`), 2026-11-27. Spec `docs/superpowers/specs/2026-11-27-my-style-passport-design.md`, plan `docs/superpowers/plans/2026-11-27-my-style-passport.md`. |
+| Gender (D6) | `customer_accounts.gender` was never set by any shopper screen. `/my-profile` Passport gains "Show me: Women's wear / Men's wear / Both" (FEMALE / MALE / null via `PUT /passport/preferences`). `adultsWhere(gender)` keeps that stored audience plus NULL-audience adult wear (never hidden). Feed + Complete the look honour it; `all_wear` (body flag / `?all_wear=1`) is the per-visit "Show all" toggle on `/my-style`, never saved; feed `meta.gender_filter`. |
+| `pref_styles` | Ranked: `MY_STYLE_FIT.prefStyle = 0.05` when a chosen style appears as whole words in a product keyword (regex-escaped). |
+| Why this matches | `rankProducts` returns `reasons` (palette good only, occasion, colour, style, fabric); feed cards carry ≤2 (`size` from the requested size, `near` ≤ 3 km fill in). `rationale_source: 'rules'`. Web chips via `reasonLabel()`; unknown code = no chip. No body/frame reason ever. |
+| Synced shortlist | The account wishlist is the My Style shortlist. New `DELETE /passport/wishlist {product_id}` (session-scoped `deleteMany`, idempotent); proxy DELETE allowlisted for `wishlist` only. Optimistic add/remove with rollback + "Couldn't save. Try again."; an old device copy is POSTed once and cleared only when every item answered 200/404. |
+| Style Passport (D7) | `my-profile/StylePassport.tsx` at the top of `/my-profile` (`#passport`): 3-step completeness (colours, size, taste; Show me is a setting, since "Both" = null = unset), PaletteCard + TasteCard reused, size summary, links to `/my-style` (`?retake=1` opens the photo sheet, `?palette=1` starts Shop my colours). A failed style read shows Retry; the rest of the page renders. `/my-style` header links back. |
+| Migrations | None. |
+| Local runs | API 263 files, 3606 passed (12 skipped); web 93 files, 887 passed; tsc 0 for shared/ai/api/web (after `pnpm --filter @kanchuki/ai build`); Biome clean on the 28 changed files. |
+| Not done | Not device/browser-tested. `/my-profile` has a Saved count, not a list, so remove lives on the `/my-style` shortlist bar. Size step's payoff waits on Phase 4 size charts. |
