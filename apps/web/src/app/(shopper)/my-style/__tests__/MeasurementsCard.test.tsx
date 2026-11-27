@@ -41,9 +41,9 @@ describe('MeasurementsCard', () => {
     save.mockResolvedValue('ok');
     setup();
     type(/height/i, '163');
-    type(/bust/i, '88');
-    type(/waist/i, '72');
-    type(/hip/i, '96');
+    type(/bust \/ chest/i, '88');
+    type(/waist \(cm\)/i, '72');
+    type(/hip \(cm\)/i, '96');
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /save measurements/i }));
     });
@@ -85,7 +85,7 @@ describe('MeasurementsCard', () => {
   it('a failed save is reported and NOT shown as saved', async () => {
     save.mockResolvedValue('error');
     setup();
-    type(/bust/i, '88');
+    type(/bust \/ chest/i, '88');
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /save measurements/i }));
     });
@@ -96,7 +96,7 @@ describe('MeasurementsCard', () => {
   it('two quick taps save once', async () => {
     save.mockResolvedValue('ok');
     setup();
-    type(/bust/i, '88');
+    type(/bust \/ chest/i, '88');
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /save measurements/i }));
       fireEvent.click(screen.getByRole('button', { name: /save measurements/i }));
@@ -144,7 +144,7 @@ describe('MeasurementsCard', () => {
       save.mockResolvedValue('ok');
       setup(null, false);
       fireEvent.click(screen.getByRole('button', { name: MY_STYLE_BODY_CONSENT.acceptLabel }));
-      type(/bust/i, '88');
+      type(/bust \/ chest/i, '88');
       await act(async () => {
         fireEvent.click(screen.getByRole('button', { name: /save measurements/i }));
       });
@@ -157,7 +157,7 @@ describe('MeasurementsCard', () => {
     it('not now leaves the form hidden', () => {
       setup(null, false);
       fireEvent.click(screen.getByRole('button', { name: MY_STYLE_BODY_CONSENT.declineLabel }));
-      expect(screen.queryByLabelText(/bust/i)).toBeNull();
+      expect(screen.queryByLabelText(/bust \/ chest/i)).toBeNull();
     });
 
     it('a shopper who already has saved measurements is not asked again', () => {
@@ -165,5 +165,53 @@ describe('MeasurementsCard', () => {
       expect(screen.queryByText(MY_STYLE_BODY_CONSENT.title)).toBeNull();
       expect(screen.getByLabelText(/height/i)).toBeTruthy();
     });
+  });
+});
+
+describe('MeasurementsCard: Phase 4 payoff, guide, no-tape', () => {
+  const saved = {
+    height_cm: null,
+    bust_cm: 91,
+    waist_cm: null,
+    hip_cm: null,
+    saved_at: '2026-11-27T00:00:00.000Z',
+  } as Parameters<typeof MeasurementsCard>[0]['initial'];
+  const mount = (p: Partial<Parameters<typeof MeasurementsCard>[0]> = {}) =>
+    render(<MeasurementsCard initial={saved} onSaved={onSaved} {...p} />);
+
+  it('counts the products that show the shopper size', () => {
+    mount({ sizeMatches: 12 });
+    expect(screen.getByTestId('size-matches').textContent).toBe(
+      'Your size is shown on 12 products in your feed',
+    );
+  });
+  it('says so when no product gets a size', () => {
+    mount({ sizeMatches: 0 });
+    expect(screen.getByTestId('size-matches').textContent).toBe(
+      'No product in your feed has a size for your measurements yet',
+    );
+  });
+  it('hides the counter without a number or without saved measurements', () => {
+    mount({ sizeMatches: null });
+    expect(screen.queryByTestId('size-matches')).toBeNull();
+    act(() => undefined);
+    render(<MeasurementsCard initial={null} onSaved={onSaved} sizeMatches={3} />);
+    expect(screen.queryByTestId('size-matches')).toBeNull();
+  });
+  it('shows a picture for bust, waist and hip', () => {
+    mount();
+    for (const name of ['Bust', 'Waist', 'Hip'])
+      expect(screen.getByRole('img', { name })).toBeTruthy();
+    expect(screen.getByText('Measure over light clothing, tape snug, not tight')).toBeTruthy();
+  });
+  it('No tape? hands over to the size filter', () => {
+    const onPickUsualSize = vi.fn();
+    mount({ onPickUsualSize });
+    fireEvent.click(screen.getByRole('button', { name: 'No tape? Pick your usual size' }));
+    expect(onPickUsualSize).toHaveBeenCalledTimes(1);
+  });
+  it('has no No tape? button without a handler', () => {
+    mount();
+    expect(screen.queryByRole('button', { name: 'No tape? Pick your usual size' })).toBeNull();
   });
 });
