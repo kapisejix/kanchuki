@@ -1,11 +1,17 @@
 import { PATTERN_TYPES, SIZE_OPTIONS, resolveFashionColor } from '@kanchuki/shared';
-import type { KidsAgeGroupValue, ProductAudienceValue, ProductDetail } from '@kanchuki/shared';
+import type {
+  InchRows,
+  KidsAgeGroupValue,
+  ProductAudienceValue,
+  ProductDetail,
+} from '@kanchuki/shared';
 import { Image } from 'expo-image';
 import { Check, Sparkles, Tag } from 'lucide-react-native';
 import type React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { AnimatedPressable } from '../AnimatedPressable';
 import { AudienceChips, type AudiencePick } from './AudienceChips';
+import { SizeChartEditor } from './SizeChartEditor';
 import { StockEditor } from './StockEditor';
 
 type NamedItem = { id: string; name: string };
@@ -26,6 +32,9 @@ interface ProductAttributesFormProps {
   setSelectedSizes: React.Dispatch<React.SetStateAction<string[]>>;
   stockQty: Record<string, number>;
   setStock: (size: string, quantity: number) => void;
+  chartRows: InchRows;
+  setChartRows: (rows: InchRows) => void;
+  chartError: string | null;
   selectedCategoryIds: string[];
   setSelectedCategoryIds: React.Dispatch<React.SetStateAction<string[]>>;
   editedCategory: string | null;
@@ -71,6 +80,9 @@ export function ProductAttributesForm({
   setSelectedSizes,
   stockQty,
   setStock,
+  chartRows,
+  setChartRows,
+  chartError,
   selectedCategoryIds,
   setSelectedCategoryIds,
   editedCategory,
@@ -499,6 +511,13 @@ export function ProductAttributesForm({
             </Text>
           )}
         </View>
+
+        <SizeChartEditor
+          sizes={selectedSizes}
+          rows={chartRows}
+          onChange={setChartRows}
+          error={chartError}
+        />
 
         {/* SKU & Barcode Tag */}
         <View>

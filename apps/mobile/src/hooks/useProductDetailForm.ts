@@ -1,13 +1,17 @@
-import type {
-  KidsAgeGroupValue,
-  ProductAudienceValue,
-  ProductDetail,
-  ProductStatus,
+import {
+  type InchRows,
+  type KidsAgeGroupValue,
+  type ProductAudienceValue,
+  type ProductDetail,
+  type ProductStatus,
+  inchesFromChart,
+  parseSizeChart,
 } from '@kanchuki/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
+import { gateSizeChart } from '../components/product-detail/SizeChartEditor';
 import { toStockPayload } from '../components/product-detail/StockEditor';
 import { productApi } from '../lib/api';
 import { showError } from '../lib/errors';
@@ -29,6 +33,10 @@ export function useProductDetailForm({ product }: UseProductDetailFormProps) {
   // (or legacy untracked) counts would flip a SOLD product back to AVAILABLE.
   const [stockQty, setStockQty] = useState<Record<string, number>>({});
   const [stockTouched, setStockTouched] = useState(false);
+  // My Style Phase 4 size chart (inches). Only sent once edited, like stock.
+  const [chartRows, setChartRows] = useState<InchRows>({});
+  const [chartTouched, setChartTouched] = useState(false);
+  const [chartError, setChartError] = useState<string | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [editedCategory, setEditedCategory] = useState<string | null>(null);
   const [editedColor, setEditedColor] = useState<string>('');
@@ -80,6 +88,10 @@ export function useProductDetailForm({ product }: UseProductDetailFormProps) {
     setSelectedSizes(product.sizes ?? []);
     setStockQty(Object.fromEntries((product.stock ?? []).map((r) => [r.size, r.quantity])));
     setStockTouched(false);
+    const chart = parseSizeChart(product.size_chart);
+    setChartRows(chart ? inchesFromChart(chart) : {});
+    setChartTouched(false);
+    setChartError(null);
     setSelectedCategoryIds(product.category_id ? [product.category_id] : []);
     setEditedCategory(product.category ?? null);
     setEditedColor(product.primary_color ?? '');
@@ -101,6 +113,8 @@ export function useProductDetailForm({ product }: UseProductDetailFormProps) {
 
   const handleSave = async (categoryList?: { id: string; name: string }[]) => {
     if (!product) return;
+    const chart = chartTouched ? gateSizeChart(chartRows, selectedSizes, setChartError) : null;
+    if (chartTouched && !chart) return;
     setSaving(true);
     try {
       const priceInPaise = price ? Math.round(Number.parseFloat(price) * 100) : undefined;
@@ -143,11 +157,13 @@ export function useProductDetailForm({ product }: UseProductDetailFormProps) {
         sizes: selectedSizes,
         ...(stockTouched ? { stock: toStockPayload(selectedSizes, stockQty) } : {}),
         ...(audienceTouched ? { audience, kids_age_group: kidsAge } : {}),
+        ...(chart ? { size_chart: chart.size_chart } : {}),
         search_tags: tagsToSave,
       });
       invalidate();
       setIsDirty(false);
       setStockTouched(false);
+      setChartTouched(false);
       setAudienceTouched(false);
       Alert.alert('Saved', 'Product updated.');
     } catch (err) {
@@ -220,6 +236,14 @@ export function useProductDetailForm({ product }: UseProductDetailFormProps) {
     selectedSizes,
     setSelectedSizes,
     stockQty,
+    chartRows,
+    chartError,
+    setChartRows: (rows: InchRows) => {
+      setIsDirty(true);
+      setChartTouched(true);
+      setChartError(null);
+      setChartRows(rows);
+    },
     setStock: (size: string, quantity: number) => {
       setIsDirty(true);
       setStockTouched(true);

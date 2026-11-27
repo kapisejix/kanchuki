@@ -42,6 +42,8 @@ export interface TasteSummary {
 export interface SuggestedSize {
   size: string;
   between?: [string, string];
+  /** Phase 4: the store's own chart, or the standard women's chart used as a fallback. */
+  chart?: 'store' | 'standard';
 }
 
 export interface FeedCard {
@@ -111,6 +113,8 @@ export interface FeedMeta {
   tabs?: { festival: { name: string } | null; trending: boolean };
   /** Occasion tab only: how many products carry the picked tag (null on other tabs). */
   occasion_matches?: number | null;
+  /** Phase 4: products in this feed that get a size label. Null without measurements / kids. */
+  size_matches?: number | null;
 }
 
 export type FeedTab = 'foryou' | 'festival' | 'occasion' | 'trending';

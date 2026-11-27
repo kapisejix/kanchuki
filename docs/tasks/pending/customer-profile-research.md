@@ -1,6 +1,7 @@
 # Customer Profile & My Style: research, gaps and redesign proposal
 
-Status 2026-11-27 (later): **Phase 1 MERGED (PR #365, c989a50c). Phase 2 + D4 + D5 MERGED (PR #366, 1703357f), not device-tested; migrations 170/171 applied in prod and read back 2026-11-27. Next: Phase 3 (D6, D7).**. Guided capture + live camera, on-device check (light/blur/cast; face checks only where FaceDetector exists), new reasons + confidence, drape test, split quota, admin failure counts. Out of scope: D1, D2, D3, D6, D7, pref_styles, reason chips, size charts.
+Status 2026-11-27 (Phase 4): **Phases 1-3 MERGED (#365, #366, #368, a73ebbd8). Phase 4 "Size that works" BUILT on branch `feat/my-style-size`, not pushed, not device-tested, no migration.** Standard women's chart in code as fallback (store chart wins), "· standard chart" label, kids feed never sized, `meta.size_matches` counter, illustrated guide, "No tape?" → Size filter, optional retailer chart (inches) in mobile add/edit. Products with no `sizes[]` stay silent (owner option A). Spec `docs/superpowers/specs/2026-11-27-my-style-size-design.md`.
+Earlier status 2026-11-27 (later): **Phase 1 MERGED (PR #365, c989a50c). Phase 2 + D4 + D5 MERGED (PR #366, 1703357f), not device-tested; migrations 170/171 applied in prod and read back 2026-11-27. Next: Phase 3 (D6, D7).**. Guided capture + live camera, on-device check (light/blur/cast; face checks only where FaceDetector exists), new reasons + confidence, drape test, split quota, admin failure counts. Out of scope: D1, D2, D3, D6, D7, pref_styles, reason chips, size charts.
 Earlier status: **Phase 1 built on branch `feat/my-style-result-screen`, not merged, not device-tested.** Result screen (swatches best/good/go easy, plain "why", in-memory photo preview, Shop my colours / Retake / Delete), `GET /v1/public/my-style/profile` (R3, RC-185), face-photo copy (R6), fix line + tips per failed read, `palette_only` feed filter. Swatch hexes are a static map in `packages/shared/src/color-family.ts` (`color_families` has no hex column: a later migration). Phase 2+ waits on D1-D7 (§11).
 Previous status: **research only, nothing built.** Written 2026-11-26 after the owner reported: "customer uploads a photo from the gallery and gets nothing back: no measurements, no saved photo, no advice, no 'photo not good enough, retake' message. The My Style page stays blank."
 Scope: shopper-side web PWA (`apps/web/src/app/(shopper)/`), the API behind it (`apps/api/src/routes/public/public-my-style*.ts`, `apps/api/src/lib/my-style-*.ts`), the vision call (`packages/ai/src/my-style-vision.ts`) and the stored data (`customer_accounts` and related tables).
@@ -238,7 +239,7 @@ Build reason chips from the fit parts the ranker already computes: "Your colour"
 ### 7.5 Measurements that pay off
 
 1. **Category default charts** (admin-set per category: kurti, suit set, blouse, lehenga choli), so a suggestion works on day one without retailer input. Label them "standard size chart, store sizes may differ".
-2. **Retailer chart entry** (already built, migration 162): prompt for it when a retailer adds a stitched product.
+2. **Retailer chart entry** (API + migration 162 existed; the mobile form UI was not built until Phase 4): prompt for it when a retailer adds a stitched product.
 3. **Illustrated measuring guide** (3 pictures, not a paragraph), plus a fallback: "No tape? Use my usual size."
 4. **Payoff counter:** "Your size shown on N products near you."
 5. Later (owner decision D3): a vendor scan SDK, only after a measured pilot.

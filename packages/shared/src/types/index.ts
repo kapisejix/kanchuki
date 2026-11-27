@@ -1,3 +1,4 @@
+import type { SizeChart } from '../my-style-size.js';
 import type { KidsAgeGroupValue, ProductAudienceValue } from '../product-audience.js';
 
 // ─── API Response Envelope ────────────────────────────────────────
@@ -89,6 +90,8 @@ export interface ProductDetail extends ProductSummary {
   background_image_id?: string | null;
   add_shadow?: boolean;
   sizes?: string[];
+  /** Retailer size chart (cm ranges per size); null = none. My Style Phase 4. */
+  size_chart?: SizeChart | null;
   product_type: string | null;
   fabric_estimate: string | null;
   fabrics: string[];

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { type SizeChart, parseSizeChart, suggestSize } from './my-style-size.js';
+import {
+  STANDARD_SIZE_CHART,
+  type SizeChart,
+  chartFromInches,
+  inchesFromChart,
+  parseSizeChart,
+  standardChartFor,
+  standardInchRows,
+  suggestSize,
+} from './my-style-size.js';
 
 // Synthetic chart, cm ranges per size.
 const chart: SizeChart = {
@@ -68,5 +77,131 @@ describe('parseSizeChart', () => {
     ['not an object', 'M'],
   ])('rejects %s', (_n, bad) => {
     expect(parseSizeChart(bad)).toBeNull();
+  });
+});
+
+describe('parseSizeChart rising rule', () => {
+  it('rejects a chart whose upper bounds do not rise with size', () => {
+    expect(parseSizeChart({ S: { bust: [84, 88] }, M: { bust: [80, 86] } })).toBeNull();
+  });
+  it('ignores object key order', () => {
+    const c = { M: { bust: [89, 94] }, S: { bust: [84, 88] } };
+    expect(parseSizeChart(c)).toEqual(c);
+  });
+  it('allows a dimension to be missing in one size', () => {
+    const c = { S: { bust: [84, 88] }, M: { hip: [97, 101] }, L: { bust: [95, 99] } };
+    expect(parseSizeChart(c)).toEqual(c);
+  });
+});
+
+describe('standardChartFor', () => {
+  const p = (audience: any, category: string | null, subtype: string | null = null) => ({
+    audience,
+    category,
+    subtype,
+  });
+  it('is a valid rising chart', () => {
+    expect(parseSizeChart(STANDARD_SIZE_CHART)).toEqual(STANDARD_SIZE_CHART);
+  });
+  it.each([
+    'Ladies Suit',
+    'Kurti',
+    'Kurtis',
+    'Salwar Suits',
+    'Gown',
+    'Tops & Tunics',
+    'Co-ords',
+    'Ladies',
+  ])('covers stitched women wear: %s', (c) => {
+    expect(standardChartFor(p('WOMEN', c))).toBe(STANDARD_SIZE_CHART);
+  });
+  it('covers untagged audience when the text is not men or kids', () => {
+    expect(standardChartFor(p(null, 'Kurta'))).toBe(STANDARD_SIZE_CHART);
+    expect(standardChartFor(p(null, 'Women Kurti'))).toBe(STANDARD_SIZE_CHART);
+  });
+  it.each(['MEN', 'GIRLS', 'BOYS', 'KIDS_UNISEX'])('never for audience %s', (a) => {
+    expect(standardChartFor(p(a, 'Kurti'))).toBeNull();
+  });
+  it('never for untagged men or kids text', () => {
+    expect(standardChartFor(p(null, "Men's Kurta Pajama"))).toBeNull();
+    expect(standardChartFor(p(null, 'Girls Kurti'))).toBeNull();
+  });
+  it.each([
+    'Saree',
+    'Lehenga',
+    'Dupatta',
+    'Unstitched Suit',
+    'Dress Material',
+    'Blouse Piece',
+    'Stole',
+    'Laptop Bag',
+  ])('never for %s', (c) => {
+    expect(standardChartFor(p('WOMEN', c))).toBeNull();
+  });
+  it('never without category text', () => {
+    expect(standardChartFor(p('WOMEN', null, null))).toBeNull();
+  });
+  it('suggests sizes from the standard chart', () => {
+    expect(suggestSize({ bust_cm: 72 }, STANDARD_SIZE_CHART, ['XS', 'S'])).toEqual({ size: 'XS' });
+    expect(
+      suggestSize({ bust_cm: 91, waist_cm: 76, hip_cm: 99 }, STANDARD_SIZE_CHART, ['S', 'M', 'L']),
+    ).toEqual({ size: 'M' });
+    expect(suggestSize({ bust_cm: 125 }, STANDARD_SIZE_CHART, ['4XL'])).toBeNull();
+  });
+});
+
+describe('inch rows <-> size chart', () => {
+  it('builds cm ranges from "fits up to" inches', () => {
+    expect(chartFromInches({ S: { bust: 34 }, M: { bust: 36 } })).toEqual({
+      S: { bust: [81, 86] },
+      M: { bust: [87, 91] },
+    });
+  });
+  it('starts each dimension at its first size', () => {
+    expect(chartFromInches({ S: { bust: 34 }, M: { hip: 39 } })).toEqual({
+      S: { bust: [81, 86] },
+      M: { hip: [94, 99] },
+    });
+  });
+  it('is null when everything is blank', () => {
+    expect(chartFromInches({})).toBeNull();
+    expect(chartFromInches({ S: {} })).toBeNull();
+  });
+  it('is invalid when sizes do not rise', () => {
+    expect(chartFromInches({ S: { bust: 36 }, M: { bust: 34 } })).toBe('invalid');
+  });
+  it('reads a chart back as inches to the nearest half', () => {
+    expect(inchesFromChart({ M: { bust: [89, 94] } })).toEqual({ M: { bust: 37 } });
+  });
+  it('round-trips the standard chart without changing suggestions', () => {
+    const back = chartFromInches(inchesFromChart(STANDARD_SIZE_CHART));
+    expect(back).not.toBe('invalid');
+    const sizes = Object.keys(STANDARD_SIZE_CHART);
+    for (const bust_cm of [85, 91, 100, 118]) {
+      expect(suggestSize({ bust_cm }, back as SizeChart, sizes)).toEqual(
+        suggestSize({ bust_cm }, STANDARD_SIZE_CHART, sizes),
+      );
+    }
+  });
+  it('gives standard rows only for sizes in the standard chart', () => {
+    expect(standardInchRows(['M', '5XL'])).toEqual({ M: { bust: 37, waist: 30.5, hip: 40 } });
+  });
+});
+
+describe('standardChartFor reads the product name too (review fix)', () => {
+  it('a men kurta with no audience and a plain category gets no chart', () => {
+    expect(
+      standardChartFor({
+        audience: null,
+        category: 'Kurta',
+        subtype: null,
+        name: 'Mens Kurta Pajama',
+      }),
+    ).toBeNull();
+  });
+  it('a women name keeps the chart', () => {
+    expect(
+      standardChartFor({ audience: null, category: 'Kurta', subtype: null, name: 'Ladies kurta' }),
+    ).toBe(STANDARD_SIZE_CHART);
   });
 });

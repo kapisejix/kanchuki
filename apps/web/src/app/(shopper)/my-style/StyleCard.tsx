@@ -21,6 +21,7 @@ interface Props {
 }
 
 const NAME = 'block text-sm font-semibold leading-5 text-spaceCadet-900 line-clamp-2 min-h-10';
+const STANDARD_HINT = 'Based on a standard size chart. Store sizes may differ.';
 
 export function StyleCard({ card: c, saved, full, busy, onToggle, onEnquire, onLook }: Props) {
   return (
@@ -84,12 +85,23 @@ export function StyleCard({ card: c, saved, full, busy, onToggle, onEnquire, onL
           ) : null;
         })()}
         {c.suggested_size && (
-          <p data-testid="suggested-size" className="text-xs font-semibold text-fuchsia-600 mt-1">
+          <p
+            data-testid="suggested-size"
+            className="text-xs font-semibold text-fuchsia-600 mt-1"
+            title={c.suggested_size.chart === 'standard' ? STANDARD_HINT : undefined}
+          >
             Your size: {c.suggested_size.size}
             {c.suggested_size.between
               ? ` (between ${c.suggested_size.between[0]} and ${c.suggested_size.between[1]})`
               : ''}
-            <span className="font-normal text-heliotrope-500"> · approx.</span>
+            {c.suggested_size.chart === 'standard' ? (
+              <>
+                <span className="font-normal text-heliotrope-500"> · standard chart</span>
+                <span className="sr-only">{STANDARD_HINT}</span>
+              </>
+            ) : (
+              <span className="font-normal text-heliotrope-500"> · approx.</span>
+            )}
           </p>
         )}
         <div className="mt-auto">

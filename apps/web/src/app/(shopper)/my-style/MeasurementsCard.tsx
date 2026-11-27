@@ -25,12 +25,40 @@ const LABEL: Record<Field, string> = {
 const FIELDS: Field[] = ['height_cm', 'bust_cm', 'waist_cm', 'hip_cm'];
 const INPUT = 'w-full rounded-xl border border-lavender-200 px-3 py-2 text-sm text-spaceCadet-900';
 
+// Phase 4 illustrated guide: one torso outline per measurement, the tape drawn where it goes.
+// ponytail: inline SVG, no image files; swap for drawn art if the owner wants a richer guide.
+const TAPE_Y = { Bust: 30, Waist: 46, Hip: 62 } as const;
+function TapeFigure({ name }: { name: keyof typeof TAPE_Y }) {
+  const y = TAPE_Y[name];
+  return (
+    <figure className="flex flex-col items-center gap-1">
+      <svg role="img" aria-label={name} viewBox="0 0 60 90" className="h-20 w-14">
+        <circle cx="30" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        <path
+          d="M18 22 Q30 18 42 22 L44 36 Q38 46 40 52 Q46 62 44 84 L16 84 Q14 62 20 52 Q22 46 16 36 Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <ellipse cx="30" cy={y} rx="16" ry="3" fill="none" stroke="#c026d3" strokeWidth="2" />
+      </svg>
+      <figcaption className="font-semibold">{name}</figcaption>
+    </figure>
+  );
+}
+
 export function MeasurementsCard({
   initial,
   onSaved,
+  sizeMatches,
+  onPickUsualSize,
 }: {
   initial: Measurements | null;
   onSaved: () => void;
+  /** Phase 4: feed meta.size_matches; null/undefined hides the counter. */
+  sizeMatches?: number | null;
+  /** Phase 4 "No tape?": hands over to the page's Size filter. */
+  onPickUsualSize?: () => void;
 }) {
   const [vals, setVals] = useState<Record<Field, string>>({
     height_cm: initial?.height_cm?.toString() ?? '',
@@ -46,6 +74,8 @@ export function MeasurementsCard({
   // Saved measurements imply a live consent (they cannot be stored without one), so only a
   // shopper with none meets the consent step.
   const [step, setStep] = useState<'consent' | 'declined' | 'form'>(initial ? 'form' : 'consent');
+  // Only bust / waist / hip drive a size; height alone never does.
+  const hasBody = !!(initial?.bust_cm || initial?.waist_cm || initial?.hip_cm);
   const busyRef = useRef(false); // sync guard: two taps can land before state commits (RC-015)
 
   async function run(body: Parameters<typeof saveMeasurements>[0], okText: string) {
@@ -238,12 +268,36 @@ export function MeasurementsCard({
 
       <details className="mt-3 text-xs text-heliotrope-500">
         <summary className="cursor-pointer font-semibold">How to measure</summary>
+        <div className="mt-2 flex justify-around text-heliotrope-500">
+          <TapeFigure name="Bust" />
+          <TapeFigure name="Waist" />
+          <TapeFigure name="Hip" />
+        </div>
+        <p className="mt-2 font-semibold">Measure over light clothing, tape snug, not tight</p>
         <p className="mt-1">
           Use a soft tape over thin clothes, snug but not tight. Bust: around the fullest part.
           Waist: the narrowest part, above the navel. Hip: around the fullest part. Height: standing
           straight, no shoes. Sizes are approximate.
         </p>
       </details>
+
+      {onPickUsualSize && (
+        <button
+          type="button"
+          onClick={onPickUsualSize}
+          className="mt-2 text-xs font-semibold text-fuchsia-600 underline"
+        >
+          No tape? Pick your usual size
+        </button>
+      )}
+
+      {hasBody && sizeMatches !== null && sizeMatches !== undefined && (
+        <p data-testid="size-matches" className="mt-3 text-sm font-semibold text-spaceCadet-900">
+          {sizeMatches > 0
+            ? `Your size is shown on ${sizeMatches} products in your feed`
+            : 'No product in your feed has a size for your measurements yet'}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2 mt-4">
         <button type="button" onClick={save} disabled={busy} className={BTN_SECONDARY}>

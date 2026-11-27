@@ -246,6 +246,36 @@ describe('suggested size on the card', () => {
     expect(t).toMatch(/approx/i);
   });
 
+  it('names the standard chart, with a hint that store sizes may differ', () => {
+    render(
+      <StyleCard
+        card={card({ suggested_size: { size: 'M', chart: 'standard' } }) as never}
+        {...props}
+      />,
+    );
+    const el = screen.getByTestId('suggested-size');
+    expect(el.textContent).toMatch(/^Your size: M · standard chart/);
+    expect(el.textContent).not.toMatch(/approx/);
+    expect(el.getAttribute('title')).toBe(
+      'Based on a standard size chart. Store sizes may differ.',
+    );
+    expect(
+      screen.getByText('Based on a standard size chart. Store sizes may differ.'),
+    ).toBeTruthy();
+  });
+
+  it('a store chart keeps "approx." and no standard hint', () => {
+    render(
+      <StyleCard
+        card={card({ suggested_size: { size: 'M', chart: 'store' } }) as never}
+        {...props}
+      />,
+    );
+    const el = screen.getByTestId('suggested-size');
+    expect(el.textContent).toBe('Your size: M · approx.');
+    expect(el.getAttribute('title')).toBeNull();
+  });
+
   it('shows nothing when there is no suggestion', () => {
     render(<StyleCard card={card({ suggested_size: null }) as never} {...props} />);
     expect(screen.queryByTestId('suggested-size')).toBeNull();

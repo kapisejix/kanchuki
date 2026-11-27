@@ -4,6 +4,7 @@
 // all answer null. Boost-free: it only labels a card, it never filters or reorders.
 import { SIZE_OPTIONS } from './constants/index.js';
 import { MY_STYLE_MEASUREMENT_RANGES } from './my-style-measurements.js';
+import { type ProductAudienceValue, audienceForText } from './product-audience.js';
 
 export const SIZE_CHART_DIMENSIONS = ['bust', 'waist', 'hip'] as const;
 export type SizeChartDimension = (typeof SIZE_CHART_DIMENSIONS)[number];
@@ -38,6 +39,17 @@ export function parseSizeChart(input: unknown): SizeChart | null {
     if (Object.keys(dims).length === 0) return null;
     out[size] = dims;
   }
+  // Each dimension must rise with size, or suggestSize would pick a wrong size.
+  const sizes = Object.keys(out).sort((a, b) => order(a) - order(b));
+  for (const dim of SIZE_CHART_DIMENSIONS) {
+    let prev = -1;
+    for (const s of sizes) {
+      const hi = out[s]?.[dim]?.[1];
+      if (hi === undefined) continue;
+      if (hi <= prev) return null;
+      prev = hi;
+    }
+  }
   return Object.keys(out).length > 0 ? out : null;
 }
 
@@ -66,4 +78,92 @@ export function suggestSize(
   const lo = needs[0] as string;
   const hi = needs[needs.length - 1] as string;
   return lo === hi ? { size: hi } : { size: hi, between: [lo, hi] };
+}
+
+/**
+ * Phase 4: a standard Indian women's body chart (cm), used when a product has no chart of its
+ * own. Common brand inch chart (bust 32-46", waist 26-40", hip 35-49", 2" a size) as ±1" bands.
+ * ponytail: a constant, not a table; an admin editor only if the owner needs to change it often.
+ */
+export const STANDARD_SIZE_CHART: SizeChart = {
+  XS: { bust: [79, 83], waist: [64, 68], hip: [86, 91] },
+  S: { bust: [84, 88], waist: [69, 73], hip: [92, 96] },
+  M: { bust: [89, 94], waist: [74, 78], hip: [97, 101] },
+  L: { bust: [95, 99], waist: [79, 83], hip: [102, 106] },
+  XL: { bust: [100, 104], waist: [84, 88], hip: [107, 111] },
+  XXL: { bust: [105, 109], waist: [89, 93], hip: [112, 116] },
+  XXXL: { bust: [110, 114], waist: [94, 98], hip: [117, 121] },
+  '4XL': { bust: [115, 119], waist: [99, 104], hip: [122, 127] },
+};
+
+const STITCHED =
+  /\b(kurtis?|kurtas?|suits?|salwar|anarkali|gowns?|tops?|tunics?|co-ords?|ladies)\b/;
+const NOT_SIZED =
+  /\b(sarees?|sari|dupattas?|lehengas?|unstitched|dress material|blouse piece|fabric|stoles?)\b/;
+
+/** The standard chart for stitched women's wear only; null for men, kids, saree, dupatta… */
+export function standardChartFor(p: {
+  audience: ProductAudienceValue | null;
+  category: string | null;
+  subtype: string | null;
+  /** Read only for the men / kids guess: "Mens Kurta Pajama" filed under a plain "Kurta". */
+  name?: string | null;
+}): SizeChart | null {
+  if (p.audience !== 'WOMEN') {
+    if (p.audience !== null) return null;
+    const guess = audienceForText(p.category, p.subtype, p.name);
+    if (guess !== null && guess !== 'WOMEN') return null;
+  }
+  const text = `${p.category ?? ''} ${p.subtype ?? ''}`.toLowerCase();
+  if (NOT_SIZED.test(text) || !STITCHED.test(text)) return null;
+  return STANDARD_SIZE_CHART;
+}
+
+/** Retailer entry: the "fits up to" body measurement per size and dimension, in inches. */
+export type InchRows = Record<string, Partial<Record<SizeChartDimension, number>>>;
+
+const CM_PER_INCH = 2.54;
+
+/**
+ * Inches -> cm chart. Upper = round(in × 2.54); lower = the previous listed size's upper + 1
+ * (upper − 5 for a dimension's first size). suggestSize reads only uppers, so this loses nothing.
+ * null when everything is blank; 'invalid' when parseSizeChart rejects the result.
+ */
+export function chartFromInches(rows: InchRows): SizeChart | null | 'invalid' {
+  const sizes = Object.keys(rows).sort((a, b) => order(a) - order(b));
+  const raw: Record<string, Partial<Record<SizeChartDimension, [number, number]>>> = {};
+  for (const dim of SIZE_CHART_DIMENSIONS) {
+    let prev: number | null = null;
+    for (const s of sizes) {
+      const v = rows[s]?.[dim];
+      if (v === undefined || !Number.isFinite(v)) continue;
+      const hi = Math.round(v * CM_PER_INCH);
+      raw[s] = { ...raw[s], [dim]: [prev === null ? hi - 5 : prev + 1, hi] };
+      prev = hi;
+    }
+  }
+  if (Object.keys(raw).length === 0) return null;
+  return parseSizeChart(raw) ?? 'invalid';
+}
+
+/** cm chart -> "fits up to" inches, to the nearest half inch (edit form). */
+export function inchesFromChart(chart: SizeChart): InchRows {
+  const out: InchRows = {};
+  for (const [size, dims] of Object.entries(chart)) {
+    const row: Partial<Record<SizeChartDimension, number>> = {};
+    for (const dim of SIZE_CHART_DIMENSIONS) {
+      const r = dims[dim];
+      if (r) row[dim] = Math.round((r[1] / CM_PER_INCH) * 2) / 2;
+    }
+    out[size] = row;
+  }
+  return out;
+}
+
+/** The standard chart as inch rows, for the ticked sizes it covers. */
+export function standardInchRows(sizes: readonly string[]): InchRows {
+  const all = inchesFromChart(STANDARD_SIZE_CHART);
+  return Object.fromEntries(
+    sizes.filter((s) => all[s]).map((s) => [s, all[s] as InchRows[string]]),
+  );
 }

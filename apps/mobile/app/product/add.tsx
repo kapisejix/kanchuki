@@ -1,4 +1,4 @@
-import { SIZE_OPTIONS } from '@kanchuki/shared';
+import { type InchRows, SIZE_OPTIONS } from '@kanchuki/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { File } from 'expo-file-system';
@@ -27,6 +27,10 @@ import {
   type AudiencePick,
   addAudience,
 } from '../../src/components/product-detail/AudienceChips';
+import {
+  SizeChartEditor,
+  gateSizeChart,
+} from '../../src/components/product-detail/SizeChartEditor';
 import { StockEditor, toStockPayload } from '../../src/components/product-detail/StockEditor';
 import {
   categoryApi,
@@ -144,6 +148,9 @@ export default function AddProductScreen() {
   // null until the retailer taps a chip; until then the chips show a guess from the category.
   const [audiencePick, setAudiencePick] = useState<AudiencePick | null>(null);
   const [stockQty, setStockQty] = useState<Record<string, number>>({});
+  // My Style Phase 4: optional size chart, "fits up to" inches per ticked size.
+  const [chartRows, setChartRows] = useState<InchRows>({});
+  const [chartError, setChartError] = useState<string | null>(null);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const checkProAvailability = useCallback((refresh = false) => {
     setProAvailability('checking');
@@ -424,6 +431,10 @@ export default function AddProductScreen() {
 
   const handleSave = async () => {
     if (saveRunningRef.current) return;
+    // Size chart gate first: a chart that does not rise with size never reaches the API.
+    const chart = gateSizeChart(chartRows, selectedSizes, setChartError);
+    if (!chart) return;
+    setChartError(null);
     saveRunningRef.current = true;
     setStep('saving');
 
@@ -473,6 +484,7 @@ export default function AddProductScreen() {
         search_tags: tagsToSave,
         sizes: selectedSizes,
         stock: toStockPayload(selectedSizes, stockQty),
+        ...(chart.size_chart ? { size_chart: chart.size_chart } : {}),
         ...(audienceNow.audience
           ? { audience: audienceNow.audience, kids_age_group: audienceNow.kids_age_group }
           : {}),
@@ -1219,6 +1231,16 @@ export default function AddProductScreen() {
               })}
             </View>
           </View>
+
+          <SizeChartEditor
+            sizes={selectedSizes}
+            rows={chartRows}
+            onChange={(rows) => {
+              setChartRows(rows);
+              setChartError(null);
+            }}
+            error={chartError}
+          />
 
           {/* Stock per size (defaults to 1; edit later) */}
           <View className="bg-white rounded-2xl p-4 border border-lavender-200">
