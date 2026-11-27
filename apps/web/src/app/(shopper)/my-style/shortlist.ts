@@ -83,11 +83,13 @@ interface WishlistRow {
   };
 }
 
-/** The account's saved products as shortlist items; null when they cannot be read. */
-export async function fetchShortlist(): Promise<ShortItem[] | null> {
+/** The account's saved products as shortlist items; null when signed out (401), 'error' when
+ * they could not be read, so a failed load never passes for an empty list. */
+export async function fetchShortlist(): Promise<ShortItem[] | null | 'error'> {
   try {
     const res = await fetch(WISHLIST, { credentials: 'include' });
-    if (!res.ok) return null;
+    if (res.status === 401) return null;
+    if (!res.ok) return 'error';
     const { items } = (await res.json()) as { items: WishlistRow[] };
     return items.flatMap(({ product: p }) =>
       p.retailer.public_slug
@@ -105,7 +107,7 @@ export async function fetchShortlist(): Promise<ShortItem[] | null> {
         : [],
     );
   } catch {
-    return null;
+    return 'error';
   }
 }
 

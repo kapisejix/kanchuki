@@ -160,6 +160,7 @@ export default function MyStylePage() {
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [shortlist, setShortlist] = useState<ShortItem[]>([]);
   const [saveError, setSaveError] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const enquiry = useEnquiry();
   const phone = useIsPhone();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -171,7 +172,9 @@ export default function MyStylePage() {
     void moveDeviceShortlist()
       .then(fetchShortlist)
       .then((items) => {
-        if (alive && items) setShortlist(items);
+        if (!alive) return;
+        if (items === 'error') setLoadError(true);
+        else if (items) setShortlist(items);
       });
     return () => {
       alive = false;
@@ -870,6 +873,11 @@ export default function MyStylePage() {
       {saveError && (
         <p role="alert" className="mt-3 text-sm text-red-700">
           Couldn&apos;t save. Try again.
+        </p>
+      )}
+      {loadError && (
+        <p role="alert" className="mt-3 text-sm text-red-700">
+          Couldn&apos;t load your saved picks.
         </p>
       )}
       <ShortlistBar

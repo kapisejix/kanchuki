@@ -119,11 +119,13 @@ describe('account-synced shortlist', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/passport/wishlist', { credentials: 'include' });
   });
 
-  it('answers null when the wishlist cannot be read', async () => {
+  it('answers null when signed out, error when the wishlist cannot be read', async () => {
     fetchMock.mockResolvedValue(res(401));
     expect(await fetchShortlist()).toBeNull();
+    fetchMock.mockResolvedValue(res(500));
+    expect(await fetchShortlist()).toBe('error');
     fetchMock.mockRejectedValue(new Error('offline'));
-    expect(await fetchShortlist()).toBeNull();
+    expect(await fetchShortlist()).toBe('error');
   });
 
   it('add POSTs and remove DELETEs the product id; failure answers false', async () => {

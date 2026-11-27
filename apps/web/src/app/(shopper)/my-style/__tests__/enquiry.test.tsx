@@ -207,4 +207,15 @@ describe('Phase 3: shortlist saved to the account', () => {
     render(<MyStylePage />);
     expect(await screen.findByRole('button', { name: 'Enquire at 1 store' })).toBeTruthy();
   });
+
+  // Review fix: a failed load must not pass for "nothing saved".
+  it('a failed load says so instead of showing an empty shortlist', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/my-style/feed') return json(feedBody);
+      if (url === '/api/passport/wishlist') return json({}, 500);
+      throw new Error(`unexpected ${url}`);
+    });
+    render(<MyStylePage />);
+    expect(await screen.findByText("Couldn't load your saved picks.")).toBeTruthy();
+  });
 });

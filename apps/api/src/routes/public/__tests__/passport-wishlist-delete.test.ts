@@ -7,11 +7,12 @@ import { passportRoutes } from '../passport.js';
 
 const mockSessionFind = vi.hoisted(() => vi.fn());
 const mockDeleteMany = vi.hoisted(() => vi.fn());
+const mockFindMany = vi.hoisted(() => vi.fn());
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     passportSession: { findUnique: mockSessionFind, update: vi.fn().mockResolvedValue({}) },
-    customerWishlistItem: { deleteMany: mockDeleteMany },
+    customerWishlistItem: { deleteMany: mockDeleteMany, findMany: mockFindMany },
   },
   Prisma: {},
 }));
@@ -67,5 +68,27 @@ describe('DELETE /passport/wishlist', () => {
   it('422 without a product_id (same as POST)', async () => {
     expect((await del({})).statusCode).toBe(422);
     expect(mockDeleteMany).not.toHaveBeenCalled();
+  });
+});
+
+// Review fix: the shortlist is the wishlist now, and an enquiry 422s the whole store on a dead
+// product, so GET only returns products that can still be enquired about.
+describe('GET /passport/wishlist', () => {
+  it('lists only live, available products of the session account', async () => {
+    mockFindMany.mockResolvedValue([]);
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    await app.register(passportRoutes, { prefix: '/v1/public/passport' });
+    await app.ready();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/public/passport/wishlist',
+      headers: { cookie: 'kanchuki_passport=session_abc123' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockFindMany.mock.calls[0]?.[0].where).toEqual({
+      customer_account_id: 'ca_123',
+      product: { deleted_at: null, status: 'AVAILABLE' },
+    });
   });
 });

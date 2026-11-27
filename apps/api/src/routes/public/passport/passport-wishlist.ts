@@ -16,7 +16,11 @@ export const passportWishlistRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const items = await prisma.customerWishlistItem.findMany({
-      where: { customer_account_id: session.customer_account_id },
+      // The shortlist enquires per store; one dead product 422s the whole store, so hide them.
+      where: {
+        customer_account_id: session.customer_account_id,
+        product: { deleted_at: null, status: 'AVAILABLE' },
+      },
       orderBy: { created_at: 'desc' },
       include: {
         product: {
