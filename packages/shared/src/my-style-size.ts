@@ -96,7 +96,8 @@ export const STANDARD_SIZE_CHART: SizeChart = {
   '4XL': { bust: [115, 119], waist: [99, 104], hip: [122, 127] },
 };
 
-const STITCHED = /\b(kurtis?|kurtas?|suits?|salwar|anarkali|gowns?|tops?|tunics?|co-ords?|ladies)\b/;
+const STITCHED =
+  /\b(kurtis?|kurtas?|suits?|salwar|anarkali|gowns?|tops?|tunics?|co-ords?|ladies)\b/;
 const NOT_SIZED =
   /\b(sarees?|sari|dupattas?|lehengas?|unstitched|dress material|blouse piece|fabric|stoles?)\b/;
 
@@ -114,4 +115,53 @@ export function standardChartFor(p: {
   const text = `${p.category ?? ''} ${p.subtype ?? ''}`.toLowerCase();
   if (NOT_SIZED.test(text) || !STITCHED.test(text)) return null;
   return STANDARD_SIZE_CHART;
+}
+
+/** Retailer entry: the "fits up to" body measurement per size and dimension, in inches. */
+export type InchRows = Record<string, Partial<Record<SizeChartDimension, number>>>;
+
+const CM_PER_INCH = 2.54;
+
+/**
+ * Inches -> cm chart. Upper = round(in × 2.54); lower = the previous listed size's upper + 1
+ * (upper − 5 for a dimension's first size). suggestSize reads only uppers, so this loses nothing.
+ * null when everything is blank; 'invalid' when parseSizeChart rejects the result.
+ */
+export function chartFromInches(rows: InchRows): SizeChart | null | 'invalid' {
+  const sizes = Object.keys(rows).sort((a, b) => order(a) - order(b));
+  const raw: Record<string, Partial<Record<SizeChartDimension, [number, number]>>> = {};
+  for (const dim of SIZE_CHART_DIMENSIONS) {
+    let prev: number | null = null;
+    for (const s of sizes) {
+      const v = rows[s]?.[dim];
+      if (v === undefined || !Number.isFinite(v)) continue;
+      const hi = Math.round(v * CM_PER_INCH);
+      raw[s] = { ...raw[s], [dim]: [prev === null ? hi - 5 : prev + 1, hi] };
+      prev = hi;
+    }
+  }
+  if (Object.keys(raw).length === 0) return null;
+  return parseSizeChart(raw) ?? 'invalid';
+}
+
+/** cm chart -> "fits up to" inches, to the nearest half inch (edit form). */
+export function inchesFromChart(chart: SizeChart): InchRows {
+  const out: InchRows = {};
+  for (const [size, dims] of Object.entries(chart)) {
+    const row: Partial<Record<SizeChartDimension, number>> = {};
+    for (const dim of SIZE_CHART_DIMENSIONS) {
+      const r = dims[dim];
+      if (r) row[dim] = Math.round((r[1] / CM_PER_INCH) * 2) / 2;
+    }
+    out[size] = row;
+  }
+  return out;
+}
+
+/** The standard chart as inch rows, for the ticked sizes it covers. */
+export function standardInchRows(sizes: readonly string[]): InchRows {
+  const all = inchesFromChart(STANDARD_SIZE_CHART);
+  return Object.fromEntries(
+    sizes.filter((s) => all[s]).map((s) => [s, all[s] as InchRows[string]]),
+  );
 }

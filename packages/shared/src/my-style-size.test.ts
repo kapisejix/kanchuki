@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   STANDARD_SIZE_CHART,
   type SizeChart,
+  chartFromInches,
+  inchesFromChart,
   parseSizeChart,
   standardChartFor,
+  standardInchRows,
   suggestSize,
 } from './my-style-size.js';
 
@@ -144,5 +147,43 @@ describe('standardChartFor', () => {
       suggestSize({ bust_cm: 91, waist_cm: 76, hip_cm: 99 }, STANDARD_SIZE_CHART, ['S', 'M', 'L']),
     ).toEqual({ size: 'M' });
     expect(suggestSize({ bust_cm: 125 }, STANDARD_SIZE_CHART, ['4XL'])).toBeNull();
+  });
+});
+
+describe('inch rows <-> size chart', () => {
+  it('builds cm ranges from "fits up to" inches', () => {
+    expect(chartFromInches({ S: { bust: 34 }, M: { bust: 36 } })).toEqual({
+      S: { bust: [81, 86] },
+      M: { bust: [87, 91] },
+    });
+  });
+  it('starts each dimension at its first size', () => {
+    expect(chartFromInches({ S: { bust: 34 }, M: { hip: 39 } })).toEqual({
+      S: { bust: [81, 86] },
+      M: { hip: [94, 99] },
+    });
+  });
+  it('is null when everything is blank', () => {
+    expect(chartFromInches({})).toBeNull();
+    expect(chartFromInches({ S: {} })).toBeNull();
+  });
+  it('is invalid when sizes do not rise', () => {
+    expect(chartFromInches({ S: { bust: 36 }, M: { bust: 34 } })).toBe('invalid');
+  });
+  it('reads a chart back as inches to the nearest half', () => {
+    expect(inchesFromChart({ M: { bust: [89, 94] } })).toEqual({ M: { bust: 37 } });
+  });
+  it('round-trips the standard chart without changing suggestions', () => {
+    const back = chartFromInches(inchesFromChart(STANDARD_SIZE_CHART));
+    expect(back).not.toBe('invalid');
+    const sizes = Object.keys(STANDARD_SIZE_CHART);
+    for (const bust_cm of [85, 91, 100, 118]) {
+      expect(suggestSize({ bust_cm }, back as SizeChart, sizes)).toEqual(
+        suggestSize({ bust_cm }, STANDARD_SIZE_CHART, sizes),
+      );
+    }
+  });
+  it('gives standard rows only for sizes in the standard chart', () => {
+    expect(standardInchRows(['M', '5XL'])).toEqual({ M: { bust: 37, waist: 30.5, hip: 40 } });
   });
 });
