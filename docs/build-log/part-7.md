@@ -1043,3 +1043,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Test | Shared weights test was the failing test (red first, then 3/3). Rebuilding shared dist turned up a stale API fixture: rank "score stays within 0..1" "max" candidate never set a style match; it now sets `styles`, assertion unchanged (>0.99). |
 | Local runs | typecheck 9/9; Biome 1477 files clean; db, shared 21 files, ai 20, mobile 68, web 93 files green; API 263 files passed (3 skipped). API reads `@kanchuki/shared` from dist: build shared before API tests. |
 | Not done | Not pushed. Device checklist (research §10) still running. |
+## 2026-11-27 — RC-192: My Style job compensation clears photo columns only
+
+| Area | Change |
+|---|---|
+| Why | B2 whole-branch review note: analysis job compensation (expired/failed job record) nulled the full `STYLE_PROFILE_CLEARED` list, so a failed photo analysis also wiped measurements + usual size. |
+| Fix | `my-style-consent.ts`: new `PHOTO_PROFILE_CLEARED` (5 photo cols); `STYLE_PROFILE_CLEARED = {...PHOTO_PROFILE_CLEARED, measurement cols}`. `my-style-analyze.ts` compensation: one prisma update with the photo list. `sweep-deleted-account-style.ts` reuses it (photo-only scope kept: swept accounts predate RC-172). Live erasure (`passport-data.ts`) unchanged, full list. Branch `fix/rc-192-photo-only-compensation`. |
+| Tests | `my-style-analyze.test.ts`: compensation data `toEqual` exact 5 nulls (red with old list, green after). |
+| Migrations | None. |
+| Local runs | build shared + ai; typecheck 9/9; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`; parallel test run 1 ai timeout → serial (`--concurrency=1`) all green: api 3630 (12 skipped), web 909, mobile 735, shared 320, ai 214, db 25. |
+| Not done | Not pushed. Sweep-scope ruling needs owner OK. |
