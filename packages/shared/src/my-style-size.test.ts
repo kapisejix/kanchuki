@@ -187,3 +187,21 @@ describe('inch rows <-> size chart', () => {
     expect(standardInchRows(['M', '5XL'])).toEqual({ M: { bust: 37, waist: 30.5, hip: 40 } });
   });
 });
+
+describe('standardChartFor reads the product name too (review fix)', () => {
+  it('a men kurta with no audience and a plain category gets no chart', () => {
+    expect(
+      standardChartFor({
+        audience: null,
+        category: 'Kurta',
+        subtype: null,
+        name: 'Mens Kurta Pajama',
+      }),
+    ).toBeNull();
+  });
+  it('a women name keeps the chart', () => {
+    expect(
+      standardChartFor({ audience: null, category: 'Kurta', subtype: null, name: 'Ladies kurta' }),
+    ).toBe(STANDARD_SIZE_CHART);
+  });
+});

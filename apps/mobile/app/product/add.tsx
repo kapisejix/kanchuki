@@ -29,8 +29,7 @@ import {
 } from '../../src/components/product-detail/AudienceChips';
 import {
   SizeChartEditor,
-  rowsForSizes,
-  sizeChartPayload,
+  gateSizeChart,
 } from '../../src/components/product-detail/SizeChartEditor';
 import { StockEditor, toStockPayload } from '../../src/components/product-detail/StockEditor';
 import {
@@ -433,11 +432,8 @@ export default function AddProductScreen() {
   const handleSave = async () => {
     if (saveRunningRef.current) return;
     // Size chart gate first: a chart that does not rise with size never reaches the API.
-    const chart = sizeChartPayload(rowsForSizes(chartRows, selectedSizes));
-    if ('error' in chart) {
-      setChartError(chart.error);
-      return;
-    }
+    const chart = gateSizeChart(chartRows, selectedSizes, setChartError);
+    if (!chart) return;
     setChartError(null);
     saveRunningRef.current = true;
     setStep('saving');

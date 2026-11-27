@@ -8,7 +8,7 @@ import {
 } from '@kanchuki/shared';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
 import { AnimatedPressable } from '../AnimatedPressable';
 
 // My Style Phase 4: an optional size chart on the product form. The retailer types the body
@@ -17,13 +17,38 @@ import { AnimatedPressable } from '../AnimatedPressable';
 
 const DIM_LABEL: Record<SizeChartDimension, string> = { bust: 'Bust', waist: 'Waist', hip: 'Hip' };
 export const SIZE_CHART_ERROR = 'Each size must be bigger than the one before';
+// 22-63" keeps every cm bound inside the API's 50-160 cm (a first size's lower bound is upper − 5).
+const MIN_IN = 22;
+const MAX_IN = 63;
+export const SIZE_CHART_RANGE_ERROR = `Use inches between ${MIN_IN} and ${MAX_IN}`;
 
 /** Save gate for both forms: a cm chart (null clears it) or the error to show. */
 export function sizeChartPayload(
   rows: InchRows,
 ): { size_chart: SizeChart | null } | { error: string } {
+  const values = Object.values(rows).flatMap((r) => Object.values(r));
+  if (values.some((v) => v !== undefined && (v < MIN_IN || v > MAX_IN)))
+    return { error: SIZE_CHART_RANGE_ERROR };
   const c = chartFromInches(rows);
   return c === 'invalid' ? { error: SIZE_CHART_ERROR } : { size_chart: c };
+}
+
+/**
+ * Both forms' save: rows for ticked sizes -> payload, or null after reporting the problem both
+ * inline (onError) and in an Alert, because Save sits in the header, far from the editor.
+ */
+export function gateSizeChart(
+  rows: InchRows,
+  sizes: readonly string[],
+  onError: (msg: string) => void,
+): { size_chart: SizeChart | null } | null {
+  const r = sizeChartPayload(rowsForSizes(rows, sizes));
+  if ('error' in r) {
+    onError(r.error);
+    Alert.alert('Size chart', r.error);
+    return null;
+  }
+  return r;
 }
 
 /** Keep only the rows for sizes still ticked (an unticked size must not reach the chart). */

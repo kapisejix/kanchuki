@@ -11,7 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
-import { rowsForSizes, sizeChartPayload } from '../components/product-detail/SizeChartEditor';
+import { gateSizeChart } from '../components/product-detail/SizeChartEditor';
 import { toStockPayload } from '../components/product-detail/StockEditor';
 import { productApi } from '../lib/api';
 import { showError } from '../lib/errors';
@@ -113,11 +113,8 @@ export function useProductDetailForm({ product }: UseProductDetailFormProps) {
 
   const handleSave = async (categoryList?: { id: string; name: string }[]) => {
     if (!product) return;
-    const chart = chartTouched ? sizeChartPayload(rowsForSizes(chartRows, selectedSizes)) : null;
-    if (chart && 'error' in chart) {
-      setChartError(chart.error);
-      return;
-    }
+    const chart = chartTouched ? gateSizeChart(chartRows, selectedSizes, setChartError) : null;
+    if (chartTouched && !chart) return;
     setSaving(true);
     try {
       const priceInPaise = price ? Math.round(Number.parseFloat(price) * 100) : undefined;

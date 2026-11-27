@@ -3,6 +3,7 @@ import { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 import {
   SizeChartEditor,
+  gateSizeChart,
   sizeChartPayload,
 } from '../../src/components/product-detail/SizeChartEditor';
 import { render } from '../../src/test/__mocks__/testing-library';
@@ -66,6 +67,25 @@ describe('sizeChartPayload', () => {
   });
   it('sends cm ranges', () => {
     expect(sizeChartPayload({ S: { bust: 34 } })).toEqual({
+      size_chart: { S: { bust: [81, 86] } },
+    });
+  });
+});
+
+describe('review fixes', () => {
+  it('names an out-of-range value instead of blaming size order', () => {
+    const range = { error: 'Use inches between 22 and 63' };
+    expect(sizeChartPayload({ S: { bust: 360 } })).toEqual(range);
+    expect(sizeChartPayload({ S: { bust: 21 } })).toEqual(range);
+  });
+  it('gateSizeChart alerts on a bad chart so a header Save never fails silently', async () => {
+    const { Alert } = await import('react-native');
+    const spy = vi.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    const onError = vi.fn();
+    expect(gateSizeChart({ S: { bust: 36 }, M: { bust: 34 } }, ['S', 'M'], onError)).toBeNull();
+    expect(onError).toHaveBeenCalledWith('Each size must be bigger than the one before');
+    expect(spy).toHaveBeenCalledWith('Size chart', 'Each size must be bigger than the one before');
+    expect(gateSizeChart({ S: { bust: 34 }, M: { bust: 36 } }, ['S'], onError)).toEqual({
       size_chart: { S: { bust: [81, 86] } },
     });
   });

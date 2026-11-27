@@ -106,10 +106,12 @@ export function standardChartFor(p: {
   audience: ProductAudienceValue | null;
   category: string | null;
   subtype: string | null;
+  /** Read only for the men / kids guess: "Mens Kurta Pajama" filed under a plain "Kurta". */
+  name?: string | null;
 }): SizeChart | null {
   if (p.audience !== 'WOMEN') {
     if (p.audience !== null) return null;
-    const guess = audienceForText(p.category, p.subtype);
+    const guess = audienceForText(p.category, p.subtype, p.name);
     if (guess !== null && guess !== 'WOMEN') return null;
   }
   const text = `${p.category ?? ''} ${p.subtype ?? ''}`.toLowerCase();
