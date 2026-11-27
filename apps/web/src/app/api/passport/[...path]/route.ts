@@ -30,11 +30,14 @@ const PASSPORT_PATHS = [
   'ai-report',
 ];
 
-type ProxyMethod = 'GET' | 'POST' | 'PUT' | 'PATCH';
+type ProxyMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 // PATCH is narrower than the other verbs: only the F-045 style-quiz save uses
 // it, so every other path stays unreachable by PATCH.
 const PATCH_PATHS = ['style-quiz'];
+// DELETE likewise: only the My Style shortlist removing a saved product.
+const DELETE_PATHS = ['wishlist'];
+const NARROW: Partial<Record<ProxyMethod, string[]>> = { PATCH: PATCH_PATHS, DELETE: DELETE_PATHS };
 
 // Statuses that carry no body, and therefore may not be built with one: `new
 // Response('', { status: 204 })` throws `TypeError: Invalid response status
@@ -50,7 +53,7 @@ const NULL_BODY_STATUS = new Set([204, 205, 304]);
 async function forward(request: NextRequest, path: string[], method: ProxyMethod) {
   const subpath = path.join('/');
 
-  if (!(method === 'PATCH' ? PATCH_PATHS : PASSPORT_PATHS).includes(subpath)) {
+  if (!(NARROW[method] ?? PASSPORT_PATHS).includes(subpath)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
@@ -120,4 +123,12 @@ export async function PATCH(
 ) {
   const { path } = await params;
   return forward(request, path, 'PATCH');
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> },
+) {
+  const { path } = await params;
+  return forward(request, path, 'DELETE');
 }
