@@ -381,6 +381,9 @@ export default function ProductDetailScreen() {
           setSelectedSizes={form.setSelectedSizes}
           stockQty={form.stockQty}
           setStock={form.setStock}
+          chartRows={form.chartRows}
+          setChartRows={form.setChartRows}
+          chartError={form.chartError}
           selectedCategoryIds={form.selectedCategoryIds}
           setSelectedCategoryIds={form.setSelectedCategoryIds}
           editedCategory={form.editedCategory}
