@@ -6,6 +6,14 @@ import { StyleCard } from '../StyleCard';
 import { TasteCard } from '../TasteCard';
 import { resetDay, startAnalysis } from '../analyze';
 import MyStylePage from '../page';
+
+// The shortlist loads from the account wishlist (Phase 3); not under test here, so it stays
+// out of the fetch call order these tests count.
+vi.mock('../shortlist', async (orig) => ({
+  ...(await orig<typeof import('../shortlist')>()),
+  fetchShortlist: async () => null,
+  moveDeviceShortlist: async () => {},
+}));
 import { EMPTY_PROFILE, type SavedProfile, stubFetchWithProfile } from './profile-route';
 
 // What GET /profile answers (see profile-route.ts); reset per test.

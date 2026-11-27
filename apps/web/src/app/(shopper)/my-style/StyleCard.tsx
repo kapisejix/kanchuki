@@ -8,7 +8,7 @@ import { Shirt } from 'lucide-react';
 import Link from 'next/link';
 import { CARD } from '../ui';
 import { StyleCardActions } from './StyleCardActions';
-import type { FeedCard } from './lib';
+import { type FeedCard, reasonLabel } from './lib';
 
 interface Props {
   card: FeedCard;
@@ -65,6 +65,24 @@ export function StyleCard({ card: c, saved, full, busy, onToggle, onEnquire, onL
             .filter(Boolean)
             .join(' · ')}
         </p>
+        {(() => {
+          const chips = (c.reasons ?? [])
+            .map(reasonLabel)
+            .filter((l): l is string => l !== null)
+            .slice(0, 2);
+          return chips.length > 0 ? (
+            <ul aria-label="Why this matches" className="flex flex-wrap gap-1 mt-1.5">
+              {chips.map((l) => (
+                <li
+                  key={l}
+                  className="rounded-full bg-lavender-100 px-2 py-0.5 text-[11px] font-medium text-spaceCadet-900"
+                >
+                  {l}
+                </li>
+              ))}
+            </ul>
+          ) : null;
+        })()}
         {c.suggested_size && (
           <p data-testid="suggested-size" className="text-xs font-semibold text-fuchsia-600 mt-1">
             Your size: {c.suggested_size.size}

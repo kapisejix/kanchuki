@@ -68,3 +68,25 @@ describe('kids feed ("For my child")', () => {
     expect(inKids(row(null, 'Kids Ethnic Wear'), 'Boy')).toBe(true);
   });
 });
+
+describe('adult feed by saved gender (D6)', () => {
+  const inFor = (r: ReturnType<typeof row>, g: 'FEMALE' | 'MALE' | null) =>
+    evalCond(r as Record<string, unknown>, adultsWhere(g)) === true;
+
+  it('FEMALE keeps WOMEN and NULL-audience adult wear, drops MEN', () => {
+    expect(inFor(row('WOMEN', 'Saree'), 'FEMALE')).toBe(true);
+    expect(inFor(row(null, 'Saree'), 'FEMALE')).toBe(true);
+    expect(inFor(row('MEN', 'Kurta'), 'FEMALE')).toBe(false);
+  });
+  it('MALE keeps MEN and NULL-audience adult wear, drops WOMEN', () => {
+    expect(inFor(row('MEN', 'Kurta'), 'MALE')).toBe(true);
+    expect(inFor(row(null, null), 'MALE')).toBe(true);
+    expect(inFor(row('WOMEN', 'Saree'), 'MALE')).toBe(false);
+  });
+  it('null (Both / never chosen) keeps both, kids still out', () => {
+    expect(inFor(row('WOMEN', 'Saree'), null)).toBe(true);
+    expect(inFor(row('MEN', 'Kurta'), null)).toBe(true);
+    expect(inFor(row('GIRLS', 'Frock'), 'FEMALE')).toBe(false);
+    expect(inFor(row(null, 'Kids'), 'FEMALE')).toBe(false);
+  });
+});

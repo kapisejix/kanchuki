@@ -21,6 +21,7 @@ export const MY_STYLE_FIT = {
   occasion: 0.15,
   prefColor: 0.1,
   prefFabric: 0.05,
+  prefStyle: 0.05, // a /my-profile style chip found as whole words in the product's keywords
 } as const;
 
 /**

@@ -1,6 +1,6 @@
 // Task 18: /my-profile — Shopper profile page.
 //
-// Shows: name, phone (masked), city, usual size, style chips (editable),
+// Shows: Style Passport (Phase 3, D7), name, phone (masked), city, usual size, style chips (editable),
 // saved items, recently viewed, enquiries/orders,
 // data controls (export, delete, personalization toggle).
 
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BTN_PRIMARY, BTN_SECONDARY, CARD, INPUT, ITEM, LIST, ROW_BTN, Section } from '../ui';
+import { StylePassport } from './StylePassport';
 
 interface ProfileData {
   account: PassportAccount;
@@ -73,6 +74,8 @@ export default function MyProfilePage() {
   const [stylesStatus, setStylesStatus] = useState<'loading' | 'ready'>('loading');
   const [stylesNotice, setStylesNotice] = useState<string | null>(null);
   const [personalizationEnabled, setPersonalizationEnabled] = useState(true);
+  // "Show me" (D6), read with the other preferences before the Passport mounts.
+  const [gender, setGender] = useState<'FEMALE' | 'MALE' | null>(null);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -148,6 +151,7 @@ export default function MyProfilePage() {
       if (prefRes.ok) {
         const prefs = await prefRes.json();
         setPersonalizationEnabled(prefs.profiling_enabled !== false);
+        setGender(prefs.gender === 'FEMALE' || prefs.gender === 'MALE' ? prefs.gender : null);
         setNomineeName(prefs.nominee_name ?? '');
         setNomineePhone(prefs.nominee_phone ?? '');
         setNomineeSaved(Boolean(prefs.nominee_name));
@@ -296,6 +300,11 @@ export default function MyProfilePage() {
 
   return (
     <motion.div variants={LIST} initial="hidden" animate="show" className="space-y-4">
+      <StylePassport
+        gender={gender}
+        usualSize={account.usual_size ?? null}
+        prefStyles={(account as PassportAccount & { pref_styles?: string[] }).pref_styles ?? []}
+      />
       {/* Account */}
       <motion.section variants={ITEM} className={`${CARD} overflow-hidden`}>
         <div className="h-16 bg-gradient-to-r from-spaceCadet-900 to-tyrian-800" />

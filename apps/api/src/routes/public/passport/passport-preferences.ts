@@ -26,6 +26,7 @@ export const passportPreferencesRoutes: FastifyPluginAsync = async (server) => {
       budget_max: account.budget_max,
       nominee_name: account.nominee_name,
       nominee_phone: account.nominee_phone,
+      gender: account.gender ?? null,
     });
   });
   // ─── PUT /passport/preferences ────────────────────────────────
@@ -45,6 +46,8 @@ export const passportPreferencesRoutes: FastifyPluginAsync = async (server) => {
       .regex(/^[6-9]\d{9}$/, 'Enter a 10-digit Indian mobile number')
       .nullable()
       .optional(),
+    // "Show me" (D6): what the My Style feed shows first. null = both.
+    gender: z.enum(['FEMALE', 'MALE']).nullable().optional(),
   });
 
   server.put('/preferences', async (request, reply) => {

@@ -113,17 +113,17 @@ Never stored: the photo, the garment photo (Find similar keeps an enum descripto
 | P0 | Profile hidden when the feed fails (R3) | Separate `GET /my-style/profile` §9 |
 | P0 | Copy promises body analysis from a full-body photo | Rewrite copy, face-only for colours §7.2 |
 | P1 | Measurements give no payoff (0 size charts) | Category-default size charts + retailer chart prompts §7.5 |
-| P1 | `gender` unused; women see men's wear | Use `gender` in `adultsWhere` §9 |
-| P1 | `pref_styles` collected, never ranked | Rank it or remove the chips §9 |
-| P1 | No "why this matches" per product | Reason chips from fit components §7.4 |
+| P1 | ~~`gender` unused; women see men's wear~~ | **Built Phase 3 (branch `feat/my-style-passport`, 2026-11-27):** Show me picker + `adultsWhere(gender)` + per-visit Show all toggle |
+| P1 | ~~`pref_styles` collected, never ranked~~ | **Built Phase 3:** `prefStyle` 0.05 whole-word boost |
+| P1 | ~~No "why this matches" per product~~ | **Built Phase 3:** ≤2 reason chips per card, `rationale_source: 'rules'` |
 | P1 | Quota 3/month shared with Find similar | Separate quotas §9 |
 | P1 | Failures not counted | Failure counter by reason §9 |
-| P2 | Profile split over 3 pages | One Style Passport §7.1 |
+| P2 | ~~Profile split over 3 pages~~ | **Built Phase 3:** Style Passport at top of `/my-profile` |
 | P2 | Photo never kept, so nothing to look back at | Owner decision D1 §11 |
 | P2 | Palette advice is generic | Rich palette content §7.3 |
 | P2 | 55 products have no colour family, so they score neutral | Run the colour backfill (owner-run) |
 | P2 | Weights, frame lists and colour pairings unreviewed | Stylist review + click/enquiry feedback |
-| P3 | Shortlist device-only | Account-saved shortlist |
+| P3 | ~~Shortlist device-only~~ | **Built Phase 3:** shortlist = account wishlist, device copy moved once |
 | P3 | Nothing verified on a real device | Device checklist §10 |
 
 ---

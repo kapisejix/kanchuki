@@ -22,6 +22,8 @@ export interface CandidateQuery {
   audience?: 'adults' | 'kids';
   /** With audience 'kids': the child's Girl/Boy pick narrows stored audiences (unisex matches both). */
   kidsWho?: 'Girl' | 'Boy';
+  /** Adults only: the saved gender (D6). Null/absent = both. */
+  gender?: ShopperGender | null;
   /** AND-ed into the product filter (e.g. a complement slot). */
   extraWhere?: Prisma.ProductWhereInput;
 }
@@ -47,8 +49,18 @@ const kidsByKeyword: Prisma.ProductWhereInput = {
   ]),
 };
 
-export const adultsWhere = (): Prisma.ProductWhereInput => ({
-  OR: [{ audience: { in: ['WOMEN', 'MEN'] } }, { AND: [{ audience: null }, ...notKidsByKeyword] }],
+export type ShopperGender = 'FEMALE' | 'MALE';
+
+/** D6: a saved gender keeps only that stored audience; NULL-audience adult wear always stays. */
+export const adultsWhere = (gender?: ShopperGender | null): Prisma.ProductWhereInput => ({
+  OR: [
+    {
+      audience: {
+        in: gender === 'FEMALE' ? ['WOMEN'] : gender === 'MALE' ? ['MEN'] : ['WOMEN', 'MEN'],
+      },
+    },
+    { AND: [{ audience: null }, ...notKidsByKeyword] },
+  ],
 });
 
 /** `who` (the KidsForm Girl/Boy pick) hard-filters stored audiences; unisex matches both. */
@@ -97,7 +109,7 @@ export async function loadMyStyleCandidates(q: CandidateQuery) {
       // Unsized garments (sarees, unstitched) have no sizes and must not vanish.
       ...(size ? { OR: [{ sizes: { has: size } }, { sizes: { isEmpty: true } }] } : {}),
       AND: [
-        q.audience === 'kids' ? kidsWhere(q.kidsWho) : adultsWhere(),
+        q.audience === 'kids' ? kidsWhere(q.kidsWho) : adultsWhere(q.gender),
         ...(q.extraWhere ? [q.extraWhere] : []),
       ],
     },

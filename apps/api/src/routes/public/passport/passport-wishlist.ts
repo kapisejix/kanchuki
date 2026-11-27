@@ -16,7 +16,11 @@ export const passportWishlistRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const items = await prisma.customerWishlistItem.findMany({
-      where: { customer_account_id: session.customer_account_id },
+      // The shortlist enquires per store; one dead product 422s the whole store, so hide them.
+      where: {
+        customer_account_id: session.customer_account_id,
+        product: { deleted_at: null, status: 'AVAILABLE' },
+      },
       orderBy: { created_at: 'desc' },
       include: {
         product: {
@@ -87,6 +91,25 @@ export const passportWishlistRoutes: FastifyPluginAsync = async (server) => {
       update: {}, // already exists, no-op
     });
 
+    return reply.status(200).send({ ok: true });
+  });
+
+  // ─── DELETE /passport/wishlist ─────────────────────────────────
+  // Remove one saved product (My Style shortlist). Scoped to the session account, so another
+  // shopper's row can never match; idempotent (absent = still 200).
+  server.delete('/wishlist', async (request, reply) => {
+    const session = await getPassportSession(request.headers.cookie || '');
+    if (!session) {
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+    }
+    const body = z.object({ product_id: z.string().min(1).max(64) }).safeParse(request.body);
+    if (!body.success) throw validationError('Invalid body');
+
+    await prisma.customerWishlistItem.deleteMany({
+      where: { customer_account_id: session.customer_account_id, product_id: body.data.product_id },
+    });
     return reply.status(200).send({ ok: true });
   });
 };

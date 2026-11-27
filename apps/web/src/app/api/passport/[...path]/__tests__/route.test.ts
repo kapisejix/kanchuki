@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GET, PATCH, POST, PUT } from '../route';
+import { DELETE, GET, PATCH, POST, PUT } from '../route';
 
 // The proxy every passport-backed screen goes through. RC-026 was a verb
 // missing from here while /my-profile already called it, so these pin the verb
@@ -19,11 +19,11 @@ afterEach(() => {
 });
 
 function call(
-  method: 'GET' | 'POST' | 'PUT' | 'PATCH',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   segments: string[],
   init: { body?: string; cookie?: string } = {},
 ): Promise<Response> {
-  const handler = { GET, POST, PUT, PATCH }[method];
+  const handler = { GET, POST, PUT, PATCH, DELETE }[method];
   const request = new Request(`http://localhost:3100/api/passport/${segments.join('/')}`, {
     method,
     headers: {
@@ -114,9 +114,9 @@ describe('PATCH /api/passport/style-quiz', () => {
 
   it('does not widen other verbs: style-quiz is the only PATCH path', async () => {
     // GET/POST/PUT handlers share the allowlist, so a verb outside the module's
-    // exports (DELETE) must not exist at all.
+    // exports must not exist at all; DELETE is its own narrow list (wishlist only).
     const mod = await import('../route');
-    expect(Object.keys(mod).sort()).toEqual(['GET', 'PATCH', 'POST', 'PUT']);
+    expect(Object.keys(mod).sort()).toEqual(['DELETE', 'GET', 'PATCH', 'POST', 'PUT']);
     for (const path of ['me', 'preferences', 'profile']) {
       expect((await call('PATCH', [path], { body: '{}' })).status).toBe(404);
     }
@@ -207,6 +207,28 @@ describe('allowlist has no entry without an API route or caller (T2.5 F5)', () =
     expect(
       (await call(method, path.split('/'), method === 'POST' ? { body: '{}' } : {})).status,
     ).toBe(404);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+});
+
+// Phase 3: the My Style shortlist removes saved products through DELETE wishlist.
+describe('DELETE /api/passport/wishlist', () => {
+  it('forwards the verb, body and cookie', async () => {
+    upstream.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const res = await call('DELETE', ['wishlist'], {
+      body: JSON.stringify({ product_id: 'p1' }),
+      cookie: 'kanchuki_passport=abc',
+    });
+    expect(res.status).toBe(200);
+    const [url, init] = upstream.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/public/passport/wishlist');
+    expect(init.method).toBe('DELETE');
+    expect(JSON.parse(init.body as string)).toEqual({ product_id: 'p1' });
+  });
+  it('404s every other path on DELETE', async () => {
+    for (const path of ['preferences', 'me', 'delete', 'style-quiz']) {
+      expect((await call('DELETE', [path], { body: '{}' })).status).toBe(404);
+    }
     expect(upstream).not.toHaveBeenCalled();
   });
 });

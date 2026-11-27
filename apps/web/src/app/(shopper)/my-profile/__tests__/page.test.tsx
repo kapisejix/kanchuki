@@ -93,3 +93,53 @@ describe('/my-profile stats and style save (RC-180)', () => {
     );
   });
 });
+
+// Phase 3 (D7): the Style Passport sits at the top; a failed style read never blanks the page.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+
+describe('/my-profile Style Passport', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('renders the Passport first, with the saved Show me pick', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/my-style/profile'))
+          return new Response(
+            JSON.stringify({ data: { style_profile: null, measurements: null, taste: null } }),
+          );
+        const body = url.startsWith('/api/passport/preferences')
+          ? { profiling_enabled: true, gender: 'FEMALE' }
+          : url.startsWith('/api/passport/recently-viewed')
+            ? { items: [] }
+            : url.startsWith('/api/passport/wishlist')
+              ? { items: [] }
+              : { data: { names: ['Casual'] } };
+        return new Response(JSON.stringify(body), { status: 200 });
+      }),
+    );
+    const { container } = render(<MyProfilePage />);
+    expect(await screen.findByText('0 of 3 done')).toBeTruthy();
+    expect(container.querySelector('section')?.id).toBe('passport');
+    expect(screen.getByRole('radio', { name: "Women's wear" })).toBeChecked();
+  });
+
+  it('a failed style read still shows the account', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/my-style/profile')) return new Response('{}', { status: 500 });
+        const body = url.startsWith('/api/passport/preferences')
+          ? { profiling_enabled: true }
+          : url.startsWith('/api/passport/recently-viewed') ||
+              url.startsWith('/api/passport/wishlist')
+            ? { items: [] }
+            : { data: { names: ['Casual'] } };
+        return new Response(JSON.stringify(body), { status: 200 });
+      }),
+    );
+    render(<MyProfilePage />);
+    expect(await screen.findByText("Couldn't load your style profile.")).toBeTruthy();
+    expect(screen.getByText('Asha')).toBeTruthy();
+  });
+});

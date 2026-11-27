@@ -47,6 +47,16 @@ export interface RankProfile {
   kidsAge?: string;
   /** The shopper's body frame (petite/average/tall/curvy). Boosts, never filters. */
   frame?: string;
+  /** /my-profile style chips (`pref_styles`). A small boost on a whole-word keyword match. */
+  styles?: readonly string[];
+}
+
+/** Why a product ranked high: only parts the ranker actually matched (RC-059). Frame and kids
+ * age never become a reason (no body label is ever shown). */
+export interface FitReason {
+  code: 'palette' | 'occasion' | 'color' | 'style' | 'fabric';
+  /** The profile's own spelling of the matched occasion / style / fabric. */
+  detail?: string;
 }
 
 export interface RankedItem {
@@ -55,6 +65,7 @@ export interface RankedItem {
   price_min: number | null;
   score: number;
   distance_km: number | null; // null = unknown (no origin or store has no coordinates)
+  reasons: FitReason[];
 }
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
@@ -89,7 +100,25 @@ function frameBoost(c: RankCandidate, p: RankProfile): number {
   return rx && c.keywords.some((k) => rx.test(k)) ? MY_STYLE_FRAME.boost : 0;
 }
 
-function fit(c: RankCandidate, p: RankProfile): number {
+const escapeRx = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// One whole-word regex per chosen style (same shape as FRAME_RX), built once per request.
+function styleMatchers(styles: readonly string[] | undefined) {
+  return (styles ?? [])
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => ({
+      style: s,
+      rx: new RegExp(`(^|[^a-z0-9])${escapeRx(s.toLowerCase())}($|[^a-z0-9])`),
+    }));
+}
+type StyleMatchers = ReturnType<typeof styleMatchers>;
+
+function fit(
+  c: RankCandidate,
+  p: RankProfile,
+  styles: StyleMatchers,
+): { value: number; reasons: FitReason[] } {
   const family = c.color_family?.toLowerCase() ?? null;
   const palette =
     !family || !p.palette
@@ -99,21 +128,42 @@ function fit(c: RankCandidate, p: RankProfile): number {
         : p.palette.avoid.includes(family)
           ? -1
           : 0;
-  const hit = (mine: readonly string[], wanted: Set<string>) =>
-    mine.some((m) => wanted.has(m.trim().toLowerCase())) ? 1 : 0;
+  // The profile's spelling of the first value both sides share, else null.
+  const shared = (mine: readonly string[], wanted: readonly string[]) => {
+    const have = lower(mine);
+    return wanted.find((w) => have.has(w.trim().toLowerCase())) ?? null;
+  };
+  const occasion = shared(c.occasions, p.occasions);
+  const fabric = shared(c.fabrics, p.fabrics);
+  const color = !!family && lower(p.colorFamilies).has(family);
+  const keywords = c.keywords.map((k) => k.toLowerCase());
+  const style = styles.find((m) => keywords.some((k) => m.rx.test(k)))?.style ?? null;
+
+  const reasons: FitReason[] = [];
+  if (palette === 1) reasons.push({ code: 'palette' });
+  if (occasion) reasons.push({ code: 'occasion', detail: occasion });
+  if (color) reasons.push({ code: 'color' });
+  if (style) reasons.push({ code: 'style', detail: style });
+  if (fabric) reasons.push({ code: 'fabric', detail: fabric });
+
   const base = clamp01(
     MY_STYLE_FIT.base +
       MY_STYLE_FIT.palette * palette +
-      MY_STYLE_FIT.occasion * hit(c.occasions, lower(p.occasions)) +
-      MY_STYLE_FIT.prefColor * (family && lower(p.colorFamilies).has(family) ? 1 : 0) +
-      MY_STYLE_FIT.prefFabric * hit(c.fabrics, lower(p.fabrics)) +
+      MY_STYLE_FIT.occasion * (occasion ? 1 : 0) +
+      MY_STYLE_FIT.prefColor * (color ? 1 : 0) +
+      MY_STYLE_FIT.prefFabric * (fabric ? 1 : 0) +
+      MY_STYLE_FIT.prefStyle * (style ? 1 : 0) +
       ageBoost(c, p) +
       frameBoost(c, p),
   );
   // Find similar: the garment the shopper showed us takes over part of `fit`. Absent =
   // an ordinary feed, unchanged.
-  if (c.similarity === undefined) return base;
-  return (1 - MY_STYLE_SIMILAR.fitShare) * base + MY_STYLE_SIMILAR.fitShare * clamp01(c.similarity);
+  if (c.similarity === undefined) return { value: base, reasons };
+  return {
+    value:
+      (1 - MY_STYLE_SIMILAR.fitShare) * base + MY_STYLE_SIMILAR.fitShare * clamp01(c.similarity),
+    reasons,
+  };
 }
 
 function trend(c: RankCandidate, p: RankProfile): number {
@@ -177,19 +227,22 @@ export function rankProducts(
   now: Date,
 ): RankedItem[] {
   const w = MY_STYLE_WEIGHTS;
+  const styles = styleMatchers(profile.styles);
   const items = candidates.map((c): RankedItem => {
     const km = distanceKm(c, profile);
+    const f = fit(c, profile, styles);
     return {
       id: c.id,
       retailer_id: c.retailer_id,
       price_min: c.price_min,
       distance_km: km === null ? null : Math.round(km * 10) / 10,
       score:
-        w.fit * fit(c, profile) +
+        w.fit * f.value +
         w.trend * trend(c, profile) +
         w.rating * rating(c) +
         w.freshness * freshness(c, now) +
         w.proximity * proximity(km, profile),
+      reasons: f.reasons,
     };
   });
   items.sort(COMPARE[sort]);

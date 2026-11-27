@@ -300,3 +300,46 @@ describe('PUT /v1/public/passport/preferences — nominee', () => {
     expect(mockCustomerAccountUpdate).not.toHaveBeenCalled();
   });
 });
+
+describe('Phase 3: gender ("Show me", D6)', () => {
+  const put = async (payload: object) => {
+    const app = buildApp();
+    await app.ready();
+    return app.inject({
+      method: 'PUT',
+      url: '/v1/public/passport/preferences',
+      headers: { cookie: 'kanchuki_passport=session_abc123', 'content-type': 'application/json' },
+      payload,
+    });
+  };
+  it('saves FEMALE and null', async () => {
+    expect((await put({ gender: 'FEMALE' })).statusCode).toBe(200);
+    expect(mockCustomerAccountUpdate).toHaveBeenLastCalledWith({
+      where: { id: 'ca_123' },
+      data: { gender: 'FEMALE' },
+    });
+    expect((await put({ gender: null })).statusCode).toBe(200);
+    expect(mockCustomerAccountUpdate).toHaveBeenLastCalledWith({
+      where: { id: 'ca_123' },
+      data: { gender: null },
+    });
+  });
+  it('rejects anything else', async () => {
+    expect((await put({ gender: 'OTHER' })).statusCode).toBe(400);
+    expect(mockCustomerAccountUpdate).not.toHaveBeenCalled();
+  });
+  it('GET returns the saved gender', async () => {
+    mockPassportSessionFindUnique.mockResolvedValue({
+      ...mockSession,
+      customer_account: { ...mockSession.customer_account, gender: 'MALE' },
+    });
+    const app = buildApp();
+    await app.ready();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/public/passport/preferences',
+      headers: { cookie: 'kanchuki_passport=session_abc123' },
+    });
+    expect(res.json().gender).toBe('MALE');
+  });
+});
