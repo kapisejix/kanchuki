@@ -1,6 +1,7 @@
 import { QUEUES } from '@kanchuki/shared';
 import { type Queue, Worker } from 'bullmq';
 import { reportJobFailure } from '../lib/job-failure.js';
+import { MY_STYLE_QUOTA } from '../lib/my-style-analysis.js';
 import { refundCustomerJobQuota, refundJobQuota } from '../lib/quota.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleAiCustomDesignSweep } from './ai-custom-design-sweep.js';
@@ -706,9 +707,10 @@ export async function startWorkers(): Promise<void> {
   myStyleAnalyzeWorker.on('failed', (job, err) => {
     console.error(`[jobs] my-style-analyze failed ${job?.id}:`, err.message);
     reportJobFailure('my-style-analyze', job, err);
-    const jobId = (job?.data as MyStyleAnalyzeJobData | undefined)?.job_id;
+    const data = job?.data as MyStyleAnalyzeJobData | undefined;
+    const jobId = data?.job_id;
     if (jobId && stalledOut(err)) {
-      refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((e) =>
+      refundCustomerJobQuota(jobId, MY_STYLE_QUOTA[data?.mode ?? 'selfie']).catch((e) =>
         console.error(`[jobs] my-style-analyze quota refund failed ${jobId}:`, e),
       );
     }

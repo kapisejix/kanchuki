@@ -27,7 +27,12 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { addMyStyleAnalyzeJob } from '../../jobs/index.js';
 import { CUSTOMER_STYLE_ANALYSIS } from '../../lib/features.js';
-import { completeAnalysis, getAnalysis, startAnalysis } from '../../lib/my-style-analysis.js';
+import {
+  MY_STYLE_QUOTA,
+  completeAnalysis,
+  getAnalysis,
+  startAnalysis,
+} from '../../lib/my-style-analysis.js';
 import {
   hasLiveBodyConsent,
   hasLiveMyStyleConsent,
@@ -110,6 +115,7 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
 
       const query = QuerySchema.safeParse(request.query);
       if (!query.success) throw validationError('Invalid request.', 'consent_version');
+      const quota = MY_STYLE_QUOTA[query.data.mode]; // D5: selfie and Find similar counted apart
 
       // Refuse before spending anything if the AI cannot run at all (RC-060).
       if (!(await hasConfiguredVisionProvider())) {
@@ -133,7 +139,7 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
 
       // Fail-fast read so an over-quota shopper is refused before uploading anything. The real
       // gate is the atomic reserveCustomerJobQuota below, once the per-account lock is held.
-      await checkCustomerQuota(accountId, 'STYLE_ANALYSIS');
+      await checkCustomerQuota(accountId, quota);
 
       if (!request.isMultipart()) {
         throw validationError('Expected a multipart form with one photo.', 'photo');
@@ -165,11 +171,11 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
       // The slot is taken here and handed back by the job on any non-result outcome
       // (jobs/my-style-analyze.ts). Every failure below frees the lock AND gives the slot back.
       const giveBack = () =>
-        refundCustomerJobQuota(jobId, 'STYLE_ANALYSIS').catch((err) => {
+        refundCustomerJobQuota(jobId, quota).catch((err) => {
           request.log.error({ err, job_id: jobId }, 'Failed to refund style-analysis quota');
         });
       try {
-        await reserveCustomerJobQuota(accountId, 'STYLE_ANALYSIS', jobId);
+        await reserveCustomerJobQuota(accountId, quota, jobId);
       } catch (err) {
         await completeAnalysis(jobId, { status: 'failed', reason: 'quota' }).catch(() => {});
         throw err;
@@ -225,6 +231,7 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
       data: {
         status: state.status,
         ...(state.profile ? { profile: state.profile } : {}),
+        ...(state.confidence ? { confidence: state.confidence } : {}),
         ...(state.garment ? { garment: state.garment } : {}),
         ...(state.reason ? { reason: state.reason } : {}),
       },

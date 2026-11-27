@@ -7,7 +7,14 @@ import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnalyzeSheet } from '../AnalyzeSheet';
-import { clearProfile, fetchProfile, pollAnalysis, prepareUpload, startAnalysis } from '../analyze';
+import {
+  clearProfile,
+  confirmProfile,
+  fetchProfile,
+  pollAnalysis,
+  prepareUpload,
+  startAnalysis,
+} from '../analyze';
 
 vi.mock('../analyze', () => ({
   prepareUpload: vi.fn(),
@@ -15,6 +22,7 @@ vi.mock('../analyze', () => ({
   pollAnalysis: vi.fn(),
   fetchProfile: vi.fn(),
   clearProfile: vi.fn(),
+  confirmProfile: vi.fn(),
 }));
 
 const prepare = vi.mocked(prepareUpload);
@@ -22,6 +30,7 @@ const start = vi.mocked(startAnalysis);
 const poll = vi.mocked(pollAnalysis);
 const readProfile = vi.mocked(fetchProfile);
 const clear = vi.mocked(clearProfile);
+const confirm = vi.mocked(confirmProfile);
 const profile = { undertone: 'warm', depth: 'medium', frame: 'tall' } as const;
 
 const onClose = vi.fn();
@@ -50,7 +59,7 @@ const tick = (ms: number) =>
 
 beforeEach(() => {
   vi.useFakeTimers();
-  prepare.mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }));
+  prepare.mockResolvedValue({ photo: new Blob(['jpeg'], { type: 'image/jpeg' }), problems: [] });
   start.mockResolvedValue({ kind: 'started', jobId: 'mystyle_a' });
   poll.mockResolvedValue({ kind: 'processing' });
   // Default: the profile read fails, so the older tests see the plain fallback.
@@ -103,7 +112,7 @@ describe('consent first', () => {
     await act(async () => {
       fireEvent.change(gallery, { target: { files: [file] } });
     });
-    expect(prepare).toHaveBeenCalledWith(file);
+    expect(prepare).toHaveBeenCalledWith(file, 'selfie');
     expect(start).toHaveBeenCalledTimes(1);
   });
 });
@@ -115,7 +124,7 @@ describe('happy path', () => {
     const file = new File(['x'], 'me.jpg', { type: 'image/jpeg' });
     await pick(file);
 
-    expect(prepare).toHaveBeenCalledWith(file);
+    expect(prepare).toHaveBeenCalledWith(file, 'selfie');
     expect(start).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/reading your photo/i)).toBeTruthy();
     expect(onDone).not.toHaveBeenCalled();
@@ -368,7 +377,7 @@ describe('result screen', () => {
     const img = screen.getByRole('img', { name: /your selfie/i }) as HTMLImageElement;
     // A local object URL of the prepared photo: nothing is uploaded or stored again for it.
     expect(img.getAttribute('src')).toBe('blob:local-preview');
-    expect(URL.createObjectURL).toHaveBeenCalledWith(await prepare.mock.results[0]!.value);
+    expect(URL.createObjectURL).toHaveBeenCalledWith((await prepare.mock.results[0]!.value).photo);
     expect(screen.getByText(/not kept/i)).toBeTruthy();
     expect(onDone).toHaveBeenCalledTimes(1);
   });
@@ -462,5 +471,187 @@ describe('capture copy (R6)', () => {
     const text = document.body.textContent ?? '';
     expect(text).toMatch(/face/i);
     expect(text).not.toMatch(/full.body|measure/i);
+  });
+});
+
+// ─── Phase 2: guided capture, on-device check, drape test (research §7.2, D4) ─────────────
+
+const BANNED =
+  /undertone|skin|depth|\bwarm\b|\bcool\b|\bneutral\b|\bfair\b|\bmedium\b|\bdeep\b|complexion|body/i;
+const problem = (code: string, blocking = true) => ({
+  code: code as never,
+  message: `msg ${code}`,
+  fix: `fix ${code}`,
+  blocking,
+});
+
+describe('how-to card (guided capture)', () => {
+  it('shows what works and what to avoid before the camera opens', async () => {
+    setup();
+    await accept();
+    const doList = screen.getByRole('list', { name: /what works/i });
+    const avoid = screen.getByRole('list', { name: /avoid/i });
+    expect(doList.textContent).toMatch(/window/i);
+    expect(doList.textContent).toMatch(/filter/i);
+    for (const bad of [
+      /dark room/i,
+      /sunglasses/i,
+      /group photo/i,
+      /beauty filter/i,
+      /screenshot/i,
+    ]) {
+      expect(avoid.textContent).toMatch(bad);
+    }
+  });
+
+  it('opens a live camera with an oval guide where the browser allows it', async () => {
+    const stop = vi.fn();
+    const getUserMedia = vi.fn().mockResolvedValue({ getTracks: () => [{ stop }] });
+    Object.defineProperty(navigator, 'mediaDevices', {
+      value: { getUserMedia },
+      configurable: true,
+    });
+    try {
+      const view = setup();
+      await accept();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: /open camera/i }));
+      });
+      expect(getUserMedia).toHaveBeenCalledWith(
+        expect.objectContaining({ video: expect.objectContaining({ facingMode: 'user' }) }),
+      );
+      expect(screen.getByTestId('camera-oval')).toBeTruthy();
+      expect(screen.getByRole('button', { name: /take photo/i })).toBeTruthy();
+      view.unmount();
+      expect(stop).toHaveBeenCalled(); // the camera light goes off with the sheet
+    } finally {
+      Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true });
+    }
+  });
+});
+
+describe('on-device check (never uploads a failing photo)', () => {
+  it('a blocking problem shows its message, fix and Retake, and uploads nothing', async () => {
+    prepare.mockResolvedValue({ photo: new Blob(['j']), problems: [problem('too_dark')] });
+    setup();
+    await accept();
+    await pick();
+    expect(start).not.toHaveBeenCalled();
+    expect(screen.getByText('msg too_dark')).toBeTruthy();
+    expect(screen.getByText('fix too_dark')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /use this photo/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /retake/i }));
+    expect(fileInput()).toBeTruthy();
+  });
+
+  it('a warning only lets the shopper continue, and then uploads once', async () => {
+    prepare.mockResolvedValue({
+      photo: new Blob(['j']),
+      problems: [problem('colour_cast', false)],
+    });
+    setup();
+    await accept();
+    await pick();
+    expect(start).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /use this photo/i }));
+    });
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  it('garment mode passes its mode to the check', async () => {
+    render(<AnalyzeSheet onClose={onClose} onDone={onDone} mode="garment" />);
+    await accept();
+    await pick();
+    expect(prepare).toHaveBeenCalledWith(expect.anything(), 'garment');
+  });
+});
+
+describe('drape test (D4)', () => {
+  const saved = {
+    undertone: 'warm',
+    depth: 'medium',
+    frame: 'average',
+    palette: { good: ['yellow', 'orange'], avoid: ['grey'] },
+  };
+
+  async function readyWith(confidence: 'high' | 'low') {
+    readProfile.mockResolvedValue({
+      kind: 'ok',
+      data: { style_profile: saved, measurements: null, taste: null },
+    });
+    poll.mockResolvedValue({ kind: 'ready', profile, confidence });
+    setup();
+    await accept();
+    await pick();
+    await tick(2500);
+  }
+  const answer = async (n: number) => {
+    for (let i = 0; i < n; i++) {
+      const sides = screen.getAllByRole('button', { name: /this side/i });
+      await act(async () => {
+        fireEvent.click(sides[0]!);
+      });
+    }
+  };
+
+  it('low confidence opens the drape test with the photo between two swatches', async () => {
+    await readyWith('low');
+    expect(screen.getByText(/which side makes your face look brighter/i)).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /this side/i })).toHaveLength(2);
+    expect(screen.getByRole('img', { name: /your selfie/i })).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(BANNED);
+  });
+
+  it('three answers save through confirmProfile, then show the result', async () => {
+    confirm.mockResolvedValue({ kind: 'ok', profile: { ...saved, undertone: 'cool' } });
+    await readyWith('low');
+    await answer(3);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    const picks = confirm.mock.calls[0]![0];
+    expect(picks).toHaveLength(3);
+    for (const p of picks) expect(['warm', 'cool']).toContain(p);
+    expect(screen.getByRole('heading', { name: /your colours are ready/i })).toBeTruthy();
+    expect(onDone).toHaveBeenCalledTimes(2); // the page refreshes after the answer too
+  });
+
+  it('a failed save says so and keeps the shopper on the test', async () => {
+    confirm.mockResolvedValue({ kind: 'error' });
+    await readyWith('low');
+    await answer(3);
+    expect(screen.getByRole('alert').textContent).toMatch(/could not save/i);
+  });
+
+  it('a cleared profile (409) sends the shopper back to retake, not to a retry that cannot work', async () => {
+    confirm.mockResolvedValue({ kind: 'no_profile' });
+    await readyWith('low');
+    await answer(3);
+    expect(screen.getByRole('alert').textContent).toMatch(/cleared/i);
+    expect(screen.queryByRole('button', { name: /skip/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+    expect(fileInput()).toBeTruthy();
+  });
+
+  it('Skip cannot be pressed while the answer is saving', async () => {
+    confirm.mockReturnValue(new Promise(() => {}));
+    await readyWith('low');
+    await answer(3);
+    expect((screen.getByRole('button', { name: /skip/i }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
+
+  it('Skip goes to the result without saving anything', async () => {
+    await readyWith('low');
+    fireEvent.click(screen.getByRole('button', { name: /skip/i }));
+    expect(screen.getByRole('heading', { name: /your colours are ready/i })).toBeTruthy();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('high confidence goes straight to the result, whose Adjust button opens the test', async () => {
+    await readyWith('high');
+    expect(screen.queryByText(/which side/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    expect(screen.getByText(/which side makes your face look brighter/i)).toBeTruthy();
   });
 });

@@ -3,16 +3,25 @@
 // profile), a bad/failed read never invents a profile, and the photo is taken exactly once.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockAnalyze, mockGarment, mockFamilies, mockUpdate, mockSpent, mockRefund, mockDaily } =
-  vi.hoisted(() => ({
-    mockAnalyze: vi.fn(),
-    mockGarment: vi.fn(),
-    mockFamilies: vi.fn(),
-    mockUpdate: vi.fn(),
-    mockSpent: vi.fn(),
-    mockRefund: vi.fn(),
-    mockDaily: vi.fn(),
-  }));
+const {
+  mockAnalyze,
+  mockGarment,
+  mockFamilies,
+  mockUpdate,
+  mockSpent,
+  mockRefund,
+  mockDaily,
+  mockFailDaily,
+} = vi.hoisted(() => ({
+  mockAnalyze: vi.fn(),
+  mockGarment: vi.fn(),
+  mockFamilies: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockSpent: vi.fn(),
+  mockRefund: vi.fn(),
+  mockDaily: vi.fn(),
+  mockFailDaily: vi.fn(),
+}));
 
 vi.mock('@kanchuki/ai', () => ({
   analyzeStyleImage: mockAnalyze,
@@ -25,6 +34,7 @@ vi.mock('@kanchuki/db', () => ({
     customerAccount: { update: mockUpdate },
     consentEvent: {},
     styleAnalysisDaily: { upsert: mockDaily },
+    styleAnalysisFailureDaily: { upsert: mockFailDaily },
   },
 }));
 vi.mock('../lib/quota.js', () => ({
@@ -60,6 +70,81 @@ beforeEach(() => {
   mockSpent.mockReset().mockResolvedValue(undefined);
   mockRefund.mockReset().mockResolvedValue(undefined);
   mockDaily.mockReset().mockResolvedValue({});
+  mockFailDaily.mockReset().mockResolvedValue({});
+});
+
+// Phase 2 (R10): failures per day, mode and reason - and never who sent the photo.
+describe('failure counter', () => {
+  const failKey = () => mockFailDaily.mock.calls[0]?.[0].where.day_mode_reason;
+
+  it('counts an unusable selfie under its reason, with no customer id', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: false, reason: 'face_too_small' });
+    await run();
+    expect(mockFailDaily).toHaveBeenCalledTimes(1);
+    expect(failKey()).toMatchObject({ mode: 'selfie', reason: 'face_too_small' });
+    expect(failKey().day).toBeInstanceOf(Date);
+    expect(JSON.stringify(mockFailDaily.mock.calls[0]?.[0])).not.toContain(ACCT);
+  });
+
+  it('counts a failed read as read_failed and an expired photo as expired', async () => {
+    await queue();
+    mockAnalyze.mockRejectedValue(new Error('provider down'));
+    await expect(run()).rejects.toThrow();
+    expect(failKey()).toMatchObject({ mode: 'selfie', reason: 'read_failed' });
+
+    __resetMyStyleState();
+    mockFailDaily.mockClear();
+    await queue({ photo: false });
+    await run();
+    expect(failKey()).toMatchObject({ mode: 'selfie', reason: 'expired' });
+  });
+
+  it('counts garment failures under mode garment', async () => {
+    await queue();
+    mockGarment.mockResolvedValue({ usable: false, reason: 'no_garment' });
+    await handleMyStyleAnalyze({ job_id: JOB, customer_account_id: ACCT, mode: 'garment' });
+    expect(failKey()).toMatchObject({ mode: 'garment', reason: 'no_garment' });
+  });
+
+  it('a success is not a failure, and a failed counter write never fails the job', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: true, profile: PROFILE, confidence: 'high' });
+    await run();
+    expect(mockFailDaily).not.toHaveBeenCalled();
+
+    __resetMyStyleState();
+    await queue();
+    mockFailDaily.mockRejectedValue(new Error('db down'));
+    mockAnalyze.mockResolvedValue({ usable: false, reason: 'too_dark' });
+    await expect(run()).resolves.toBeUndefined();
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'too_dark' });
+  });
+
+  it('a counter that throws synchronously (stale client) still fails the job, not leaves it processing', async () => {
+    await queue();
+    mockFailDaily.mockImplementation(() => {
+      throw new TypeError('upsert is not a function');
+    });
+    mockAnalyze.mockResolvedValue({ usable: false, reason: 'too_dark' });
+    await expect(run()).resolves.toBeUndefined();
+    expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'too_dark' });
+  });
+});
+
+describe('confidence and profile source (D4)', () => {
+  it('stores profile_source photo and hands the confidence to the poll', async () => {
+    await queue();
+    mockAnalyze.mockResolvedValue({ usable: true, profile: PROFILE, confidence: 'low' });
+    await run();
+    expect(mockUpdate.mock.calls[0]?.[0].data.profile_source).toBe('photo');
+    expect(await getAnalysis(JOB)).toEqual({
+      account_id: ACCT,
+      status: 'ready',
+      profile: PROFILE,
+      confidence: 'low',
+    });
+  });
 });
 
 describe('handleMyStyleAnalyze', () => {
@@ -219,7 +304,7 @@ describe('handleMyStyleAnalyze - garment mode', () => {
     expect(mockGarment.mock.calls[0]?.[2]).toEqual(['red', 'yellow']); // the admin family list
     expect(mockUpdate).not.toHaveBeenCalled();
     expect(mockSpent).toHaveBeenCalledTimes(1);
-    expect(mockSpent).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
+    expect(mockSpent).toHaveBeenCalledWith(JOB, 'STYLE_SIMILAR');
     expect(mockRefund).not.toHaveBeenCalled();
     expect(mockDaily).toHaveBeenCalledTimes(1);
     expect(await getAnalysis(JOB)).toEqual({ account_id: ACCT, status: 'ready', garment: GARMENT });
@@ -233,7 +318,7 @@ describe('handleMyStyleAnalyze - garment mode', () => {
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'no_garment' });
     expect(mockSpent).not.toHaveBeenCalled();
     expect(mockRefund).toHaveBeenCalledTimes(1);
-    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_SIMILAR');
     expect(mockDaily).not.toHaveBeenCalled();
   });
 
@@ -244,7 +329,7 @@ describe('handleMyStyleAnalyze - garment mode', () => {
     expect(await getAnalysis(JOB)).toMatchObject({ status: 'failed', reason: 'read_failed' });
     expect(mockSpent).not.toHaveBeenCalled();
     expect(mockRefund).toHaveBeenCalledTimes(1);
-    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_ANALYSIS');
+    expect(mockRefund).toHaveBeenCalledWith(JOB, 'STYLE_SIMILAR');
   });
 
   it('a colour-family lookup failure fails the read instead of guessing', async () => {

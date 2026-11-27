@@ -25,6 +25,7 @@ export const STYLE_PROFILE_CLEARED = {
   skin_depth: null,
   body_frame: null,
   style_profile_at: null,
+  profile_source: null,
   height_cm: null,
   bust_cm: null,
   waist_cm: null,

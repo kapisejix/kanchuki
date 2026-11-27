@@ -1,6 +1,7 @@
 # Customer Profile & My Style: research, gaps and redesign proposal
 
-Status 2026-11-27: **Phase 1 built on branch `feat/my-style-result-screen`, not merged, not device-tested.** Result screen (swatches best/good/go easy, plain "why", in-memory photo preview, Shop my colours / Retake / Delete), `GET /v1/public/my-style/profile` (R3, RC-185), face-photo copy (R6), fix line + tips per failed read, `palette_only` feed filter. Swatch hexes are a static map in `packages/shared/src/color-family.ts` (`color_families` has no hex column: a later migration). Phase 2+ waits on D1-D7 (§11).
+Status 2026-11-27 (later): **Phase 1 MERGED (PR #365, c989a50c). Phase 2 + D4 + D5 built on branch `feat/my-style-quality-gate`, not merged, not device-tested; migrations 170/171 written, NOT applied** (owner: 170 alone, then 171, before deploy). Guided capture + live camera, on-device check (light/blur/cast; face checks only where FaceDetector exists), new reasons + confidence, drape test, split quota, admin failure counts. Out of scope: D1, D2, D3, D6, D7, pref_styles, reason chips, size charts.
+Earlier status: **Phase 1 built on branch `feat/my-style-result-screen`, not merged, not device-tested.** Result screen (swatches best/good/go easy, plain "why", in-memory photo preview, Shop my colours / Retake / Delete), `GET /v1/public/my-style/profile` (R3, RC-185), face-photo copy (R6), fix line + tips per failed read, `palette_only` feed filter. Swatch hexes are a static map in `packages/shared/src/color-family.ts` (`color_families` has no hex column: a later migration). Phase 2+ waits on D1-D7 (§11).
 Previous status: **research only, nothing built.** Written 2026-11-26 after the owner reported: "customer uploads a photo from the gallery and gets nothing back: no measurements, no saved photo, no advice, no 'photo not good enough, retake' message. The My Style page stays blank."
 Scope: shopper-side web PWA (`apps/web/src/app/(shopper)/`), the API behind it (`apps/api/src/routes/public/public-my-style*.ts`, `apps/api/src/lib/my-style-*.ts`), the vision call (`packages/ai/src/my-style-vision.ts`) and the stored data (`customer_accounts` and related tables).
 Related specs: `docs/tasks/pending/my-style.md` (F-045), `docs/tasks/pending/my-style-body-profile.md` (body profile, not approved), PRO-REQUIREMENTS §42, PROJECT-MEMORY rows 102, 104, 107, 115. `style-match-lite.md` (F-039) is superseded by F-045.
@@ -293,15 +294,15 @@ Device checklist for every phase: Android Chrome PWA and iOS Safari; camera, gal
 
 ## 11. Owner decisions needed
 
-| ID | Question | Recommendation |
-|---|---|---|
-| D1 | Store the customer's photo? | **A small private thumbnail, opt-in with its own checkbox**, private R2 prefix, deleted with "Delete my colours" and with account erasure, adults only. Needs a SECURITY.md §12-18 review first. If no: the result screen still shows the photo from page memory during that visit. |
-| D2 | Full-body analysis? | Not for measurements. Optional silhouette advice later, after a stylist review. |
-| D3 | Body-scan vendor? | Not now. Revisit after Phase 4 shows customers use sizes. |
-| D4 | Can the customer override the photo result? | **Yes** (drape test or manual pick). The customer's own choice wins. |
-| D5 | Quota | Selfie 5/month; Find similar counted separately, 10/month. Unusable photos stay free. |
-| D6 | Show men's wear to women? | Default by `gender`, with a toggle. |
-| D7 | Where the profile lives | Style Passport section at the top of `/my-profile`, linked from `/my-style`. |
+| ID | Question | Recommendation | Decision (2026-11-27) |
+|---|---|---|---|
+| D1 | Store the customer's photo? | **A small private thumbnail, opt-in with its own checkbox**, private R2 prefix, deleted with "Delete my colours" and with account erasure, adults only. Needs a SECURITY.md §12-18 review first. If no: the result screen still shows the photo from page memory during that visit. | Yes (2026-11-27). Not built: needs the SECURITY.md §12-18 review + owner approval first. |
+| D2 | Full-body analysis? | Not for measurements. Optional silhouette advice later, after a stylist review. | Later (2026-11-27). |
+| D3 | Body-scan vendor? | Not now. Revisit after Phase 4 shows customers use sizes. | No (2026-11-27). No vendor. |
+| D4 | Can the customer override the photo result? | **Yes** (drape test or manual pick). The customer's own choice wins. | Yes (2026-11-27). Drape test on low confidence + "Adjust" on the result screen; the customer's answer wins (`profile_source`). Phase 2. |
+| D5 | Quota | Selfie 5/month; Find similar counted separately, 10/month. Unusable photos stay free. | Yes, 5/10 (2026-11-27): selfie 5/month, Find similar 10/month, counted separately; unusable photos stay free. Phase 2. |
+| D6 | Show men's wear to women? | Default by `gender`, with a toggle. | Default by gender + a toggle (2026-11-27). Phase 3. |
+| D7 | Where the profile lives | Style Passport section at the top of `/my-profile`, linked from `/my-style`. | Style Passport on `/my-profile` (2026-11-27). Phase 3. |
 
 ---
 

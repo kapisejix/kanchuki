@@ -27,13 +27,38 @@ describe('analyzeStyleImage', () => {
       undertone: 'warm',
       depth: 'medium',
       frame: 'average',
+      confidence: 'high',
     });
     const r = await analyzeStyleImage(await jpeg(), 'image/jpeg');
     expect(r).toEqual({
       usable: true,
       profile: { undertone: 'warm', depth: 'medium', frame: 'average' },
+      confidence: 'high',
     });
   });
+
+  // Phase 2 (customer-profile-research §7.2 step 5): low confidence opens the drape test.
+  it('a reply without a confidence counts as low, so the shopper is asked to confirm', async () => {
+    mockRunVisionExtract.mockResolvedValue({
+      usable: true,
+      undertone: 'warm',
+      depth: 'medium',
+      frame: 'average',
+    });
+    const r = await analyzeStyleImage(await jpeg(), 'image/jpeg');
+    expect(r).toMatchObject({ usable: true, confidence: 'low' });
+  });
+
+  it.each(['face_too_small', 'filter_or_edit', 'face_covered'])(
+    'accepts the Phase 2 reason %s',
+    async (reason) => {
+      mockRunVisionExtract.mockResolvedValue({ usable: false, reason });
+      expect(await analyzeStyleImage(await jpeg(), 'image/jpeg')).toEqual({
+        usable: false,
+        reason,
+      });
+    },
+  );
 
   it('sends a downscaled JPEG, not the original bytes', async () => {
     mockRunVisionExtract.mockResolvedValue({
@@ -68,6 +93,10 @@ describe('analyzeStyleImage', () => {
     ['unknown reason', { usable: false, reason: 'because I said so' }],
     ['usable not boolean', { usable: 'yes', undertone: 'warm', depth: 'fair', frame: 'tall' }],
     ['empty object', {}],
+    [
+      'out-of-enum confidence',
+      { usable: true, undertone: 'warm', depth: 'fair', frame: 'tall', confidence: 'very' },
+    ],
   ])('rejects %s instead of coercing it (no fallback)', async (_n, out) => {
     mockRunVisionExtract.mockResolvedValue(out);
     await expect(analyzeStyleImage(await jpeg(), 'image/jpeg')).rejects.toThrow(/unreadable/i);
@@ -97,6 +126,10 @@ describe('analyzeStyleImage', () => {
     ).properties;
     expect(props.undertone?.enum).toEqual(['warm', 'cool', 'neutral']);
     expect(props.reason?.enum).toContain('no_person');
+    expect(props.reason?.enum).toEqual(
+      expect.arrayContaining(['face_too_small', 'filter_or_edit', 'face_covered']),
+    );
+    expect(props.confidence?.enum).toEqual(['high', 'medium', 'low']);
     expect(Object.values(props).some((p) => p.type === 'string' && !p.enum)).toBe(false);
   });
 });

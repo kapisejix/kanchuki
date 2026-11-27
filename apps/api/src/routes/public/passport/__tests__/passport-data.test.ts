@@ -94,6 +94,7 @@ describe('POST /passport/delete — style profile and measurements', () => {
       'skin_depth',
       'body_frame',
       'style_profile_at',
+      'profile_source',
       'height_cm',
       'bust_cm',
       'waist_cm',

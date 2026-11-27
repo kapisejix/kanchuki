@@ -39,6 +39,8 @@ import { planPriceMissing } from '../billing/billing-helpers.js';
 export const CUSTOMER_LIMIT_RESOURCE_TYPES = [
   'TRY_ON_GENERATION',
   'STYLE_ANALYSIS',
+  // My Style Phase 2 (D5): Find similar, counted apart from selfies.
+  'STYLE_SIMILAR',
 ] as const satisfies readonly QuotaResourceType[];
 
 export const adminPlansRoutes: FastifyPluginAsync = async (server) => {

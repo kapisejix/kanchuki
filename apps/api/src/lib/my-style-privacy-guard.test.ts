@@ -64,3 +64,32 @@ describe('My Style photo path (privacy)', () => {
     expect(data?.[1]).not.toMatch(/buffer|photo|image|base64/i);
   });
 });
+
+// Phase 2 (customer-profile-research §12): the on-device photo check stays in the browser, and
+// the new failure counter / confidence path carries no shopper and no photo.
+describe('My Style Phase 2 (privacy)', () => {
+  const QUALITY = 'apps/web/src/app/(shopper)/my-style/photo-quality.ts';
+
+  it('the on-device photo check makes no network call and imports nothing that does', () => {
+    const src = code(QUALITY);
+    expect(src.length).toBeGreaterThan(200); // guard is not scanning an empty file
+    expect(src).not.toMatch(/\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource)\b/);
+    expect(src).not.toMatch(/\bimport\b[^;]*from\s+['"](?!@kanchuki\/shared)[^'"]+['"]/);
+    expect(src).not.toMatch(/\b(localStorage|sessionStorage|indexedDB|console\.)/);
+  });
+
+  it('the failure counter row has no customer id', () => {
+    const job = code('apps/api/src/jobs/my-style-analyze.ts');
+    const fn = job.match(/async function recordDailyFailure[\s\S]*?\n\}/)?.[0] ?? '';
+    expect(fn).toContain('styleAnalysisFailureDaily');
+    expect(fn).not.toMatch(/customer|account/i);
+  });
+
+  it('the job state holds the confidence enum, never anything photo-shaped', () => {
+    const state = code('apps/api/src/lib/my-style-analysis.ts').match(
+      /interface AnalysisState\s*\{([^}]*)\}/,
+    );
+    expect(state?.[1]).toContain('confidence');
+    expect(state?.[1]).not.toMatch(/buffer|photo|image|base64|bytes/i);
+  });
+});

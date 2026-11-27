@@ -222,17 +222,38 @@ export const adminMyStyleRoutes: FastifyPluginAsync = async (server) => {
     });
     const total = by_day.reduce((s, d) => s + d.count, 0);
 
-    const limit = await prisma.customerResourceLimit.findUnique({
-      where: { resource_type: 'STYLE_ANALYSIS' },
+    // Failed reads (R10, migration 171): summed per mode + reason over the window. No shopper id.
+    const failRows = await prisma.styleAnalysisFailureDaily.findMany({
+      where: { day: { gte: since } },
     });
+    const sums = new Map<string, { mode: string; reason: string; count: number }>();
+    for (const r of failRows) {
+      const k = `${r.mode}:${r.reason}`;
+      const cur = sums.get(k) ?? { mode: r.mode, reason: r.reason, count: 0 };
+      cur.count += r.count;
+      sums.set(k, cur);
+    }
+    const failures = [...sums.values()].sort((a, b) => b.count - a.count);
+
+    // D5: selfie and Find similar each have their own per-shopper limit.
+    const limitOf = async (resource_type: 'STYLE_ANALYSIS' | 'STYLE_SIMILAR') => {
+      const row = await prisma.customerResourceLimit.findUnique({ where: { resource_type } });
+      return row ? { limit_per_period: row.limit_per_period, period: row.period } : null;
+    };
 
     return {
       data: {
         days,
-        totals: { analyses: total, cost_paise: total * COST_PER_ANALYSIS_PAISE },
+        totals: {
+          analyses: total,
+          cost_paise: total * COST_PER_ANALYSIS_PAISE,
+          failures: failures.reduce((s, f) => s + f.count, 0),
+        },
         cost_per_analysis_paise: COST_PER_ANALYSIS_PAISE,
         by_day,
-        limit: limit ? { limit_per_period: limit.limit_per_period, period: limit.period } : null,
+        failures,
+        limit: await limitOf('STYLE_ANALYSIS'),
+        similar_limit: await limitOf('STYLE_SIMILAR'),
       },
     };
   });

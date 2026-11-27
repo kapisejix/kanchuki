@@ -15,8 +15,15 @@
 // a photo analysis must not start (nothing could report its result), so these throw and
 // the route answers 503 — never a fake success (RC-060). Under VITEST an in-memory map
 // stands in (same convention as the sibling libs) and hands back copies (RC-037).
-import type { GarmentDescriptor, MyStyleProfile } from '@kanchuki/shared';
+import type { QuotaResourceType } from '@kanchuki/db';
+import type { GarmentDescriptor, MyStyleConfidence, MyStyleProfile } from '@kanchuki/shared';
 import { Redis } from 'ioredis';
+
+/** Owner decision D5: selfie reads and Find similar reads are counted apart (migration 170/171). */
+export const MY_STYLE_QUOTA = {
+  selfie: 'STYLE_ANALYSIS',
+  garment: 'STYLE_SIMILAR',
+} as const satisfies Record<'selfie' | 'garment', QuotaResourceType>;
 
 export type AnalysisStatus = 'processing' | 'ready' | 'failed' | 'cancelled';
 
@@ -24,6 +31,8 @@ export interface AnalysisState {
   account_id: string;
   status: AnalysisStatus;
   profile?: MyStyleProfile;
+  /** How sure the model was of the undertone; low opens the drape test on the client. */
+  confidence?: MyStyleConfidence;
   /** Find-similar (PR-9): a description of a garment, not of the shopper. */
   garment?: GarmentDescriptor;
   /** A code, not prose: an enum reason from the model or read_failed / expired. */
@@ -31,7 +40,7 @@ export interface AnalysisState {
 }
 
 export type AnalysisOutcome =
-  | { status: 'ready'; profile: MyStyleProfile }
+  | { status: 'ready'; profile: MyStyleProfile; confidence: MyStyleConfidence }
   | { status: 'ready'; garment: GarmentDescriptor }
   | { status: 'failed'; reason: string };
 

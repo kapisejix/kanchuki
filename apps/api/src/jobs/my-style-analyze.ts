@@ -24,7 +24,7 @@
 import { analyzeGarmentImage, analyzeStyleImage } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { getActiveColorFamilies } from '../lib/color-families.js';
-import { completeAnalysis, getAnalysis } from '../lib/my-style-analysis.js';
+import { MY_STYLE_QUOTA, completeAnalysis, getAnalysis } from '../lib/my-style-analysis.js';
 import { clearStyleProfile } from '../lib/my-style-consent.js';
 import { markCustomerJobQuotaSpent, refundCustomerJobQuota } from '../lib/quota.js';
 import { takeTryOnPhoto } from '../lib/tryon-photo-store.js';
@@ -49,15 +49,40 @@ async function recordDailyAnalysis(): Promise<void> {
     .catch((err) => console.error('[my-style] failed to record daily count:', err));
 }
 
+type Mode = keyof typeof MY_STYLE_QUOTA;
+
+// Owner/admin failure rate (research R10, migration 171): one counter per UTC day, mode and
+// reason. No customer id, same rule as the success counter. Best-effort, like recordDailyAnalysis.
+async function recordDailyFailure(mode: Mode, reason: string): Promise<void> {
+  const day = new Date(new Date().toISOString().slice(0, 10));
+  // try/await, not .catch(): a synchronous throw (stale Prisma client) must be caught too.
+  try {
+    await prisma.styleAnalysisFailureDaily.upsert({
+      where: { day_mode_reason: { day, mode, reason } },
+      create: { day, mode, reason, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+  } catch (err) {
+    console.error('[my-style] failed to record failure count:', err);
+  }
+}
+
+// A failed job outcome, counted. Every failure exit of the job goes through here. The outcome
+// is written first: the shopper's poll must never depend on the counter.
+async function failWith(job_id: string, mode: Mode, reason: string): Promise<void> {
+  await completeAnalysis(job_id, { status: 'failed', reason });
+  await recordDailyFailure(mode, reason);
+}
+
 // Marks the job failed and hands back the error to rethrow. Message only — never the
 // buffer, and provider errors carry none. No auto-retry: a retry would have no photo left
 // (it was taken at the top of the handler) and each attempt is a paid call.
-async function failRead(job_id: string, err: unknown): Promise<Error> {
+async function failRead(job_id: string, mode: Mode, err: unknown): Promise<Error> {
   console.error(
     `[my-style] job ${job_id} failed:`,
     err instanceof Error ? err.message : String(err),
   );
-  await completeAnalysis(job_id, { status: 'failed', reason: 'read_failed' });
+  await failWith(job_id, mode, 'read_failed');
   return err instanceof Error ? err : new Error(String(err));
 }
 
@@ -70,9 +95,10 @@ async function spend(
   job_id: string,
   customer_account_id: string,
   held: { spent: boolean },
+  mode: Mode,
 ): Promise<void> {
   held.spent = true; // before the write: a throw later in the job must not refund a paid read
-  await markCustomerJobQuotaSpent(job_id, 'STYLE_ANALYSIS').catch((err) => {
+  await markCustomerJobQuotaSpent(job_id, MY_STYLE_QUOTA[mode]).catch((err) => {
     console.error(`[my-style] failed to record usage for ${customer_account_id}:`, err);
   });
 }
@@ -88,15 +114,15 @@ async function handleGarment(
     const families = (await getActiveColorFamilies()).map((f) => f.name);
     result = await analyzeGarmentImage(photo.buffer, photo.contentType, families);
   } catch (err) {
-    throw await failRead(job_id, err);
+    throw await failRead(job_id, 'garment', err);
   }
 
   if (!result.usable) {
-    await completeAnalysis(job_id, { status: 'failed', reason: result.reason });
+    await failWith(job_id, 'garment', result.reason);
     return;
   }
 
-  await spend(job_id, customer_account_id, held);
+  await spend(job_id, customer_account_id, held, 'garment');
   await recordDailyAnalysis();
   // False = cleared or expired meanwhile; the cost still counts, the result is dropped.
   await completeAnalysis(job_id, { status: 'ready', garment: result.garment });
@@ -112,9 +138,11 @@ export async function handleMyStyleAnalyze(data: MyStyleAnalyzeJobData): Promise
     await run(data, held);
   } finally {
     if (!held.spent) {
-      await refundCustomerJobQuota(data.job_id, 'STYLE_ANALYSIS').catch((err) => {
-        console.error(`[my-style] failed to refund quota for job ${data.job_id}:`, err);
-      });
+      await refundCustomerJobQuota(data.job_id, MY_STYLE_QUOTA[data.mode ?? 'selfie']).catch(
+        (err) => {
+          console.error(`[my-style] failed to refund quota for job ${data.job_id}:`, err);
+        },
+      );
     }
   }
 }
@@ -129,7 +157,7 @@ async function run(data: MyStyleAnalyzeJobData, held: { spent: boolean }): Promi
   if (state?.status !== 'processing') return; // cleared or expired while queued: do nothing
 
   if (!photo || photo.buffer.length === 0) {
-    await completeAnalysis(job_id, { status: 'failed', reason: 'expired' });
+    await failWith(job_id, data.mode ?? 'selfie', 'expired');
     return;
   }
 
@@ -139,17 +167,17 @@ async function run(data: MyStyleAnalyzeJobData, held: { spent: boolean }): Promi
   try {
     result = await analyzeStyleImage(photo.buffer, photo.contentType);
   } catch (err) {
-    throw await failRead(job_id, err);
+    throw await failRead(job_id, 'selfie', err);
   }
 
   if (!result.usable) {
-    await completeAnalysis(job_id, { status: 'failed', reason: result.reason });
+    await failWith(job_id, 'selfie', result.reason);
     return;
   }
 
   // The model ran, so the cost is real whatever happens next. Counting it even when the
   // shopper cleared mid-flight stops clear-and-retry from being free analyses.
-  await spend(job_id, customer_account_id, held);
+  await spend(job_id, customer_account_id, held, 'selfie');
   await recordDailyAnalysis();
 
   if ((await getAnalysis(job_id))?.status !== 'processing') return; // cleared mid-call
@@ -162,12 +190,18 @@ async function run(data: MyStyleAnalyzeJobData, held: { spent: boolean }): Promi
       skin_depth: depth,
       body_frame: frame,
       style_profile_at: new Date(),
+      profile_source: 'photo', // a new read replaces an earlier drape-test answer
     },
   });
 
   // Lost the race to a withdrawal that landed between the check and the write: take the
   // write back.
-  if (!(await completeAnalysis(job_id, { status: 'ready', profile: result.profile }))) {
+  const ready = {
+    status: 'ready',
+    profile: result.profile,
+    confidence: result.confidence,
+  } as const;
+  if (!(await completeAnalysis(job_id, ready))) {
     await clearStyleProfile(customer_account_id);
   }
 }

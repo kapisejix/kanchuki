@@ -30,8 +30,15 @@ describe('my-style analysis state', () => {
   it('complete moves processing to ready/failed and releases the lock', async () => {
     await startAnalysis('job1', 'acct1');
     const profile = { undertone: 'warm', depth: 'fair', frame: 'tall' } as const;
-    expect(await completeAnalysis('job1', { status: 'ready', profile })).toBe(true);
-    expect(await getAnalysis('job1')).toEqual({ account_id: 'acct1', status: 'ready', profile });
+    expect(await completeAnalysis('job1', { status: 'ready', profile, confidence: 'high' })).toBe(
+      true,
+    );
+    expect(await getAnalysis('job1')).toEqual({
+      account_id: 'acct1',
+      status: 'ready',
+      profile,
+      confidence: 'high',
+    });
     expect(await startAnalysis('job2', 'acct1')).toBe('started');
   });
 

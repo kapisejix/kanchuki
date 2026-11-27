@@ -5,11 +5,21 @@
 // success is never shown as one (RC-059/060).
 import {
   type GarmentDescriptor,
+  MY_STYLE_CONFIDENCES,
   MY_STYLE_CONSENT,
+  type MyStyleConfidence,
   type MyStyleProfile,
   parseGarmentDescriptor,
 } from '@kanchuki/shared';
 import type { Measurements, StyleProfile, TasteSummary } from './lib';
+import {
+  PHOTO_QUALITY,
+  type PhotoProblem,
+  checkFaces,
+  checkPixels,
+  detectFaces,
+  measurePixels,
+} from './photo-quality';
 
 const BASE = '/api/my-style';
 // Matches the server-side downscale, so the upload is never bigger than the model sees.
@@ -27,8 +37,15 @@ const MAX_PICK_BYTES = 25 * 1024 * 1024;
  * Re-encode any photo the browser can decode as a <=1568px JPEG (the API refuses HEIC).
  * Rejects 'unsupported' (not a phone photo format, or over 25 MB) before decoding anything.
  * The JPEG re-encode also drops EXIF (GPS) and anything appended to the original bytes.
+ *
+ * Phase 2: also runs the on-device quality check (photo-quality.ts) on the decoded image and
+ * returns its problems. The caller uploads only when none is blocking. Face checks are selfie
+ * only, and skipped where the browser has no FaceDetector (most browsers today).
  */
-export async function prepareUpload(file: Blob): Promise<Blob> {
+export async function prepareUpload(
+  file: Blob,
+  mode: AnalyzeMode = 'selfie',
+): Promise<{ photo: Blob; problems: PhotoProblem[] }> {
   if ((file.type && !PHOTO_TYPES.has(file.type.toLowerCase())) || file.size > MAX_PICK_BYTES) {
     throw new Error('unsupported');
   }
@@ -40,6 +57,7 @@ export async function prepareUpload(file: Blob): Promise<Blob> {
   } catch {
     throw unreadable(); // e.g. HEIC on a browser that cannot decode it
   }
+  const problems = pixelProblems(bitmap);
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * scale);
@@ -48,11 +66,31 @@ export async function prepareUpload(file: Blob): Promise<Blob> {
   if (!ctx) throw unreadable();
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close?.();
+  if (mode === 'selfie') {
+    const faces = await detectFaces(canvas); // null = no detector: face checks skipped
+    if (faces) problems.push(...checkFaces(faces, canvas.width, canvas.height));
+  }
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, 'image/jpeg', 0.85),
   );
   if (!blob) throw unreadable();
-  return blob;
+  return { photo: blob, problems };
+}
+
+// Light/blur/cast on a small copy (PHOTO_QUALITY.analysisEdge): fast, and the thresholds are set
+// for that size. A browser without getImageData cannot run them; it reports nothing rather than
+// refusing a photo it could not judge (the server read still judges it).
+function pixelProblems(bitmap: ImageBitmap): PhotoProblem[] {
+  const k = Math.min(1, PHOTO_QUALITY.analysisEdge / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * k));
+  const h = Math.max(1, Math.round(bitmap.height * k));
+  const small = document.createElement('canvas');
+  small.width = w;
+  small.height = h;
+  const ctx = small.getContext('2d', { willReadFrequently: true });
+  if (!ctx || typeof ctx.getImageData !== 'function') return [];
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  return checkPixels(measurePixels(ctx.getImageData(0, 0, w, h).data, w, h));
 }
 
 const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
@@ -113,9 +151,13 @@ export async function startAnalysis(
     );
     if (res.status === 401) return { kind: 'unauthorized' };
     if (res.status === 402) {
+      // D5: selfie reads and Find similar searches have separate monthly limits.
       return {
         kind: 'error',
-        message: `You've used this month's limit of photo reads. It starts over on ${resetDay()}. You can still browse, filter and take the quick quiz.`,
+        message:
+          mode === 'garment'
+            ? `You've used this month's Find similar searches. They start over on ${resetDay()}. Your photo reads are not affected.`
+            : `You've used this month's limit of photo reads. It starts over on ${resetDay()}. You can still browse, filter and take the quick quiz.`,
       };
     }
     if (!res.ok) return { kind: 'error', message: START_ERRORS[res.status] ?? GENERIC };
@@ -150,6 +192,18 @@ const FAILED: Record<string, { message: string; fix: string }> = {
     message: 'That photo is too dark.',
     fix: 'Move near a window in daylight, or turn on a bright light.',
   },
+  face_too_small: {
+    message: 'Your face is too far away in that photo.',
+    fix: 'Come closer, so your face fills most of the frame.',
+  },
+  filter_or_edit: {
+    message: 'That photo looks filtered or edited.',
+    fix: 'Take a fresh photo with the beauty filter and effects turned off.',
+  },
+  face_covered: {
+    message: 'Part of your face is covered.',
+    fix: 'Take off sunglasses or a mask, and keep hair and hands away from your face.',
+  },
   no_garment: {
     message: "We couldn't see a clothing item in that photo.",
     fix: 'Lay the piece flat or hang it up, and fill the frame with it.',
@@ -174,7 +228,13 @@ const FAILED: Record<string, { message: string; fix: string }> = {
 
 export type PollResult =
   | { kind: 'processing' }
-  | { kind: 'ready'; profile?: MyStyleProfile; garment?: GarmentDescriptor }
+  | {
+      kind: 'ready';
+      profile?: MyStyleProfile;
+      /** Selfie only. Low (or unknown) opens the drape test (D4). */
+      confidence?: MyStyleConfidence;
+      garment?: GarmentDescriptor;
+    }
   | { kind: 'failed'; message: string; fix?: string }
   | { kind: 'unauthorized' }
   | { kind: 'gone' }
@@ -197,7 +257,13 @@ export async function pollAnalysis(
     if (res.status === 404) return { kind: 'gone' };
     if (!res.ok) return { kind: 'error' };
     const json = (await res.json().catch(() => null)) as {
-      data?: { status?: string; profile?: MyStyleProfile; garment?: unknown; reason?: string };
+      data?: {
+        status?: string;
+        profile?: MyStyleProfile;
+        confidence?: string;
+        garment?: unknown;
+        reason?: string;
+      };
     } | null;
     const d = json?.data;
     if (d?.status === 'processing') return { kind: 'processing' };
@@ -207,7 +273,10 @@ export async function pollAnalysis(
         const garment = parseGarmentDescriptor(d.garment);
         return garment ? { kind: 'ready', garment } : { kind: 'error' };
       }
-      return d.profile ? { kind: 'ready', profile: d.profile } : { kind: 'error' };
+      if (!d.profile) return { kind: 'error' };
+      // Unknown or missing = not sure, so the shopper is asked (never treated as high).
+      const confidence = MY_STYLE_CONFIDENCES.find((c) => c === d.confidence) ?? 'low';
+      return { kind: 'ready', profile: d.profile, confidence };
     }
     if (d?.status === 'failed') {
       const f = FAILED[d.reason ?? ''] ?? FAILED.read_failed;
@@ -247,6 +316,41 @@ export async function fetchProfile(signal?: AbortSignal): Promise<ProfileResult>
       data?: Extract<ProfileResult, { kind: 'ok' }>['data'];
     } | null;
     return json?.data ? { kind: 'ok', data: json.data } : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
+  }
+}
+
+/** The drape test's answers (D4): per pair, the side that made the face look brighter. */
+export type DrapePick = 'warm' | 'cool';
+
+export type ConfirmResult =
+  | { kind: 'ok'; profile: StyleProfile }
+  | { kind: 'unauthorized' }
+  /** 409 NO_PROFILE: cleared meanwhile (another tab); a retry can never work. */
+  | { kind: 'no_profile' }
+  | { kind: 'error' };
+
+/** Save the drape-test answer; the server works out the undertone. Only a saved profile is ok. */
+export async function confirmProfile(picks: DrapePick[]): Promise<ConfirmResult> {
+  try {
+    const res = await timedFetch(
+      `${BASE}/profile/confirm`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ picks }),
+      },
+      START_TIMEOUT_MS,
+    );
+    if (res.status === 401) return { kind: 'unauthorized' };
+    if (res.status === 409) return { kind: 'no_profile' };
+    if (!res.ok) return { kind: 'error' };
+    const json = (await res.json().catch(() => null)) as {
+      data?: { style_profile?: StyleProfile | null };
+    } | null;
+    const profile = json?.data?.style_profile;
+    return profile ? { kind: 'ok', profile } : { kind: 'error' };
   } catch {
     return { kind: 'error' };
   }

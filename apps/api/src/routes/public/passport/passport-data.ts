@@ -54,6 +54,7 @@ export const passportDataRoutes: FastifyPluginAsync = async (server) => {
         skin_depth: true,
         body_frame: true,
         style_profile_at: true,
+        profile_source: true,
         height_cm: true,
         bust_cm: true,
         waist_cm: true,

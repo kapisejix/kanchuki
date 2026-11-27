@@ -2,7 +2,7 @@
 // Prices are paise end to end; the page formats them with formatPriceRange.
 
 import { RETURN_TO_PARAM } from '@/lib/return-to';
-import type { GarmentDescriptor } from '@kanchuki/shared';
+import type { GarmentDescriptor, MyStyleProfileSource } from '@kanchuki/shared';
 
 export type FeedSort = 'best' | 'nearest' | 'price';
 
@@ -16,6 +16,8 @@ export interface StyleProfile {
   frame: string | null;
   /** ISO time the profile was saved (CustomerAccount.style_profile_at). */
   saved_at?: string | null;
+  /** Where the undertone came from: the photo read, the drape test, or a manual pick (D4). */
+  source?: MyStyleProfileSource;
   palette: { good: string[]; avoid: string[] } | null;
 }
 

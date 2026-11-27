@@ -274,15 +274,18 @@ describe('POST /analyze', () => {
       expect(JSON.stringify(mockEnqueue.mock.calls[0]?.[0])).not.toContain('fake-jpeg');
     });
 
-    it('garment mode passes the same gates: consent, quota (STYLE_ANALYSIS) and provider', async () => {
+    it('garment mode passes the same gates: consent, its own quota (STYLE_SIMILAR, D5) and provider', async () => {
       expect(
         (await analyze(await build(), { query: 'mode=garment', consent: null })).statusCode,
       ).toBe(422);
       mockProvider.mockResolvedValue(false);
       expect((await analyze(await build(), { query: 'mode=garment' })).statusCode).toBe(503);
       mockProvider.mockResolvedValue(true);
-      await analyze(await build(), { query: 'mode=garment' });
-      expect(mockCheckQuota).toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
+      mockReserve.mockClear();
+      const res = await analyze(await build(), { query: 'mode=garment' });
+      expect(mockCheckQuota).toHaveBeenCalledWith(ACCT, 'STYLE_SIMILAR');
+      expect(mockCheckQuota).not.toHaveBeenCalledWith(ACCT, 'STYLE_ANALYSIS');
+      expect(mockReserve).toHaveBeenCalledWith(ACCT, 'STYLE_SIMILAR', res.json().data.job_id);
     });
 
     it('an unknown mode is a 422', async () => {
@@ -350,10 +353,10 @@ describe('GET /analyze/:jobId', () => {
     const app = await build();
     const profile = { undertone: 'cool', depth: 'deep', frame: 'tall' } as const;
     await startAnalysis('mystyle_a', ACCT);
-    await completeAnalysis('mystyle_a', { status: 'ready', profile });
+    await completeAnalysis('mystyle_a', { status: 'ready', profile, confidence: 'low' });
     expect(
       (await app.inject({ method: 'GET', url: '/my-style/analyze/mystyle_a' })).json(),
-    ).toEqual({ data: { status: 'ready', profile } });
+    ).toEqual({ data: { status: 'ready', profile, confidence: 'low' } });
     await startAnalysis('mystyle_b', ACCT);
     await completeAnalysis('mystyle_b', { status: 'failed', reason: 'face_not_clear' });
     expect(

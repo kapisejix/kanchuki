@@ -48,7 +48,20 @@ export const MY_STYLE_UNUSABLE_REASONS = [
   'face_not_clear',
   'multiple_people',
   'too_dark',
+  // Phase 2 (customer-profile-research §7.2 step 5).
+  'face_too_small',
+  'filter_or_edit',
+  'face_covered',
 ] as const;
+/** How sure the model is. `low` (or no answer) opens the drape test (owner decision D4). */
+export const MY_STYLE_CONFIDENCES = ['high', 'medium', 'low'] as const;
+export type MyStyleConfidence = (typeof MY_STYLE_CONFIDENCES)[number];
+/**
+ * Where the saved undertone came from: the photo read, the shopper's drape-test answer, or a
+ * manual pick. Mirrors the CHECK in migration 171. NULL on rows saved before 171 = photo.
+ */
+export const MY_STYLE_PROFILE_SOURCES = ['photo', 'confirmed', 'manual'] as const;
+export type MyStyleProfileSource = (typeof MY_STYLE_PROFILE_SOURCES)[number];
 
 export interface MyStyleProfile {
   undertone: (typeof MY_STYLE_UNDERTONES)[number];
