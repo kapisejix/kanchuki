@@ -4,6 +4,7 @@
 // The colour block is the same PaletteCard the My Style result uses (not rebuilt); the
 // camera, drape test and quiz stay on /my-style, so every action here links there.
 // Never shows a body or skin label (frame stays hidden, research §7.1).
+import { cmToFeetInches, cmToInches } from '@kanchuki/shared';
 import { BadgeCheck, Check, ChevronRight, Circle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,13 +19,19 @@ type Gender = 'FEMALE' | 'MALE' | null;
 
 const STEPS = [
   { key: 'colours', label: 'Colours', unlocks: 'Shades that suit you, first in your feed' },
-  { key: 'size', label: 'Size', unlocks: 'Your size shown on products (coming soon)' },
+  { key: 'size', label: 'Size', unlocks: 'Your size shown on products' },
   { key: 'taste', label: 'Taste', unlocks: 'Occasions and fabrics you like, ranked higher' },
 ] as const;
 
 const LINK_CARD = `${CARD} p-4 flex items-center gap-2 text-sm font-semibold text-fuchsia-600`;
 
 /** Three steps; "Show me" is a setting, not a step ("Both" is stored as null, like unset). */
+// B2: shoppers measure in inches; show what they typed, not the stored cm.
+const feetInches = (cm: number) => {
+  const { feet, inches } = cmToFeetInches(cm);
+  return `${feet} ft ${inches} in`;
+};
+
 export function completeness(p: Saved, usualSize: string | null, prefStyles: string[]) {
   const done = {
     colours: !!p.style_profile,
@@ -221,10 +228,10 @@ export function StylePassport({
               <p className="text-heliotrope-500 mt-1">
                 {[
                   usualSize ? `Usual size ${usualSize}` : null,
-                  m?.height_cm ? `Height ${m.height_cm} cm` : null,
-                  m?.bust_cm ? `Bust ${m.bust_cm} cm` : null,
-                  m?.waist_cm ? `Waist ${m.waist_cm} cm` : null,
-                  m?.hip_cm ? `Hip ${m.hip_cm} cm` : null,
+                  m?.height_cm ? `Height ${feetInches(m.height_cm)}` : null,
+                  m?.bust_cm ? `Bust ${cmToInches(m.bust_cm)} in` : null,
+                  m?.waist_cm ? `Waist ${cmToInches(m.waist_cm)} in` : null,
+                  m?.hip_cm ? `Hip ${cmToInches(m.hip_cm)} in` : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}

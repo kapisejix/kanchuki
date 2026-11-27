@@ -97,16 +97,27 @@ const feedCalls = () =>
   fetchMock.mock.calls.filter(([url]) => String(url).includes('/my-style/feed'));
 const profileCalls = () =>
   fetchMock.mock.calls.filter(([url]) => String(url).includes('/my-style/profile'));
-function serve(opts: { profile?: () => unknown; feed?: () => Response } = {}) {
+function serve(
+  opts: { profile?: () => unknown; feed?: () => Response; measurements?: () => unknown } = {},
+) {
   fetchMock.mockImplementation(async (url: string) =>
     String(url).includes('/my-style/profile')
       ? new Response(
           JSON.stringify({
-            data: { style_profile: opts.profile?.() ?? null, measurements: null, taste: null },
+            data: {
+              style_profile: opts.profile?.() ?? null,
+              measurements: opts.measurements?.() ?? null,
+              taste: null,
+            },
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         )
-      : (opts.feed?.() ?? feed()),
+      : String(url).endsWith('/my-style/measurements')
+        ? new Response(JSON.stringify({ data: { measurements: {} } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        : (opts.feed?.() ?? feed()),
   );
 }
 const lastFeedBody = () => JSON.parse(feedCalls().at(-1)![1].body as string);
@@ -175,6 +186,38 @@ describe('selfie entry', () => {
     fireEvent.click(btn);
     await waitFor(() => expect(screen.queryByText('Your palette')).toBeNull());
     expect(feedCalls()).toHaveLength(2);
+  });
+});
+
+// B2: a usual size saves without a measurements time, so the card must re-mount on the size too.
+describe('usual size card refresh', () => {
+  const usualOnly = (usual_size: string | null) => ({
+    height_cm: null,
+    bust_cm: null,
+    waist_cm: null,
+    hip_cm: null,
+    usual_size,
+    saved_at: null,
+  });
+
+  it('a saved usual size shows checked once the profile loads, with no consent step', async () => {
+    serve({ measurements: () => usualOnly('M') });
+    render(<MyStylePage />);
+    await waitFor(() =>
+      expect((screen.getByRole('radio', { name: 'M' }) as HTMLInputElement).checked).toBe(true),
+    );
+    expect(screen.queryByRole('button', { name: /I agree, save my measurements/i })).toBeNull();
+  });
+
+  it('Clear my size re-reads and the picker forgets the size', async () => {
+    let saved: unknown = usualOnly('M');
+    serve({ measurements: () => saved });
+    render(<MyStylePage />);
+    const btn = await screen.findByRole('button', { name: 'Clear my size' });
+    saved = usualOnly(null);
+    fireEvent.click(btn);
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Clear my size' })).toBeNull());
+    expect((screen.getByRole('radio', { name: 'M' }) as HTMLInputElement).checked).toBe(false);
   });
 });
 

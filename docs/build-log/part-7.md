@@ -1012,6 +1012,18 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Review fixes | Whole-branch review: no Critical. Fixed 3 Important: a NULL-audience men's kurta under a plain "Kurta" category got the women's chart (`standardChartFor` now reads the product name for the men/kids guess); a blocked chart made the header Save silent (now also an Alert); out-of-range inches showed the size-order message (now "Use inches between 22 and 63"). After fixes: typecheck 9/9, Biome clean, API 3613, mobile 735, shared 315/316 (pre-existing weights). Deferred minors: half-inch round trip shifts standard waist XS/S by 1 cm; typed draft text persists after save; size-chart toggle doesn't announce expanded; guide figure name read twice. |
 | Not done | Not device-tested (research §10 checklist unchecked). Owner to check the chart numbers. A saved usual-size editor for shoppers doesn't exist ("No tape?" uses the per-visit Size filter). |
 
+## 2026-11-27 — My Style B2: usual size first, inches for measurements
+
+| Area | Change |
+|---|---|
+| Why | Device test B2: shoppers know their size, few own a tape. Owner decisions 2026-11-27 (usual size labels only, never filters; inches). Spec `docs/superpowers/specs/2026-11-27-my-style-usual-size-design.md` (P1-P7 approved), plan `docs/superpowers/plans/2026-11-27-my-style-usual-size.md`. Branch `feat/my-style-usual-size` off main 4f6ef16a. |
+| Shared | `inchesToCm`, `cmToInches` (nearest 0.5"), `cmToFeetInches` in `my-style-measurements.ts` (the one unit home); `feetInchesToCm`, `chartFromInches`, `inchesFromChart` reuse them. `USUAL_SIZE_OPTIONS` XS-4XL. Body consent `mystyle-body-1.1` names the usual size. |
+| API | `POST /my-style/measurements` takes `usual_size` (XS-4XL, `null` clears; body-consent gated; `measurements_at` stamped only for body numbers). `usual_size` added to `MEASUREMENTS_CLEARED` and `STYLE_PROFILE_CLEARED` (withdraw, Clear my data, erasure). Profile returns it. Hidden `account.usual_size` filter removed from the feed and Complete the look. `sizeFor`: measurements win, else `chart: 'usual'` when the product lists the size (case-insensitive); never on kids; `size_matches` counts it. |
+| Web | Card "Your usual size: M". Measurements card ("Your size"): usual-size native radios first, then "Custom measurements" (bust/waist/hip in inches, height ft/in default; folded for a usual-size-only shopper). "No tape?" hand-off deleted. Card key includes `usual_size` so a size-only save/clear re-mounts it. Passport: "Usual size M · Height 5 ft 4 in · Bust 34 in"; "(coming soon)" dropped. |
+| Migrations | None. Prod read-only: `usual_size` set on 0 of 6 accounts. |
+| Review | Whole-branch review (Opus): 1 Important fixed (card key ignored `usual_size` → stale picker after reload / clear; 2 page tests RED→GREEN). Deferred minors: ft/in height range message rounds limits to values it then rejects (3 ft 3 in / 7 ft 3 in); blanking an inch field keeps the old number (pre-existing). Noted, not in scope: analysis job compensation on an expired job record also clears measurements + usual size. |
+| Local runs | typecheck 9/9; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`; API 3629 passed; mobile 735; ai 214; db 25; shared 319/320 (1 = RC-190, PR #370); web parallel run timeouts only, sequential + per-file all green (shopper 312/312). GitHub Actions blocked by billing. |
+| Not done | Not pushed, not device-tested (B2/B3/B5 on Android Chrome + iOS Safari with owner). |
 ## 2026-11-27 — RC-191: retailer "Add product" 500 (device test A1)
 
 | Area | Change |

@@ -385,15 +385,6 @@ export default function MyStylePage() {
 
   const activeFilters = [budget, size, occasion].filter(Boolean).length + (where ? 1 : 0);
 
-  // Phase 4 "No tape?": the Size filter is the usual-size fallback. On a phone it lives in the
-  // Filters sheet, so open that; otherwise bring the inline select into view and focus it.
-  const pickUsualSize = () => {
-    if (phone) return setFiltersOpen(true);
-    const el = document.querySelector<HTMLSelectElement>('select[aria-label="Size"]');
-    el?.scrollIntoView({ block: 'center' });
-    el?.focus();
-  };
-
   // Rendered once: inline from `sm`, inside the filter sheet on a phone.
   const filterControls = (stacked: boolean) => {
     const sel = stacked ? `${SELECT} w-full` : `${SELECT} shrink-0`;
@@ -634,11 +625,11 @@ export default function MyStylePage() {
 
       {/* key: re-seed the fields from the server after a save or a "Clear my data". */}
       <MeasurementsCard
-        key={measurements?.saved_at ?? 'none'}
+        // B2: a usual size saves without a measurements time, so it is part of the key too.
+        key={`${measurements?.saved_at ?? 'none'}:${measurements?.usual_size ?? ''}`}
         initial={measurements}
         onSaved={() => setNonce((n) => n + 1)}
         sizeMatches={view.kind === 'ok' ? (view.meta.size_matches ?? null) : null}
-        onPickUsualSize={pickUsualSize}
       />
 
       {similar && (

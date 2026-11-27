@@ -3,7 +3,7 @@
 // Never a guess: no chart, no overlapping measurement, or a body larger than the largest size
 // all answer null. Boost-free: it only labels a card, it never filters or reorders.
 import { SIZE_OPTIONS } from './constants/index.js';
-import { MY_STYLE_MEASUREMENT_RANGES } from './my-style-measurements.js';
+import { MY_STYLE_MEASUREMENT_RANGES, cmToInches, inchesToCm } from './my-style-measurements.js';
 import { type ProductAudienceValue, audienceForText } from './product-audience.js';
 
 export const SIZE_CHART_DIMENSIONS = ['bust', 'waist', 'hip'] as const;
@@ -119,10 +119,21 @@ export function standardChartFor(p: {
   return STANDARD_SIZE_CHART;
 }
 
+/** B2: sizes a shopper can save as their usual size; the same span as STANDARD_SIZE_CHART. */
+export const USUAL_SIZE_OPTIONS = [
+  'XS',
+  'S',
+  'M',
+  'L',
+  'XL',
+  'XXL',
+  'XXXL',
+  '4XL',
+] as const satisfies readonly (typeof SIZE_OPTIONS)[number][];
+export type UsualSize = (typeof USUAL_SIZE_OPTIONS)[number];
+
 /** Retailer entry: the "fits up to" body measurement per size and dimension, in inches. */
 export type InchRows = Record<string, Partial<Record<SizeChartDimension, number>>>;
-
-const CM_PER_INCH = 2.54;
 
 /**
  * Inches -> cm chart. Upper = round(in × 2.54); lower = the previous listed size's upper + 1
@@ -137,7 +148,7 @@ export function chartFromInches(rows: InchRows): SizeChart | null | 'invalid' {
     for (const s of sizes) {
       const v = rows[s]?.[dim];
       if (v === undefined || !Number.isFinite(v)) continue;
-      const hi = Math.round(v * CM_PER_INCH);
+      const hi = inchesToCm(v);
       raw[s] = { ...raw[s], [dim]: [prev === null ? hi - 5 : prev + 1, hi] };
       prev = hi;
     }
@@ -153,7 +164,7 @@ export function inchesFromChart(chart: SizeChart): InchRows {
     const row: Partial<Record<SizeChartDimension, number>> = {};
     for (const dim of SIZE_CHART_DIMENSIONS) {
       const r = dims[dim];
-      if (r) row[dim] = Math.round((r[1] / CM_PER_INCH) * 2) / 2;
+      if (r) row[dim] = cmToInches(r[1]);
     }
     out[size] = row;
   }

@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MY_STYLE_BODY_CONSENT,
+  cmToFeetInches,
+  cmToInches,
+  feetInchesToCm,
+  inchesToCm,
+} from './my-style-measurements.js';
+import {
   STANDARD_SIZE_CHART,
   type SizeChart,
+  USUAL_SIZE_OPTIONS,
   chartFromInches,
   inchesFromChart,
   parseSizeChart,
@@ -203,5 +211,30 @@ describe('standardChartFor reads the product name too (review fix)', () => {
     expect(
       standardChartFor({ audience: null, category: 'Kurta', subtype: null, name: 'Ladies kurta' }),
     ).toBe(STANDARD_SIZE_CHART);
+  });
+});
+
+describe('unit helpers (B2)', () => {
+  it('converts inches to whole cm and cm to the nearest half inch', () => {
+    expect(inchesToCm(34)).toBe(86);
+    expect(inchesToCm(34.5)).toBe(88);
+    expect(cmToInches(86)).toBe(34);
+    expect(cmToInches(88)).toBe(34.5);
+  });
+
+  it('splits cm into feet and inches, and back', () => {
+    expect(cmToFeetInches(163)).toEqual({ feet: 5, inches: 4 });
+    expect(cmToFeetInches(152)).toEqual({ feet: 5, inches: 0 });
+    expect(feetInchesToCm(5, 4)).toBe(163);
+  });
+
+  it('offers XS..4XL as usual sizes, the same span as the standard chart', () => {
+    expect(USUAL_SIZE_OPTIONS).toEqual(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '4XL']);
+    expect(Object.keys(STANDARD_SIZE_CHART)).toEqual([...USUAL_SIZE_OPTIONS]);
+  });
+
+  it('body consent 1.1 names the usual size', () => {
+    expect(MY_STYLE_BODY_CONSENT.version).toBe('mystyle-body-1.1');
+    expect(MY_STYLE_BODY_CONSENT.intro).toMatch(/usual size/i);
   });
 });

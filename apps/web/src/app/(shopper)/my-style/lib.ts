@@ -27,6 +27,8 @@ export interface Measurements {
   bust_cm: number | null;
   waist_cm: number | null;
   hip_cm: number | null;
+  /** B2: the shopper's saved usual size (XS..4XL). Labels cards only. */
+  usual_size?: string | null;
   saved_at?: string | null;
 }
 
@@ -42,8 +44,8 @@ export interface TasteSummary {
 export interface SuggestedSize {
   size: string;
   between?: [string, string];
-  /** Phase 4: the store's own chart, or the standard women's chart used as a fallback. */
-  chart?: 'store' | 'standard';
+  /** Phase 4: the store's own chart, or the standard women's chart; B2: the saved usual size. */
+  chart?: 'store' | 'standard' | 'usual';
 }
 
 export interface FeedCard {

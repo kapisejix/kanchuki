@@ -72,6 +72,22 @@ describe('StylePassport', () => {
     ).toBe('/my-style?retake=1');
   });
 
+  it('the size block reads usual size, ft/in and inches (B2)', async () => {
+    profileData = {
+      ...EMPTY,
+      measurements: { height_cm: 163, bust_cm: 86, waist_cm: null, hip_cm: null, saved_at: null },
+    };
+    mount({ usualSize: 'M' });
+    expect(await screen.findByText('Usual size M · Height 5 ft 4 in · Bust 34 in')).toBeTruthy();
+  });
+
+  it('the size step no longer says "coming soon"', async () => {
+    const { container } = mount();
+    await screen.findByText('0 of 3 done');
+    expect(container.textContent).toMatch(/Your size shown on products/);
+    expect(container.textContent).not.toMatch(/coming soon/i);
+  });
+
   it('never shows a body or skin label', async () => {
     profileData = { ...EMPTY, style_profile: PALETTE_PROFILE };
     const { container } = mount();

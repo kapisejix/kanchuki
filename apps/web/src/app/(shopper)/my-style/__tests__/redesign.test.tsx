@@ -276,6 +276,18 @@ describe('suggested size on the card', () => {
     expect(el.getAttribute('title')).toBeNull();
   });
 
+  it('a usual size reads as the shopper own size, no chart, no approx. (B2)', () => {
+    render(
+      <StyleCard
+        card={card({ suggested_size: { size: 'M', chart: 'usual' } }) as never}
+        {...props}
+      />,
+    );
+    const el = screen.getByTestId('suggested-size');
+    expect(el.textContent).toBe('Your usual size: M');
+    expect(el.getAttribute('title')).toBeNull();
+  });
+
   it('shows nothing when there is no suggestion', () => {
     render(<StyleCard card={card({ suggested_size: null }) as never} {...props} />);
     expect(screen.queryByTestId('suggested-size')).toBeNull();

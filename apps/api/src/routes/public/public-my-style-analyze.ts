@@ -21,7 +21,7 @@
 import multipart from '@fastify/multipart';
 import { hasConfiguredVisionProvider } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { MY_STYLE_MEASUREMENT_RANGES } from '@kanchuki/shared';
+import { MY_STYLE_MEASUREMENT_RANGES, USUAL_SIZE_OPTIONS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -76,12 +76,16 @@ const cm = (field: keyof typeof MY_STYLE_MEASUREMENT_RANGES) =>
     .max(MY_STYLE_MEASUREMENT_RANGES[field].max)
     .nullable()
     .optional();
+const BODY_FIELDS = ['height_cm', 'bust_cm', 'waist_cm', 'hip_cm'] as const;
+
 const MeasurementsSchema = z
   .object({
     height_cm: cm('height_cm'),
     bust_cm: cm('bust_cm'),
     waist_cm: cm('waist_cm'),
     hip_cm: cm('hip_cm'),
+    // B2: the shopper's usual size. Labels cards only, never filters. null clears it.
+    usual_size: z.enum(USUAL_SIZE_OPTIONS).nullable().optional(),
     // Consent plumbing, not a measurement: the version of the measurements notice the shopper saw.
     consent_version: z.string().min(1).optional(),
   })
@@ -271,7 +275,11 @@ export const publicMyStyleAnalyzeRoutes: FastifyPluginAsync = async (server) => 
       }
       await prisma.customerAccount.update({
         where: { id: accountId },
-        data: { ...measurements, measurements_at: new Date() },
+        // Stamp the time only when a body number changed, not for a usual size alone.
+        data: {
+          ...measurements,
+          ...(BODY_FIELDS.some((f) => f in measurements) ? { measurements_at: new Date() } : {}),
+        },
       });
       return { data: { measurements } };
     },
