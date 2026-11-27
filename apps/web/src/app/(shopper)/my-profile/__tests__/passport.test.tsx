@@ -12,7 +12,7 @@ const PALETTE_PROFILE = {
   depth: 'medium',
   frame: 'curvy',
   saved_at: '2026-11-26T10:00:00.000Z',
-  source: 'photo',
+  source: 'photo' as const,
   palette: { good: ['red', 'olive'], avoid: ['grey'] },
 };
 const EMPTY = { style_profile: null, measurements: null, taste: null };

@@ -105,7 +105,9 @@ describe('/my-profile Style Passport', () => {
       'fetch',
       vi.fn(async (url: string) => {
         if (url.includes('/my-style/profile'))
-          return new Response(JSON.stringify({ data: { style_profile: null, measurements: null, taste: null } }));
+          return new Response(
+            JSON.stringify({ data: { style_profile: null, measurements: null, taste: null } }),
+          );
         const body = url.startsWith('/api/passport/preferences')
           ? { profiling_enabled: true, gender: 'FEMALE' }
           : url.startsWith('/api/passport/recently-viewed')
@@ -129,7 +131,8 @@ describe('/my-profile Style Passport', () => {
         if (url.includes('/my-style/profile')) return new Response('{}', { status: 500 });
         const body = url.startsWith('/api/passport/preferences')
           ? { profiling_enabled: true }
-          : url.startsWith('/api/passport/recently-viewed') || url.startsWith('/api/passport/wishlist')
+          : url.startsWith('/api/passport/recently-viewed') ||
+              url.startsWith('/api/passport/wishlist')
             ? { items: [] }
             : { data: { names: ['Casual'] } };
         return new Response(JSON.stringify(body), { status: 200 });

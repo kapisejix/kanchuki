@@ -1056,7 +1056,12 @@ describe('Phase 3: reason chips', () => {
   const reasonsOf = async (body: object, over: Record<string, unknown> = {}) => {
     mockSession.mockResolvedValue(account(over));
     const res = await feed(body);
-    return { res, byId: new Map(res.json().data.map((d: { id: string; reasons: unknown }) => [d.id, d.reasons])) };
+    return {
+      res,
+      byId: new Map(
+        res.json().data.map((d: { id: string; reasons: unknown }) => [d.id, d.reasons]),
+      ),
+    };
   };
   it('rationale_source is rules', async () => {
     const { res } = await reasonsOf({});

@@ -6,10 +6,10 @@ import {
   MAX_PER_STORE,
   addShort,
   fetchShortlist,
-  moveDeviceShortlist,
-  removeShort,
   groupByStore,
   loadShortlist,
+  moveDeviceShortlist,
+  removeShort,
   saveShortlist,
   toShortItem,
 } from '../shortlist';

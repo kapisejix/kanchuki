@@ -31,7 +31,14 @@ const feed = (meta: Record<string, unknown> = {}, data: unknown[] = [card()]) =>
   new Response(
     JSON.stringify({
       data,
-      meta: { total: 1, page: 1, limit: 12, location_scope: 'city', rationale_source: 'rules', ...meta },
+      meta: {
+        total: 1,
+        page: 1,
+        limit: 12,
+        location_scope: 'city',
+        rationale_source: 'rules',
+        ...meta,
+      },
     }),
     { status: 200 },
   );
@@ -135,9 +142,9 @@ describe('Style Passport links', () => {
     fetchMock.mockImplementation(async () => feed());
     render(<MyStylePage />);
     await screen.findByText('Wine Silk Suit');
-    expect(
-      screen.getByRole('link', { name: /Style Passport/ }).getAttribute('href'),
-    ).toBe('/my-profile#passport');
+    expect(screen.getByRole('link', { name: /Style Passport/ }).getAttribute('href')).toBe(
+      '/my-profile#passport',
+    );
   });
   it('?retake=1 opens the photo sheet', async () => {
     window.history.pushState({}, '', '/my-style?retake=1');
@@ -160,7 +167,12 @@ describe('complete the look follows the toggle', () => {
     const urls: string[] = [];
     vi.stubGlobal('fetch', async (u: string) => {
       urls.push(u);
-      return new Response(JSON.stringify({ data: { anchor: { id: 'a', name: null }, slots: [] }, meta: { reason: null } }));
+      return new Response(
+        JSON.stringify({
+          data: { anchor: { id: 'a', name: null }, slots: [] },
+          meta: { reason: null },
+        }),
+      );
     });
     await fetchLook('a', null, new AbortController().signal);
     await fetchLook('a', null, new AbortController().signal, true);

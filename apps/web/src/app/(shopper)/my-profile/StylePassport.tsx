@@ -140,19 +140,13 @@ export function StylePassport({
             <p className="text-sm font-semibold text-spaceCadet-900 mt-3">
               {progress.done} of {progress.total} done
             </p>
-            <div
-              className="h-2 rounded-full bg-lavender-100 mt-1.5 overflow-hidden"
-              role="progressbar"
+            <progress
               aria-label="Profile complete"
-              aria-valuemin={0}
-              aria-valuemax={progress.total}
-              aria-valuenow={progress.done}
-            >
-              <div
-                className="h-full rounded-full bg-fuchsia-600 transition-[width]"
-                style={{ width: `${(progress.done / progress.total) * 100}%` }}
-              />
-            </div>
+              max={progress.total}
+              value={progress.done}
+              className="block w-full h-2 mt-1.5 overflow-hidden rounded-full bg-lavender-100 appearance-none [&::-webkit-progress-bar]:bg-lavender-100 [&::-webkit-progress-value]:bg-fuchsia-600 [&::-webkit-progress-value]:rounded-full [&::-moz-progress-bar]:bg-fuchsia-600"
+            />
+
             <ul className="mt-3 space-y-1.5">
               {STEPS.map((s) => {
                 const done = progress.steps.find((x) => x.key === s.key)?.done;
