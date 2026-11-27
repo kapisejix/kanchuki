@@ -1401,7 +1401,7 @@ F-034 Phase 2, spec `docs/tasks/pending/ai-promo-video.md` §5. Applied by the o
 - **167 (column, F-034 T4):** `video_models.price_usd_per_million_tokens` DECIMAL(10,4) nullable, set to 1.0000 for `seedance_1_pro_fast` (Fal token price, tokens = h × w × fps × seconds / 1024). Read by `clipCost()` in `apps/api/src/lib/fal-video.ts`; per-second models leave it NULL. Inherits the table grants and RLS.
 - **168 (F-034 T5, applied):** `AiProviderType += FAL` (owner added the value in prod 2026-11-17; `IF NOT EXISTS`) and `ai_usage_logs.cost_usd` DECIMAL(10,4) nullable: the real USD cost of a call where the provider bills in USD (Fal promo clips); NULL on credit-only rows. Promo clips also set `credits_used = ceil(cost_usd / 0.004)` so the RC-081 daily credit alert counts them. **Must be applied before the T5 code deploys** (whole-row `AiUsageLog` reads would P2022, RC-160). AI clips write `product_videos.id = job_id` so the status route and the quota sweep find the result after Redis expires.
 
-## My Style Phase 2 — `STYLE_SIMILAR`, `customer_accounts.profile_source`, `style_analysis_failures_daily` (migrations 170/171, written 2026-11-27, NOT applied)
+## My Style Phase 2 — `STYLE_SIMILAR`, `customer_accounts.profile_source`, `style_analysis_failures_daily` (migrations 170/171, written 2026-11-27, applied in prod; read back 2026-11-27: enum value, column, table, limits 5 + 10/MONTH present)
 
 Spec `docs/tasks/pending/customer-profile-research.md` §9 (owner decisions D4, D5). **Apply order: 170 on its own, then 171, both BEFORE the Phase 2 code deploys** (whole-row `CustomerAccount` reads would P2022, RC-160). Rollback SQL is in each file's header.
 
