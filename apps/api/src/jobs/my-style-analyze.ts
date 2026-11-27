@@ -25,7 +25,7 @@ import { analyzeGarmentImage, analyzeStyleImage } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { getActiveColorFamilies } from '../lib/color-families.js';
 import { MY_STYLE_QUOTA, completeAnalysis, getAnalysis } from '../lib/my-style-analysis.js';
-import { clearStyleProfile } from '../lib/my-style-consent.js';
+import { PHOTO_PROFILE_CLEARED } from '../lib/my-style-consent.js';
 import { markCustomerJobQuotaSpent, refundCustomerJobQuota } from '../lib/quota.js';
 import { takeTryOnPhoto } from '../lib/tryon-photo-store.js';
 
@@ -202,6 +202,10 @@ async function run(data: MyStyleAnalyzeJobData, held: { spent: boolean }): Promi
     confidence: result.confidence,
   } as const;
   if (!(await completeAnalysis(job_id, ready))) {
-    await clearStyleProfile(customer_account_id);
+    // Only what this job wrote (RC-192): measurements and usual size are not ours to null.
+    await prisma.customerAccount.update({
+      where: { id: customer_account_id },
+      data: { ...PHOTO_PROFILE_CLEARED },
+    });
   }
 }

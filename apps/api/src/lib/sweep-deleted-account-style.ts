@@ -3,6 +3,7 @@
 // only. UPDATE, never DELETE (RC-049). Resumable: a re-run only sees what is still set.
 // (The measurement columns from migration 161 did not exist when those accounts were erased.)
 import { prisma } from '@kanchuki/db';
+import { PHOTO_PROFILE_CLEARED } from './my-style-consent.js';
 
 const WHERE = {
   deleted_at: { not: null },
@@ -19,13 +20,7 @@ export async function sweepDeletedAccountStyle(opts: { apply: boolean }) {
   if (!opts.apply || matched === 0) return { apply: opts.apply, matched, updated: 0 };
   const { count } = await prisma.customerAccount.updateMany({
     where: WHERE,
-    data: {
-      skin_undertone: null,
-      skin_depth: null,
-      body_frame: null,
-      style_profile_at: null,
-      profile_source: null, // migration 171: erasure clears where the undertone came from too
-    },
+    data: { ...PHOTO_PROFILE_CLEARED }, // incl. profile_source (migration 171)
   });
   return { apply: true, matched, updated: count };
 }

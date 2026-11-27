@@ -16,16 +16,25 @@ const MY_STYLE = PURPOSE_CONSENTS.MY_STYLE;
 const BODY = PURPOSE_CONSENTS.MY_STYLE_BODY;
 
 /**
- * Every account column My Style derives or collects, nulled together: by "Clear my data", by the
- * analysis job's compensation, and by account erasure (POST /passport/delete). One list, because
- * erasure kept its own and missed the photo-derived columns (RC-172).
+ * Only the columns the selfie analysis job writes. The job's compensation (it lost a race to a
+ * withdrawal, or its 15-min record expired) nulls just these, never the measurements or usual
+ * size it did not write (RC-192). A withdrawal clears everything itself first.
  */
-export const STYLE_PROFILE_CLEARED = {
+export const PHOTO_PROFILE_CLEARED = {
   skin_undertone: null,
   skin_depth: null,
   body_frame: null,
   style_profile_at: null,
   profile_source: null,
+} as const;
+
+/**
+ * Every account column My Style derives or collects, nulled together: by "Clear my data" and by
+ * account erasure (POST /passport/delete). One list, because erasure kept its own and missed the
+ * photo-derived columns (RC-172).
+ */
+export const STYLE_PROFILE_CLEARED = {
+  ...PHOTO_PROFILE_CLEARED,
   height_cm: null,
   bust_cm: null,
   waist_cm: null,
@@ -95,7 +104,7 @@ export async function withdrawMyStyleConsent(
   await cancelInflightAnalysis(customerAccountId);
 }
 
-/** Null the derived columns. Also the job's compensation when it loses to a withdrawal. */
+/** Null every My Style column (withdrawal / "Clear my data"). */
 export async function clearStyleProfile(customerAccountId: string): Promise<void> {
   await prisma.customerAccount.update({
     where: { id: customerAccountId },

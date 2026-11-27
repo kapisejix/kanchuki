@@ -280,9 +280,16 @@ describe('handleMyStyleAnalyze', () => {
     });
     await run();
     expect(mockUpdate).toHaveBeenCalledTimes(2);
-    expect(mockUpdate.mock.calls[1]?.[0]).toMatchObject({
+    // RC-192: only the 5 photo columns this job wrote - never the measurements or usual size.
+    expect(mockUpdate.mock.calls[1]?.[0]).toEqual({
       where: { id: ACCT },
-      data: { skin_undertone: null, skin_depth: null, body_frame: null, style_profile_at: null },
+      data: {
+        skin_undertone: null,
+        skin_depth: null,
+        body_frame: null,
+        style_profile_at: null,
+        profile_source: null,
+      },
     });
     expect((await getAnalysis(JOB))?.status).toBe('cancelled');
   });
