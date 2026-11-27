@@ -111,14 +111,19 @@ function savedProfile(account: Account, palette: Palette) {
             budget_max: account.budget_max ?? null,
           }
         : null,
-    // Self-entered centimetres (spec step 2); the shopper's own form reads it back.
+    // Self-entered centimetres (spec step 2) + usual size (B2); the shopper's own form reads it back.
     measurements:
-      account.height_cm || account.bust_cm || account.waist_cm || account.hip_cm
+      account.height_cm ||
+      account.bust_cm ||
+      account.waist_cm ||
+      account.hip_cm ||
+      account.usual_size
         ? {
             height_cm: account.height_cm ?? null,
             bust_cm: account.bust_cm ?? null,
             waist_cm: account.waist_cm ?? null,
             hip_cm: account.hip_cm ?? null,
+            usual_size: account.usual_size ?? null,
             saved_at: account.measurements_at?.toISOString() ?? null,
           }
         : null,

@@ -31,6 +31,7 @@ export const STYLE_PROFILE_CLEARED = {
   waist_cm: null,
   hip_cm: null,
   measurements_at: null,
+  usual_size: null,
 } as const;
 
 export async function hasLiveMyStyleConsent(customerAccountId: string): Promise<boolean> {
@@ -137,6 +138,7 @@ const MEASUREMENTS_CLEARED = {
   waist_cm: null,
   hip_cm: null,
   measurements_at: null,
+  usual_size: null,
 } as const;
 
 /** Withdraw the measurements consent and delete the numbers (UPDATE = NULL, RC-049). */

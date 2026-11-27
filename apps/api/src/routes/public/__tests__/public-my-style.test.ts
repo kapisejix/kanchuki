@@ -934,11 +934,25 @@ describe('GET /my-style/profile', () => {
         bust_cm: null,
         waist_cm: null,
         hip_cm: null,
+        usual_size: null,
         saved_at: at.toISOString(),
       },
       taste: { colors: [], occasions: ['festive'], fabrics: [], budget_max: null },
     });
     expect(mockFindMany).not.toHaveBeenCalled();
+  });
+
+  it('reads back a usual size saved without any measurements (B2)', async () => {
+    mockSession.mockResolvedValue(account({ usual_size: 'L' }));
+    const res = await profile();
+    expect(res.json().data.measurements).toEqual({
+      height_cm: null,
+      bust_cm: null,
+      waist_cm: null,
+      hip_cm: null,
+      usual_size: 'L',
+      saved_at: null,
+    });
   });
 
   it('answers nulls for a shopper with nothing saved, without a palette lookup', async () => {

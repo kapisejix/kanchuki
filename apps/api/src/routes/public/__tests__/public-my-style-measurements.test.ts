@@ -26,6 +26,7 @@ vi.mock('../../../lib/quota.js', () => ({
   refundCustomerJobQuota: vi.fn(),
 }));
 
+import { STYLE_PROFILE_CLEARED } from '../../../lib/my-style-consent.js';
 import { publicMyStyleAnalyzeRoutes } from '../public-my-style-analyze.js';
 
 beforeEach(() => {
@@ -79,6 +80,31 @@ describe('POST /my-style/measurements', () => {
     const res = await post(body);
     expect(res.statusCode).toBe(422);
     expect(m.update).not.toHaveBeenCalled();
+  });
+
+  it('saves a usual size alone without stamping measurements_at', async () => {
+    const res = await post({ usual_size: 'M' });
+    expect(res.statusCode).toBe(200);
+    expect(m.update.mock.calls[0]![0].data).toEqual({ usual_size: 'M' });
+  });
+
+  it('usual_size: null alone clears it (counts as a sent field)', async () => {
+    const res = await post({ usual_size: null });
+    expect(res.statusCode).toBe(200);
+    expect(m.update.mock.calls[0]![0].data).toEqual({ usual_size: null });
+  });
+
+  it.each(['5XL', 'FREE', 'm'])(
+    'rejects usual_size %s with 422 and writes nothing',
+    async (size) => {
+      const res = await post({ usual_size: size });
+      expect(res.statusCode).toBe(422);
+      expect(m.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('erasure and "Clear my data" also null the usual size', () => {
+    expect(STYLE_PROFILE_CLEARED).toHaveProperty('usual_size', null);
   });
 
   it('401 without a session and writes nothing', async () => {
@@ -156,7 +182,15 @@ describe('measurements consent', () => {
       waist_cm: null,
       hip_cm: null,
       measurements_at: null,
+      usual_size: null,
     });
+  });
+
+  it('a usual size alone still needs the body consent', async () => {
+    m.consentFind.mockResolvedValue(null);
+    const res = await post({ usual_size: 'M' });
+    expect(res.statusCode).toBe(422);
+    expect(m.update).not.toHaveBeenCalled();
   });
 
   it('withdraw needs a session', async () => {
