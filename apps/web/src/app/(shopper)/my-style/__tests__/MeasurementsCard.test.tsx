@@ -144,7 +144,7 @@ describe('MeasurementsCard', () => {
       expect(screen.getByText(MY_STYLE_BODY_CONSENT.title)).toBeTruthy();
       expect(screen.getByText(MY_STYLE_BODY_CONSENT.intro)).toBeTruthy();
       expect(screen.queryByLabelText(/height feet/i)).toBeNull();
-      expect(screen.queryByRole('radiogroup')).toBeNull();
+      expect(screen.queryByRole('radio')).toBeNull();
       expect(screen.queryByRole('button', { name: /save measurements/i })).toBeNull();
     });
 
@@ -186,14 +186,14 @@ describe('MeasurementsCard: usual size first (B2)', () => {
   it('a saved usual size skips the consent step and is shown checked', () => {
     setup(usualOnly);
     expect(screen.queryByText(MY_STYLE_BODY_CONSENT.title)).toBeNull();
-    expect(screen.getByRole('radio', { name: 'M' }).getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByRole('radio', { name: 'L' }).getAttribute('aria-checked')).toBe('false');
+    expect((screen.getByRole('radio', { name: 'M' }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole('radio', { name: 'L' }) as HTMLInputElement).checked).toBe(false);
     expect(screen.getByRole('button', { name: /remove my measurements/i })).toBeTruthy();
   });
 
   it('offers XS to 4XL only', () => {
     setup();
-    expect(screen.getAllByRole('radio').map((r) => r.textContent)).toEqual([
+    expect(screen.getAllByRole('radio').map((r) => (r as HTMLInputElement).value)).toEqual([
       'XS',
       'S',
       'M',

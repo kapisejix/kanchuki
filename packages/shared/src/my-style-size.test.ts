@@ -8,8 +8,8 @@ import {
 } from './my-style-measurements.js';
 import {
   STANDARD_SIZE_CHART,
-  USUAL_SIZE_OPTIONS,
   type SizeChart,
+  USUAL_SIZE_OPTIONS,
   chartFromInches,
   inchesFromChart,
   parseSizeChart,

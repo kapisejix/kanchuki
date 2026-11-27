@@ -240,30 +240,35 @@ export function MeasurementsCard({
         to a store. You can delete them any time.
       </p>
 
-      <h3 id="usual-size" className="text-sm font-bold text-spaceCadet-900 mt-4">
-        Your usual size
-      </h3>
-      <p className="text-xs text-heliotrope-500 mt-1">
-        We show it on products that list it. It never hides anything from your feed.
-      </p>
-      <div role="radiogroup" aria-labelledby="usual-size" className="flex flex-wrap gap-2 mt-2">
-        {USUAL_SIZE_OPTIONS.map((s) => (
-          <button
-            key={s}
-            type="button"
-            role="radio"
-            aria-checked={usual === s}
-            onClick={() => setUsual(s)}
-            className={`${SIZE_BTN} ${
-              usual === s
-                ? 'border-fuchsia-600 bg-fuchsia-50 text-fuchsia-700'
-                : 'border-lavender-200 text-spaceCadet-900'
-            }`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
+      {/* Native radios: keyboard arrows and checked state for free. */}
+      <fieldset className="mt-4">
+        <legend className="text-sm font-bold text-spaceCadet-900">Your usual size</legend>
+        <p className="text-xs text-heliotrope-500 mt-1">
+          We show it on products that list it. It never hides anything from your feed.
+        </p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {USUAL_SIZE_OPTIONS.map((s) => (
+            <label
+              key={s}
+              className={`${SIZE_BTN} cursor-pointer focus-within:ring-2 focus-within:ring-fuchsia-500 ${
+                usual === s
+                  ? 'border-fuchsia-600 bg-fuchsia-50 text-fuchsia-700'
+                  : 'border-lavender-200 text-spaceCadet-900'
+              }`}
+            >
+              <input
+                type="radio"
+                name="usual-size"
+                value={s}
+                checked={usual === s}
+                onChange={() => setUsual(s)}
+                className="sr-only"
+              />
+              {s}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div className="flex flex-wrap gap-2 mt-3">
         <button
           type="button"
