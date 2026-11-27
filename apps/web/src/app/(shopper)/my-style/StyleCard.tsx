@@ -84,7 +84,12 @@ export function StyleCard({ card: c, saved, full, busy, onToggle, onEnquire, onL
             </ul>
           ) : null;
         })()}
-        {c.suggested_size && (
+        {c.suggested_size?.chart === 'usual' ? (
+          // B2: the shopper's own saved size, listed by this product. No chart behind it.
+          <p data-testid="suggested-size" className="text-xs font-semibold text-fuchsia-600 mt-1">
+            Your usual size: {c.suggested_size.size}
+          </p>
+        ) : c.suggested_size ? (
           <p
             data-testid="suggested-size"
             className="text-xs font-semibold text-fuchsia-600 mt-1"
@@ -103,7 +108,7 @@ export function StyleCard({ card: c, saved, full, busy, onToggle, onEnquire, onL
               <span className="font-normal text-heliotrope-500"> · approx.</span>
             )}
           </p>
-        )}
+        ) : null}
         <div className="mt-auto">
           <StyleCardActions
             card={c}

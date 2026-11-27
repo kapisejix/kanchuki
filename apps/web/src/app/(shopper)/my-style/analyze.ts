@@ -372,6 +372,7 @@ export async function clearProfile(): Promise<'ok' | 'unauthorized' | 'error'> {
 /** Save self-entered centimetres. A field set to null removes it. Only {data:{measurements}} counts as saved. */
 export async function saveMeasurements(
   body: Partial<Record<'height_cm' | 'bust_cm' | 'waist_cm' | 'hip_cm', number | null>> & {
+    usual_size?: string | null;
     consent_version?: string;
   },
 ): Promise<'ok' | 'unauthorized' | 'invalid' | 'error'> {
