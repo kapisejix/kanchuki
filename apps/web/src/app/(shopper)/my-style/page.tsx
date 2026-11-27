@@ -19,6 +19,7 @@ import {
 import {
   AlertCircle,
   Baby,
+  BadgeCheck,
   Camera,
   ChevronLeft,
   ChevronRight,
@@ -142,6 +143,10 @@ export default function MyStylePage() {
   const [similar, setSimilar] = useState<GarmentDescriptor | null>(null);
   // "Shop my colours": the feed keeps only the saved palette's good shades. Page state only.
   const [paletteOnly, setPaletteOnly] = useState(false);
+  // D6: "Show all" for this visit only (never saved), and the gender the feed last filtered by,
+  // kept so the toggle stays on screen after switching to all wear.
+  const [allWear, setAllWear] = useState(false);
+  const [genderShown, setGenderShown] = useState<'FEMALE' | 'MALE' | null>(null);
   // Read from GET /profile on their own (research R3), so a failed feed never hides them.
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
   const [measurements, setMeasurements] = useState<Measurements | null>(null);
@@ -175,7 +180,12 @@ export default function MyStylePage() {
 
   // ?look=<id> (from a store's product sheet) wins over the remembered anchor.
   useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get('look');
+    const params = new URLSearchParams(window.location.search);
+    // Style Passport deep links (/my-profile): Retake opens the photo sheet, Shop my colours
+    // starts filtered. Read after mount so the server and first client render agree.
+    if (params.get('retake') === '1') setAnalyzeMode('selfie');
+    if (params.get('palette') === '1') setPaletteOnly(true);
+    const fromUrl = params.get('look');
     if (fromUrl) {
       openLook(fromUrl);
       return;
@@ -259,6 +269,7 @@ export default function MyStylePage() {
         ...(where ? { ...where, radius_km: radius } : {}),
         ...(similar ? { similar } : {}),
         ...(paletteOnly ? { palette_only: true } : {}),
+        ...(allWear ? { all_wear: true } : {}),
       },
       ctrl.signal,
     )
@@ -266,6 +277,7 @@ export default function MyStylePage() {
         setView(r);
         if (r.kind === 'ok') {
           setTabs(r.meta.tabs);
+          if (r.meta.gender_filter) setGenderShown(r.meta.gender_filter);
           // The tab just lost its data (festival ended, trend retired): fall back to the feed.
           const t = r.meta.tabs;
           if ((tab === 'festival' && !t?.festival) || (tab === 'trending' && !t?.trending)) {
@@ -292,6 +304,7 @@ export default function MyStylePage() {
     radius,
     similar,
     paletteOnly,
+    allWear,
     nonce,
   ]);
 
@@ -328,7 +341,7 @@ export default function MyStylePage() {
     if (tab !== 'look' || !lookAnchor) return;
     const ctrl = new AbortController();
     setLookView({ kind: 'loading' });
-    fetchLook(lookAnchor, where ? { ...where, radius_km: radius } : null, ctrl.signal)
+    fetchLook(lookAnchor, where ? { ...where, radius_km: radius } : null, ctrl.signal, allWear)
       .then(setLookView)
       .catch((e: unknown) => {
         // A superseded request aborts; that is not a failure (RC-014).
@@ -336,7 +349,7 @@ export default function MyStylePage() {
         if (!ctrl.signal.aborted) setLookView({ kind: 'error' });
       });
     return () => ctrl.abort();
-  }, [tab, lookAnchor, where, radius, nonce]);
+  }, [tab, lookAnchor, where, radius, allWear, nonce]);
 
   // Any filter change restarts at page 1.
   const reset =
@@ -511,6 +524,10 @@ export default function MyStylePage() {
             <Baby aria-hidden className="h-4 w-4" />
             {showKids ? 'Close' : 'For my child'}
           </button>
+          <Link href="/my-profile#passport" className={BTN_TEXT}>
+            <BadgeCheck aria-hidden className="h-4 w-4" />
+            Style Passport
+          </Link>
         </div>
         {kids && (
           <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-fuchsia-500/10 pl-3 text-xs font-semibold text-fuchsia-600">
@@ -693,6 +710,32 @@ export default function MyStylePage() {
             </p>
           )}
         </div>
+      )}
+
+      {genderShown && !kids && (
+        <p className="flex flex-wrap items-center gap-x-2 text-xs text-heliotrope-500 px-1">
+          <span>
+            {allWear
+              ? 'Showing all wear'
+              : genderShown === 'FEMALE'
+                ? "Showing women's wear"
+                : "Showing men's wear"}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setAllWear((v) => !v);
+              setPage(1);
+            }}
+            className="font-semibold text-fuchsia-600 underline-offset-2 hover:underline"
+          >
+            {allWear
+              ? genderShown === 'FEMALE'
+                ? "Women's wear only"
+                : "Men's wear only"
+              : 'Show all'}
+          </button>
+        </p>
       )}
 
       <section className="space-y-2" hidden={tab === 'look'} aria-label="Sort and filter">

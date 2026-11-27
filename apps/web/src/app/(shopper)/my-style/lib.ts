@@ -53,6 +53,35 @@ export interface FeedCard {
   primary_photo_url: string;
   distance_km: number | null;
   retailer: { shop_name: string; slug: string | null; city: string | null };
+  /** "Why this matches" (Phase 3): only what the ranker computed, at most two. */
+  reasons?: CardReason[];
+}
+
+export interface CardReason {
+  code: string;
+  detail?: string;
+}
+
+/** Chip copy for one reason; an unknown code shows nothing rather than a guess. */
+export function reasonLabel(r: CardReason): string | null {
+  switch (r.code) {
+    case 'palette':
+      return 'Your colour';
+    case 'occasion':
+      return `For ${r.detail}`;
+    case 'color':
+      return 'Colour you like';
+    case 'style':
+      return `${r.detail}, your style`;
+    case 'fabric':
+      return `${r.detail}, you like it`;
+    case 'size':
+      return `Size ${r.detail} in stock`;
+    case 'near':
+      return `${r.detail} km away`;
+    default:
+      return null;
+  }
 }
 
 export interface FeedMeta {
@@ -60,7 +89,9 @@ export interface FeedMeta {
   page: number;
   limit: number;
   location_scope: 'radius' | 'city' | 'nationwide';
-  rationale_source: 'none';
+  rationale_source: 'none' | 'rules';
+  /** D6: the saved gender this feed filtered by; null/absent = all adult wear. */
+  gender_filter?: 'FEMALE' | 'MALE' | null;
   style_profile: StyleProfile | null;
   measurements?: Measurements | null;
   /** What the quick quiz saved (canonical names). Null until the quiz has been answered. */
@@ -100,6 +131,8 @@ export interface FeedRequest {
   similar?: GarmentDescriptor;
   /** "Shop my colours": only the saved palette's good shades. Ignored with no palette. */
   palette_only?: boolean;
+  /** D6 "Show all": ignore the saved gender for this request. */
+  all_wear?: boolean;
 }
 
 /** "yellow Kurti, Printed, Zari Work" - what the shopper sees as the thing being matched. */
@@ -162,8 +195,10 @@ export async function fetchLook(
   anchor: string,
   where: { lat: number; lng: number; radius_km: number } | null,
   signal: AbortSignal,
+  allWear = false,
 ): Promise<LookResult> {
   const qs = new URLSearchParams({ anchor });
+  if (allWear) qs.set('all_wear', '1');
   if (where) {
     qs.set('lat', String(where.lat));
     qs.set('lng', String(where.lng));
