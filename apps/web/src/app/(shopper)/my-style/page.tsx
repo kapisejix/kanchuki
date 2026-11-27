@@ -73,9 +73,11 @@ import {
 import {
   MAX_PER_STORE,
   type ShortItem,
+  addShort,
+  fetchShortlist,
   groupByStore,
-  loadShortlist,
-  saveShortlist,
+  moveDeviceShortlist,
+  removeShort,
   toShortItem,
 } from './shortlist';
 
@@ -152,13 +154,24 @@ export default function MyStylePage() {
   const [nonce, setNonce] = useState(0);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [shortlist, setShortlist] = useState<ShortItem[]>([]);
+  const [saveError, setSaveError] = useState(false);
   const enquiry = useEnquiry();
   const phone = useIsPhone();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const groups = groupByStore(shortlist);
 
-  // Read after mount so the server and first client render agree.
-  useEffect(() => setShortlist(loadShortlist()), []);
+  // The account wishlist is the shortlist (Phase 3); an old device-only copy is moved up first.
+  useEffect(() => {
+    let alive = true;
+    void moveDeviceShortlist()
+      .then(fetchShortlist)
+      .then((items) => {
+        if (alive && items) setShortlist(items);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // ?look=<id> (from a store's product sheet) wins over the remembered anchor.
   useEffect(() => {
@@ -186,18 +199,28 @@ export default function MyStylePage() {
     }
   }
 
-  function updateShortlist(next: ShortItem[]) {
-    setShortlist(next);
-    saveShortlist(next);
+  // Optimistic: the pick shows at once; a failed save puts it back and says so.
+  async function removeFromShortlist(id: string) {
+    const gone = shortlist.find((i) => i.id === id);
+    if (!gone) return;
+    setSaveError(false);
+    setShortlist((s) => s.filter((i) => i.id !== id));
+    if (!(await removeShort(id))) {
+      setShortlist((s) => (s.some((i) => i.id === id) ? s : [...s, gone]));
+      setSaveError(true);
+    }
   }
 
-  function toggleShortlist(card: FeedCard) {
-    if (shortlist.some((i) => i.id === card.id)) {
-      updateShortlist(shortlist.filter((i) => i.id !== card.id));
-      return;
-    }
+  async function toggleShortlist(card: FeedCard) {
+    if (shortlist.some((i) => i.id === card.id)) return removeFromShortlist(card.id);
     const item = toShortItem(card);
-    if (item) updateShortlist([...shortlist, item]);
+    if (!item) return;
+    setSaveError(false);
+    setShortlist((s) => [...s, item]);
+    if (!(await addShort(item.id))) {
+      setShortlist((s) => s.filter((i) => i.id !== item.id));
+      setSaveError(true);
+    }
   }
 
   function enquireOne(card: FeedCard) {
@@ -801,10 +824,15 @@ export default function MyStylePage() {
       )}
       {/* Room so the sticky bar never covers the pager. */}
       {groups.length > 0 && <div className="h-48" aria-hidden="true" />}
+      {saveError && (
+        <p role="alert" className="mt-3 text-sm text-red-700">
+          Couldn&apos;t save. Try again.
+        </p>
+      )}
       <ShortlistBar
         groups={groups}
         enquiry={enquiry}
-        onRemove={(id) => updateShortlist(shortlist.filter((i) => i.id !== id))}
+        onRemove={(id) => void removeFromShortlist(id)}
         onLook={openLook}
       />
       {analyzeMode && (

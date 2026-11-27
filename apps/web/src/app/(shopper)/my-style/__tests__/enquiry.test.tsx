@@ -24,10 +24,17 @@ const feedBody = {
   meta: { total: 3, page: 1, limit: 12, location_scope: 'city', rationale_source: 'none' },
 };
 
-/** Feed on every load, then the enquire route answers per store. */
-function route(enquire: (slug: string) => Response | Promise<Response>) {
+/** Feed on every load, then the enquire route answers per store. The shortlist is the account
+ * wishlist (Phase 3): empty on load, saves answer `wishlist` (200 by default). */
+function route(
+  enquire: (slug: string) => Response | Promise<Response>,
+  wishlist: (method: string) => Response = () => json({ ok: true }),
+) {
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
     if (url === '/api/my-style/feed') return json(feedBody);
+    if (url === '/api/passport/wishlist') {
+      return init?.method ? wishlist(init.method) : json({ items: [] });
+    }
     if (url === '/api/my-style/enquire') {
       return enquire(JSON.parse(init?.body as string).retailer_slug);
     }
@@ -151,5 +158,53 @@ describe('My Style multi-store enquiry', () => {
     render(<MyStylePage />);
     await shortlist('Name a');
     expect(document.body.textContent).not.toMatch(/\b(cart|checkout|order|pay(ment)?|buy)\b/i);
+  });
+});
+
+describe('Phase 3: shortlist saved to the account', () => {
+  it('saving a pick POSTs it to the wishlist', async () => {
+    route(wa);
+    render(<MyStylePage />);
+    await shortlist('Name a');
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          ([u, i]) => u === '/api/passport/wishlist' && (i as RequestInit)?.method === 'POST',
+        ),
+      ).toBe(true),
+    );
+    expect(screen.getByRole('button', { name: 'Enquire at 1 store' })).toBeTruthy();
+  });
+
+  it('a failed save rolls the pick back and says so', async () => {
+    route(wa, () => json({ error: 'x' }, 500));
+    render(<MyStylePage />);
+    await shortlist('Name a');
+    expect(await screen.findByText("Couldn't save. Try again.")).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Enquire at 1 store' })).toBeNull();
+  });
+
+  it('loads picks already saved on the account', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/my-style/feed') return json(feedBody);
+      if (url === '/api/passport/wishlist')
+        return json({
+          items: [
+            {
+              product: {
+                id: 'z',
+                name: 'Saved z',
+                price_min: 1,
+                price_max: 1,
+                photo_url: null,
+                retailer: { shop_name: 'Shree', public_slug: 's1' },
+              },
+            },
+          ],
+        });
+      throw new Error(`unexpected ${url}`);
+    });
+    render(<MyStylePage />);
+    expect(await screen.findByRole('button', { name: 'Enquire at 1 store' })).toBeTruthy();
   });
 });

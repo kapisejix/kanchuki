@@ -1,7 +1,6 @@
-// F-045 PR-5b: the My Style shortlist. Kept on the device (a server-synced version needs a
-// passport DELETE proxy and a retailer id on feed cards); stored per store because that is
-// how enquiries go out (one per store) and how a future cart would group items (spec §5).
-// Prices stay in paise.
+// F-045 PR-5b + Phase 3: the My Style shortlist. The account wishlist is the one source
+// ("Saved looks", synced across devices); an older device-only copy is moved up once. Grouped
+// per store because that is how enquiries go out (one per store, spec §5). Prices stay in paise.
 import type { FeedCard } from './lib';
 
 const KEY = 'my-style:shortlist';
@@ -69,4 +68,76 @@ export function groupByStore(items: ShortItem[]): StoreGroup[] {
     groups.set(i.slug, g);
   }
   return Array.from(groups.values());
+}
+
+const WISHLIST = '/api/passport/wishlist';
+
+interface WishlistRow {
+  product: {
+    id: string;
+    name: string | null;
+    price_min: number | null;
+    price_max: number | null;
+    photo_url: string | null;
+    retailer: { shop_name: string; public_slug: string | null };
+  };
+}
+
+/** The account's saved products as shortlist items; null when they cannot be read. */
+export async function fetchShortlist(): Promise<ShortItem[] | null> {
+  try {
+    const res = await fetch(WISHLIST, { credentials: 'include' });
+    if (!res.ok) return null;
+    const { items } = (await res.json()) as { items: WishlistRow[] };
+    return items.flatMap(({ product: p }) =>
+      p.retailer.public_slug
+        ? [
+            {
+              id: p.id,
+              name: p.name,
+              price_min: p.price_min,
+              price_max: p.price_max,
+              photo: p.photo_url ?? '',
+              shop_name: p.retailer.shop_name,
+              slug: p.retailer.public_slug,
+            },
+          ]
+        : [],
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** Raw status of one save/remove; 0 = network error. */
+async function send(method: 'POST' | 'DELETE', id: string): Promise<number> {
+  try {
+    const res = await fetch(WISHLIST, {
+      method,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: id }),
+    });
+    return res.status;
+  } catch {
+    return 0;
+  }
+}
+
+export const addShort = async (id: string) => (await send('POST', id)) === 200;
+export const removeShort = async (id: string) => (await send('DELETE', id)) === 200;
+
+/** Moves a device-only shortlist into the account once. A product that is gone (404) counts as
+ * done; any other failure keeps the device copy so the next load retries. */
+export async function moveDeviceShortlist(): Promise<void> {
+  const items = loadShortlist();
+  if (items.length === 0) return;
+  const codes = await Promise.all(items.map((i) => send('POST', i.id)));
+  if (codes.every((c) => c === 200 || c === 404)) {
+    try {
+      localStorage.removeItem(KEY);
+    } catch {
+      // storage blocked: the next load re-posts, which is a no-op upsert
+    }
+  }
 }
