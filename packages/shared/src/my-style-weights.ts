@@ -16,7 +16,7 @@ export const MY_STYLE_WEIGHTS = {
  * base + all parts = 1.
  */
 export const MY_STYLE_FIT = {
-  base: 0.3,
+  base: 0.25, // 0.3 until prefStyle (0.05) was added; lowered so base + parts = 1 again
   palette: 0.4, // ×(+1 good family, −1 avoid family, 0 unknown/unmapped)
   occasion: 0.15,
   prefColor: 0.1,

@@ -1022,3 +1022,12 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Migrations | None. |
 | Local runs | typecheck 9/9; Biome: 1 error in `apps/mobile/expo-env.d.ts` only (gitignored, Expo-generated, not in the repo). Serial test runs: API 3614 passed (12 skipped), web 896/896, ai 214/214, mobile 735/735, db green; shared 315/316 = the known RC-190 weights red (fixed on PR #370, not merged). Parallel run timed out ~65 web tests under load; all pass serially. |
 | Not done | Not merged, not device-tested (re-run A1 in Expo Go after deploy). Separate finding, not fixed: `[jobs] generate-embedding failed: type "vector" does not exist` in the same log window. |
+## 2026-11-27 — My Style: fit weights back to 1 (RC-190; branch `fix/my-style-weights-base`)
+
+| Area | Change |
+|---|---|
+| Why | Phase 3 added `MY_STYLE_FIT.prefStyle = 0.05` without lowering another part: base + parts = 1.05, a full match clamped to 1 and tied with a 4-signal match, and the shared test "fit parts sum to 1" was red on main since d4f14ffd. |
+| Fix | Owner picked option 1 (2026-11-27): `base` 0.3 → 0.25. Uniform −0.05 on fit, ranking order unchanged except among palette-avoid products near 0. |
+| Test | Shared weights test was the failing test (red first, then 3/3). Rebuilding shared dist turned up a stale API fixture: rank "score stays within 0..1" "max" candidate never set a style match; it now sets `styles`, assertion unchanged (>0.99). |
+| Local runs | typecheck 9/9; Biome 1477 files clean; db, shared 21 files, ai 20, mobile 68, web 93 files green; API 263 files passed (3 skipped). API reads `@kanchuki/shared` from dist: build shared before API tests. |
+| Not done | Not pushed. Device checklist (research §10) still running. |
