@@ -65,7 +65,7 @@ describe('reasonLabel', () => {
     [{ code: 'color' }, 'Colour you like'],
     [{ code: 'style', detail: 'Anarkali' }, 'Anarkali, your style'],
     [{ code: 'fabric', detail: 'Silk' }, 'Silk, you like it'],
-    [{ code: 'size', detail: 'M' }, 'Size M in stock'],
+    [{ code: 'size', detail: 'M' }, 'Comes in size M'],
     [{ code: 'near', detail: '1.2' }, '1.2 km away'],
     [{ code: 'mystery' }, null],
   ])('%j -> %s', (r, label) => {

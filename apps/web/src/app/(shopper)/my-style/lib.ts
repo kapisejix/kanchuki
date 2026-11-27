@@ -76,7 +76,8 @@ export function reasonLabel(r: CardReason): string | null {
     case 'fabric':
       return `${r.detail}, you like it`;
     case 'size':
-      return `Size ${r.detail} in stock`;
+      // Listed sizes, not per-size stock (ProductStock is not read), so no stock claim.
+      return `Comes in size ${r.detail}`;
     case 'near':
       return `${r.detail} km away`;
     default:

@@ -165,8 +165,16 @@ async function toCard(p: CandidateRow, distanceKm: number | null, body?: Body | 
 // Only computed facts, so nothing is a canned claim (RC-059). Two at most per card.
 const NEAR_KM = 3;
 type CardReason = FitReason | { code: 'size' | 'near'; detail: string };
-function cardReasons(item: RankedItem, sizes: string[], size: string | undefined): CardReason[] {
-  const out: CardReason[] = [...item.reasons];
+// The kids feed ranks with the parent's palette and colours, so those reasons would describe the
+// parent, not the child: only occasion / fabric / size / near are shown there.
+const PARENT_ONLY = new Set(['palette', 'color', 'style']);
+function cardReasons(
+  item: RankedItem,
+  sizes: string[],
+  size: string | undefined,
+  kids: boolean,
+): CardReason[] {
+  const out: CardReason[] = item.reasons.filter((r) => !kids || !PARENT_ONLY.has(r.code));
   if (size && sizes.includes(size)) out.push({ code: 'size', detail: size });
   if (item.distance_km !== null && item.distance_km <= NEAR_KM)
     out.push({ code: 'near', detail: String(item.distance_km) });
@@ -357,7 +365,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           trends: rankTrends,
           ...(b.kids && b.kids_age ? { kidsAge: b.kids_age } : {}),
           ...(!b.kids && account.body_frame ? { frame: account.body_frame } : {}),
-          styles: account.pref_styles ?? [],
+          ...(b.kids ? {} : { styles: account.pref_styles ?? [] }),
         },
         b.sort,
         now,
@@ -396,7 +404,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           if (!p) throw new Error(`my-style: ranked id ${item.id} not in candidates`);
           return toCard(p, item.distance_km, bodyMeasurements).then((card) => ({
             ...card,
-            reasons: cardReasons(item, p.sizes, b.size?.toUpperCase()),
+            reasons: cardReasons(item, p.sizes, b.size?.toUpperCase(), b.kids),
           }));
         }),
       );

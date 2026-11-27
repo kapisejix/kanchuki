@@ -1099,3 +1099,19 @@ describe('Phase 3: reason chips', () => {
     expect(byId.get('p1')).toEqual([{ code: 'style', detail: 'Anarkali' }]);
   });
 });
+
+describe('Phase 3 review: kids feed chips never describe the parent', () => {
+  it('drops palette, colour and style reasons on the kids feed', async () => {
+    DB = [
+      row('k1', store('1'), {
+        color_family: 'red',
+        ...({ audience: 'GIRLS', subtype: 'Anarkali Frock', occasions: ['festive'] } as object),
+      }),
+    ];
+    mockSession.mockResolvedValue(
+      account({ pref_colors: ['red'], pref_styles: ['Anarkali'], pref_occasions: ['festive'] }),
+    );
+    const res = await feed({ kids: true });
+    expect(res.json().data[0].reasons).toEqual([{ code: 'occasion', detail: 'festive' }]);
+  });
+});
