@@ -191,6 +191,7 @@ describe('other signals', () => {
         fabrics: ['y'],
         origin: { lat: 1, lng: 1 },
         trends: [{ match_keywords: ['k'], boost: 5 }],
+        styles: ['k'], // every fit part on, incl. Phase 3 pref_styles (RC-190)
       }),
     );
     expect(s).toBeLessThanOrEqual(1);

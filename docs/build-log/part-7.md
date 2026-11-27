@@ -1011,3 +1011,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | typecheck 9/9; Biome 1477 files clean; API 3613 passed (12 skipped); web 892/896 (4 load timeouts in enquiry/look/page-analyze, all 37 pass alone); mobile 733/733; shared 313/314 — the 1 failure is PRE-EXISTING on main: `my-style-weights` "fit parts sum to 1" (Phase 3 `prefStyle: 0.05` makes 1.05), not touched here. |
 | Review fixes | Whole-branch review: no Critical. Fixed 3 Important: a NULL-audience men's kurta under a plain "Kurta" category got the women's chart (`standardChartFor` now reads the product name for the men/kids guess); a blocked chart made the header Save silent (now also an Alert); out-of-range inches showed the size-order message (now "Use inches between 22 and 63"). After fixes: typecheck 9/9, Biome clean, API 3613, mobile 735, shared 315/316 (pre-existing weights). Deferred minors: half-inch round trip shifts standard waist XS/S by 1 cm; typed draft text persists after save; size-chart toggle doesn't announce expanded; guide figure name read twice. |
 | Not done | Not device-tested (research §10 checklist unchecked). Owner to check the chart numbers. A saved usual-size editor for shoppers doesn't exist ("No tape?" uses the per-visit Size filter). |
+
+## 2026-11-27 — My Style: fit weights back to 1 (RC-190; branch `fix/my-style-weights-base`)
+
+| Area | Change |
+|---|---|
+| Why | Phase 3 added `MY_STYLE_FIT.prefStyle = 0.05` without lowering another part: base + parts = 1.05, a full match clamped to 1 and tied with a 4-signal match, and the shared test "fit parts sum to 1" was red on main since d4f14ffd. |
+| Fix | Owner picked option 1 (2026-11-27): `base` 0.3 → 0.25. Uniform −0.05 on fit, ranking order unchanged except among palette-avoid products near 0. |
+| Test | Shared weights test was the failing test (red first, then 3/3). Rebuilding shared dist turned up a stale API fixture: rank "score stays within 0..1" "max" candidate never set a style match; it now sets `styles`, assertion unchanged (>0.99). |
+| Local runs | typecheck 9/9; Biome 1477 files clean; db, shared 21 files, ai 20, mobile 68, web 93 files green; API 263 files passed (3 skipped). API reads `@kanchuki/shared` from dist: build shared before API tests. |
+| Not done | Not pushed. Device checklist (research §10) still running. |
