@@ -2,7 +2,7 @@
 // Every call returns a value, never throws, and turns the API's statuses into plain
 // copy (no raw API sentence reaches the screen, no fake success: RC-059/060).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearProfile, pollAnalysis, prepareUpload, startAnalysis } from '../analyze';
+import { clearProfile, fetchProfile, pollAnalysis, prepareUpload, startAnalysis } from '../analyze';
 
 const fetchMock = vi.fn();
 
@@ -215,7 +215,11 @@ describe('pollAnalysis', () => {
   it('an unknown failed reason falls back to generic copy', async () => {
     fetchMock.mockResolvedValue(json({ data: { status: 'failed', reason: 'weird' } }));
     const r = await pollAnalysis('mystyle_a');
-    expect(r).toMatchObject({ kind: 'failed', message: expect.stringMatching(/try again/i) });
+    expect(r).toMatchObject({
+      kind: 'failed',
+      message: expect.stringMatching(/could not read/i),
+      fix: expect.stringMatching(/try another photo/i),
+    });
   });
 
   it('cancelled says the data was cleared', async () => {
@@ -314,5 +318,64 @@ describe('garment mode (find similar)', () => {
     const r = await pollAnalysis('j1', undefined, 'garment');
     expect(r.kind).toBe('failed');
     expect((r as { message: string }).message).toMatch(re);
+  });
+});
+
+// Phase 1: every failed read says what to do next, in its own line, not just what went wrong.
+describe('failed reads carry a one-line fix', () => {
+  it.each([
+    ['no_person', 'selfie'],
+    ['face_not_clear', 'selfie'],
+    ['multiple_people', 'selfie'],
+    ['too_dark', 'selfie'],
+    ['read_failed', 'selfie'],
+    ['expired', 'selfie'],
+    ['no_garment', 'garment'],
+    ['blurry', 'garment'],
+    ['multiple_garments', 'garment'],
+  ] as const)('%s has a fix that differs from the message', async (reason, mode) => {
+    fetchMock.mockResolvedValue(json({ data: { status: 'failed', reason } }));
+    const r = (await pollAnalysis('j1', undefined, mode)) as { message: string; fix?: string };
+    expect(r.fix).toBeTruthy();
+    expect(r.fix).not.toBe(r.message);
+    expect(r.fix).not.toContain(reason);
+  });
+
+  it('an unknown reason still gets the generic fix', async () => {
+    fetchMock.mockResolvedValue(json({ data: { status: 'failed', reason: 'weird' } }));
+    expect(((await pollAnalysis('j1')) as { fix?: string }).fix).toBeTruthy();
+  });
+
+  it('selfie fixes never promise measurements or ask for a full-body photo', async () => {
+    for (const reason of ['no_person', 'face_not_clear', 'read_failed']) {
+      fetchMock.mockResolvedValue(json({ data: { status: 'failed', reason } }));
+      const r = (await pollAnalysis('j1')) as { message: string; fix?: string };
+      expect(`${r.message} ${r.fix}`).not.toMatch(/full.body|measure/i);
+    }
+  });
+});
+
+describe('fetchProfile', () => {
+  const data = { style_profile: null, measurements: null, taste: null };
+
+  it('GETs /api/my-style/profile with credentials and no body', async () => {
+    fetchMock.mockResolvedValue(json({ data }));
+    expect(await fetchProfile()).toEqual({ kind: 'ok', data });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/my-style/profile');
+    expect(init.method).toBe('GET');
+    expect(init.credentials).toBe('include');
+    expect(init.body).toBeUndefined();
+  });
+
+  it('401 -> unauthorized; 500, a body with no data, or a network error -> error (never throws)', async () => {
+    fetchMock.mockResolvedValueOnce(json({}, 401));
+    expect((await fetchProfile()).kind).toBe('unauthorized');
+    fetchMock.mockResolvedValueOnce(json({}, 500));
+    expect((await fetchProfile()).kind).toBe('error');
+    fetchMock.mockResolvedValueOnce(json({}));
+    expect((await fetchProfile()).kind).toBe('error');
+    fetchMock.mockRejectedValueOnce(new TypeError('offline'));
+    expect((await fetchProfile()).kind).toBe('error');
   });
 });

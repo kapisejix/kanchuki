@@ -210,3 +210,19 @@ describe('GET /api/my-style/analyze/:jobId (poll)', () => {
     expect((await get(['analyze', 'mystyle_abc'])).status).toBe(503);
   });
 });
+
+describe('GET /api/my-style/profile', () => {
+  it('forwards to the API with the cookie, private no-store', async () => {
+    upstream.mockResolvedValue(new Response('{"data":{}}', { status: 200 }));
+    const res = await get(['profile'], 'kanchuki_passport=abc');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+    const [url, init] = upstream.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/public/my-style/profile');
+    expect((init.headers as Record<string, string>).cookie).toBe('kanchuki_passport=abc');
+  });
+
+  it('only GET: a POST to profile stays 404', async () => {
+    expect((await post(['profile'])).status).toBe(404);
+  });
+});

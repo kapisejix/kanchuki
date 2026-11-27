@@ -71,6 +71,8 @@ export interface FeedMeta {
     /** How many passed the category gate + minimum similarity (the feed shows only these). */
     matched: number;
   } | null;
+  /** True only when "Shop my colours" actually filtered (a palette exists). */
+  palette_only?: boolean;
   /** Which extra tabs have something behind them. Absent = hide Festival and Trending. */
   tabs?: { festival: { name: string } | null; trending: boolean };
   /** Occasion tab only: how many products carry the picked tag (null on other tabs). */
@@ -94,6 +96,8 @@ export interface FeedRequest {
   radius_km?: number;
   /** Find similar: the descriptor from the garment analysis, held in page state only. */
   similar?: GarmentDescriptor;
+  /** "Shop my colours": only the saved palette's good shades. Ignored with no palette. */
+  palette_only?: boolean;
 }
 
 /** "yellow Kurti, Printed, Zari Work" - what the shopper sees as the thing being matched. */

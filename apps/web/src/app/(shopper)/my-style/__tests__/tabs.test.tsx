@@ -6,6 +6,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MyStylePage from '../page';
+import { EMPTY_PROFILE, type SavedProfile, stubFetchWithProfile } from './profile-route';
+
+// What GET /profile answers (see profile-route.ts); reset per test.
+let savedProfile: SavedProfile = EMPTY_PROFILE;
 
 const fetchMock = vi.fn();
 
@@ -43,7 +47,8 @@ const lastBody = () => JSON.parse((fetchMock.mock.calls.at(-1)![1] as RequestIni
 const tabBar = () => screen.getByRole('navigation', { name: 'Feed tabs' });
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', fetchMock);
+  savedProfile = EMPTY_PROFILE;
+  stubFetchWithProfile(fetchMock, () => savedProfile);
   window.scrollTo = vi.fn();
 });
 

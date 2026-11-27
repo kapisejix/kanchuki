@@ -31,6 +31,7 @@ import {
   CANDIDATE_CAP,
   type CandidateRow,
   loadMyStyleCandidates,
+  loadPalette,
   toRankCandidate,
 } from '../../lib/my-style-candidates.js';
 import { type RankCandidate, rankProducts } from '../../lib/my-style-rank.js';
@@ -76,9 +77,58 @@ const BodySchema = z
     similar: z
       .custom<GarmentDescriptor>((v) => parseGarmentDescriptor(v) !== null, 'Invalid garment')
       .optional(),
+    // "Shop my colours": keep only the saved palette's good families. No palette = no filter.
+    palette_only: z.boolean().default(false),
   })
   .strict()
   .refine((b) => (b.lat === undefined) === (b.lng === undefined), 'lat and lng go together');
+
+type Account = NonNullable<Awaited<ReturnType<typeof getPassportSession>>>['customer_account'];
+type Palette = Awaited<ReturnType<typeof loadPalette>>;
+
+/** What the shopper has saved: shared by the feed meta and GET /profile, so they never differ. */
+function savedProfile(account: Account, palette: Palette) {
+  return {
+    // What the quick quiz saved, so the page can show it back and the shopper can see why the
+    // feed changed. Null until the quiz has been answered.
+    taste:
+      account.pref_colors.length + account.pref_occasions.length + account.pref_fabrics.length >
+        0 || account.budget_max
+        ? {
+            colors: account.pref_colors,
+            occasions: account.pref_occasions,
+            fabrics: account.pref_fabrics,
+            budget_max: account.budget_max ?? null,
+          }
+        : null,
+    // Self-entered centimetres (spec step 2); the shopper's own form reads it back.
+    measurements:
+      account.height_cm || account.bust_cm || account.waist_cm || account.hip_cm
+        ? {
+            height_cm: account.height_cm ?? null,
+            bust_cm: account.bust_cm ?? null,
+            waist_cm: account.waist_cm ?? null,
+            hip_cm: account.hip_cm ?? null,
+            saved_at: account.measurements_at?.toISOString() ?? null,
+          }
+        : null,
+    // What the palette card shows (PR-7). Null until a photo has been analysed.
+    style_profile:
+      account.skin_undertone && account.skin_depth
+        ? {
+            undertone: account.skin_undertone,
+            depth: account.skin_depth,
+            frame: account.body_frame ?? null,
+            saved_at: account.style_profile_at?.toISOString() ?? null,
+            palette: palette
+              ? { good: palette.good_families, avoid: palette.avoid_families }
+              : null,
+          }
+        : null,
+  };
+}
+
+const unauthorized = { error: { code: 'UNAUTHORIZED', message: 'Passport session required' } };
 
 // One feed/complete-look card. Prices stay paise (RC-055).
 type Body = Parameters<typeof suggestSize>[0];
@@ -210,8 +260,11 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         };
       }
 
+      const paletteOnly = b.palette_only && palette !== null;
+      const good = new Set(palette?.good_families ?? []);
       const candidates: RankCandidate[] = inRange
         .filter((p) => !matchedIds || matchedIds.has(p.id))
+        .filter((p) => !paletteOnly || (p.color_family !== null && good.has(p.color_family)))
         .map((p) => ({
           ...toRankCandidate(p),
           ...(similarity ? { similarity: similarity.get(p.id) ?? 0 } : {}),
@@ -331,46 +384,26 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           truncated: rows.length === CANDIDATE_CAP,
           // Null for an ordinary feed.
           similar,
-          // What the quick quiz saved, so the page can show it back and the shopper can see
-          // why the feed changed. Null until the quiz has been answered.
-          taste:
-            account.pref_colors.length +
-              account.pref_occasions.length +
-              account.pref_fabrics.length >
-              0 || account.budget_max
-              ? {
-                  colors: account.pref_colors,
-                  occasions: account.pref_occasions,
-                  fabrics: account.pref_fabrics,
-                  budget_max: account.budget_max ?? null,
-                }
-              : null,
-          // Self-entered centimetres (spec step 2); the shopper's own form reads it back.
-          measurements:
-            account.height_cm || account.bust_cm || account.waist_cm || account.hip_cm
-              ? {
-                  height_cm: account.height_cm ?? null,
-                  bust_cm: account.bust_cm ?? null,
-                  waist_cm: account.waist_cm ?? null,
-                  hip_cm: account.hip_cm ?? null,
-                  saved_at: account.measurements_at?.toISOString() ?? null,
-                }
-              : null,
-          // What the palette card shows (PR-7). Null until a photo has been analysed.
-          style_profile:
-            account.skin_undertone && account.skin_depth
-              ? {
-                  undertone: account.skin_undertone,
-                  depth: account.skin_depth,
-                  frame: account.body_frame ?? null,
-                  saved_at: account.style_profile_at?.toISOString() ?? null,
-                  palette: palette
-                    ? { good: palette.good_families, avoid: palette.avoid_families }
-                    : null,
-                }
-              : null,
+          // True only when "Shop my colours" actually filtered (a palette exists).
+          palette_only: paletteOnly,
+          ...savedProfile(account, palette),
         },
       };
+    },
+  );
+
+  // GET /my-style/profile — what the shopper has saved, without running the feed (research R3:
+  // the palette card used to vanish whenever the feed failed). No product query, no AI.
+  server.get(
+    '/profile',
+    { config: { rateLimit: { max: 30, timeWindow: 60 * 1000 } } },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'private, no-store');
+      const session = await getPassportSession(request.headers.cookie || '');
+      if (!session) return reply.status(401).send(unauthorized);
+      const account = session.customer_account;
+      const palette = await loadPalette(account.skin_undertone, account.skin_depth);
+      return { data: savedProfile(account, palette) };
     },
   );
 

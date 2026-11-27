@@ -7,17 +7,21 @@ import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnalyzeSheet } from '../AnalyzeSheet';
-import { pollAnalysis, prepareUpload, startAnalysis } from '../analyze';
+import { clearProfile, fetchProfile, pollAnalysis, prepareUpload, startAnalysis } from '../analyze';
 
 vi.mock('../analyze', () => ({
   prepareUpload: vi.fn(),
   startAnalysis: vi.fn(),
   pollAnalysis: vi.fn(),
+  fetchProfile: vi.fn(),
+  clearProfile: vi.fn(),
 }));
 
 const prepare = vi.mocked(prepareUpload);
 const start = vi.mocked(startAnalysis);
 const poll = vi.mocked(pollAnalysis);
+const readProfile = vi.mocked(fetchProfile);
+const clear = vi.mocked(clearProfile);
 const profile = { undertone: 'warm', depth: 'medium', frame: 'tall' } as const;
 
 const onClose = vi.fn();
@@ -49,6 +53,10 @@ beforeEach(() => {
   prepare.mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }));
   start.mockResolvedValue({ kind: 'started', jobId: 'mystyle_a' });
   poll.mockResolvedValue({ kind: 'processing' });
+  // Default: the profile read fails, so the older tests see the plain fallback.
+  readProfile.mockResolvedValue({ kind: 'error' });
+  URL.createObjectURL = vi.fn(() => 'blob:local-preview');
+  URL.revokeObjectURL = vi.fn();
 });
 
 afterEach(() => {
@@ -322,5 +330,137 @@ describe('garment mode (find similar)', () => {
     await tick(2500);
     expect(screen.getByRole('alert').textContent).toMatch(/blurry/);
     expect(onDone).not.toHaveBeenCalled();
+  });
+});
+
+// Phase 1 (customer-profile-research §7.3): a successful selfie read ends on a result screen.
+describe('result screen', () => {
+  const saved = {
+    style_profile: {
+      undertone: 'warm',
+      depth: 'medium',
+      frame: 'average',
+      saved_at: '2026-11-26T09:34:00.000Z',
+      palette: { good: ['yellow', 'orange', 'green', 'olive', 'teal'], avoid: ['grey'] },
+    },
+    measurements: null,
+    taste: null,
+  };
+  const onShop = vi.fn();
+  const onCleared = vi.fn();
+
+  async function readOk() {
+    readProfile.mockResolvedValue({ kind: 'ok', data: saved });
+    poll.mockResolvedValue({ kind: 'ready', profile });
+    render(
+      <AnalyzeSheet onClose={onClose} onDone={onDone} onShop={onShop} onCleared={onCleared} />,
+    );
+    await accept();
+    await pick();
+    await tick(2500);
+  }
+
+  it('shows swatches, the why line and the photo from page memory only', async () => {
+    await readOk();
+    expect(screen.getByRole('heading', { name: /your colours are ready/i })).toBeTruthy();
+    expect(screen.getByRole('list', { name: /best on you/i })).toBeTruthy();
+    expect(screen.getByTestId('palette-why')).toBeTruthy();
+    const img = screen.getByRole('img', { name: /your selfie/i }) as HTMLImageElement;
+    // A local object URL of the prepared photo: nothing is uploaded or stored again for it.
+    expect(img.getAttribute('src')).toBe('blob:local-preview');
+    expect(URL.createObjectURL).toHaveBeenCalledWith(await prepare.mock.results[0]!.value);
+    expect(screen.getByText(/not kept/i)).toBeTruthy();
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('never shows a skin or body label', async () => {
+    await readOk();
+    expect(document.body.textContent).not.toMatch(
+      /undertone|skin|depth|medium|average|frame|body/i,
+    );
+  });
+
+  it('the profile read is a GET with no photo (fetchProfile takes only a signal)', async () => {
+    await readOk();
+    expect(readProfile).toHaveBeenCalledTimes(1);
+    expect(
+      readProfile.mock.calls[0]!.every((a) => a === undefined || a instanceof AbortSignal),
+    ).toBe(true);
+  });
+
+  it('Shop my colours hands off and closes', async () => {
+    await readOk();
+    fireEvent.click(screen.getByRole('button', { name: /shop my colours/i }));
+    expect(onShop).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Retake goes back to capture and drops the preview', async () => {
+    await readOk();
+    fireEvent.click(screen.getByRole('button', { name: /retake/i }));
+    expect(screen.getByTestId('my-style-selfie-input')).toBeTruthy();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:local-preview');
+  });
+
+  it('Delete clears on the server, reports it and closes; a failure says so and stays', async () => {
+    await readOk();
+    clear.mockResolvedValueOnce('error');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    });
+    expect(screen.getByRole('alert').textContent).toMatch(/could not delete/i);
+    expect(onCleared).not.toHaveBeenCalled();
+    clear.mockResolvedValueOnce('ok');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    });
+    expect(onCleared).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('unmounting revokes the preview URL', async () => {
+    readProfile.mockResolvedValue({ kind: 'ok', data: saved });
+    poll.mockResolvedValue({ kind: 'ready', profile });
+    const { unmount } = setup();
+    await accept();
+    await pick();
+    await tick(2500);
+    unmount();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:local-preview');
+  });
+});
+
+describe('failure help', () => {
+  it('a failed selfie read shows the fix line and the good-photo tips', async () => {
+    poll.mockResolvedValue({
+      kind: 'failed',
+      message: 'That photo is too dark.',
+      fix: 'Move near a window in daylight, or turn on a bright light.',
+    });
+    setup();
+    await accept();
+    await pick();
+    await tick(2500);
+    expect(screen.getByText(/move near a window/i)).toBeTruthy();
+    const tips = screen.getByRole('list', { name: /good photo/i });
+    expect(tips.querySelectorAll('li').length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('a start error (quota, network) has no tips: a better photo would not help', async () => {
+    start.mockResolvedValue({ kind: 'error', message: 'Could not send your photo.' });
+    setup();
+    await accept();
+    await pick();
+    expect(screen.queryByRole('list', { name: /good photo/i })).toBeNull();
+  });
+});
+
+describe('capture copy (R6)', () => {
+  it('asks for a face photo for colours and never for a full-body photo or measurements', async () => {
+    setup();
+    await accept();
+    const text = document.body.textContent ?? '';
+    expect(text).toMatch(/face/i);
+    expect(text).not.toMatch(/full.body|measure/i);
   });
 });
