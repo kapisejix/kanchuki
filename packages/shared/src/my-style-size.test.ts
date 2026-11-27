@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { type SizeChart, parseSizeChart, suggestSize } from './my-style-size.js';
+import {
+  STANDARD_SIZE_CHART,
+  type SizeChart,
+  parseSizeChart,
+  standardChartFor,
+  suggestSize,
+} from './my-style-size.js';
 
 // Synthetic chart, cm ranges per size.
 const chart: SizeChart = {
@@ -82,5 +88,61 @@ describe('parseSizeChart rising rule', () => {
   it('allows a dimension to be missing in one size', () => {
     const c = { S: { bust: [84, 88] }, M: { hip: [97, 101] }, L: { bust: [95, 99] } };
     expect(parseSizeChart(c)).toEqual(c);
+  });
+});
+
+describe('standardChartFor', () => {
+  const p = (audience: any, category: string | null, subtype: string | null = null) => ({
+    audience,
+    category,
+    subtype,
+  });
+  it('is a valid rising chart', () => {
+    expect(parseSizeChart(STANDARD_SIZE_CHART)).toEqual(STANDARD_SIZE_CHART);
+  });
+  it.each([
+    'Ladies Suit',
+    'Kurti',
+    'Kurtis',
+    'Salwar Suits',
+    'Gown',
+    'Tops & Tunics',
+    'Co-ords',
+    'Ladies',
+  ])('covers stitched women wear: %s', (c) => {
+    expect(standardChartFor(p('WOMEN', c))).toBe(STANDARD_SIZE_CHART);
+  });
+  it('covers untagged audience when the text is not men or kids', () => {
+    expect(standardChartFor(p(null, 'Kurta'))).toBe(STANDARD_SIZE_CHART);
+    expect(standardChartFor(p(null, 'Women Kurti'))).toBe(STANDARD_SIZE_CHART);
+  });
+  it.each(['MEN', 'GIRLS', 'BOYS', 'KIDS_UNISEX'])('never for audience %s', (a) => {
+    expect(standardChartFor(p(a, 'Kurti'))).toBeNull();
+  });
+  it('never for untagged men or kids text', () => {
+    expect(standardChartFor(p(null, "Men's Kurta Pajama"))).toBeNull();
+    expect(standardChartFor(p(null, 'Girls Kurti'))).toBeNull();
+  });
+  it.each([
+    'Saree',
+    'Lehenga',
+    'Dupatta',
+    'Unstitched Suit',
+    'Dress Material',
+    'Blouse Piece',
+    'Stole',
+    'Laptop Bag',
+  ])('never for %s', (c) => {
+    expect(standardChartFor(p('WOMEN', c))).toBeNull();
+  });
+  it('never without category text', () => {
+    expect(standardChartFor(p('WOMEN', null, null))).toBeNull();
+  });
+  it('suggests sizes from the standard chart', () => {
+    expect(suggestSize({ bust_cm: 72 }, STANDARD_SIZE_CHART, ['XS', 'S'])).toEqual({ size: 'XS' });
+    expect(
+      suggestSize({ bust_cm: 91, waist_cm: 76, hip_cm: 99 }, STANDARD_SIZE_CHART, ['S', 'M', 'L']),
+    ).toEqual({ size: 'M' });
+    expect(suggestSize({ bust_cm: 125 }, STANDARD_SIZE_CHART, ['4XL'])).toBeNull();
   });
 });

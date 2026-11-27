@@ -4,6 +4,7 @@
 // all answer null. Boost-free: it only labels a card, it never filters or reorders.
 import { SIZE_OPTIONS } from './constants/index.js';
 import { MY_STYLE_MEASUREMENT_RANGES } from './my-style-measurements.js';
+import { type ProductAudienceValue, audienceForText } from './product-audience.js';
 
 export const SIZE_CHART_DIMENSIONS = ['bust', 'waist', 'hip'] as const;
 export type SizeChartDimension = (typeof SIZE_CHART_DIMENSIONS)[number];
@@ -77,4 +78,40 @@ export function suggestSize(
   const lo = needs[0] as string;
   const hi = needs[needs.length - 1] as string;
   return lo === hi ? { size: hi } : { size: hi, between: [lo, hi] };
+}
+
+/**
+ * Phase 4: a standard Indian women's body chart (cm), used when a product has no chart of its
+ * own. Common brand inch chart (bust 32-46", waist 26-40", hip 35-49", 2" a size) as ±1" bands.
+ * ponytail: a constant, not a table; an admin editor only if the owner needs to change it often.
+ */
+export const STANDARD_SIZE_CHART: SizeChart = {
+  XS: { bust: [79, 83], waist: [64, 68], hip: [86, 91] },
+  S: { bust: [84, 88], waist: [69, 73], hip: [92, 96] },
+  M: { bust: [89, 94], waist: [74, 78], hip: [97, 101] },
+  L: { bust: [95, 99], waist: [79, 83], hip: [102, 106] },
+  XL: { bust: [100, 104], waist: [84, 88], hip: [107, 111] },
+  XXL: { bust: [105, 109], waist: [89, 93], hip: [112, 116] },
+  XXXL: { bust: [110, 114], waist: [94, 98], hip: [117, 121] },
+  '4XL': { bust: [115, 119], waist: [99, 104], hip: [122, 127] },
+};
+
+const STITCHED = /\b(kurtis?|kurtas?|suits?|salwar|anarkali|gowns?|tops?|tunics?|co-ords?|ladies)\b/;
+const NOT_SIZED =
+  /\b(sarees?|sari|dupattas?|lehengas?|unstitched|dress material|blouse piece|fabric|stoles?)\b/;
+
+/** The standard chart for stitched women's wear only; null for men, kids, saree, dupatta… */
+export function standardChartFor(p: {
+  audience: ProductAudienceValue | null;
+  category: string | null;
+  subtype: string | null;
+}): SizeChart | null {
+  if (p.audience !== 'WOMEN') {
+    if (p.audience !== null) return null;
+    const guess = audienceForText(p.category, p.subtype);
+    if (guess !== null && guess !== 'WOMEN') return null;
+  }
+  const text = `${p.category ?? ''} ${p.subtype ?? ''}`.toLowerCase();
+  if (NOT_SIZED.test(text) || !STITCHED.test(text)) return null;
+  return STANDARD_SIZE_CHART;
 }
