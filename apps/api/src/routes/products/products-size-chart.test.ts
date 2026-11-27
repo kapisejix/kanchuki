@@ -102,6 +102,15 @@ describe('size_chart on create', () => {
     expect(createdData().size_chart).toEqual(chart);
   });
 
+  // RC-191: the client photo_url leaked through ...rest into prisma.product.create, which has no
+  // such column, so every create 500'd in prod. The mocked client can't catch it; this does.
+  it('never hands the client photo fields to product.create', async () => {
+    const res = await post({ sizes: ['S', 'M', 'L'], size_chart: chart });
+    expect(res.statusCode).toBe(201);
+    expect(createdData()).not.toHaveProperty('photo_url');
+    expect(createdData()).not.toHaveProperty('photo_r2_key');
+  });
+
   it('writes nothing for it when not sent', async () => {
     await post({});
     expect(createdData()).not.toHaveProperty('size_chart');
