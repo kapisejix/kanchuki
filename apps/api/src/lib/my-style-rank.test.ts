@@ -361,3 +361,46 @@ describe('body frame (a rank boost, never a filter)', () => {
     expect(scoreOf(phrase, curvy)).toBeGreaterThan(scoreOf(other, curvy));
   });
 });
+
+describe('pref_styles + reasons', () => {
+  const rank1 = (c: RankCandidate, p: RankProfile) => rankProducts([c], p, 'best', NOW)[0]!;
+
+  it('boosts a product whose keywords carry a chosen style', () => {
+    const p = profile({ styles: ['Anarkali'] });
+    const hit = scoreOf(cand('a', { keywords: ['anarkali suit'] }), p);
+    const miss = scoreOf(cand('b', { keywords: ['straight kurti'] }), p);
+    expect(hit - miss).toBeCloseTo(0.45 * 0.05, 4);
+  });
+
+  it('matches regex characters literally and only as whole words', () => {
+    const p = profile({ styles: ['A-line (long)'] });
+    expect(rank1(cand('a', { keywords: ['a-line (long) kurti'] }), p).reasons).toContainEqual({
+      code: 'style',
+      detail: 'A-line (long)',
+    });
+    expect(rank1(cand('b', { keywords: ['a-linexlong'] }), p).reasons).toEqual([]);
+  });
+
+  it('orders reasons palette first, with the matched occasion as detail', () => {
+    const p = profile({
+      palette: { good: ['red'], avoid: ['grey'] },
+      occasions: ['Festive'],
+    });
+    const r = rank1(cand('a', { color_family: 'red', occasions: ['festive'] }), p).reasons;
+    expect(r.map((x) => x.code)).toEqual(['palette', 'occasion']);
+    expect(r[1]).toEqual({ code: 'occasion', detail: 'Festive' });
+  });
+
+  it('never gives an avoid family as a reason', () => {
+    const p = profile({ palette: { good: ['red'], avoid: ['grey'] } });
+    expect(rank1(cand('a', { color_family: 'grey' }), p).reasons).toEqual([]);
+  });
+
+  it('reports colour and fabric matches', () => {
+    const p = profile({ colorFamilies: ['red'], fabrics: ['Silk'] });
+    expect(rank1(cand('a', { color_family: 'red', fabrics: ['silk'] }), p).reasons).toEqual([
+      { code: 'color' },
+      { code: 'fabric', detail: 'Silk' },
+    ]);
+  });
+});
