@@ -38,6 +38,17 @@ export function parseSizeChart(input: unknown): SizeChart | null {
     if (Object.keys(dims).length === 0) return null;
     out[size] = dims;
   }
+  // Each dimension must rise with size, or suggestSize would pick a wrong size.
+  const sizes = Object.keys(out).sort((a, b) => order(a) - order(b));
+  for (const dim of SIZE_CHART_DIMENSIONS) {
+    let prev = -1;
+    for (const s of sizes) {
+      const hi = out[s]?.[dim]?.[1];
+      if (hi === undefined) continue;
+      if (hi <= prev) return null;
+      prev = hi;
+    }
+  }
   return Object.keys(out).length > 0 ? out : null;
 }
 

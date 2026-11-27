@@ -70,3 +70,17 @@ describe('parseSizeChart', () => {
     expect(parseSizeChart(bad)).toBeNull();
   });
 });
+
+describe('parseSizeChart rising rule', () => {
+  it('rejects a chart whose upper bounds do not rise with size', () => {
+    expect(parseSizeChart({ S: { bust: [84, 88] }, M: { bust: [80, 86] } })).toBeNull();
+  });
+  it('ignores object key order', () => {
+    const c = { M: { bust: [89, 94] }, S: { bust: [84, 88] } };
+    expect(parseSizeChart(c)).toEqual(c);
+  });
+  it('allows a dimension to be missing in one size', () => {
+    const c = { S: { bust: [84, 88] }, M: { hip: [97, 101] }, L: { bust: [95, 99] } };
+    expect(parseSizeChart(c)).toEqual(c);
+  });
+});
