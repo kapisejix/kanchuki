@@ -97,7 +97,7 @@ describe('POST /my-style/measurements', () => {
 // Separate consent step: measurements are body data, so they have their own notice, version and
 // grant/withdraw events, independent of the photo consent.
 describe('measurements consent', () => {
-  const BODY_VERSION = 'mystyle-body-1.0';
+  const BODY_VERSION = 'mystyle-body-1.1';
 
   it('refuses to save with no live consent and no consent_version, and writes nothing', async () => {
     m.consentFind.mockResolvedValue(null);

@@ -15,9 +15,27 @@ export const MY_STYLE_MEASUREMENT_FIELDS = Object.keys(
   MY_STYLE_MEASUREMENT_RANGES,
 ) as MyStyleMeasurementField[];
 
-/** 5 ft 4 in -> 163 (rounded to whole cm). The one conversion; the form calls this. */
+export const CM_PER_INCH = 2.54;
+
+/** Inches -> whole cm (what we store). 34.5 -> 88. */
+export function inchesToCm(inches: number): number {
+  return Math.round(inches * CM_PER_INCH);
+}
+
+/** cm -> inches to the nearest half inch (what the forms show). 88 -> 34.5. */
+export function cmToInches(cm: number): number {
+  return Math.round((cm / CM_PER_INCH) * 2) / 2;
+}
+
+/** 5 ft 4 in -> 163 (rounded to whole cm). */
 export function feetInchesToCm(feet: number, inches: number): number {
-  return Math.round((feet * 12 + inches) * 2.54);
+  return inchesToCm(feet * 12 + inches);
+}
+
+/** 163 -> 5 ft 4 in (whole inches). */
+export function cmToFeetInches(cm: number): { feet: number; inches: number } {
+  const total = Math.round(cm / CM_PER_INCH);
+  return { feet: Math.floor(total / 12), inches: total % 12 };
 }
 
 export function inMeasurementRange(field: MyStyleMeasurementField, cm: number): boolean {
@@ -29,10 +47,10 @@ export function inMeasurementRange(field: MyStyleMeasurementField, cm: number): 
 // and grant/withdraw events, independent of the photo consent. Bump `version` on ANY wording
 // change; the API records it so a stored version always names text a real person saw.
 export const MY_STYLE_BODY_CONSENT = {
-  version: 'mystyle-body-1.0',
+  version: 'mystyle-body-1.1',
   title: 'Before you save your measurements',
   intro:
-    'My Style can use your height, bust, waist and hip to suggest the size that is likely to fit. Adults only.',
+    'My Style can use your usual size, height, bust, waist and hip to suggest the size that is likely to fit. Adults only.',
   points: [
     {
       label: 'Who sees them',
@@ -40,7 +58,7 @@ export const MY_STYLE_BODY_CONSENT = {
     },
     {
       label: 'What we keep',
-      text: 'The numbers you type, saved to your account. We do not ask for your weight and we do not need a photo.',
+      text: 'The size you pick and the numbers you type, saved to your account. We do not ask for your weight and we do not need a photo.',
     },
     {
       label: 'What they are used for',
@@ -48,7 +66,7 @@ export const MY_STYLE_BODY_CONSENT = {
     },
   ],
   withdrawal:
-    'You can remove them any time. Removing them deletes the numbers and ends this consent.',
+    'You can remove them any time. Removing them deletes your size and the numbers and ends this consent.',
   acceptLabel: 'I agree, save my measurements',
   declineLabel: 'Not now',
 } as const;
