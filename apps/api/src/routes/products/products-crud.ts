@@ -39,6 +39,8 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
 
     const {
       photo_r2_key: uploadKey,
+      // RC-191: pulled out so it never reaches ...rest (Product has no photo_url column).
+      photo_url: _clientPhotoUrl,
       metadata,
       auto_cleanup,
       stock,

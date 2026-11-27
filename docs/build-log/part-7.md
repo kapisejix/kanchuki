@@ -1012,6 +1012,16 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Review fixes | Whole-branch review: no Critical. Fixed 3 Important: a NULL-audience men's kurta under a plain "Kurta" category got the women's chart (`standardChartFor` now reads the product name for the men/kids guess); a blocked chart made the header Save silent (now also an Alert); out-of-range inches showed the size-order message (now "Use inches between 22 and 63"). After fixes: typecheck 9/9, Biome clean, API 3613, mobile 735, shared 315/316 (pre-existing weights). Deferred minors: half-inch round trip shifts standard waist XS/S by 1 cm; typed draft text persists after save; size-chart toggle doesn't announce expanded; guide figure name read twice. |
 | Not done | Not device-tested (research §10 checklist unchecked). Owner to check the chart numbers. A saved usual-size editor for shoppers doesn't exist ("No tape?" uses the per-visit Size filter). |
 
+## 2026-11-27 — RC-191: retailer "Add product" 500 (device test A1)
+
+| Area | Change |
+|---|---|
+| Why | Device test A1: Add product → Save → `ApiError: Something went wrong`. Railway API logs (2026-11-27 12:45:39Z / 12:46:29Z, with and without a size chart): `PrismaClientValidationError ... Unknown argument photo_url`. Since `dbb389bb` (2026-10-22, server-side upload verification) the handler no longer destructured the client `photo_url`, so it stayed in `...rest` and reached `prisma.product.create`. Every product create from the app failed for ~5 weeks; route tests mock Prisma, so its validator never ran. |
+| Fix | `products-crud.ts` POST: destructure `photo_url` out (unused; the URL is rebuilt from the verified key, as before). Branch `fix/product-create-photo-url` off `origin/main`. |
+| Tests | `products-size-chart.test.ts`: create data has no `photo_url` / `photo_r2_key` (red before, green after). |
+| Migrations | None. |
+| Local runs | typecheck 9/9; Biome: 1 error in `apps/mobile/expo-env.d.ts` only (gitignored, Expo-generated, not in the repo). Serial test runs: API 3614 passed (12 skipped), web 896/896, ai 214/214, mobile 735/735, db green; shared 315/316 = the known RC-190 weights red (fixed on PR #370, not merged). Parallel run timed out ~65 web tests under load; all pass serially. |
+| Not done | Not merged, not device-tested (re-run A1 in Expo Go after deploy). Separate finding, not fixed: `[jobs] generate-embedding failed: type "vector" does not exist` in the same log window. |
 ## 2026-11-27 — My Style: fit weights back to 1 (RC-190; branch `fix/my-style-weights-base`)
 
 | Area | Change |
