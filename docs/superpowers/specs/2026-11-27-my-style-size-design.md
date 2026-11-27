@@ -1,6 +1,6 @@
 # My Style Phase 4: "Size that works" (design)
 
-Status: **draft, waiting for owner approval** (2026-11-27). Branch `feat/my-style-size` from `origin/main` a73ebbd8.
+Status: **approved 2026-11-27; built on branch, not pushed, not device-tested.** Branch `feat/my-style-size` from `origin/main` a73ebbd8.
 Source: `docs/tasks/pending/customer-profile-research.md` §7.5, §10 (Phase 4 row), §11, §12; `docs/tasks/pending/my-style-body-profile.md` §3, §5.
 
 ## 1. Intent
