@@ -19,7 +19,8 @@ const POST_PATHS = [
 // Poll: analyze/<jobId>. Job ids are `mystyle_<cuid2>`; the strict pattern keeps
 // `..`, slashes and spaces out of the upstream URL.
 // complete-look?anchor=<id>: the anchor rides in the query, validated by the API.
-const GET_PATH = /^(analyze\/[A-Za-z0-9_-]{1,64}|complete-look)$/;
+// profile: the saved palette/measurements/taste, read on its own so it never waits on the feed.
+const GET_PATH = /^(analyze\/[A-Za-z0-9_-]{1,64}|complete-look|profile)$/;
 
 // Null-body statuses may not be rebuilt with a body (RC-045).
 const NULL_BODY_STATUS = new Set([204, 205, 304]);

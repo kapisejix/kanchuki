@@ -824,3 +824,105 @@ describe('tabs (PR-10a)', () => {
     spy.mockRestore();
   });
 });
+
+// Phase 1 (customer-profile-research §9, R3): the profile has its own read, so the palette card
+// no longer depends on the feed succeeding.
+async function profile() {
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  await app.register(publicMyStyleRoutes, { prefix: '/v1/public/my-style' });
+  await app.ready();
+  const res = await app.inject({ method: 'GET', url: '/v1/public/my-style/profile' });
+  await app.close();
+  return res;
+}
+
+describe('GET /my-style/profile', () => {
+  it('401 with the feed 401 shape, no-store, and no DB read', async () => {
+    mockSession.mockResolvedValue(null);
+    const res = await profile();
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({
+      error: { code: 'UNAUTHORIZED', message: 'Passport session required' },
+    });
+    expect(res.headers['cache-control']).toBe('private, no-store');
+    expect(mockPalette).not.toHaveBeenCalled();
+  });
+
+  it('returns profile + palette + measurements + taste, private no-store, no product query', async () => {
+    const at = new Date('2026-11-26T09:34:00Z');
+    mockSession.mockResolvedValue(
+      account({
+        skin_undertone: 'warm',
+        skin_depth: 'medium',
+        body_frame: 'average',
+        style_profile_at: at,
+        height_cm: 160,
+        measurements_at: at,
+        pref_occasions: ['festive'],
+      }),
+    );
+    mockPalette.mockResolvedValue({ good_families: ['yellow'], avoid_families: ['grey'] });
+    const res = await profile();
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['cache-control']).toBe('private, no-store');
+    expect(res.json().data).toEqual({
+      style_profile: {
+        undertone: 'warm',
+        depth: 'medium',
+        frame: 'average',
+        saved_at: at.toISOString(),
+        palette: { good: ['yellow'], avoid: ['grey'] },
+      },
+      measurements: {
+        height_cm: 160,
+        bust_cm: null,
+        waist_cm: null,
+        hip_cm: null,
+        saved_at: at.toISOString(),
+      },
+      taste: { colors: [], occasions: ['festive'], fabrics: [], budget_max: null },
+    });
+    expect(mockFindMany).not.toHaveBeenCalled();
+  });
+
+  it('answers nulls for a shopper with nothing saved, without a palette lookup', async () => {
+    const res = await profile();
+    expect(res.json().data).toEqual({ style_profile: null, measurements: null, taste: null });
+    expect(mockPalette).not.toHaveBeenCalled();
+  });
+});
+
+// "Shop my colours": the feed keeps only the palette's good families. A boost would change
+// little (the palette already weighs 0.40 of fit), so the button would look like it did nothing.
+describe('palette_only (Shop my colours)', () => {
+  const warm = () => {
+    mockSession.mockResolvedValue(account({ skin_undertone: 'warm', skin_depth: 'medium' }));
+    mockPalette.mockResolvedValue({ good_families: ['maroon'], avoid_families: ['yellow'] });
+    DB = [
+      row('maroon', store('1'), { color_family: 'maroon' }),
+      row('yellow', store('1'), { color_family: 'yellow' }),
+      row('untagged', store('1')),
+    ];
+  };
+
+  it('keeps only products in a good family and says the filter applied', async () => {
+    warm();
+    const res = await feed({ palette_only: true });
+    expect(ids(res)).toEqual(['maroon']);
+    expect(res.json().meta.palette_only).toBe(true);
+  });
+
+  it('off by default: every candidate stays', async () => {
+    warm();
+    const res = await feed();
+    expect(ids(res).sort()).toEqual(['maroon', 'untagged', 'yellow']);
+    expect(res.json().meta.palette_only).toBe(false);
+  });
+
+  it('with no saved palette it filters nothing and reports palette_only false', async () => {
+    const res = await feed({ palette_only: true });
+    expect(ids(res).sort()).toEqual(['p1', 'p2']);
+    expect(res.json().meta.palette_only).toBe(false);
+  });
+});

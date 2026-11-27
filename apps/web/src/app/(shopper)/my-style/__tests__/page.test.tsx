@@ -7,6 +7,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MyStylePage from '../page';
+import { EMPTY_PROFILE, type SavedProfile, stubFetchWithProfile } from './profile-route';
+
+// What GET /profile answers (see profile-route.ts); reset per test.
+let savedProfile: SavedProfile = EMPTY_PROFILE;
 
 const fetchMock = vi.fn();
 
@@ -46,7 +50,8 @@ const bodyOf = (n: number) =>
   JSON.parse((fetchMock.mock.calls[n]![1] as RequestInit).body as string);
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', fetchMock);
+  savedProfile = EMPTY_PROFILE;
+  stubFetchWithProfile(fetchMock, () => savedProfile);
   window.scrollTo = vi.fn();
 });
 

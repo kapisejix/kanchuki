@@ -953,3 +953,15 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Change | PR #362 (fa64563d): log MSG91 `http`/`type`/`code`/`message` when the check is rejected or the reply is not JSON — never the token or authkey. PR #363 (605c11e1): accept a phone-shaped (`^\+?\d{10,13}$`) top-level `message` as the identifier, still exact-matched to the claimed phone; when no identifier is found, log the reply's shape with masked values. |
 | Local runs | Biome clean; msg91-otp + auth-msg91 + passport-otp 65/65; tsc 0. Throwaway test (deleted) ran the real check + real route with MSG91's documented reply: HTTP 200, retailer session. |
 | Verified | Owner logged in on https://kanchuki.app/billing with a real retailer phone, 2026-11-26. Mobile uses the same server check (no new build needed for this fix); not yet tested on device. |
+
+## 2026-11-27 — My Style: customer-profile Phase 1 (results visible)
+
+| Area | Change |
+|---|---|
+| Why | Prod had 8 successful photo reads and a saved profile, but the shopper saw one sentence and colour names (`docs/tasks/pending/customer-profile-research.md` R1-R11). |
+| Result screen | After a selfie read the sheet fetches the saved profile and shows: photo preview (object URL of the prepared JPEG, page memory only, revoked on retake/close), swatches Best (first 4 of the admin-ordered good list) / Good / Go easy, a plain "why" that never names the undertone, depth or frame, and Shop my colours / Retake / Delete. PaletteCard reuses the same swatches and gains Shop my colours. |
+| Swatches | `color_families` has no hex column, so `colorFamilySwatch()` + a static map live in `packages/shared/src/color-family.ts` (multi = gradient, unknown = neutral). A DB `hex` column is a later migration. |
+| API | `GET /v1/public/my-style/profile` (RC-185); `loadPalette()` extracted from the candidate loader; feed `palette_only` keeps only the palette's good families (`meta.palette_only` true only when it applied). No migration, no new AI call, photo path untouched. |
+| Copy | Tile "My colours / Face photo, shades that suit you"; capture "A clear face photo is all we need"; each failed read reason = message + one-line fix; selfie failures add a 4-tip "A good photo" list. No model reasons added. |
+| Local runs | shared 279/279, API 262 files passed (3 skipped), web 815/815 (StyleQuiz "PATCHes the raw answers" timed out once at 5 s under load, untouched, 3/3 green alone); tsc 0 for shared/api/web; Biome whole repo clean. |
+| Not done | Not device/browser-tested, not merged. Phase 2+ waits on owner D1-D7. |

@@ -9,6 +9,7 @@ import {
   type MyStyleProfile,
   parseGarmentDescriptor,
 } from '@kanchuki/shared';
+import type { Measurements, StyleProfile, TasteSummary } from './lib';
 
 const BASE = '/api/my-style';
 // Matches the server-side downscale, so the upload is never bigger than the model sees.
@@ -130,22 +131,51 @@ export async function startAnalysis(
   }
 }
 
-const FAILED: Record<string, string> = {
-  no_person: "We couldn't see a person in that photo. Please stand in the frame and try again.",
-  face_not_clear: "We couldn't see your face clearly. Face the light and try again.",
-  multiple_people: 'Please take a photo with only you in it and try again.',
-  too_dark: 'That photo is too dark. Please use better light and try again.',
-  no_garment: "We couldn't see a clothing item in that photo. Try a clearer picture of one piece.",
-  blurry: 'That photo is too blurry. Please try a sharper one.',
-  multiple_garments: 'That photo has several pieces in it. Please pick one with a single piece.',
-  read_failed: 'We could not read that photo. Please try again.',
-  expired: 'That took too long and the photo was dropped. Please try again.',
+// What went wrong (`message`) and what to do about it (`fix`), one line each (Phase 1). Selfie
+// copy asks for a face photo only: the read gives colours, never measurements.
+const FAILED: Record<string, { message: string; fix: string }> = {
+  no_person: {
+    message: "We couldn't see a person in that photo.",
+    fix: "Hold the phone at arm's length so your face fills most of the frame.",
+  },
+  face_not_clear: {
+    message: "We couldn't see your face clearly.",
+    fix: 'Face a window or a light, keep hair off your face and take off sunglasses.',
+  },
+  multiple_people: {
+    message: 'There is more than one person in that photo.',
+    fix: 'Take a photo with only you in it, or crop the others out first.',
+  },
+  too_dark: {
+    message: 'That photo is too dark.',
+    fix: 'Move near a window in daylight, or turn on a bright light.',
+  },
+  no_garment: {
+    message: "We couldn't see a clothing item in that photo.",
+    fix: 'Lay the piece flat or hang it up, and fill the frame with it.',
+  },
+  blurry: {
+    message: 'That photo is too blurry.',
+    fix: 'Hold still, tap the screen to focus, and wipe the camera lens.',
+  },
+  multiple_garments: {
+    message: 'That photo has several pieces in it.',
+    fix: 'Crop the photo to the one piece you like.',
+  },
+  read_failed: {
+    message: 'We could not read that photo.',
+    fix: 'Try another photo: daylight, facing the camera, no beauty filter.',
+  },
+  expired: {
+    message: 'That took too long and the photo was dropped.',
+    fix: 'Check your connection and try once more.',
+  },
 };
 
 export type PollResult =
   | { kind: 'processing' }
   | { kind: 'ready'; profile?: MyStyleProfile; garment?: GarmentDescriptor }
-  | { kind: 'failed'; message: string }
+  | { kind: 'failed'; message: string; fix?: string }
   | { kind: 'unauthorized' }
   | { kind: 'gone' }
   | { kind: 'error' }
@@ -180,10 +210,8 @@ export async function pollAnalysis(
       return d.profile ? { kind: 'ready', profile: d.profile } : { kind: 'error' };
     }
     if (d?.status === 'failed') {
-      return {
-        kind: 'failed',
-        message: FAILED[d.reason ?? ''] ?? 'We could not read that photo. Please try again.',
-      };
+      const f = FAILED[d.reason ?? ''] ?? FAILED.read_failed;
+      return { kind: 'failed', message: f.message, fix: f.fix };
     }
     if (d?.status === 'cancelled') {
       return {
@@ -194,6 +222,33 @@ export async function pollAnalysis(
     return { kind: 'error' };
   } catch (e) {
     return isAbort(e) && signal?.aborted ? { kind: 'aborted' } : { kind: 'error' };
+  }
+}
+
+export type ProfileResult =
+  | {
+      kind: 'ok';
+      data: {
+        style_profile: StyleProfile | null;
+        measurements: Measurements | null;
+        taste: TasteSummary | null;
+      };
+    }
+  | { kind: 'unauthorized' }
+  | { kind: 'error' };
+
+/** The saved palette, measurements and taste, read on their own so they never wait on the feed. */
+export async function fetchProfile(signal?: AbortSignal): Promise<ProfileResult> {
+  try {
+    const res = await timedFetch(`${BASE}/profile`, { method: 'GET' }, POLL_TIMEOUT_MS, signal);
+    if (res.status === 401) return { kind: 'unauthorized' };
+    if (!res.ok) return { kind: 'error' };
+    const json = (await res.json().catch(() => null)) as {
+      data?: Extract<ProfileResult, { kind: 'ok' }>['data'];
+    } | null;
+    return json?.data ? { kind: 'ok', data: json.data } : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
   }
 }
 

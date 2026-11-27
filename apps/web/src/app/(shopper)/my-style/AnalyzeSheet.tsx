@@ -11,11 +11,36 @@ import { Sheet } from '@/components/Sheet';
 // (RC-065/RC-006). The submit guard is a ref, not state, because two events can land
 // before React commits (RC-015). Polling is capped and stops on unmount.
 import { type GarmentDescriptor, MY_STYLE_CONSENT } from '@kanchuki/shared';
-import { Camera, ImageIcon, Loader2, ShieldCheck, X } from 'lucide-react';
+import {
+  Camera,
+  ImageIcon,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+  ShoppingBag,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { BTN_PRIMARY, BTN_SECONDARY } from '../ui';
-import { type AnalyzeMode, pollAnalysis, prepareUpload, startAnalysis } from './analyze';
-import { LOGIN_HREF } from './lib';
+import { PaletteSwatches } from './ColourResult';
+import {
+  type AnalyzeMode,
+  clearProfile,
+  fetchProfile,
+  pollAnalysis,
+  prepareUpload,
+  startAnalysis,
+} from './analyze';
+import { LOGIN_HREF, type StyleProfile } from './lib';
+
+// Shown under a failed selfie read (not under quota/network errors: a better photo would not help).
+const PHOTO_TIPS = [
+  'Daylight, facing a window',
+  'Only you, your face filling most of the frame',
+  'No beauty filter, sunglasses or heavy makeup',
+  'Hair off your face, camera at eye level',
+];
 
 type Step = 'consent' | 'capture' | 'processing' | 'done' | 'error' | 'signin';
 
@@ -31,15 +56,28 @@ const quiet =
 export function AnalyzeSheet({
   onClose,
   onDone,
+  onShop,
+  onCleared,
   mode = 'selfie',
 }: {
   onClose: () => void;
   onDone: (garment?: GarmentDescriptor) => void;
+  /** Result screen "Shop my colours": the page filters the feed to the palette. */
+  onShop?: () => void;
+  /** Result screen "Delete": the server confirmed the profile is gone. */
+  onCleared?: () => void;
   mode?: AnalyzeMode;
 }) {
   const garment = mode === 'garment';
   const [step, setStep] = useState<Step>('consent');
   const [message, setMessage] = useState('');
+  const [fix, setFix] = useState('');
+  // The saved palette for the result screen; null = show the plain "ready" fallback.
+  const [result, setResult] = useState<StyleProfile | null>(null);
+  // Preview of the photo just read: a local object URL of the prepared JPEG, held in page memory
+  // only. Never uploaded again or stored; revoked on retake and on close.
+  const [preview, setPreview] = useState<string | null>(null);
+  const [deleteState, setDeleteState] = useState<'idle' | 'busy' | 'error'>('idle');
   const busyRef = useRef(false);
   const stoppedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -57,10 +95,47 @@ export function AnalyzeSheet({
     };
   }, []);
 
-  const fail = (msg: string) => {
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL?.(preview);
+    },
+    [preview],
+  );
+
+  const fail = (msg: string, fixLine = '') => {
     busyRef.current = false;
     setMessage(msg);
+    setFix(fixLine);
     setStep('error');
+  };
+
+  // A ready poll carries enums only; the palette comes from the saved profile.
+  const finishSelfie = async () => {
+    const r = await fetchProfile(ctrlRef.current?.signal);
+    if (stoppedRef.current) return;
+    const saved = r.kind === 'ok' ? r.data.style_profile : null;
+    setResult(saved?.palette ? saved : null);
+    busyRef.current = false;
+    setStep('done');
+  };
+
+  const retake = () => {
+    setPreview(null); // the effect cleanup revokes the old URL
+    setResult(null);
+    setDeleteState('idle');
+    busyRef.current = false;
+    setStep('capture');
+  };
+
+  const remove = async () => {
+    if (deleteState === 'busy') return;
+    setDeleteState('busy');
+    const r = await clearProfile();
+    if (stoppedRef.current) return;
+    if (r === 'ok') {
+      onCleared?.();
+      onClose();
+    } else setDeleteState('error');
   };
 
   const pollLater = (jobId: string, n: number) => {
@@ -68,10 +143,12 @@ export function AnalyzeSheet({
       const r = await pollAnalysis(jobId, ctrlRef.current?.signal, mode);
       if (stoppedRef.current) return;
       if (r.kind === 'ready') {
-        busyRef.current = false;
-        setStep('done');
         onDone(r.garment);
-      } else if (r.kind === 'failed') fail(r.message);
+        if (garment) {
+          busyRef.current = false;
+          setStep('done');
+        } else void finishSelfie();
+      } else if (r.kind === 'failed') fail(r.message, r.fix);
       else if (r.kind === 'unauthorized') setStep('signin');
       else if (r.kind === 'gone') fail('This photo is no longer available. Please try again.');
       else if (r.kind === 'aborted') return;
@@ -98,6 +175,9 @@ export function AnalyzeSheet({
         );
       }
       return;
+    }
+    if (!garment && typeof URL.createObjectURL === 'function') {
+      setPreview(URL.createObjectURL(photo));
     }
     const r = await startAnalysis(photo, ctrlRef.current?.signal, mode);
     if (stoppedRef.current || r.kind === 'aborted') return;
@@ -183,7 +263,7 @@ export function AnalyzeSheet({
           <p className="text-xs text-heliotrope-500 mb-5">
             {garment
               ? 'A screenshot or a photo of one piece works. It is read once and thrown away. We keep nothing from it.'
-              : 'Face the light, only you in the frame. A full-body photo works best.'}
+              : 'A clear face photo is all we need. Face a window or a light, with only you in the frame.'}
           </p>
           <label className={`${btn} inline-flex items-center justify-center gap-2 cursor-pointer`}>
             <Camera size={16} />
@@ -254,17 +334,26 @@ export function AnalyzeSheet({
 
       {step === 'error' && (
         <div className="text-center py-2">
-          <p role="alert" className="text-sm font-semibold text-spaceCadet-900 py-4">
+          <p role="alert" className="text-sm font-semibold text-spaceCadet-900 pt-4">
             {message}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              busyRef.current = false;
-              setStep('capture');
-            }}
-            className={btn}
-          >
+          {fix && <p className="text-sm text-spaceCadet-900 mt-1">{fix}</p>}
+          {fix && !garment && (
+            <div className="text-left mt-4 p-3 rounded-2xl bg-lavender-50 border border-lavender-100">
+              <p id="good-photo-tips" className="text-xs font-semibold text-spaceCadet-900">
+                A good photo
+              </p>
+              <ul
+                aria-labelledby="good-photo-tips"
+                className="mt-1 list-disc pl-4 text-xs text-heliotrope-500 space-y-0.5"
+              >
+                {PHOTO_TIPS.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <button type="button" onClick={retake} className={`${btn} mt-5`}>
             Try again
           </button>
           <button type="button" onClick={onClose} className={quiet}>
@@ -273,7 +362,65 @@ export function AnalyzeSheet({
         </div>
       )}
 
-      {step === 'done' && (
+      {step === 'done' && !garment && result?.palette && (
+        <div>
+          <div className="flex items-center gap-3">
+            {preview && (
+              <img
+                src={preview}
+                alt="Your selfie, kept on this screen only"
+                className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-1 ring-lavender-200"
+              />
+            )}
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-spaceCadet-900">Your colours are ready</h2>
+              <p className="text-xs text-heliotrope-500 mt-0.5">
+                Your photo was not kept. This preview goes when you close this.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <PaletteSwatches undertone={result.undertone} palette={result.palette} />
+          </div>
+          <p className="text-xs text-heliotrope-500 mt-4">
+            Results depend on the light in your photo, so you can retake it any time.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              onShop?.();
+              onClose();
+            }}
+            className={`${btn} mt-4`}
+          >
+            <ShoppingBag aria-hidden className="h-4 w-4" />
+            Shop my colours
+          </button>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <button type="button" onClick={retake} className={BTN_SECONDARY}>
+              <RotateCcw aria-hidden className="h-4 w-4 text-heliotrope-500" />
+              Retake
+            </button>
+            <button
+              type="button"
+              onClick={() => void remove()}
+              disabled={deleteState === 'busy'}
+              className={BTN_SECONDARY.replace('text-spaceCadet-900', 'text-red-700')}
+            >
+              <Trash2 aria-hidden className="h-4 w-4" />
+              Delete
+            </button>
+          </div>
+          {deleteState === 'error' && (
+            <p role="alert" className="text-xs text-red-700 mt-3">
+              We could not delete your colours. Please try again.
+            </p>
+          )}
+          <ReportAiContent feature="My Style selfie analysis" className="mt-3" />
+        </div>
+      )}
+
+      {step === 'done' && (garment || !result?.palette) && (
         <div className="text-center py-4">
           <p className="text-sm font-semibold text-spaceCadet-900">
             {garment ? 'Showing pieces like this' : 'Your palette is ready'}

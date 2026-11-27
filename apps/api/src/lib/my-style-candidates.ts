@@ -59,19 +59,22 @@ export const kidsWhere = (who?: 'Girl' | 'Boy'): Prisma.ProductWhereInput => ({
   ],
 });
 
+/** The active palette for a saved photo read; null without one (no lookup). Feed + profile share it. */
+export async function loadPalette(undertone: string | null, depth: string | null) {
+  if (!undertone || !depth) return null;
+  return prisma.stylePalette.findFirst({
+    where: { undertone, depth, is_active: true },
+    orderBy: { version: 'desc' },
+    select: { good_families: true, avoid_families: true },
+  });
+}
+
 export async function loadMyStyleCandidates(q: CandidateQuery) {
   const { origin, city, radiusKm, budgetMax, size } = q;
   const locationScope = origin ? 'radius' : city ? 'city' : 'nationwide';
   const box = origin ? getBoundingBox(origin.lat, origin.lng, radiusKm) : null;
 
-  const palette =
-    q.undertone && q.depth
-      ? await prisma.stylePalette.findFirst({
-          where: { undertone: q.undertone, depth: q.depth, is_active: true },
-          orderBy: { version: 'desc' },
-          select: { good_families: true, avoid_families: true },
-        })
-      : null;
+  const palette = await loadPalette(q.undertone, q.depth);
 
   const rows = await prisma.product.findMany({
     where: {

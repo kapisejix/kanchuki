@@ -16,10 +16,14 @@ vi.mock('../AnalyzeSheet', () => ({
   AnalyzeSheet: ({
     onClose,
     onDone,
+    onShop,
+    onCleared,
     mode,
   }: {
     onClose: () => void;
     onDone: (g?: unknown) => void;
+    onShop?: () => void;
+    onCleared?: () => void;
     mode?: string;
   }) => (
     // biome-ignore lint/a11y/useSemanticElements: test stub mirrors the real sheet's role="dialog" so getByRole queries match
@@ -30,13 +34,23 @@ vi.mock('../AnalyzeSheet', () => ({
       <button type="button" onClick={() => onDone(GARMENT)}>
         stub-done-garment
       </button>
+      <button type="button" onClick={() => onShop?.()}>
+        stub-shop
+      </button>
+      <button type="button" onClick={() => onCleared?.()}>
+        stub-cleared
+      </button>
       <button type="button" onClick={onClose}>
         stub-close
       </button>
     </div>
   ),
 }));
-vi.mock('../analyze', () => ({ clearProfile: vi.fn() }));
+// fetchProfile stays real (it goes through the fetch double); only the clear call is doubled.
+vi.mock('../analyze', async (orig) => ({
+  ...(await orig<typeof import('../analyze')>()),
+  clearProfile: vi.fn(),
+}));
 const clear = vi.mocked(clearProfile);
 
 const fetchMock = vi.fn();
@@ -78,62 +92,139 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The page reads two things: POST /feed and GET /profile (Phase 1, R3). The double answers by URL.
+const feedCalls = () =>
+  fetchMock.mock.calls.filter(([url]) => String(url).includes('/my-style/feed'));
+const profileCalls = () =>
+  fetchMock.mock.calls.filter(([url]) => String(url).includes('/my-style/profile'));
+function serve(opts: { profile?: () => unknown; feed?: () => Response } = {}) {
+  fetchMock.mockImplementation(async (url: string) =>
+    String(url).includes('/my-style/profile')
+      ? new Response(
+          JSON.stringify({
+            data: { style_profile: opts.profile?.() ?? null, measurements: null, taste: null },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      : (opts.feed?.() ?? feed()),
+  );
+}
+const lastFeedBody = () => JSON.parse(feedCalls().at(-1)![1].body as string);
+
 describe('selfie entry', () => {
-  it('has a "Selfie / full body" start card that opens the sheet', async () => {
-    fetchMock.mockImplementation(async () => feed());
+  it('has a "My colours" face-photo start card (no full-body wording) that opens the sheet', async () => {
+    serve();
     render(<MyStylePage />);
     expect(screen.queryByRole('dialog')).toBeNull();
-    fireEvent.click(await screen.findByRole('button', { name: /selfie \/ full body/i }));
+    const tile = await screen.findByRole('button', { name: /^my colours/i });
+    expect(tile.textContent).toMatch(/face photo/i);
+    expect(document.body.textContent).not.toMatch(/full.body/i);
+    fireEvent.click(tile);
     expect(screen.getByRole('dialog')).toBeTruthy();
     fireEvent.click(screen.getByText('stub-close'));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('no palette card until a photo has been read', async () => {
-    fetchMock.mockImplementation(async () => feed(null));
+    serve();
     render(<MyStylePage />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() => expect(profileCalls()).toHaveLength(1));
     expect(screen.queryByText('Your palette')).toBeNull();
   });
 
-  it('shows the palette card from the feed meta, with colours only', async () => {
-    fetchMock.mockImplementation(async () => feed(profile));
+  it('shows the palette card from the profile read, with colours only', async () => {
+    serve({ profile: () => profile });
     render(<MyStylePage />);
     expect(await screen.findByText('Your palette')).toBeTruthy();
     expect(screen.getByText('maroon')).toBeTruthy();
     expect(screen.getByText('yellow')).toBeTruthy();
   });
 
-  it('a finished read refetches the feed so the palette appears', async () => {
-    fetchMock.mockImplementationOnce(async () => feed(null));
-    fetchMock.mockImplementation(async () => feed(profile));
+  it('R3: the palette card still shows when the feed fails', async () => {
+    serve({ profile: () => profile, feed: () => new Response('{}', { status: 500 }) });
     render(<MyStylePage />);
-    fireEvent.click(await screen.findByRole('button', { name: /selfie \/ full body/i }));
+    expect(await screen.findByText('We could not load your feed.')).toBeTruthy();
+    expect(await screen.findByText('Your palette')).toBeTruthy();
+  });
+
+  it('a finished read re-reads the profile so the palette appears', async () => {
+    let saved: unknown = null;
+    serve({ profile: () => saved });
+    render(<MyStylePage />);
+    fireEvent.click(await screen.findByRole('button', { name: /^my colours/i }));
+    saved = profile;
     fireEvent.click(screen.getByText('stub-done'));
     expect(await screen.findByText('Your palette')).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(feedCalls()).toHaveLength(2);
   });
 
   it('Retake reopens the sheet', async () => {
-    fetchMock.mockImplementation(async () => feed(profile));
+    serve({ profile: () => profile });
     render(<MyStylePage />);
     fireEvent.click(await screen.findByRole('button', { name: /retake/i }));
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 
-  it('Clear my data refetches the feed and the card goes away', async () => {
+  it('Clear my data re-reads and the card goes away', async () => {
     clear.mockResolvedValue('ok');
-    fetchMock.mockImplementationOnce(async () => feed(profile));
-    fetchMock.mockImplementation(async () => feed(null));
+    let saved: unknown = profile;
+    serve({ profile: () => saved });
     render(<MyStylePage />);
-    fireEvent.click(await screen.findByRole('button', { name: /clear my data/i }));
+    const btn = await screen.findByRole('button', { name: /clear my data/i });
+    saved = null;
+    fireEvent.click(btn);
     await waitFor(() => expect(screen.queryByText('Your palette')).toBeNull());
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(feedCalls()).toHaveLength(2);
   });
 });
 
-const bodyOf = (call: number) => JSON.parse(fetchMock.mock.calls[call]![1].body as string);
-const lastBody = () => bodyOf(fetchMock.mock.calls.length - 1);
+// "Shop my colours" (result screen or palette card): the feed keeps only the palette's shades.
+describe('shop my colours', () => {
+  it('from the result screen: refetches with palette_only and says so; Show all turns it off', async () => {
+    serve({
+      profile: () => profile,
+      feed: () =>
+        new Response(
+          JSON.stringify({
+            data: [],
+            meta: { total: 0, page: 1, limit: 12, location_scope: 'city', palette_only: true },
+          }),
+          { status: 200 },
+        ),
+    });
+    render(<MyStylePage />);
+    fireEvent.click(await screen.findByRole('button', { name: /^my colours/i }));
+    fireEvent.click(screen.getByText('stub-shop'));
+    await waitFor(() => expect(lastFeedBody().palette_only).toBe(true));
+    expect(await screen.findByText(/showing your colours/i)).toBeTruthy();
+    fireEvent.click(screen.getByText('stub-close'));
+    fireEvent.click(screen.getByRole('button', { name: /show all colours/i }));
+    await waitFor(() => expect(lastFeedBody().palette_only).toBeUndefined());
+  });
+
+  it('from the palette card', async () => {
+    serve({ profile: () => profile });
+    render(<MyStylePage />);
+    fireEvent.click(await screen.findByRole('button', { name: /shop my colours/i }));
+    await waitFor(() => expect(lastFeedBody().palette_only).toBe(true));
+  });
+
+  it('the result screen Delete drops the filter and the card', async () => {
+    let saved: unknown = profile;
+    serve({ profile: () => saved });
+    render(<MyStylePage />);
+    await screen.findByText('Your palette');
+    fireEvent.click(screen.getByRole('button', { name: /^my colours/i }));
+    fireEvent.click(screen.getByText('stub-shop'));
+    saved = null;
+    fireEvent.click(screen.getByText('stub-cleared'));
+    await waitFor(() => expect(screen.queryByText('Your palette')).toBeNull());
+    expect(lastFeedBody().palette_only).toBeUndefined();
+  });
+});
+
+const bodyOf = (call: number) => JSON.parse(feedCalls()[call]![1].body as string);
+const lastBody = () => bodyOf(feedCalls().length - 1);
 const LABEL = 'yellow Kurti, Printed, Zari Work';
 
 describe('find similar entry', () => {
@@ -151,7 +242,7 @@ describe('find similar entry', () => {
     fireEvent.click(await screen.findByRole('button', { name: /find similar/i }));
     fireEvent.click(screen.getByText('stub-done-garment'));
     expect(await screen.findByText(LABEL)).toBeTruthy();
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(feedCalls()).toHaveLength(2));
     expect(bodyOf(1).similar).toEqual(GARMENT);
   });
 
@@ -191,9 +282,9 @@ describe('find similar entry', () => {
   it('a selfie read does not set a descriptor', async () => {
     fetchMock.mockImplementation(async () => feed());
     render(<MyStylePage />);
-    fireEvent.click(await screen.findByRole('button', { name: /selfie \/ full body/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^my colours/i }));
     fireEvent.click(screen.getByText('stub-done'));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(feedCalls()).toHaveLength(2));
     expect(bodyOf(1).similar).toBeUndefined();
     expect(screen.queryByText(/Looking for/)).toBeNull();
   });

@@ -148,3 +148,42 @@ export function normalizeColorFamily(
   }
   return found.size === 1 ? (Array.from(found)[0] ?? null) : null;
 }
+
+// ponytail: static shades because color_families has no hex column (migration 133). Upgrade
+// path: a `hex` column on color_families (later migration) so admin-added families get a real
+// shade; until then an unknown family shows UNKNOWN_SWATCH. Representative mid-tones, picked
+// to read as the family name on a phone screen; not a stylist-reviewed set.
+const COLOR_FAMILY_HEX: Readonly<Record<string, string>> = {
+  red: '#C62828',
+  maroon: '#7B1E2B',
+  pink: '#F4A6C0',
+  magenta: '#C2185B',
+  peach: '#F7A97E',
+  orange: '#E8742A',
+  yellow: '#E8B92F',
+  green: '#2E8B57',
+  olive: '#7A7A2E',
+  teal: '#11807F',
+  blue: '#2F6FD0',
+  navy: '#1F2A56',
+  purple: '#6E3FA3',
+  brown: '#7B4A2A',
+  beige: '#D9C3A0',
+  cream: '#F3E9D2',
+  white: '#FFFFFF',
+  black: '#1A1A1A',
+  grey: '#8A8A8A',
+  gold: '#C9A23F',
+  silver: '#C0C4C8',
+};
+
+export const UNKNOWN_SWATCH = '#D4D4D4';
+
+/** CSS background for a colour family swatch: a hex, a gradient for 'multi', neutral if unknown. */
+export function colorFamilySwatch(name: string): string {
+  const n = cleanColorTerm(name);
+  if (n === 'multi') {
+    return 'conic-gradient(#C62828, #E8B92F, #2E8B57, #2F6FD0, #6E3FA3, #C62828)';
+  }
+  return COLOR_FAMILY_HEX[n] ?? UNKNOWN_SWATCH;
+}

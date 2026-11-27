@@ -12,6 +12,14 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-185 — My Style hid a saved palette whenever the feed failed
+
+- **Component:** `apps/web/src/app/(shopper)/my-style/page.tsx`, `apps/api/src/routes/public/public-my-style.ts`.
+- **Symptom:** found in the 2026-11-26 customer-profile research (R3). A shopper whose photo read had succeeded saw only "We could not load your feed." and no palette, measurements or taste card when the feed request was slow or failed.
+- **Root cause:** the three cards were filled only from the feed's `meta`, and only on `r.kind === 'ok'`. One request carried two unrelated things, so the profile failed with the feed.
+- **Fix:** `GET /v1/public/my-style/profile` (passport session, `private, no-store`, same 401 body as the feed, no product query) built by one `savedProfile()` that the feed meta also uses, so the two can never differ. The page reads it in its own effect on mount and after each change (photo read, clear, quiz, measurements). Web proxy allowlist += `profile` (GET only).
+- **Proof:** `public-my-style.test.ts` (GET /profile 401/200/nulls), `page-analyze.test.tsx` "R3: the palette card still shows when the feed fails", proxy `route.test.ts`. **Limits:** local tests only; not device-tested; a failed profile read keeps what is on screen and shows no message.
+
 ## RC-184 — Deleting an account left its Razorpay subscription live, and self-delete logged the phone
 
 - **Component:** `apps/api/src/lib/retailer-delete-prep.ts`, `routes/retailers/retailers-settings.ts`, `routes/admin/admin-retailers/admin-retailers-list.ts`, `jobs/purge-soft-deleted.ts`.

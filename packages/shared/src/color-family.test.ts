@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_COLOR_FAMILIES, normalizeColorFamily } from './color-family.js';
+import {
+  DEFAULT_COLOR_FAMILIES,
+  UNKNOWN_SWATCH,
+  colorFamilySwatch,
+  normalizeColorFamily,
+} from './color-family.js';
 
 const norm = (v: string | null | undefined) => normalizeColorFamily(v, DEFAULT_COLOR_FAMILIES);
 
@@ -107,5 +112,24 @@ describe('DEFAULT_COLOR_FAMILIES — parity with migration 133', () => {
 
   it('is exactly the seed: same families, same aliases, same order', () => {
     expect(DEFAULT_COLOR_FAMILIES).toEqual(seeded);
+  });
+});
+
+// Phase 1 result screen: swatches. color_families has no hex column (migration 133), so the
+// shades live here until a DB column is added (later migration).
+describe('colorFamilySwatch', () => {
+  it('gives every seeded family a real #RRGGBB shade', () => {
+    for (const f of DEFAULT_COLOR_FAMILIES.filter((x) => x.name !== 'multi')) {
+      expect(colorFamilySwatch(f.name), f.name).toMatch(/^#[0-9A-F]{6}$/);
+    }
+  });
+
+  it('draws multi as a gradient, not one flat colour', () => {
+    expect(colorFamilySwatch('multi')).toMatch(/^conic-gradient\(/);
+  });
+
+  it('is case-insensitive and gives an unknown (admin-added) family a neutral shade, never throws', () => {
+    expect(colorFamilySwatch('Red')).toBe(colorFamilySwatch('red'));
+    expect(colorFamilySwatch('saffron-new')).toBe(UNKNOWN_SWATCH);
   });
 });

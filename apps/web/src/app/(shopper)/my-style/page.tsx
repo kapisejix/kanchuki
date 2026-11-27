@@ -26,6 +26,7 @@ import {
   Globe2,
   LocateFixed,
   MapPin,
+  Palette,
   ScanSearch,
   SearchX,
   SlidersHorizontal,
@@ -55,7 +56,7 @@ import { PaletteCard } from './PaletteCard';
 import { ShortlistBar, useEnquiry } from './ShortlistBar';
 import { StyleCard } from './StyleCard';
 import { TasteCard } from './TasteCard';
-import type { AnalyzeMode } from './analyze';
+import { type AnalyzeMode, fetchProfile } from './analyze';
 import {
   type FeedCard,
   type FeedMeta,
@@ -137,7 +138,9 @@ export default function MyStylePage() {
   // Find similar: the garment description, kept in page state only and sent with each feed
   // request. Nothing is stored; a reload clears it.
   const [similar, setSimilar] = useState<GarmentDescriptor | null>(null);
-  // Kept across refetches so the palette card does not flash away while the feed reloads.
+  // "Shop my colours": the feed keeps only the saved palette's good shades. Page state only.
+  const [paletteOnly, setPaletteOnly] = useState(false);
+  // Read from GET /profile on their own (research R3), so a failed feed never hides them.
   const [styleProfile, setStyleProfile] = useState<StyleProfile | null>(null);
   const [measurements, setMeasurements] = useState<Measurements | null>(null);
   const [kids, setKids] = useState<{ who: string; age: string } | null>(null);
@@ -232,15 +235,13 @@ export default function MyStylePage() {
             : {}),
         ...(where ? { ...where, radius_km: radius } : {}),
         ...(similar ? { similar } : {}),
+        ...(paletteOnly ? { palette_only: true } : {}),
       },
       ctrl.signal,
     )
       .then((r) => {
         setView(r);
         if (r.kind === 'ok') {
-          setStyleProfile(r.meta.style_profile ?? null);
-          setMeasurements(r.meta.measurements ?? null);
-          setTaste(r.meta.taste ?? null);
           setTabs(r.meta.tabs);
           // The tab just lost its data (festival ended, trend retired): fall back to the feed.
           const t = r.meta.tabs;
@@ -255,7 +256,49 @@ export default function MyStylePage() {
         if (!ctrl.signal.aborted) setView({ kind: 'error' });
       });
     return () => ctrl.abort();
-  }, [sort, tab, tabOccasion, page, budget, size, occasion, kids, where, radius, similar, nonce]);
+  }, [
+    sort,
+    tab,
+    tabOccasion,
+    page,
+    budget,
+    size,
+    occasion,
+    kids,
+    where,
+    radius,
+    similar,
+    paletteOnly,
+    nonce,
+  ]);
+
+  // The saved palette / measurements / quiz answers. A failed read keeps what is on screen (the
+  // cards are not blanked by a blip); the feed's own error notice is separate.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is a refetch trigger (photo read, clear, quiz, measurements)
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void fetchProfile(ctrl.signal).then((r) => {
+      if (r.kind !== 'ok' || ctrl.signal.aborted) return;
+      setStyleProfile(r.data.style_profile ?? null);
+      setMeasurements(r.data.measurements ?? null);
+      setTaste(r.data.taste ?? null);
+    });
+    return () => ctrl.abort();
+  }, [nonce]);
+
+  function shopMyColours() {
+    setPaletteOnly(true);
+    setSimilar(null);
+    setTab('foryou');
+    setPage(1);
+    window.scrollTo(0, 0);
+  }
+
+  function profileCleared() {
+    setStyleProfile(null);
+    setPaletteOnly(false);
+    setNonce((n) => n + 1);
+  }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: nonce is a refetch trigger (bumped on retry)
   useEffect(() => {
@@ -404,7 +447,7 @@ export default function MyStylePage() {
         <div className="grid grid-cols-2 gap-2 mt-4">
           {(
             [
-              ['selfie', Camera, 'Selfie / full body', 'Colours that suit you'],
+              ['selfie', Camera, 'My colours', 'Face photo, shades that suit you'],
               ['garment', ScanSearch, 'Find similar', 'Match a photo'],
             ] as const
           ).map(([mode, Icon, label, hint]) => (
@@ -512,11 +555,29 @@ export default function MyStylePage() {
         <PaletteCard
           profile={styleProfile}
           onRetake={() => setAnalyzeMode('selfie')}
-          onCleared={() => {
-            setStyleProfile(null);
-            setNonce((n) => n + 1);
-          }}
+          onShop={shopMyColours}
+          onCleared={profileCleared}
         />
+      )}
+
+      {paletteOnly && styleProfile?.palette && (
+        <div className={`${CARD} p-4 flex items-start gap-3`}>
+          <IconTile icon={Palette} />
+          <p className="min-w-0 flex-1 pt-1.5 text-sm text-heliotrope-500">
+            Showing your colours only.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setPaletteOnly(false);
+              setPage(1);
+            }}
+            className={`${BTN_TEXT} shrink-0 -my-1`}
+          >
+            <X aria-hidden className="h-4 w-4" />
+            Show all colours
+          </button>
+        </div>
       )}
 
       {/* key: re-seed the fields from the server after a save or a "Clear my data". */}
@@ -750,6 +811,8 @@ export default function MyStylePage() {
         <AnalyzeSheet
           mode={analyzeMode}
           onClose={() => setAnalyzeMode(null)}
+          onShop={shopMyColours}
+          onCleared={profileCleared}
           onDone={(garment) => {
             if (garment) {
               setSimilar(garment);
@@ -829,11 +892,13 @@ function Results({
         <p>
           {meta.similar
             ? 'No close match nearby. Try a wider distance, or another photo.'
-            : tab === 'festival'
-              ? 'No festival pieces near you yet. Try a wider distance.'
-              : tab === 'trending'
-                ? 'Nothing trending near you right now. Try a wider distance.'
-                : 'No matches yet. Try a wider budget or distance, or take the quick quiz.'}
+            : meta.palette_only
+              ? 'Nothing in your colours near you yet. Try a wider distance, or show all colours.'
+              : tab === 'festival'
+                ? 'No festival pieces near you yet. Try a wider distance.'
+                : tab === 'trending'
+                  ? 'Nothing trending near you right now. Try a wider distance.'
+                  : 'No matches yet. Try a wider budget or distance, or take the quick quiz.'}
         </p>
       </Notice>
     );
