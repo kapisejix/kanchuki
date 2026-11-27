@@ -625,7 +625,8 @@ export default function MyStylePage() {
 
       {/* key: re-seed the fields from the server after a save or a "Clear my data". */}
       <MeasurementsCard
-        key={measurements?.saved_at ?? 'none'}
+        // B2: a usual size saves without a measurements time, so it is part of the key too.
+        key={`${measurements?.saved_at ?? 'none'}:${measurements?.usual_size ?? ''}`}
         initial={measurements}
         onSaved={() => setNonce((n) => n + 1)}
         sizeMatches={view.kind === 'ok' ? (view.meta.size_matches ?? null) : null}
