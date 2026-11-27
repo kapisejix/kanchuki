@@ -1024,3 +1024,22 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Review | Whole-branch review (Opus): 1 Important fixed (card key ignored `usual_size` → stale picker after reload / clear; 2 page tests RED→GREEN). Deferred minors: ft/in height range message rounds limits to values it then rejects (3 ft 3 in / 7 ft 3 in); blanking an inch field keeps the old number (pre-existing). Noted, not in scope: analysis job compensation on an expired job record also clears measurements + usual size. |
 | Local runs | typecheck 9/9; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`; API 3629 passed; mobile 735; ai 214; db 25; shared 319/320 (1 = RC-190, PR #370); web parallel run timeouts only, sequential + per-file all green (shopper 312/312). GitHub Actions blocked by billing. |
 | Not done | Not pushed, not device-tested (B2/B3/B5 on Android Chrome + iOS Safari with owner). |
+## 2026-11-27 — RC-191: retailer "Add product" 500 (device test A1)
+
+| Area | Change |
+|---|---|
+| Why | Device test A1: Add product → Save → `ApiError: Something went wrong`. Railway API logs (2026-11-27 12:45:39Z / 12:46:29Z, with and without a size chart): `PrismaClientValidationError ... Unknown argument photo_url`. Since `dbb389bb` (2026-10-22, server-side upload verification) the handler no longer destructured the client `photo_url`, so it stayed in `...rest` and reached `prisma.product.create`. Every product create from the app failed for ~5 weeks; route tests mock Prisma, so its validator never ran. |
+| Fix | `products-crud.ts` POST: destructure `photo_url` out (unused; the URL is rebuilt from the verified key, as before). Branch `fix/product-create-photo-url` off `origin/main`. |
+| Tests | `products-size-chart.test.ts`: create data has no `photo_url` / `photo_r2_key` (red before, green after). |
+| Migrations | None. |
+| Local runs | typecheck 9/9; Biome: 1 error in `apps/mobile/expo-env.d.ts` only (gitignored, Expo-generated, not in the repo). Serial test runs: API 3614 passed (12 skipped), web 896/896, ai 214/214, mobile 735/735, db green; shared 315/316 = the known RC-190 weights red (fixed on PR #370, not merged). Parallel run timed out ~65 web tests under load; all pass serially. |
+| Not done | Not merged, not device-tested (re-run A1 in Expo Go after deploy). Separate finding, not fixed: `[jobs] generate-embedding failed: type "vector" does not exist` in the same log window. |
+## 2026-11-27 — My Style: fit weights back to 1 (RC-190; branch `fix/my-style-weights-base`)
+
+| Area | Change |
+|---|---|
+| Why | Phase 3 added `MY_STYLE_FIT.prefStyle = 0.05` without lowering another part: base + parts = 1.05, a full match clamped to 1 and tied with a 4-signal match, and the shared test "fit parts sum to 1" was red on main since d4f14ffd. |
+| Fix | Owner picked option 1 (2026-11-27): `base` 0.3 → 0.25. Uniform −0.05 on fit, ranking order unchanged except among palette-avoid products near 0. |
+| Test | Shared weights test was the failing test (red first, then 3/3). Rebuilding shared dist turned up a stale API fixture: rank "score stays within 0..1" "max" candidate never set a style match; it now sets `styles`, assertion unchanged (>0.99). |
+| Local runs | typecheck 9/9; Biome 1477 files clean; db, shared 21 files, ai 20, mobile 68, web 93 files green; API 263 files passed (3 skipped). API reads `@kanchuki/shared` from dist: build shared before API tests. |
+| Not done | Not pushed. Device checklist (research §10) still running. |
