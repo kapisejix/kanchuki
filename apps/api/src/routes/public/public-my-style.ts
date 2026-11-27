@@ -2,7 +2,7 @@
 //
 // A signed-in shopper's cross-store feed: SQL narrows to live, in-stock, public-storefront
 // candidates, then lib/my-style-rank.ts orders them. No AI call here — the response says so
-// (`rationale_source: 'none'`) instead of carrying canned reasons (RC-059). Prices are paise
+// (`rationale_source: 'rules'`: reason chips come only from what the ranker matched, RC-059). Prices are paise
 // end to end (RC-055). Account-specific, so never cacheable (POST + no-store).
 import { prisma } from '@kanchuki/db';
 import {
@@ -34,7 +34,12 @@ import {
   loadPalette,
   toRankCandidate,
 } from '../../lib/my-style-candidates.js';
-import { type RankCandidate, rankProducts } from '../../lib/my-style-rank.js';
+import {
+  type FitReason,
+  type RankCandidate,
+  type RankedItem,
+  rankProducts,
+} from '../../lib/my-style-rank.js';
 import {
   attributeScore,
   combineSimilarity,
@@ -79,6 +84,8 @@ const BodySchema = z
       .optional(),
     // "Shop my colours": keep only the saved palette's good families. No palette = no filter.
     palette_only: z.boolean().default(false),
+    // D6 "Show all": this request ignores the saved gender. Page state only, never saved.
+    all_wear: z.boolean().default(false),
   })
   .strict()
   .refine((b) => (b.lat === undefined) === (b.lng === undefined), 'lat and lng go together');
@@ -154,9 +161,26 @@ async function toCard(p: CandidateRow, distanceKm: number | null, body?: Body | 
   };
 }
 
+// "Why this matches" (research §7.4): the ranker's own matches first, then size and distance.
+// Only computed facts, so nothing is a canned claim (RC-059). Two at most per card.
+const NEAR_KM = 3;
+type CardReason = FitReason | { code: 'size' | 'near'; detail: string };
+function cardReasons(item: RankedItem, sizes: string[], size: string | undefined): CardReason[] {
+  const out: CardReason[] = [...item.reasons];
+  if (size && sizes.includes(size)) out.push({ code: 'size', detail: size });
+  if (item.distance_km !== null && item.distance_km <= NEAR_KM)
+    out.push({ code: 'near', detail: String(item.distance_km) });
+  return out.slice(0, 2);
+}
+
+/** The saved gender filters adults (D6) unless this request asked for all wear. */
+const genderFilter = (account: Account, allWear: boolean) =>
+  allWear ? null : (account.gender ?? null);
+
 const LookQuerySchema = z
   .object({
     anchor: z.string().trim().min(1).max(64),
+    all_wear: z.enum(['1']).optional(),
     lat: z.coerce.number().min(-90).max(90).optional(),
     lng: z.coerce.number().min(-180).max(180).optional(),
     radius_km: z.coerce.number().positive().max(500).default(MY_STYLE_DEFAULT_RADIUS_KM),
@@ -198,6 +222,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
 
       // Location: device position, else the account's city, else everywhere (and say so).
       const origin = b.lat !== undefined && b.lng !== undefined ? { lat: b.lat, lng: b.lng } : null;
+      const gender = b.kids ? null : genderFilter(account, b.all_wear);
       const { rows, inRange, palette, locationScope } = await loadMyStyleCandidates({
         origin,
         city: account.city?.trim() || null,
@@ -208,6 +233,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         depth: account.skin_depth,
         audience: b.kids ? 'kids' : 'adults',
         ...(b.kids && b.kids_who ? { kidsWho: b.kids_who } : {}),
+        gender,
       });
 
       // Find similar: a 0..1 score per candidate. Embedding where a product has one, attribute
@@ -331,6 +357,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           trends: rankTrends,
           ...(b.kids && b.kids_age ? { kidsAge: b.kids_age } : {}),
           ...(!b.kids && account.body_frame ? { frame: account.body_frame } : {}),
+          styles: account.pref_styles ?? [],
         },
         b.sort,
         now,
@@ -367,7 +394,10 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
         pageItems.map((item) => {
           const p = byId.get(item.id);
           if (!p) throw new Error(`my-style: ranked id ${item.id} not in candidates`);
-          return toCard(p, item.distance_km, bodyMeasurements);
+          return toCard(p, item.distance_km, bodyMeasurements).then((card) => ({
+            ...card,
+            reasons: cardReasons(item, p.sizes, b.size?.toUpperCase()),
+          }));
         }),
       );
 
@@ -384,7 +414,9 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
           // Occasion tab only: how many products carry the requested tag (else null).
           occasion_matches: occasionMatches,
           location_scope: locationScope,
-          rationale_source: 'none' as const,
+          rationale_source: 'rules' as const,
+          // D6: the saved gender this feed filtered by; null = showing all adult wear.
+          gender_filter: gender,
           truncated: rows.length === CANDIDATE_CAP,
           // Null for an ordinary feed.
           similar,
@@ -507,6 +539,7 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
             undertone: account.skin_undertone,
             depth: account.skin_depth,
             extraWhere: { id: { not: anchor.id }, ...slotWhere(slot) },
+            gender: genderFilter(account, q.all_wear === '1'),
           });
           locationScope = found.locationScope;
           truncated ||= found.rows.length === CANDIDATE_CAP;

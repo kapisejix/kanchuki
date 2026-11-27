@@ -369,7 +369,7 @@ describe('response shape', () => {
       distance_km: null,
     });
     expect(body.data[0]).not.toHaveProperty('rationale');
-    expect(body.meta).toMatchObject({ rationale_source: 'none', total: 1, truncated: false });
+    expect(body.meta).toMatchObject({ rationale_source: 'rules', total: 1, truncated: false });
   });
 
   it('flags truncation when the candidate cap is hit', async () => {
@@ -1016,5 +1016,81 @@ describe('POST /my-style/profile/confirm', () => {
     mockAccountUpdate.mockResolvedValue({ count: 0 });
     res = await confirm({ picks: ['cool', 'cool', 'cool'] });
     expect(res.statusCode).toBe(409);
+  });
+});
+
+describe('Phase 3: gender default (D6)', () => {
+  beforeEach(() => {
+    const s = store('1');
+    DB = [
+      row('w1', s, { audience: 'WOMEN' } as Partial<Row>),
+      row('m1', s, { audience: 'MEN' } as Partial<Row>),
+      row('n1', s),
+    ];
+  });
+  it('a FEMALE account sees women + unclassified wear, and meta says it filtered', async () => {
+    mockSession.mockResolvedValue(account({ gender: 'FEMALE' }));
+    const res = await feed();
+    expect(ids(res).sort()).toEqual(['n1', 'w1']);
+    expect(res.json().meta.gender_filter).toBe('FEMALE');
+  });
+  it('all_wear shows everything and meta says no filter', async () => {
+    mockSession.mockResolvedValue(account({ gender: 'FEMALE' }));
+    const res = await feed({ all_wear: true });
+    expect(ids(res).sort()).toEqual(['m1', 'n1', 'w1']);
+    expect(res.json().meta.gender_filter).toBeNull();
+  });
+  it('no saved gender shows both', async () => {
+    const res = await feed();
+    expect(ids(res).sort()).toEqual(['m1', 'n1', 'w1']);
+    expect(res.json().meta.gender_filter).toBeNull();
+  });
+  it('a gender with only unclassified products still answers (NULL audience stays)', async () => {
+    DB = [row('n1', store('1')), row('n2', store('1'))];
+    mockSession.mockResolvedValue(account({ gender: 'MALE' }));
+    expect(ids(await feed()).sort()).toEqual(['n1', 'n2']);
+  });
+});
+
+describe('Phase 3: reason chips', () => {
+  const reasonsOf = async (body: object, over: Record<string, unknown> = {}) => {
+    mockSession.mockResolvedValue(account(over));
+    const res = await feed(body);
+    return { res, byId: new Map(res.json().data.map((d: { id: string; reasons: unknown }) => [d.id, d.reasons])) };
+  };
+  it('rationale_source is rules', async () => {
+    const { res } = await reasonsOf({});
+    expect(res.json().meta.rationale_source).toBe('rules');
+  });
+  it('ranker reasons first, capped at two', async () => {
+    DB = [
+      row('p1', store('1'), {
+        color_family: 'red',
+        ...({ occasions: ['festive'], fabrics: ['silk'] } as object),
+      }),
+    ];
+    const { byId } = await reasonsOf(
+      { size: 'M', lat: 26.9, lng: 75.8 },
+      { pref_occasions: ['festive'], pref_colors: ['red'], pref_fabrics: ['silk'] },
+    );
+    expect(byId.get('p1')).toEqual([{ code: 'occasion', detail: 'festive' }, { code: 'color' }]);
+  });
+  it('size then near fill in when the ranker has nothing', async () => {
+    DB = [row('p1', store('1')), row('u1', store('1'), { sizes: [] })];
+    const { byId } = await reasonsOf({ size: 'M', lat: 26.9, lng: 75.8 });
+    expect(byId.get('p1')).toEqual([
+      { code: 'size', detail: 'M' },
+      { code: 'near', detail: '0' },
+    ]);
+    expect(byId.get('u1')).toEqual([{ code: 'near', detail: '0' }]);
+  });
+  it('no size chip from the usual size alone, no near chip without a position', async () => {
+    const { byId } = await reasonsOf({}, { usual_size: 'M' });
+    expect(byId.get('p1')).toEqual([]);
+  });
+  it('pref_styles feed the style reason', async () => {
+    DB = [row('p1', store('1'), { ...({ subtype: 'Anarkali Suit' } as object) })];
+    const { byId } = await reasonsOf({}, { pref_styles: ['Anarkali'] });
+    expect(byId.get('p1')).toEqual([{ code: 'style', detail: 'Anarkali' }]);
   });
 });

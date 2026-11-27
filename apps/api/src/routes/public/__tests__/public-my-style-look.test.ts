@@ -262,3 +262,25 @@ describe('complements', () => {
     expect(items.filter((i) => i.id.startsWith('x')).length).toBeLessThanOrEqual(3);
   });
 });
+
+describe('Phase 3: gender default (D6) on complete-look', () => {
+  beforeEach(() => {
+    DB.push(row('d3', 'Dupatta', { audience: 'MEN' } as Partial<Row>));
+  });
+  const slotIds = (res: Parameters<typeof slots>[0]) =>
+    slots(res).flatMap((s) => s.items.map((i) => i.id));
+  it('a FEMALE account gets no MEN complements', async () => {
+    mockSession.mockResolvedValue({
+      ...account,
+      customer_account: { ...account.customer_account, gender: 'FEMALE' },
+    });
+    expect(slotIds(await look())).not.toContain('d3');
+  });
+  it('all_wear=1 lets them back in', async () => {
+    mockSession.mockResolvedValue({
+      ...account,
+      customer_account: { ...account.customer_account, gender: 'FEMALE' },
+    });
+    expect(slotIds(await look('anchor=a1&all_wear=1'))).toContain('d3');
+  });
+});
