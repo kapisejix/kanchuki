@@ -33,12 +33,18 @@ describe('sweepDeletedAccountStyle', () => {
     expect(m.updateMany).not.toHaveBeenCalled();
   });
 
-  it('apply nulls exactly the four derived columns, only where the account is deleted', async () => {
+  it('apply nulls exactly the derived columns (and their source), only where the account is deleted', async () => {
     const r = await sweepDeletedAccountStyle({ apply: true });
     expect(r).toEqual({ apply: true, matched: 3, updated: 3 });
     expect(m.updateMany).toHaveBeenCalledWith({
       where: WHERE,
-      data: { skin_undertone: null, skin_depth: null, body_frame: null, style_profile_at: null },
+      data: {
+        skin_undertone: null,
+        skin_depth: null,
+        body_frame: null,
+        style_profile_at: null,
+        profile_source: null,
+      },
     });
   });
 

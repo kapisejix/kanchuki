@@ -13,6 +13,7 @@ const POST_PATHS = [
   'enquire',
   'analyze',
   'profile/clear',
+  'profile/confirm', // drape test (D4)
   'measurements',
   'measurements/withdraw',
 ];

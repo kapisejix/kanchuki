@@ -83,6 +83,8 @@ const BodySchema = z
   .strict()
   .refine((b) => (b.lat === undefined) === (b.lng === undefined), 'lat and lng go together');
 
+const ConfirmSchema = z.object({ picks: z.array(z.enum(['warm', 'cool'])).length(3) }).strict();
+
 type Account = NonNullable<Awaited<ReturnType<typeof getPassportSession>>>['customer_account'];
 type Palette = Awaited<ReturnType<typeof loadPalette>>;
 
@@ -120,6 +122,8 @@ function savedProfile(account: Account, palette: Palette) {
             depth: account.skin_depth,
             frame: account.body_frame ?? null,
             saved_at: account.style_profile_at?.toISOString() ?? null,
+            // Where the undertone came from (D4). NULL = saved before migration 171 = the photo read.
+            source: account.profile_source ?? 'photo',
             palette: palette
               ? { good: palette.good_families, avoid: palette.avoid_families }
               : null,
@@ -404,6 +408,45 @@ export const publicMyStyleRoutes: FastifyPluginAsync = async (server) => {
       const account = session.customer_account;
       const palette = await loadPalette(account.skin_undertone, account.skin_depth);
       return { data: savedProfile(account, palette) };
+    },
+  );
+
+  // POST /my-style/profile/confirm — the drape test (owner decision D4, research §7.2 step 6).
+  // Three swatch pairs, each answered with the side that made the shopper's face look brighter.
+  // The shopper's answer wins over the photo read: 3 of 3 on one side = that undertone, a split =
+  // neutral. Only the undertone changes; depth and frame stay from the photo. No photo, no AI.
+  server.post(
+    '/profile/confirm',
+    { config: { rateLimit: { max: 10, timeWindow: 60 * 1000 } } },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'private, no-store');
+      const session = await getPassportSession(request.headers.cookie || '');
+      if (!session) return reply.status(401).send(unauthorized);
+      const parsed = ConfirmSchema.safeParse(request.body);
+      if (!parsed.success) throw validationError('Invalid answers');
+      const { picks } = parsed.data;
+      const [first] = picks;
+      const undertone: string = first && picks.every((p) => p === first) ? first : 'neutral';
+
+      const account = session.customer_account;
+      const noProfile = () =>
+        new AppError('NO_PROFILE', 'Read a photo first, then adjust your colours.', 409);
+      if (!account.skin_undertone || !account.skin_depth) throw noProfile();
+      const data = {
+        skin_undertone: undertone,
+        profile_source: 'confirmed' as const,
+        style_profile_at: new Date(),
+      };
+      // Guarded on a profile still being there: a "Clear my data" that lands first must win,
+      // never be undone by this write (RC-044 shape).
+      const { count } = await prisma.customerAccount.updateMany({
+        where: { id: session.customer_account_id, skin_depth: { not: null } },
+        data,
+      });
+      if (count === 0) throw noProfile();
+      const updated = { ...account, ...data };
+      const palette = await loadPalette(undertone, account.skin_depth);
+      return { data: savedProfile(updated, palette) };
     },
   );
 

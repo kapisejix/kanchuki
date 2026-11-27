@@ -19,7 +19,13 @@ export async function sweepDeletedAccountStyle(opts: { apply: boolean }) {
   if (!opts.apply || matched === 0) return { apply: opts.apply, matched, updated: 0 };
   const { count } = await prisma.customerAccount.updateMany({
     where: WHERE,
-    data: { skin_undertone: null, skin_depth: null, body_frame: null, style_profile_at: null },
+    data: {
+      skin_undertone: null,
+      skin_depth: null,
+      body_frame: null,
+      style_profile_at: null,
+      profile_source: null, // migration 171: erasure clears where the undertone came from too
+    },
   });
   return { apply: true, matched, updated: count };
 }

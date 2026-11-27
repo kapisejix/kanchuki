@@ -9,20 +9,30 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
 import { type Cond, matchesAnd } from './where-eval.js';
 
-const { mockSession, mockFindMany, mockPalette, mockEmbedDesc, mockSims, mockTrends, mockFests } =
-  vi.hoisted(() => ({
-    mockSession: vi.fn(),
-    mockFindMany: vi.fn(),
-    mockPalette: vi.fn(),
-    mockEmbedDesc: vi.fn(),
-    mockSims: vi.fn(),
-    mockTrends: vi.fn(),
-    mockFests: vi.fn(),
-  }));
+const {
+  mockSession,
+  mockFindMany,
+  mockPalette,
+  mockEmbedDesc,
+  mockSims,
+  mockTrends,
+  mockFests,
+  mockAccountUpdate,
+} = vi.hoisted(() => ({
+  mockSession: vi.fn(),
+  mockFindMany: vi.fn(),
+  mockPalette: vi.fn(),
+  mockEmbedDesc: vi.fn(),
+  mockSims: vi.fn(),
+  mockTrends: vi.fn(),
+  mockFests: vi.fn(),
+  mockAccountUpdate: vi.fn(),
+}));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     product: { findMany: mockFindMany },
+    customerAccount: { updateMany: mockAccountUpdate },
     stylePalette: { findFirst: mockPalette },
     styleTrend: { findMany: mockTrends },
     festival: { findMany: mockFests },
@@ -452,6 +462,7 @@ describe('ranking + paging', () => {
       depth: 'medium',
       frame: 'tall',
       saved_at: null,
+      source: 'photo',
       palette: { good: ['maroon'], avoid: ['yellow'] },
     });
   });
@@ -531,6 +542,7 @@ describe('ranking + paging', () => {
       depth: 'deep',
       frame: null,
       saved_at: null,
+      source: 'photo',
       palette: null,
     });
   });
@@ -872,6 +884,8 @@ describe('GET /my-style/profile', () => {
         depth: 'medium',
         frame: 'average',
         saved_at: at.toISOString(),
+        // Saved before migration 171 (NULL) reads as the photo read.
+        source: 'photo',
         palette: { good: ['yellow'], avoid: ['grey'] },
       },
       measurements: {
@@ -924,5 +938,83 @@ describe('palette_only (Shop my colours)', () => {
     const res = await feed({ palette_only: true });
     expect(ids(res).sort()).toEqual(['p1', 'p2']);
     expect(res.json().meta.palette_only).toBe(false);
+  });
+});
+
+// D4 drape test (customer-profile-research §7.2 step 6): the shopper's answer wins.
+describe('POST /my-style/profile/confirm', () => {
+  async function confirm(payload: unknown) {
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    await app.register(publicMyStyleRoutes, { prefix: '/v1/public/my-style' });
+    await app.ready();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/my-style/profile/confirm',
+      payload: payload as object,
+    });
+    await app.close();
+    return res;
+  }
+  const saved = { skin_undertone: 'cool', skin_depth: 'medium', body_frame: 'average' };
+
+  beforeEach(() => {
+    mockSession.mockResolvedValue(account(saved));
+    mockAccountUpdate.mockResolvedValue({ count: 1 });
+    mockPalette.mockResolvedValue({ good_families: ['gold'], avoid_families: ['silver'] });
+  });
+
+  it('401 without a session, nothing written', async () => {
+    mockSession.mockResolvedValue(null);
+    expect((await confirm({ picks: ['warm', 'warm', 'warm'] })).statusCode).toBe(401);
+    expect(mockAccountUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['two picks', { picks: ['warm', 'warm'] }],
+    ['an unknown pick', { picks: ['warm', 'warm', 'fair'] }],
+    ['an extra field', { picks: ['warm', 'warm', 'warm'], depth: 'deep' }],
+  ])('422 on %s', async (_n, body) => {
+    expect((await confirm(body)).statusCode).toBe(422);
+    expect(mockAccountUpdate).not.toHaveBeenCalled();
+  });
+
+  it('3 of 3 on one side sets that undertone, source confirmed, and answers the new palette', async () => {
+    const res = await confirm({ picks: ['warm', 'warm', 'warm'] });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['cache-control']).toBe('private, no-store');
+    const arg = mockAccountUpdate.mock.calls[0]?.[0];
+    // Only a row that still holds a profile: a "Clear my data" racing this must win.
+    expect(arg.where).toEqual({ id: 'acct_a', skin_depth: { not: null } });
+    expect(arg.data).toMatchObject({ skin_undertone: 'warm', profile_source: 'confirmed' });
+    expect(arg.data.style_profile_at).toBeInstanceOf(Date);
+    expect(mockPalette.mock.calls.at(-1)?.[0].where).toMatchObject({
+      undertone: 'warm',
+      depth: 'medium',
+    });
+    expect(res.json().data.style_profile).toMatchObject({
+      undertone: 'warm',
+      depth: 'medium',
+      source: 'confirmed',
+      palette: { good: ['gold'], avoid: ['silver'] },
+    });
+  });
+
+  it('a 2-1 split reads as neither side, so neutral', async () => {
+    await confirm({ picks: ['warm', 'cool', 'warm'] });
+    expect(mockAccountUpdate.mock.calls[0]?.[0].data.skin_undertone).toBe('neutral');
+  });
+
+  it('409 NO_PROFILE when nothing is saved, or it was cleared meanwhile', async () => {
+    mockSession.mockResolvedValue(account());
+    let res = await confirm({ picks: ['cool', 'cool', 'cool'] });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('NO_PROFILE');
+    expect(mockAccountUpdate).not.toHaveBeenCalled();
+
+    mockSession.mockResolvedValue(account(saved));
+    mockAccountUpdate.mockResolvedValue({ count: 0 });
+    res = await confirm({ picks: ['cool', 'cool', 'cool'] });
+    expect(res.statusCode).toBe(409);
   });
 });

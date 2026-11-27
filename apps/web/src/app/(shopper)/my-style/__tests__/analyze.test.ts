@@ -2,7 +2,14 @@
 // Every call returns a value, never throws, and turns the API's statuses into plain
 // copy (no raw API sentence reaches the screen, no fake success: RC-059/060).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearProfile, fetchProfile, pollAnalysis, prepareUpload, startAnalysis } from '../analyze';
+import {
+  clearProfile,
+  confirmProfile,
+  fetchProfile,
+  pollAnalysis,
+  prepareUpload,
+  startAnalysis,
+} from '../analyze';
 
 const fetchMock = vi.fn();
 
@@ -46,7 +53,9 @@ describe('prepareUpload', () => {
 
     const out = await prepareUpload(new File(['x'], 'a.heic', { type: 'image/heic' }));
 
-    expect(out.type).toBe('image/jpeg');
+    expect(out.photo.type).toBe('image/jpeg');
+    // The fake canvas has no getImageData: pixel checks cannot run, so nothing is reported.
+    expect(out.problems).toEqual([]);
     expect(canvas.width).toBe(1568);
     expect(canvas.height).toBe(1176);
     expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1568, 1176);
@@ -92,8 +101,51 @@ describe('prepareUpload', () => {
     );
     fakeCanvas();
     for (const type of ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/HEIF', '']) {
-      await expect(prepareUpload(new File(['x'], 'a', { type }))).resolves.toBeInstanceOf(Blob);
+      expect((await prepareUpload(new File(['x'], 'a', { type }))).photo).toBeInstanceOf(Blob);
     }
+  });
+
+  // Phase 2 (research §7.2 step 4): the on-device check runs on the canvas just drawn.
+  function pixelCanvas(rgb: [number, number, number]) {
+    const { canvas } = fakeCanvas();
+    const ctx = {
+      drawImage: vi.fn(),
+      getImageData: (_x: number, _y: number, w: number, h: number) => {
+        const data = new Uint8ClampedArray(w * h * 4);
+        for (let i = 0; i < w * h; i++) data.set([...rgb, 255], i * 4);
+        return { data, width: w, height: h };
+      },
+    };
+    canvas.getContext = () => ctx as never;
+    return canvas;
+  }
+  const decode10 = () =>
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockResolvedValue({ width: 10, height: 10, close: vi.fn() }),
+    );
+
+  it('reports a dark photo as a blocking problem with a fix', async () => {
+    decode10();
+    pixelCanvas([10, 10, 10]);
+    const { problems } = await prepareUpload(new File(['x'], 'a.jpg'));
+    expect(problems.find((p) => p.code === 'too_dark')).toMatchObject({ blocking: true });
+  });
+
+  it('selfie: runs the face check where FaceDetector exists; garment: never', async () => {
+    decode10();
+    pixelCanvas([10, 10, 10]);
+    const detect = vi.fn().mockResolvedValue([]);
+    vi.stubGlobal(
+      'FaceDetector',
+      vi.fn(() => ({ detect })),
+    );
+    const selfie = await prepareUpload(new File(['x'], 'a.jpg'));
+    expect(selfie.problems.map((p) => p.code)).toContain('no_face');
+    detect.mockClear();
+    const garment = await prepareUpload(new File(['x'], 'a.jpg'), 'garment');
+    expect(detect).not.toHaveBeenCalled();
+    expect(garment.problems.map((p) => p.code)).not.toContain('no_face');
   });
 
   it('rejects when the canvas yields no blob', async () => {
@@ -188,8 +240,16 @@ describe('pollAnalysis', () => {
 
   it('ready carries the profile', async () => {
     const profile = { undertone: 'warm', depth: 'medium', frame: 'tall' };
-    fetchMock.mockResolvedValue(json({ data: { status: 'ready', profile } }));
-    expect(await pollAnalysis('mystyle_a')).toEqual({ kind: 'ready', profile });
+    fetchMock.mockResolvedValue(json({ data: { status: 'ready', profile, confidence: 'high' } }));
+    expect(await pollAnalysis('mystyle_a')).toEqual({ kind: 'ready', profile, confidence: 'high' });
+  });
+
+  it('a ready reply without a known confidence counts as low (drape test, D4)', async () => {
+    const profile = { undertone: 'cool', depth: 'deep', frame: 'tall' };
+    for (const confidence of [undefined, 'sure']) {
+      fetchMock.mockResolvedValueOnce(json({ data: { status: 'ready', profile, confidence } }));
+      expect(await pollAnalysis('mystyle_a')).toMatchObject({ confidence: 'low' });
+    }
   });
 
   it('a ready reply with no profile is not a success (RC-060)', async () => {
@@ -328,6 +388,9 @@ describe('failed reads carry a one-line fix', () => {
     ['face_not_clear', 'selfie'],
     ['multiple_people', 'selfie'],
     ['too_dark', 'selfie'],
+    ['face_too_small', 'selfie'],
+    ['filter_or_edit', 'selfie'],
+    ['face_covered', 'selfie'],
     ['read_failed', 'selfie'],
     ['expired', 'selfie'],
     ['no_garment', 'garment'],
@@ -352,6 +415,45 @@ describe('failed reads carry a one-line fix', () => {
       const r = (await pollAnalysis('j1')) as { message: string; fix?: string };
       expect(`${r.message} ${r.fix}`).not.toMatch(/full.body|measure/i);
     }
+  });
+});
+
+// D5: the two reads have separate monthly limits, so the 402 copy names the right one.
+describe('quota copy per mode', () => {
+  it('a selfie 402 names photo reads; a find-similar 402 names searches', async () => {
+    fetchMock.mockResolvedValue(json({ error: {} }, 402));
+    const selfie = (await startAnalysis(new Blob(['x']))) as { message: string };
+    const similar = (await startAnalysis(new Blob(['x']), undefined, 'garment')) as {
+      message: string;
+    };
+    expect(selfie.message).toMatch(/photo reads/i);
+    expect(similar.message).toMatch(/find similar/i);
+    expect(similar.message).not.toBe(selfie.message);
+  });
+});
+
+describe('confirmProfile (drape test)', () => {
+  it('POSTs the three picks and returns the saved profile', async () => {
+    const style_profile = { undertone: 'cool', depth: 'medium', frame: null, palette: null };
+    fetchMock.mockResolvedValue(json({ data: { style_profile } }));
+    const r = await confirmProfile(['cool', 'cool', 'warm']);
+    expect(r).toEqual({ kind: 'ok', profile: style_profile });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/my-style/profile/confirm');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(String(init.body))).toEqual({ picks: ['cool', 'cool', 'warm'] });
+  });
+
+  it('401, a 409 (nothing saved), a 200 without a profile and a network error are not ok', async () => {
+    fetchMock.mockResolvedValueOnce(json({}, 401));
+    expect(await confirmProfile(['warm', 'warm', 'warm'])).toEqual({ kind: 'unauthorized' });
+    // Cleared in another tab: retrying can never work, so it is its own outcome.
+    fetchMock.mockResolvedValueOnce(json({ error: { code: 'NO_PROFILE' } }, 409));
+    expect((await confirmProfile(['warm', 'warm', 'warm'])).kind).toBe('no_profile');
+    fetchMock.mockResolvedValueOnce(json({ data: {} }));
+    expect((await confirmProfile(['warm', 'warm', 'warm'])).kind).toBe('error');
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    expect((await confirmProfile(['warm', 'warm', 'warm'])).kind).toBe('error');
   });
 });
 

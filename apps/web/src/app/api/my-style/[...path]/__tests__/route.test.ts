@@ -90,10 +90,13 @@ describe('POST /api/my-style/feed', () => {
 });
 
 describe('allowlist', () => {
-  it.each(['analyze', 'profile/clear', 'enquire'])('POST %s is reachable', async (p) => {
-    upstream.mockResolvedValue(new Response('{}', { status: 200 }));
-    expect((await post(p.split('/'))).status).toBe(200);
-  });
+  it.each(['analyze', 'profile/clear', 'profile/confirm', 'enquire'])(
+    'POST %s is reachable',
+    async (p) => {
+      upstream.mockResolvedValue(new Response('{}', { status: 200 }));
+      expect((await post(p.split('/'))).status).toBe(200);
+    },
+  );
 
   it.each([[['nope']], [['analyze', 'job1']], [['profile']], [['profile', 'clear', 'x']]])(
     'POST %j is 404 and never reaches the API',

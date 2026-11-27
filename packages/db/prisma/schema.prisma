@@ -226,6 +226,8 @@ enum QuotaResourceType {
   ACTIVE_SCHEDULE_PLAN
   // F-045 — customer My Style photo/style analyses per month (customer_resource_limits).
   STYLE_ANALYSIS
+  // My Style Phase 2 (D5) — Find similar garment reads, counted apart from selfies (migration 170).
+  STYLE_SIMILAR
   // Replies posted to Google reviews per month (migration 140; seeded in 142).
   GBP_REVIEW_REPLY
   // T5 — AI custom-prompt social designs per month (migration 154; METERED, no row = 0).
@@ -3022,6 +3024,8 @@ model CustomerAccount {
   skin_depth       String? // fair | medium | deep
   body_frame       String? // petite | average | tall | curvy
   style_profile_at DateTime?
+  // photo | confirmed | manual (migration 171, D4). NULL on rows saved before 171 = photo.
+  profile_source   String?
 
   // F-045 My Style — self-entered measurements (spec my-style-body-profile.md §3). Shopper-only;
   // cleared with the profile above. Ranges pinned by CHECKs in 161. No weight, on purpose.
@@ -3123,6 +3127,19 @@ model StyleAnalysisDaily {
   updated_at DateTime @updatedAt
 
   @@map("style_analysis_daily")
+}
+
+// My Style Phase 2 (R10): failed photo reads per UTC day, mode and reason. No customer id
+// on purpose, same rule as style_analysis_daily (migration 171).
+model StyleAnalysisFailureDaily {
+  day        DateTime @db.Date
+  mode       String // selfie | garment
+  reason     String
+  count      Int      @default(0)
+  updated_at DateTime @updatedAt
+
+  @@id([day, mode, reason])
+  @@map("style_analysis_failures_daily")
 }
 
 // One row per (shopper, retailer). Tracks scan + per-store consent state.

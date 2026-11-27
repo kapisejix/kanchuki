@@ -31,11 +31,18 @@ type Trend = {
 };
 type Usage = {
   days: number;
-  totals: { analyses: number; cost_paise: number };
+  totals: { analyses: number; cost_paise: number; failures?: number };
   cost_per_analysis_paise: number;
   by_day: { day: string; count: number; cost_paise: number }[];
-  limit: { limit_per_period: number; period: string } | null;
+  /** Server-side failed reads per mode + reason (migration 171). No shopper id. */
+  failures?: { mode: string; reason: string; count: number }[];
+  limit: UsageLimit;
+  /** D5: Find similar has its own per-shopper limit. */
+  similar_limit?: UsageLimit;
 };
+type UsageLimit = { limit_per_period: number; period: string } | null;
+const limitText = (l: UsageLimit | undefined) =>
+  l ? `${l.limit_per_period} / ${l.period.toLowerCase()}` : 'Unlimited';
 
 const TABS = ['Colours', 'Palettes', 'Trends', 'Usage'] as const;
 type Tab = (typeof TABS)[number];
@@ -467,22 +474,41 @@ function UsageTab() {
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Tile label="Analyses" value={data.totals.analyses.toLocaleString()} />
             <Tile label="Est. cost" value={inr(data.totals.cost_paise)} />
-            <Tile
-              label="Per-shopper limit"
-              value={
-                data.limit
-                  ? `${data.limit.limit_per_period} / ${data.limit.period.toLowerCase()}`
-                  : 'Unlimited'
-              }
-            />
+            <Tile label="Failed reads" value={(data.totals.failures ?? 0).toLocaleString()} />
+            <Tile label="Photo read limit" value={limitText(data.limit)} />
+            <Tile label="Find similar limit" value={limitText(data.similar_limit)} />
           </div>
           <p className="text-xs text-gray-500">
-            Change the per-shopper limit under{' '}
+            Change the per-shopper limits under{' '}
             <a className="underline" href="/admin/plan-limits">
               Plan Limits → shopper caps
             </a>
             .
           </p>
+          {data.failures?.length ? (
+            <div className="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white/80 p-4">
+              <table className="w-full text-sm" aria-label="Failed reads by reason">
+                <thead>
+                  <tr className="text-left text-xs text-gray-500">
+                    <th className="pb-2 font-medium">Mode</th>
+                    <th className="pb-2 font-medium">Reason</th>
+                    <th className="pb-2 text-right font-medium">Count</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.failures.map((f) => (
+                    <tr key={`${f.mode}:${f.reason}`} className="border-t border-gray-100">
+                      <td className="py-1.5">{f.mode === 'garment' ? 'Find similar' : 'Selfie'}</td>
+                      <td className="py-1.5">{f.reason.replaceAll('_', ' ')}</td>
+                      <td className="py-1.5 text-right tabular-nums">{f.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">No failed reads in this window.</p>
+          )}
           <div className="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white/80 p-4">
             <div
               role="img"

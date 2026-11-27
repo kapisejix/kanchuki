@@ -13,6 +13,7 @@ const m = vi.hoisted(() => ({
   trCreate: vi.fn(),
   trUpdate: vi.fn(),
   dailyFind: vi.fn(),
+  failFind: vi.fn(),
   limitUnique: vi.fn(),
   audit: vi.fn(),
 }));
@@ -29,6 +30,7 @@ vi.mock('@kanchuki/db', () => ({
       update: m.trUpdate,
     },
     styleAnalysisDaily: { findMany: m.dailyFind },
+    styleAnalysisFailureDaily: { findMany: m.failFind },
     customerResourceLimit: { findUnique: m.limitUnique },
     auditLog: { create: m.audit },
   },
@@ -230,6 +232,7 @@ describe('trends', () => {
 });
 
 describe('GET /my-style/usage', () => {
+  beforeEach(() => m.failFind.mockResolvedValue([]));
   it('is Super Admin only', async () => {
     const app = await buildApp('ADMIN');
     const res = await app.inject({ method: 'GET', url: '/my-style/usage' });
@@ -256,11 +259,48 @@ describe('GET /my-style/usage', () => {
         '2026-10-18',
       ]);
       expect(data.by_day.map((d: { count: number }) => d.count)).toEqual([0, 4, 0, 2]);
-      expect(data.totals).toEqual({ analyses: 6, cost_paise: 6 * COST_PER_ANALYSIS_PAISE });
+      expect(data.totals).toEqual({
+        analyses: 6,
+        cost_paise: 6 * COST_PER_ANALYSIS_PAISE,
+        failures: 0,
+      });
       expect(data.limit).toEqual({ limit_per_period: 3, period: 'MONTH' });
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  // Phase 2 (R10): failed reads by mode and reason over the window - no shopper in sight.
+  it('sums failures by mode and reason over the window, most frequent first', async () => {
+    m.dailyFind.mockResolvedValue([]);
+    m.failFind.mockResolvedValue([
+      { day: new Date('2026-10-16'), mode: 'selfie', reason: 'too_dark', count: 2 },
+      { day: new Date('2026-10-17'), mode: 'selfie', reason: 'too_dark', count: 3 },
+      { day: new Date('2026-10-17'), mode: 'garment', reason: 'no_garment', count: 1 },
+    ]);
+    m.limitUnique.mockResolvedValue(null);
+    const app = await buildApp();
+    const { data } = (await app.inject({ method: 'GET', url: '/my-style/usage?days=7' })).json();
+    expect(m.failFind.mock.calls[0]?.[0].where.day.gte).toBeInstanceOf(Date);
+    expect(data.failures).toEqual([
+      { mode: 'selfie', reason: 'too_dark', count: 5 },
+      { mode: 'garment', reason: 'no_garment', count: 1 },
+    ]);
+    expect(data.totals.failures).toBe(6);
+  });
+
+  it('reports the selfie and Find similar limits separately (D5)', async () => {
+    m.dailyFind.mockResolvedValue([]);
+    m.failFind.mockResolvedValue([]);
+    m.limitUnique.mockImplementation(async ({ where }: { where: { resource_type: string } }) =>
+      where.resource_type === 'STYLE_ANALYSIS'
+        ? { limit_per_period: 5, period: 'MONTH' }
+        : { limit_per_period: 10, period: 'MONTH' },
+    );
+    const app = await buildApp();
+    const { data } = (await app.inject({ method: 'GET', url: '/my-style/usage' })).json();
+    expect(data.limit).toEqual({ limit_per_period: 5, period: 'MONTH' });
+    expect(data.similar_limit).toEqual({ limit_per_period: 10, period: 'MONTH' });
   });
 
   it('reports limit null when no quota row exists, and rejects a bad window', async () => {

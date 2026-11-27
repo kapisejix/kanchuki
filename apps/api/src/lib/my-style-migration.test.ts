@@ -145,3 +145,46 @@ describe('migration 133 — seeds', () => {
     }
   });
 });
+
+// ─── Phase 2 (customer-profile-research §9): 170 enum value, 171 columns/table/quota ─────
+describe('migration 170 — enum-only (55P04)', () => {
+  it('adds STYLE_SIMILAR and nothing that uses it', () => {
+    const e = read('170_style_similar_quota');
+    expect(e).toMatch(/ALTER TYPE "QuotaResourceType" ADD VALUE IF NOT EXISTS 'STYLE_SIMILAR'/);
+    expect(e.match(/ADD VALUE/g)).toHaveLength(1);
+    expect(e).not.toMatch(/INSERT|UPDATE|CREATE TABLE/i);
+  });
+});
+
+describe('migration 171 — profile source, failure counter, split quota', () => {
+  const p2 = read('171_my_style_phase2');
+
+  it('adds a nullable profile_source with a CHECK of the three sources', () => {
+    expect(p2).toMatch(/ALTER TABLE "customer_accounts"\s+ADD COLUMN "profile_source" TEXT/);
+    expect(p2).toMatch(/CHECK \("profile_source" IN \('photo', 'confirmed', 'manual'\)\)/);
+    const alter = p2.match(/ALTER TABLE "customer_accounts"[^;]*;/)?.[0] ?? '';
+    expect(alter).not.toMatch(/NOT NULL|DEFAULT/);
+  });
+
+  it('the failure counter has no customer id (R10) and RLS with the policy first (RC-030)', () => {
+    const block = p2.match(/CREATE TABLE "style_analysis_failures_daily" \([^;]*?\);/)?.[0] ?? '';
+    expect(block).not.toBe('');
+    expect(block).not.toMatch(/customer|account|phone/i);
+    expect(block).toMatch(/PRIMARY KEY \("day", "mode", "reason"\)/);
+    expect(p2.indexOf('CREATE POLICY')).toBeGreaterThan(0);
+    expect(p2.indexOf('CREATE POLICY')).toBeLessThan(p2.indexOf('ENABLE ROW LEVEL SECURITY'));
+  });
+
+  it('sets selfie to 5/month and seeds find similar at 10/month (owner decision D5)', () => {
+    expect(p2).toMatch(
+      /UPDATE "customer_resource_limits"\s+SET "limit_per_period" = 5[^;]*'STYLE_ANALYSIS'/,
+    );
+    expect(p2).toMatch(
+      /INSERT INTO "customer_resource_limits"[^;]*'STYLE_SIMILAR',\s*10,\s*'MONTH'[^;]*ON CONFLICT \("resource_type"\) DO NOTHING/,
+    );
+  });
+
+  it('is additive: no DROP, DELETE, TRUNCATE or GRANT', () => {
+    expect(p2).not.toMatch(/\bDROP\b|\bDELETE\b|\bTRUNCATE\b|\bGRANT\b/i);
+  });
+});
