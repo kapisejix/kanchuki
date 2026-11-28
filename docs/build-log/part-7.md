@@ -1064,3 +1064,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | main `2142d7e9`: typecheck 9/9; mobile 68 files / 735 tests; shared 21 files / 320 tests; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`. |
 | Not done | 319 older products have no embeddings (no backfill job). Ledger: reconciled same day, see next row. |
 | Ledger | `_prisma_migrations` was missing 67 rows (049-081, 127, 139-172), all applied by hand. Read-only check: every table/column/enum/type live, or dropped on purpose later (festival_backgrounds + IncentiveTriggerType by 082, gmb_configured_at by 146, social_templates by 156). Owner ran `prisma migrate resolve --applied` per name over the session pooler (:5432, `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` after Supavisor left an orphaned advisory lock 72707369 that needed `pg_terminate_backend`). Result: 178 rows, 173 applied, `migrate status` up to date. Transaction pooler :6543 hangs migrate. |
+
+## 2026-11-28 — RC-194/RC-195: admin auth P0s from bug hunt (#1, #2)
+
+| Area | Change |
+|---|---|
+| Why | Bug hunt 2026-11-28 P0 #1: `trustProxy: true` let a client-sent `X-Forwarded-For` set `request.ip` (admin IP allowlist bypass, per-IP rate limits dodged). P0 #2: `verifyAdminSession` trusted the team JWT role claim, so a deactivated/demoted SUPER_ADMIN kept unscoped /v1/team Super Admin via `x-admin-key` for up to 12 h. |
+| Fix | `apps/api/src/index.ts`: prod `trustProxy: 1` (Railway edge only). `admin-auth.ts`: `verifyAdminSession` delegates to `adminSessionInfo` (DB re-read of role + `is_active`). `team-session.ts`: comment only. |
+| Tests | `admin-role-escalation.test.ts`: DB-role-not-claim, deactivated/deleted refused, Fastify `trustProxy: 1` ignores spoofed leftmost XFF. |
+| Local runs | worktree `E:/Kanchuki-bughunt` on main `51032fc4`: api vitest 263 files / 3632 passed (12 skipped); `tsc --noEmit` 0; `biome check src/` clean (589 files). Actions blocked by billing. |
+| Not done | Merge + deploy; post-deploy check that admin allowlist still admits the office IP (if it fails, Railway adds >1 hop: raise the count). |

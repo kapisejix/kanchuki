@@ -71,9 +71,11 @@ if (!process.env.WEB_URL) {
 
 const server = Fastify({
   logger: process.env.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : true,
-  // Trust Railway's internal proxy so request.ip returns the real client IP
-  // in audit logs instead of the proxy's internal address (10.x.x.x).
-  trustProxy: process.env.NODE_ENV === 'production',
+  // Trust exactly one hop (Railway's edge; api.kanchuki.app CNAMEs straight to
+  // *.up.railway.app, no CDN in front). `true` trusted every hop, so request.ip was the
+  // client-controlled leftmost X-Forwarded-For entry: a spoofed header passed the admin
+  // IP allowlist and escaped every per-IP rate limit. Add a hop if a CDN is ever put in front.
+  trustProxy: process.env.NODE_ENV === 'production' ? 1 : false,
 });
 
 // Tolerate an empty `application/json` body (parse as {}) instead of Fastify

@@ -58,15 +58,11 @@ export async function signAdminSession(email: string, role = 'SUPER_ADMIN'): Pro
  * True only for a SUPER_ADMIN session. Its one caller, `teamAuthPreHandler`, turns a pass into
  * unscoped Super Admin over /v1/team (create members, any role), so a plain ADMIN must not pass
  * here (RC-161) — that was harmless only while no ADMIN account could exist.
+ * Team tokens go through adminSessionInfo's DB re-read: the JWT role claim is a 12 h snapshot,
+ * so a deactivated or demoted SUPER_ADMIN must stop passing at once.
  */
 export async function verifyAdminSession(token: string): Promise<boolean> {
-  try {
-    const { payload } = await jwtVerify(token, sessionSecret());
-    return (typeof payload.role === 'string' ? payload.role : 'SUPER_ADMIN') === 'SUPER_ADMIN';
-  } catch {
-    const teamClaims = await verifyTeamToken(token);
-    return teamClaims !== null && teamClaims.role === 'SUPER_ADMIN';
-  }
+  return (await adminSessionInfo(token))?.role === 'SUPER_ADMIN';
 }
 
 // Decode the admin email and role from a session JWT or team token.

@@ -76,8 +76,8 @@ async function consumeTeamCode(key: string): Promise<string | null> {
 }
 
 // A SUPER_ADMIN/ADMIN team token is an admin session, so these routes get the
-// same per-IP limit as /admin/login (S-003). The per-IP key is spoofable while
-// trustProxy is `true` (T2.5 F1), so password login also has a per-email lock.
+// same per-IP limit as /admin/login (S-003). Password login also has a per-email
+// lock, since one attacker can still rotate real IPs (trustProxy hop fix: T2.5 F1).
 const TEAM_AUTH_RATE_LIMIT = { config: { rateLimit: { max: 5, timeWindow: 15 * 60 * 1000 } } };
 const TEAM_CODE_RATE_LIMIT = { config: { rateLimit: { max: 10, timeWindow: 15 * 60 * 1000 } } };
 const LOGIN_MAX_FAILURES = 5;

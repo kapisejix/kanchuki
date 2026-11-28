@@ -12,6 +12,22 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-195 — A deactivated Super Admin's team token still unlocked /v1/team
+
+- **Component:** `apps/api/src/routes/admin-auth.ts` (`verifyAdminSession`), caller `routes/team/team-helpers.ts` (`teamAuthPreHandler`).
+- **Symptom:** found in the 2026-11-28 bug hunt (#2). A SUPER_ADMIN member deactivated or demoted after login could send the old team JWT as `x-admin-key` and act as unscoped Super Admin over /v1/team (e.g. create a new SUPER_ADMIN) until the 12 h token expired.
+- **Root cause:** `verifyAdminSession`'s team-token fallback read the `role` claim straight from the JWT. `adminSessionInfo` already re-read the member from the DB (RC-092), but this one path bypassed it.
+- **Fix:** `verifyAdminSession(token)` = `(await adminSessionInfo(token))?.role === 'SUPER_ADMIN'`, so every team token goes through the DB re-read of `role` + `is_active`.
+- **Proof:** `admin-role-escalation.test.ts`: role comes from the DB row not the claim; deactivated and deleted members refused. **Limits:** local tests only.
+
+## RC-194 — Spoofed X-Forwarded-For passed the admin IP allowlist and per-IP rate limits
+
+- **Component:** `apps/api/src/index.ts` (Fastify `trustProxy`); consumers: admin IP allowlist in `routes/admin-auth.ts`, global + login/OTP rate limiters keyed on `request.ip`.
+- **Symptom:** found in the 2026-11-28 bug hunt (#1). A client sending `X-Forwarded-For: <allowlisted ip>` passed the admin allowlist; rotating the value gave unlimited admin login / OTP attempts.
+- **Root cause:** `trustProxy: true` trusts every hop, so `request.ip` is the leftmost XFF entry, which the client controls.
+- **Fix:** prod `trustProxy: 1`: trust only Railway's edge, the one proxy in front (api.kanchuki.app CNAMEs to `*.up.railway.app`, no CDN). Add a hop if a CDN is ever put in front.
+- **Proof:** `admin-role-escalation.test.ts` "trustProxy hop count": Fastify with `trustProxy: 1` returns the rightmost entry, ignoring the spoofed leftmost one. **Limits:** hop count assumed from DNS; confirm after deploy that the office IP still passes the allowlist.
+
 ## RC-185 — My Style hid a saved palette whenever the feed failed
 
 - **Component:** `apps/web/src/app/(shopper)/my-style/page.tsx`, `apps/api/src/routes/public/public-my-style.ts`.
