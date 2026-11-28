@@ -15,7 +15,9 @@
       }
     },
     "production": {
-      "autoIncrement": true,
+      "android": {
+        "buildArtifactPaths": ["android/app/build/outputs/mapping/release/mapping.txt"]
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app",
         "EXPO_PUBLIC_SENTRY_DSN": "https://1cf3b3ac98fe5853c643c2a7cb22ab96@o4511960130387968.ingest.de.sentry.io/4511960286494800"
