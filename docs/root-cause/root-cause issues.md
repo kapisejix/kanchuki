@@ -12,6 +12,14 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-201 — GST periods, invoice FY and invoice date used server time, not IST
+
+- **Component:** `apps/api/src/routes/admin/admin-gst.ts`, `apps/api/src/routes/growth/growth-gst.ts`, `apps/api/src/lib/gst-invoice-number.ts` (`getFinancialYear`), `apps/api/src/jobs/generate-gst-invoice.ts` (`formatInvoiceDate`).
+- **Symptom:** found in the 2026-11-28 bug hunt (#15). A payment at 02:00 IST on 1 Apr got an invoice number from the old FY (`KAN/25-26/…`), showed in the March GST report, and its PDF was dated 31 Mar. The same applied to every month boundary in the admin and retailer GST summary, monthly, and transactions views.
+- **Root cause:** every GST date calculation used server-local `Date` methods (`new Date(y, m, 1)`, `getMonth()`, `getFullYear()`, `toLocaleDateString` with no `timeZone`). Railway sets no TZ, so the server runs on UTC, and IST dates between 00:00 and 05:30 landed on the previous day. Tests passed because dev machines run in IST.
+- **Fix:** new `lib/ist.ts` with `istParts(date)` (IST year and month) and `istRange(year, month?)` (half-open IST month or year window). All five admin and retailer range builders, the default year, and the monthly bucketing use it. `getFinancialYear` uses `istParts`, and the invoice date is formatted with `timeZone: 'Asia/Kolkata'`.
+- **Proof:** tests pin `process.env.TZ = 'UTC'`: `ist.test.ts`, `gst-invoice-number.test.ts` (02:00 IST 1 Apr → `26-27`), `addon-gst-reports.test.ts` (admin + retailer summary bounds and monthly bucket), `generate-gst-invoice.test.ts` (PDF date `1 Apr 2026`). They fail on the old code. **Limits:** invoices already issued with a wrong FY number or date are not renumbered (they are legal documents; owner decides). Non-GST local-time code (quota periods, commission periods, admin plan/retailer month starts) was not changed.
+
 ## RC-185 — My Style hid a saved palette whenever the feed failed
 
 - **Component:** `apps/web/src/app/(shopper)/my-style/page.tsx`, `apps/api/src/routes/public/public-my-style.ts`.

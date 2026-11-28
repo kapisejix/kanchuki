@@ -10,6 +10,7 @@
 // Format: KAN/YY-YY/NNNNNN (e.g. KAN/26-27/000123)
 
 import { type Prisma, prisma } from '@kanchuki/db';
+import { istParts } from './ist.js';
 
 /** Minimum surface we need — real client or an interactive-txn client. */
 type Db = Pick<typeof prisma, '$queryRaw'> | Prisma.TransactionClient;
@@ -19,8 +20,8 @@ type Db = Pick<typeof prisma, '$queryRaw'> | Prisma.TransactionClient;
  * FY runs April 1 → March 31. E.g. Sep 2026 → "26-27", Mar 2027 → "26-27".
  */
 export function getFinancialYear(date: Date): string {
-  const year = date.getFullYear();
-  const month = date.getMonth(); // 0-indexed (0=Jan, 3=Apr)
+  // RC-201: FY flips at IST midnight on 1 Apr, not server-local midnight.
+  const { year, month } = istParts(date); // month 0-indexed (0=Jan, 3=Apr)
   // FY starts in April: Apr–Dec = current year, Jan–Mar = previous year
   const fyStart = month >= 3 ? year : year - 1;
   const fyEnd = fyStart + 1;

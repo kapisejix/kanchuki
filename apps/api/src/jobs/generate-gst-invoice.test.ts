@@ -91,6 +91,21 @@ describe('handleGenerateGstInvoice - add-on purchase', () => {
     expect(m.payFind).not.toHaveBeenCalled(); // never touches subscription payments
   });
 
+  it('RC-201: invoice date is the IST date on a UTC server', async () => {
+    const prevTz = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      m.addonFind.mockResolvedValue({
+        ...PURCHASE,
+        completed_at: new Date('2026-03-31T20:30:00Z'), // 02:00 IST 1 Apr
+      });
+      await handleGenerateGstInvoice({ addon_purchase_id: 'ap_1' });
+      expect(m.pdf.mock.calls[0]?.[0].invoiceDate).toBe('1 Apr 2026');
+    } finally {
+      process.env.TZ = prevTz;
+    }
+  });
+
   it('already generated: no-op (idempotent)', async () => {
     m.addonFind.mockResolvedValue({ ...PURCHASE, invoice_generated_at: new Date() });
     await handleGenerateGstInvoice({ addon_purchase_id: 'ap_1' });

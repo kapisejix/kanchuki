@@ -1064,3 +1064,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | main `2142d7e9`: typecheck 9/9; mobile 68 files / 735 tests; shared 21 files / 320 tests; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`. |
 | Not done | 319 older products have no embeddings (no backfill job). Ledger: reconciled same day, see next row. |
 | Ledger | `_prisma_migrations` was missing 67 rows (049-081, 127, 139-172), all applied by hand. Read-only check: every table/column/enum/type live, or dropped on purpose later (festival_backgrounds + IncentiveTriggerType by 082, gmb_configured_at by 146, social_templates by 156). Owner ran `prisma migrate resolve --applied` per name over the session pooler (:5432, `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` after Supavisor left an orphaned advisory lock 72707369 that needed `pg_terminate_backend`). Result: 178 rows, 173 applied, `migrate status` up to date. Transaction pooler :6543 hangs migrate. |
+## 2026-11-28 — RC-201: GST periods, invoice FY and invoice date in IST
+
+| Area | Change |
+|---|---|
+| Why | Bug hunt #15. Every GST date calc used server-local time; Railway runs UTC, so a 02:00 IST 1 Apr payment got the old FY invoice number, landed in the March report, and the PDF said 31 Mar. Dev machines run IST, so tests never saw it. |
+| Fix | New `apps/api/src/lib/ist.ts` (`IST_OFFSET_MS`, `IST_TIME_ZONE`, `istParts`, `istRange`). Admin `admin-gst.ts` (3 range builders, default year, monthly bucket) and retailer `growth-gst.ts` (2 range builders, default year, monthly bucket) use it; `getFinancialYear` uses `istParts`; `formatInvoiceDate` adds `timeZone: 'Asia/Kolkata'`. Branch `fix/gst-ist-timezone` off main. Retailer `growth-gst.ts` was not in the bug-hunt row but has the same bug, so it is included. |
+| Tests | All pin `process.env.TZ = 'UTC'`: new `lib/ist.test.ts` (6), `gst-invoice-number.test.ts` +2, `addon-gst-reports.test.ts` +4 (admin + retailer summary bounds, monthly bucket) and one existing assertion moved from local `new Date(2026, 10, 1)` to explicit instants, `generate-gst-invoice.test.ts` +1 (PDF date `1 Apr 2026`). The new cases are red on old code. |
+| Migrations | None. |
+| Local runs | API tsc 0 errors; API vitest 264 files passed / 3 skipped; Biome clean on the 9 touched files. |
+| Not done | Already-issued invoices with wrong FY number/date not renumbered (legal docs, owner). Other local-time code left: `quota.ts` periods, `admin-commission.ts` period keys, `billing-addons.ts:318`, `admin-plans.ts:644`, `admin-retailers-list.ts:16`; three private IST offset copies (commission, referral-accrue, post-schedule-builder) not folded in. |

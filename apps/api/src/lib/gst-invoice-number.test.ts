@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getFinancialYear } from './gst-invoice-number.js';
 
 describe('getFinancialYear', () => {
@@ -24,6 +24,25 @@ describe('getFinancialYear', () => {
 
   it('December 2026 → 26-27', () => {
     expect(getFinancialYear(new Date('2026-12-31'))).toBe('26-27');
+  });
+
+  // RC-201: the FY flips at IST midnight, whatever the server TZ (Railway = UTC).
+  describe('on a UTC server', () => {
+    const prevTz = process.env.TZ;
+    beforeAll(() => {
+      process.env.TZ = 'UTC';
+    });
+    afterAll(() => {
+      process.env.TZ = prevTz;
+    });
+
+    it('02:00 IST 1 Apr 2026 (20:30 UTC 31 Mar) → 26-27', () => {
+      expect(getFinancialYear(new Date('2026-03-31T20:30:00Z'))).toBe('26-27');
+    });
+
+    it('23:30 IST 31 Mar 2026 → 25-26', () => {
+      expect(getFinancialYear(new Date('2026-03-31T18:00:00Z'))).toBe('25-26');
+    });
   });
 });
 
