@@ -11,8 +11,10 @@
 // biome-ignore lint/suspicious/noExplicitAny: vault client is generated only when VAULT_DATABASE_URL is set, so no static type exists
 type VaultClient = any;
 
-let _vaultClient: VaultClient | null = null;
-let _initAttempted = false;
+// One shared init promise: concurrent first callers all await the same import instead of
+// the 2nd..nth seeing "init attempted" and skipping their write (bug-hunt #4). A failed
+// init stays failed (null) for the process, as before.
+let _vaultInit: Promise<VaultClient | null> | null = null;
 
 /**
  * Lazy-init vault PrismaClient. Only connects when VAULT_DATABASE_URL is set
@@ -20,11 +22,12 @@ let _initAttempted = false;
  * module is loaded via dynamic import() since the generated PrismaClient lives
  * in a separate schema and directory from the primary PrismaClient.
  */
-async function getVaultClient(): Promise<VaultClient | null> {
-  if (_vaultClient) return _vaultClient;
-  if (_initAttempted) return null; // Don't retry a failed init
-  _initAttempted = true;
+function getVaultClient(): Promise<VaultClient | null> {
+  _vaultInit ??= initVaultClient();
+  return _vaultInit;
+}
 
+async function initVaultClient(): Promise<VaultClient | null> {
   if (!process.env.VAULT_DATABASE_URL) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[vault] VAULT_DATABASE_URL not set — vault writes will be skipped');
@@ -44,11 +47,10 @@ async function getVaultClient(): Promise<VaultClient | null> {
     const vaultModulePath = '../src/generated/vault/index.js';
     const mod = await import(vaultModulePath);
     const PrismaClient = mod.PrismaClient ?? mod.default?.PrismaClient;
-    _vaultClient = new PrismaClient({
+    return new PrismaClient({
       datasources: { db: { url: process.env.VAULT_DATABASE_URL } },
       log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
     });
-    return _vaultClient;
   } catch (err) {
     console.error('[vault] Failed to initialize vault PrismaClient:', err);
     return null;
@@ -94,7 +96,10 @@ export async function vaultDelete(params: VaultDeleteParams): Promise<void> {
   if (!client) return; // Vault not configured — silently skip
 
   try {
-    await client.deletedRecord.create({
+    // createMany, not create: Postgres `create` is INSERT ... RETURNING, and RETURNING needs
+    // SELECT, which the INSERT-only vault role does not have, so every write failed
+    // (bug-hunt #3). createMany issues a plain INSERT (id is a client-side cuid).
+    await client.deletedRecord.createMany({
       data: {
         source_table: params.source_table,
         source_id: params.source_id,
