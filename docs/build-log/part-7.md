@@ -1064,3 +1064,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | main `2142d7e9`: typecheck 9/9; mobile 68 files / 735 tests; shared 21 files / 320 tests; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`. |
 | Not done | 319 older products have no embeddings (no backfill job). Ledger: reconciled same day, see next row. |
 | Ledger | `_prisma_migrations` was missing 67 rows (049-081, 127, 139-172), all applied by hand. Read-only check: every table/column/enum/type live, or dropped on purpose later (festival_backgrounds + IncentiveTriggerType by 082, gmb_configured_at by 146, social_templates by 156). Owner ran `prisma migrate resolve --applied` per name over the session pooler (:5432, `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` after Supavisor left an orphaned advisory lock 72707369 that needed `pg_terminate_backend`). Result: 178 rows, 173 applied, `migrate status` up to date. Transaction pooler :6543 hangs migrate. |
+## 2026-11-28 — RC-200: mobile flat-₹ promo sent as paise
+
+| Area | Change |
+|---|---|
+| Why | Bug hunt #8. `discount_value` is paise for FIXED (schema, API `applyPromotionDiscount`, web banner, mobile list) but `promotion-form.tsx` sent the rupee field as is: ₹500 flat promo gave ₹5 off. Edit-load showed paise as rupees. |
+| Fix | `promotion-form.tsx`: FIXED only, `value * 100` on save, `Math.round(discount_value / 100)` on edit-load. Branch `fix/mobile-promo-paise` off `feat/expo-sdk-58` (PR onto #379). |
+| Tests | New `__tests__/growth/promotion-form-paise.test.tsx` (3): ₹500 → 50000, PERCENT unchanged, edit 50000 → shows 500 + re-saves 50000. FIXED cases red on old code, green after. |
+| Migrations | None. |
+| Local runs | mobile vitest 69 files / 739 tests green; Biome clean on changed files; mobile tsc: new test clean, 3 errors in untouched files (`otp.tsx`, `mutation-queue.ts`, `offline-persister.ts`) from stale worktree deps (RN 0.81.5 installed vs 0.88.1 on this branch). |
+| Not done | FIXED promos already stored in rupees not corrected (prod data fix, owner decides). Not device-tested. |
