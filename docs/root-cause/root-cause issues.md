@@ -12,6 +12,14 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-200 — Mobile flat-₹ promo saved in rupees, read as paise
+
+- **Component:** `apps/mobile/app/growth/promotion-form.tsx` (`handleSave`, edit-load `useEffect`).
+- **Symptom:** found in the 2026-11-28 bug hunt (#8). A retailer creating a "Flat ₹" promo of 500 got ₹5 off at checkout, and the promotions list showed "₹5 off". Opening an existing FIXED promo for edit showed the paise number as rupees.
+- **Root cause:** `discount_value` is paise for FIXED everywhere else (schema comment, API `applyPromotionDiscount`, web `PromotionBanner`, mobile `promotions.tsx`), but the form passed the rupee field through unchanged in both directions.
+- **Fix:** FIXED only: `value * 100` on save, `Math.round(discount_value / 100)` on edit-load. PERCENT unchanged.
+- **Proof:** `__tests__/growth/promotion-form-paise.test.tsx` (₹500 → 50000 sent; PERCENT 10 unchanged; edit of 50000 shows 500 and re-saves 50000); the FIXED cases fail on the old code. **Limits:** mocked render, not device-tested; FIXED promos already stored in rupees are not corrected (one-off data fix, owner decides).
+
 ## RC-185 — My Style hid a saved palette whenever the feed failed
 
 - **Component:** `apps/web/src/app/(shopper)/my-style/page.tsx`, `apps/api/src/routes/public/public-my-style.ts`.

@@ -78,7 +78,14 @@ export default function PromotionFormScreen() {
     if (!existing) return;
     setCode(existing.code);
     setDiscountType(existing.discount_type);
-    setDiscountValue(String(existing.discount_value));
+    // RC-200: FIXED discount_value is paise on the wire; the field is rupees.
+    setDiscountValue(
+      String(
+        existing.discount_type === 'FIXED'
+          ? Math.round(existing.discount_value / 100)
+          : existing.discount_value,
+      ),
+    );
     setMinOrder(existing.min_order_paise ? String(existing.min_order_paise / 100) : '');
     setIsActive(existing.is_active);
   }, [existing]);
@@ -102,7 +109,7 @@ export default function PromotionFormScreen() {
     const payload = {
       code: code.trim(),
       discount_type: discountType,
-      discount_value: value,
+      discount_value: discountType === 'FIXED' ? value * 100 : value,
       ...(min > 0 ? { min_order_paise: min } : {}),
       is_active: isActive,
     };
