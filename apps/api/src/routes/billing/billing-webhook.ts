@@ -2,10 +2,16 @@ import { prisma } from '@kanchuki/db';
 import { PLAN_LIMITS, orUnlimited } from '@kanchuki/shared';
 import * as Sentry from '@sentry/node';
 // billing-webhook.ts — Razorpay webhook → subscription/payment + GST invoice (split from apps/api/src/routes/billing.ts — body byte-identical)
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { addGenerateGstInvoiceJob } from '../../jobs/generate-gst-invoice.js';
 import { allocateInvoiceNumber } from '../../lib/gst-invoice-number.js';
 import { computeSubscriptionGst } from '../../lib/gst.js';
+import {
+  RAZORPAY_EVENT_TTL_SEC,
+  claimRazorpayEvent,
+  releaseRazorpayEvent,
+} from '../../lib/razorpay-event-dedupe.js';
+import { completeAddonPurchase } from './billing-addons.js';
 import {
   type Plan,
   type RazorpaySubscription,
@@ -16,7 +22,17 @@ import {
 
 export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /billing/webhook (Razorpay → server, no JWT) ──────────
-  server.post('/webhook', async (request, reply) => {
+  // A 5xx (thrown handler, failed add-on credit) releases the event id so Razorpay's
+  // retry is processed instead of answered as a duplicate.
+  const releaseOnFailure = {
+    onResponse: async (request: FastifyRequest, reply: FastifyReply) => {
+      const eventId = request.headers['x-razorpay-event-id'];
+      if (reply.statusCode >= 500 && typeof eventId === 'string') {
+        await releaseRazorpayEvent(eventId);
+      }
+    },
+  };
+  server.post('/webhook', releaseOnFailure, async (request, reply) => {
     const signature = request.headers['x-razorpay-signature'] as string | undefined;
     if (
       !signature ||
@@ -31,6 +47,7 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
       created_at?: number;
       payload: {
         subscription?: { entity: RazorpaySubscription & { plan_id: string } };
+        payment_link?: { entity: { id: string; status?: string } };
         payment?: {
           entity: {
             id: string;
@@ -46,14 +63,48 @@ export const billingWebhookRoutes: FastifyPluginAsync = async (server) => {
       };
     };
 
-    // Replay protection: reject stale events (signature alone doesn't prevent
-    // a captured request from being resent later, e.g. to resurrect a cancelled plan)
-    const WEBHOOK_MAX_AGE_SECONDS = 300;
+    // Replay protection (signature alone doesn't stop a captured request being resent,
+    // e.g. to resurrect a cancelled plan). Bug hunt #7: the old 300 s age window also
+    // rejected Razorpay's own retries, which keep the original created_at for up to 24 h,
+    // so a 6-minute outage lost subscription.charged / refund.processed for good. Now:
+    // dedupe on the event id (same on every retry) + a 48 h outer age bound.
     if (
       typeof event.created_at !== 'number' ||
-      Math.abs(Date.now() / 1000 - event.created_at) > WEBHOOK_MAX_AGE_SECONDS
+      Math.abs(Date.now() / 1000 - event.created_at) > RAZORPAY_EVENT_TTL_SEC
     ) {
       return reply.status(401).send({ error: { code: 'STALE_EVENT', status: 401 } });
+    }
+    const eventId = request.headers['x-razorpay-event-id'];
+    if (typeof eventId === 'string' && !(await claimRazorpayEvent(eventId))) {
+      request.log.info({ event_id: eventId, event: event.event }, 'razorpay event replay ignored');
+      return reply.send({ received: true, duplicate: true });
+    }
+
+    // ─── Add-on packs (bug hunt #6) ─────────────────────────────
+    // The browser callback alone credited add-ons, so closing the tab before the
+    // redirect left a paid purchase PENDING forever. Same verify + CAS credit as the
+    // callback; whichever arrives second gets 'already'. Above the subscription lookup
+    // for the same reason as refunds: this payload has no subscription entity.
+    if (event.event === 'payment_link.paid') {
+      const linkId = event.payload?.payment_link?.entity?.id;
+      const payment = event.payload?.payment?.entity;
+      if (!linkId || !payment) {
+        request.log.warn({ event: event.event }, 'payment_link.paid without link/payment entity');
+        return reply.send({ received: true });
+      }
+      const purchase = await prisma.quotaAddonPurchase.findFirst({
+        where: { razorpay_order_id: linkId, status: 'PENDING' },
+      });
+      if (!purchase) {
+        // Already completed by the callback, or not an add-on link.
+        return reply.send({ received: true });
+      }
+      const outcome = await completeAddonPurchase(purchase, payment.id, payment, request.log);
+      // 'error' = credit txn failed, purchase still PENDING: 500 so Razorpay retries.
+      if (outcome === 'error') {
+        return reply.status(500).send({ error: { code: 'ADDON_CREDIT_FAILED', status: 500 } });
+      }
+      return reply.send({ received: true });
     }
 
     // ─── Refunds (§5A.1) ────────────────────────────────────────

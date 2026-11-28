@@ -1064,3 +1064,14 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | main `2142d7e9`: typecheck 9/9; mobile 68 files / 735 tests; shared 21 files / 320 tests; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`. |
 | Not done | 319 older products have no embeddings (no backfill job). Ledger: reconciled same day, see next row. |
 | Ledger | `_prisma_migrations` was missing 67 rows (049-081, 127, 139-172), all applied by hand. Read-only check: every table/column/enum/type live, or dropped on purpose later (festival_backgrounds + IncentiveTriggerType by 082, gmb_configured_at by 146, social_templates by 156). Owner ran `prisma migrate resolve --applied` per name over the session pooler (:5432, `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` after Supavisor left an orphaned advisory lock 72707369 that needed `pg_terminate_backend`). Result: 178 rows, 173 applied, `migrate status` up to date. Transaction pooler :6543 hangs migrate. |
+## 2026-11-28 — RC-197/198/199: add-on credit via webhook, all packs gated, Razorpay event dedupe
+
+| Area | Change |
+|---|---|
+| Why | Bug hunt 2026-11-28 #5-#7 (billing). #5 legacy add-on packs sold on plans where they credit nothing; #6 add-ons credited only by the browser redirect, so a closed tab = paid and never credited; #7 300 s webhook age window rejected Razorpay's own retries (original `created_at`, up to 24 h). |
+| Fix | `billing-addons.ts`: `canCredit(retailerId, plan, resourceType)` gates every pack at checkout (422); credit step extracted to exported `completeAddonPurchase()`. `billing-webhook.ts`: `payment_link.paid` branch calls it (500 on credit failure); age window 300 s → 48 h + dedupe on `x-razorpay-event-id`; `onResponse` releases the id on 5xx. New `lib/razorpay-event-dedupe.ts` (Redis SET NX, 48 h TTL, VITEST bypass). Branch `fix/billing-addon-credit` (off main `51032fc4`). |
+| Tests | `billing.test.ts` +10 (8 fail on old code); file 49/49. |
+| Migrations | None. |
+| Local runs | Actions blocked by billing, all local: API vitest 263 files passed / 3 skipped, 3640 tests passed / 12 skipped; `tsc --noEmit` exit 0; Biome clean on the 4 changed files. |
+| Owner action | Razorpay dashboard → Webhooks → tick `payment_link.paid`, or #6 stays callback-only. |
+| Not done | Out-of-order webhook events. Add-on purchases already stuck PENDING need a one-off Razorpay reconcile. No live Razorpay/Redis run. |

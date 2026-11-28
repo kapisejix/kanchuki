@@ -12,6 +12,30 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-199 — Razorpay webhook retries were rejected as stale
+
+- **Component:** `apps/api/src/routes/billing/billing-webhook.ts`, new `apps/api/src/lib/razorpay-event-dedupe.ts`.
+- **Symptom:** found in the 2026-11-28 bug hunt (#7). Any webhook delivery Razorpay had to retry (API down or slow for more than 5 minutes) got `401 STALE_EVENT` on every retry, so a `subscription.charged` or `refund.processed` was lost for good.
+- **Root cause:** replay protection was a 300 s age window on `created_at`, but Razorpay retries for up to 24 h and keeps the original `created_at` on every retry. The window could not tell a replay from a genuine retry.
+- **Fix:** dedupe on `x-razorpay-event-id` (same id on every retry): Redis `SET NX` with a 48 h TTL; a processed id is answered 200 `duplicate: true` without touching the DB. The age bound is now 48 h. A route `onResponse` hook releases the id on any 5xx so Razorpay's retry is processed. Redis unreachable = process anyway (handlers are idempotent on their own rows). Same client pattern and VITEST bypass as `sell-idempotency.ts`.
+- **Proof:** `billing.test.ts`: 10-minute-old retry processed (refused by old code), >48 h still `STALE_EVENT`, replay of a claimed id = 200 no-op, 5xx releases the id. **Limits:** dedupe module mocked in tests, no live Redis/Razorpay run. Out-of-order events not handled. If the process dies with no response at all, the id stays claimed and the retry is answered as a duplicate.
+
+## RC-198 — A paid add-on was never credited if the retailer closed the tab
+
+- **Component:** `apps/api/src/routes/billing/billing-addons.ts` (`completeAddonPurchase`), `apps/api/src/routes/billing/billing-webhook.ts`.
+- **Symptom:** found in the 2026-11-28 bug hunt (#6). Paying for an add-on pack and closing the Razorpay page before the redirect left the purchase `PENDING`: money taken, nothing credited, no invoice.
+- **Root cause:** only the browser redirect to `GET /billing/addon-callback` credited the pack. The webhook had no `payment_link.paid` branch, so there was no server-to-server path.
+- **Fix:** the verify + claim + credit + invoice step is now one exported `completeAddonPurchase()` used by both the callback and a new webhook `payment_link.paid` branch (purchase found by `razorpay_order_id` = payment link id, `status: PENDING`). The PENDING→COMPLETED compare-and-set means whichever path arrives second gets `already` and nothing is written twice. A failed credit transaction returns 500 so Razorpay retries.
+- **Proof:** `billing.test.ts`: `payment_link.paid` credits + invoices a PENDING purchase; after the callback already completed it, 200 and nothing written; wrong amount marks FAILED and credits nothing; credit txn failure returns 500. **Limits:** mocked Prisma/Razorpay. Needs the owner to enable `payment_link.paid` on the Razorpay webhook. Purchases already stuck PENDING before this fix need a one-off reconcile against Razorpay.
+
+## RC-197 — Legacy add-on packs could be bought for nothing
+
+- **Component:** `apps/api/src/routes/billing/billing-addons.ts` (`canCredit`, `POST /billing/addon-checkout`).
+- **Symptom:** found in the 2026-11-28 bug hunt (#5). A retailer whose plan made a resource unlimited (or had no limit row) could buy e.g. "Extra 100 crops", pay, get a GST invoice, and receive no credit.
+- **Root cause:** the checkout called `canCredit` for try-on packs only, and `canCredit` hard-coded `TRY_ON_GENERATION`. The callback credits only a limited resource, so for the five legacy pack types the check that prevents an empty sale never ran.
+- **Fix:** `canCredit(retailerId, plan, resourceType)` checks the pack's own resource for every pack type; a refused legacy pack returns 422 before any Razorpay link or purchase row exists.
+- **Proof:** `billing.test.ts` `it.each` (limit -1, no row): 422, no fetch, no purchase row; fails on the old code. **Limits:** mocked; packs already sold this way before the fix are not refunded automatically.
+
 ## RC-185 — My Style hid a saved palette whenever the feed failed
 
 - **Component:** `apps/web/src/app/(shopper)/my-style/page.tsx`, `apps/api/src/routes/public/public-my-style.ts`.

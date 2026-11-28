@@ -99,6 +99,18 @@ vi.mock('@kanchuki/db', () => ({
   Prisma: {},
 }));
 
+// Webhook event-id dedupe: the real module skips Redis under VITEST (always "new");
+// mocked so the replay test can say "already processed".
+const { mockClaimEvent, mockReleaseEvent } = vi.hoisted(() => ({
+  mockClaimEvent: vi.fn(),
+  mockReleaseEvent: vi.fn(),
+}));
+vi.mock('../lib/razorpay-event-dedupe.js', async (orig) => ({
+  ...(await orig<typeof import('../lib/razorpay-event-dedupe.js')>()),
+  claimRazorpayEvent: mockClaimEvent,
+  releaseRazorpayEvent: mockReleaseEvent,
+}));
+
 // GST invoice job is fire-and-forget from the webhook — stub it so the test
 // doesn't spin up a real BullMQ queue / Redis connection.
 vi.mock('../jobs/generate-gst-invoice.js', () => ({
@@ -128,6 +140,8 @@ beforeEach(() => {
   mockQuotaAddonPurchaseUpdateMany.mockResolvedValue({ count: 1 });
   // The add-on callback allocates a GST invoice number inside its txn (gst_invoice_sequences).
   mockQueryRaw.mockResolvedValue([{ last_number: 1 }]);
+  mockClaimEvent.mockResolvedValue(true);
+  mockReleaseEvent.mockResolvedValue(undefined);
 });
 
 // ─── GET /v1/billing/addon-pricing ───────────────────────────────
@@ -158,6 +172,38 @@ describe('GET /v1/billing/addon-pricing', () => {
 // ─── POST /v1/billing/addon-checkout ─────────────────────────────
 
 describe('POST /v1/billing/addon-checkout', () => {
+  // Every legacy pack type is now credit-checked at checkout (bug hunt #5): limited row.
+  beforeEach(() => {
+    mockRetailerLimitOverrideFindUnique.mockResolvedValue(null);
+    mockPlanLimitFindUnique.mockResolvedValue({ limit_per_period: 100, period: 'MONTH' });
+  });
+
+  it.each([
+    ['unlimited (-1)', { limit_per_period: -1, period: 'MONTH' }],
+    ['no limit row', null],
+  ])('bug hunt #5: refuses a legacy pack that would credit nothing (%s)', async (_, row) => {
+    mockRetailerFindUnique.mockResolvedValue({
+      phone: RETAILER_PHONE,
+      shop_name: RETAILER_SHOP,
+      plan: 'PRO',
+    });
+    mockPlanLimitFindUnique.mockResolvedValue(row);
+    const app = await buildApp();
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy;
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/addon-checkout',
+      payload: { resource_type: 'IMAGE_CROP', pack_index: 0 },
+    });
+    globalThis.fetch = originalFetch;
+    expect(res.statusCode).toBe(422);
+    expect(fetchSpy).not.toHaveBeenCalled(); // no Razorpay link
+    expect(mockQuotaAddonPurchaseCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
   it('creates a payment link and pending purchase for a valid pack', async () => {
     mockRetailerFindUnique.mockResolvedValue({
       phone: RETAILER_PHONE,
@@ -699,6 +745,175 @@ describe('POST /v1/billing/webhook', () => {
       await app.close();
     },
   );
+
+  // Bug hunt #7: Razorpay retries keep the original created_at for up to 24 h.
+  it('a 10-minute-old retry is processed (old 300 s window rejected it)', async () => {
+    primeHappyPath();
+    mockSubscriptionPaymentFindUnique.mockResolvedValue(null);
+    const app = await buildApp();
+    const { raw, signature } = signedRequest({
+      ...chargedEvent(),
+      created_at: Math.floor(Date.now() / 1000) - 600,
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: {
+        'x-razorpay-signature': signature,
+        'x-razorpay-event-id': 'evt_1',
+        'content-type': 'application/json',
+      },
+      payload: raw,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockClaimEvent).toHaveBeenCalledWith('evt_1');
+    expect(mockSubscriptionPaymentCreate).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('an event older than 48 h is still refused as STALE_EVENT', async () => {
+    const app = await buildApp();
+    const { raw, signature } = signedRequest({
+      ...chargedEvent(),
+      created_at: Math.floor(Date.now() / 1000) - 49 * 3600,
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+      payload: raw,
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe('STALE_EVENT');
+    expect(mockSubscriptionFindUnique).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('a replay of an already-processed event id is a 200 no-op', async () => {
+    mockClaimEvent.mockResolvedValue(false);
+    const app = await buildApp();
+    const { raw, signature } = signedRequest(chargedEvent());
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: {
+        'x-razorpay-signature': signature,
+        'x-razorpay-event-id': 'evt_1',
+        'content-type': 'application/json',
+      },
+      payload: raw,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().duplicate).toBe(true);
+    expect(mockSubscriptionFindUnique).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('a 5xx releases the event id so the Razorpay retry is processed', async () => {
+    primeHappyPath();
+    mockSubscriptionUpdate.mockRejectedValue(new Error('db down'));
+    const app = await buildApp();
+    const { raw, signature } = signedRequest(chargedEvent());
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: {
+        'x-razorpay-signature': signature,
+        'x-razorpay-event-id': 'evt_9',
+        'content-type': 'application/json',
+      },
+      payload: raw,
+    });
+    expect(res.statusCode).toBe(500);
+    expect(mockReleaseEvent).toHaveBeenCalledWith('evt_9');
+    await app.close();
+  });
+
+  // Bug hunt #6: tab closed before the redirect -> only the webhook can credit.
+  function linkPaidEvent(amount = 14900) {
+    return {
+      event: 'payment_link.paid',
+      created_at: Math.floor(Date.now() / 1000),
+      payload: {
+        payment_link: { entity: { id: 'plink_wh', status: 'paid' } },
+        payment: { entity: { id: 'pay_wh', amount, status: 'captured' } },
+      },
+    };
+  }
+  async function sendLinkPaid(body: object) {
+    const app = await buildApp();
+    const { raw, signature } = signedRequest(body);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+      payload: raw,
+    });
+    await app.close();
+    return res;
+  }
+  const whPurchase = {
+    id: 'purchase_wh',
+    retailer_id: RETAILER_ID,
+    resource_type: 'AI_TAGGING_CALL',
+    quantity: 100,
+    amount_inr: 14900,
+  };
+  function primeLimited() {
+    mockQuotaAddonPurchaseFindFirst.mockResolvedValue(whPurchase);
+    mockRetailerLimitOverrideFindUnique.mockResolvedValue(null);
+    mockRetailerFindUnique.mockResolvedValue({ plan: 'STARTER', state: 'Maharashtra' });
+    mockPlanLimitFindUnique.mockResolvedValue({ limit_per_period: 575, period: 'MONTH' });
+    mockPlatformGstProfileFindUnique.mockResolvedValue({ state_code: '27', invoice_prefix: 'KAN' });
+  }
+
+  it('payment_link.paid credits + invoices a PENDING add-on purchase', async () => {
+    primeLimited();
+    const res = await sendLinkPaid(linkPaidEvent());
+    expect(res.statusCode).toBe(200);
+    expect(mockQuotaAddonPurchaseFindFirst).toHaveBeenCalledWith({
+      where: { razorpay_order_id: 'plink_wh', status: 'PENDING' },
+    });
+    expect(mockQuotaAddonPurchaseUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'purchase_wh', status: 'PENDING' },
+        data: expect.objectContaining({ status: 'COMPLETED', razorpay_payment_id: 'pay_wh' }),
+      }),
+    );
+    expect(mockUsageCounterUpsert).toHaveBeenCalledOnce();
+    expect(mockQuotaAddonPurchaseUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ gst_invoice_number: expect.any(String) }),
+      }),
+    );
+    expect(mockSubscriptionFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('payment_link.paid after the callback already completed it: 200, nothing written', async () => {
+    mockQuotaAddonPurchaseFindFirst.mockResolvedValue(null);
+    const res = await sendLinkPaid(linkPaidEvent());
+    expect(res.statusCode).toBe(200);
+    expect(mockQuotaAddonPurchaseUpdateMany).not.toHaveBeenCalled();
+    expect(mockUsageCounterUpsert).not.toHaveBeenCalled();
+  });
+
+  it('payment_link.paid with a wrong amount marks FAILED, credits nothing', async () => {
+    mockQuotaAddonPurchaseFindFirst.mockResolvedValue(whPurchase);
+    const res = await sendLinkPaid(linkPaidEvent(100));
+    expect(res.statusCode).toBe(200);
+    expect(mockQuotaAddonPurchaseUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'purchase_wh', status: 'PENDING' },
+      data: { status: 'FAILED', razorpay_payment_id: 'pay_wh' },
+    });
+    expect(mockUsageCounterUpsert).not.toHaveBeenCalled();
+  });
+
+  it('payment_link.paid whose credit txn fails returns 500 (Razorpay retries)', async () => {
+    primeLimited();
+    mockUsageCounterUpsert.mockRejectedValue(new Error('db down'));
+    const res = await sendLinkPaid(linkPaidEvent());
+    expect(res.statusCode).toBe(500);
+  });
 
   it('rejects a webhook with a bad signature before touching the database', async () => {
     const app = await buildApp();
