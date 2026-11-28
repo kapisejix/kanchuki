@@ -1064,3 +1064,13 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Local runs | main `2142d7e9`: typecheck 9/9; mobile 68 files / 735 tests; shared 21 files / 320 tests; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`. |
 | Not done | 319 older products have no embeddings (no backfill job). Ledger: reconciled same day, see next row. |
 | Ledger | `_prisma_migrations` was missing 67 rows (049-081, 127, 139-172), all applied by hand. Read-only check: every table/column/enum/type live, or dropped on purpose later (festival_backgrounds + IncentiveTriggerType by 082, gmb_configured_at by 146, social_templates by 156). Owner ran `prisma migrate resolve --applied` per name over the session pooler (:5432, `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` after Supavisor left an orphaned advisory lock 72707369 that needed `pg_terminate_backend`). Result: 178 rows, 173 applied, `migrate status` up to date. Transaction pooler :6543 hangs migrate. |
+
+## 2026-11-28 — RC-196: Deletion Vault writes (bug hunt #3, #4)
+
+| Area | Change |
+|---|---|
+| Why | Vault snapshots never landed: Prisma `create` = INSERT … RETURNING needs SELECT the INSERT-only role lacks; plus concurrent cold-init callers got `null` and skipped. Errors only logged. |
+| Fix | `packages/db/src/vault.ts`: `createMany` instead of `create`; cached init promise replaces `_initAttempted` flag. |
+| Tests | New `packages/db/src/vault-write.test.ts` (fails on old code). db vitest 21 passed / 2 skipped; db + api `tsc` 0; Biome clean; 5 vault-touching api test files 45 passed. |
+| Not done | Live vault check (vault is separate Railway Postgres; Supabase query does not apply). Admin vault read page needs SELECT, not granted by setup script. |
+

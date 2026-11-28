@@ -12,6 +12,14 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-196 — Deletion Vault snapshots never landed
+
+- **Component:** `packages/db/src/vault.ts` (`vaultDelete`, `getVaultClient`).
+- **Symptom:** found in the 2026-11-28 bug hunt (#3, #4). Matches the "vault broken" note from the 2026-11-21 R2 incident. Hard deletes left no vault copy; only `[vault] write failed` in logs.
+- **Root cause:** (#3) Prisma `create` on Postgres is `INSERT … RETURNING`; RETURNING needs SELECT, and the vault role is INSERT-only by design, so every write was denied and the catch only logged it. (#4) `_initAttempted = true` was set before the awaited dynamic import, so concurrent first callers (e.g. `Promise.all` of snapshots in a retailer delete) got `null` and silently skipped.
+- **Fix:** `createMany` (plain INSERT; `id` is a client-side cuid) and one shared init promise that every caller awaits.
+- **Proof:** `vault-write.test.ts`: 3 concurrent cold calls → 1 client, 3 `createMany`, 0 `create`; fails on the old code. **Limits:** mocked client; live vault grant not verified (separate Railway Postgres); the admin vault read page uses SELECT and still needs a read-capable role.
+
 ## RC-185 — My Style hid a saved palette whenever the feed failed
 
 - **Component:** `apps/web/src/app/(shopper)/my-style/page.tsx`, `apps/api/src/routes/public/public-my-style.ts`.
