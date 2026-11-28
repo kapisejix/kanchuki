@@ -94,7 +94,6 @@
           "isAutoInitEnabled": false
         }
       ],
-      "@sentry/react-native",
       "expo-video",
       [
         "expo-notifications",
