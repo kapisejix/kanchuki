@@ -1053,3 +1053,14 @@ Placeholder "Nominee's 10-digit mobile number" cut off at 360px; now "Nominee's 
 | Migrations | None. |
 | Local runs | build shared + ai; typecheck 9/9; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`; parallel test run 1 ai timeout → serial (`--concurrency=1`) all green: api 3630 (12 skipped), web 909, mobile 735, shared 320, ai 214, db 25. |
 | Not done | Not pushed. Sweep-scope ruling needs owner OK. |
+## 2026-11-28 — RC-193: pgvector type resolvable for kanchuki_app
+
+| Area | Change |
+|---|---|
+| Why | `[jobs] generate-embedding failed: type "vector" does not exist` (42704). `vector` lives in schema `extensions`; `kanchuki_app` had no USAGE on it and `rolconfig` null, so every embedding write failed and `product_embeddings` = 0 rows / 319 products. |
+| Fix | Migration `172_app_role_extensions_search_path`: `GRANT USAGE ON SCHEMA extensions TO kanchuki_app`; `ALTER ROLE kanchuki_app SET search_path = "$user", public, extensions`. Migrator/purge roles not granted (not needed). PR #374, merged in `2142d7e9`. |
+| Migrations | 172 applied by owner as postgres 2026-11-27; API + worker restarted (role search_path applies to new connections only). |
+| Verified | Read-only: `has_schema_privilege('kanchuki_app','extensions','USAGE')` = true, rolconfig set. 2026-11-28 owner added a product in Expo Go: product 06:44:00, embedding row 06:44:19; no vector / generate-embedding / Redis max-clients errors in recent API logs. |
+| Local runs | main `2142d7e9`: typecheck 9/9; mobile 68 files / 735 tests; shared 21 files / 320 tests; Biome 1 error = gitignored `apps/mobile/expo-env.d.ts`. |
+| Not done | 319 older products have no embeddings (no backfill job). Ledger: reconciled same day, see next row. |
+| Ledger | `_prisma_migrations` was missing 67 rows (049-081, 127, 139-172), all applied by hand. Read-only check: every table/column/enum/type live, or dropped on purpose later (festival_backgrounds + IncentiveTriggerType by 082, gmb_configured_at by 146, social_templates by 156). Owner ran `prisma migrate resolve --applied` per name over the session pooler (:5432, `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` after Supavisor left an orphaned advisory lock 72707369 that needed `pg_terminate_backend`). Result: 178 rows, 173 applied, `migrate status` up to date. Transaction pooler :6543 hangs migrate. |
