@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -94,6 +94,11 @@ export default function JoinScreen() {
   };
 
   const goToLogin = () => router.replace('/auth/phone');
+
+  // ponytail: tokenless /join (SDK 58 router falls back here on a logged-out
+  // cold start, or a bare kanchuki://join link) has nothing to load — the
+  // effect above never leaves 'loading'. Send to login instead of spinning.
+  if (!token) return <Redirect href="/auth/phone" />;
 
   return (
     <ScrollView

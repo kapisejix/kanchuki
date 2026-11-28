@@ -251,7 +251,9 @@ export default function EnquiriesScreen() {
           keyExtractor={(e) => e.id}
           renderItem={renderItem}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: screenPaddingBottom }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
           ListEmptyComponent={
             <Text className="text-sm text-heliotrope-600 text-center mt-10">
               No enquiries yet. When a customer sends their picks, they show up here.

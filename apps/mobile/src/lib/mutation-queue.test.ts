@@ -41,7 +41,7 @@ const { memory, FakeFile, FakeDirectory } = vi.hoisted(() => {
         this.exists = true;
       }
     }
-    write(content: string): void {
+    writeSync(content: string): void {
       memory.set(this.uri, content);
       this.exists = true;
     }
@@ -122,8 +122,8 @@ describe('mutation-queue', () => {
 
   it('swallows write failures (offline/disk errors never throw to the caller)', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const originalWrite = FakeFile.prototype.write;
-    FakeFile.prototype.write = () => {
+    const originalWrite = FakeFile.prototype.writeSync;
+    FakeFile.prototype.writeSync = () => {
       throw new Error('disk full');
     };
     try {
@@ -132,7 +132,7 @@ describe('mutation-queue', () => {
       // and no partial/corrupt state is left behind.
       expect(await getQueue()).toEqual([]);
     } finally {
-      FakeFile.prototype.write = originalWrite;
+      FakeFile.prototype.writeSync = originalWrite;
       warn.mockRestore();
     }
   });
@@ -192,14 +192,14 @@ describe('sell queue', () => {
 
   it('reports a failed write instead of pretending the bill was queued', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const originalWrite = FakeFile.prototype.write;
-    FakeFile.prototype.write = () => {
+    const originalWrite = FakeFile.prototype.writeSync;
+    FakeFile.prototype.writeSync = () => {
       throw new Error('disk full');
     };
     try {
       await expect(enqueueSellMutation('bill-1', lines, names)).resolves.toBe(false);
     } finally {
-      FakeFile.prototype.write = originalWrite;
+      FakeFile.prototype.writeSync = originalWrite;
       warn.mockRestore();
     }
   });

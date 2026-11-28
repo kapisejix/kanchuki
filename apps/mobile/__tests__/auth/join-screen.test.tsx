@@ -17,6 +17,7 @@ const mockSendOtp = vi.hoisted(() => vi.fn());
 vi.mock('expo-router', () => ({
   router: { replace: vi.fn(), push: vi.fn(), back: vi.fn() },
   useLocalSearchParams: vi.fn(() => ({ token: 'invite_token_abcdefghijklmnopqrstuvwxyz' })),
+  Redirect: ({ href }: { href: string }) => React.createElement(Text, null, `redirect:${href}`),
 }));
 
 vi.mock('../../src/lib/api', () => ({
@@ -141,6 +142,17 @@ describe('app/join.tsx (staff-invite-tokens §6.1)', () => {
     const texts = allTexts(tree).map((t) => t.props.children);
     expect(texts.join(' ')).toContain("You've already joined");
     expect(texts.join(' ')).toContain('Log in with phone');
+  });
+
+  it('redirects a tokenless /join to login instead of spinning forever', async () => {
+    // expo-router 58 falls back to /join on a logged-out cold start (no token).
+    const { useLocalSearchParams } = await import('expo-router');
+    vi.mocked(useLocalSearchParams).mockReturnValueOnce({});
+
+    const tree = await renderJoin();
+    const texts = allTexts(tree).map((t) => t.props.children);
+    expect(texts).toContain('redirect:/auth/phone');
+    expect(mockGet).not.toHaveBeenCalled();
   });
 
   it('renders the dead-end for expired/revoked/404 invites', async () => {

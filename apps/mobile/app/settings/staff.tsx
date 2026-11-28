@@ -730,7 +730,7 @@ export default function StaffScreen() {
                       </View>
                     ))}
                 </View>
-              ) : null
+              ) : undefined
             }
           />
         )}

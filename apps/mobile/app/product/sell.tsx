@@ -593,7 +593,9 @@ export default function SellScreen() {
           transparent
           animationType="fade"
           visible
-          onRequestClose={() => !submitting && setConfirmOpen(false)}
+          onRequestClose={() => {
+            if (!submitting) setConfirmOpen(false);
+          }}
         >
           <View className="flex-1 bg-black/50 justify-end">
             <View

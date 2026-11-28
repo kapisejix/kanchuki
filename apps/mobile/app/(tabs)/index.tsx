@@ -324,7 +324,9 @@ export default function HomeScreen() {
               icon={<FolderKanban size={18} color="#5A3962" />}
               label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
               sublabel="Manage categories"
-              onPress={() => router.push('/category')}
+              // Explicit group: bare '/category' also matches the root app/category/
+              // folder (no index) and expo-router 58 resolves it there → dead tap.
+              onPress={() => router.push('/(tabs)/category')}
             />
           </View>
           <View className="flex-row gap-3">
