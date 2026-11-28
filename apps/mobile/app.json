@@ -7,7 +7,7 @@
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
     "android": {
-      "versionCode": 8,
+      "versionCode": 9,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -31,6 +31,17 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "//": "R8 shrink + obfuscate (Play flagged 1% obfuscation; visibility impact from Feb 2027). Reanimated, Worklets, FB Android SDK, Sentry and RN/Hermes ship consumer ProGuard rules; the two keeps below cover the RN bridge modules that ship none (react-native-fbsdk-next, MSG91's com.biometrics). Add keeps only when a device test proves one is missing.",
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.facebook.reactnative.androidsdk.** { *; }\n-keep class com.biometrics.** { *; }"
+          }
+        }
+      ],
       [
         "expo-splash-screen",
         {
