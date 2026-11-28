@@ -12,6 +12,14 @@
 
 > **Split 2026-09-26:** this file grew past the 150k-char doc limit. RC-030 and older now live in [`root-cause issues (part 2, RC-030 and older).md`](./root-cause%20issues%20%28part%202%2C%20RC-030%20and%20older%29.md). Same tracker, same rules (see `README.md`) — split only, no content changed or dropped.
 
+## RC-202 — A failed token refresh on a bad network logged out and lost offline bills
+
+- **Component:** `apps/mobile/src/lib/api/client.ts` (`refreshAccessToken`, the 401 branch of `request()`).
+- **Symptom:** found in the 2026-11-28 bug hunt (#10). If the access token expired during a Railway redeploy (502) or on flaky 3G, the retailer was logged out, and offline sales that had not synced yet were deleted.
+- **Root cause:** `refreshAccessToken` returned `null` for every failure: any non-ok status and any fetch throw. `request()` treats `null` as "session dead", so it cleared the tokens and called `redirectToAuth()`. The auth listener then runs `clearPersistedCache()` → `clearQueue()`, which deletes the offline queue.
+- **Fix:** `null` now means only "no refresh token stored" or "API rejected it" (400/401/403). Every other failure (5xx, 429, 408, network) throws. `request()` turns that into `ApiError('NETWORK_ERROR', …, 0)` and keeps the tokens and the queue. The single-flight `refreshPromise` is reset in `finally`, so a rejected refresh cannot get stuck.
+- **Proof:** `src/lib/api/client.refresh.test.ts` (10 cases). 502/503/429/408 and network error → NETWORK_ERROR, no logout, no redirect (red on old code). After a transient failure the next 401 refreshes again. 401/403/400 and a missing refresh token still log out. **Limits:** mocked; not device-tested. The API `/auth/refresh` returns 401 when Supabase itself is unreachable, so a Supabase outage still logs out (follow-up).
+
 ## RC-185 — My Style hid a saved palette whenever the feed failed
 
 - **Component:** `apps/web/src/app/(shopper)/my-style/page.tsx`, `apps/api/src/routes/public/public-my-style.ts`.

@@ -49,32 +49,35 @@ export function redirectToAuth() {
   }, 4000);
 }
 
+// RC-202: null = the session is really gone (no refresh token, or the API
+// rejected it with 400/401/403) → caller logs out. Anything else (5xx during a
+// redeploy, 429, network down) THROWS: logging out would clear the offline
+// sales queue, so keep the tokens and let the user retry.
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       const refreshToken = await getItem('refresh_token');
       if (!refreshToken) return null;
-      try {
-        const res = await fetch(`${API_URL}/v1/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken }),
-        });
-        if (!res.ok) return null;
-        const { data } = (await res.json()) as {
-          data: { access_token: string; refresh_token: string };
-        };
-        await setToken(data.access_token);
-        await setItem('refresh_token', data.refresh_token);
-        return data.access_token;
-      } catch {
-        return null;
-      }
+      const res = await fetch(`${API_URL}/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (res.status === 400 || res.status === 401 || res.status === 403) return null;
+      if (!res.ok) throw new Error(`refresh failed (${res.status})`);
+      const { data } = (await res.json()) as {
+        data: { access_token: string; refresh_token: string };
+      };
+      await setToken(data.access_token);
+      await setItem('refresh_token', data.refresh_token);
+      return data.access_token;
     })();
   }
-  const token = await refreshPromise;
-  refreshPromise = null;
-  return token;
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
 }
 
 export async function request<T>(
@@ -119,7 +122,17 @@ export async function request<T>(
     // Expired access token — refresh once and retry the original request
     if (status === 401 && code === 'UNAUTHORIZED' && !isRetry) {
       if (!path.startsWith('/v1/auth/')) {
-        const newToken = await refreshAccessToken();
+        let newToken: string | null;
+        try {
+          newToken = await refreshAccessToken();
+        } catch {
+          // Transient refresh failure: stay logged in (RC-202).
+          throw new ApiError(
+            'NETWORK_ERROR',
+            'Could not reach the server. Check your network and try again.',
+            0,
+          );
+        }
         if (newToken) return request<T>(path, options, true);
         await clearToken();
         await deleteItem('refresh_token');
