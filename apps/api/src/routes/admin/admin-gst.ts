@@ -22,6 +22,7 @@ import {
   archiveWhere,
   includeArchive,
 } from '../../lib/gst-invoice-archive.js';
+import { istParts, istRange } from '../../lib/ist.js';
 import { queryBool } from '../../lib/query-bool.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -41,15 +42,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const where: Record<string, unknown> = {};
     if (q.success) {
       if (q.data.retailer_id) where.retailer_id = q.data.retailer_id;
-      if (q.data.month && q.data.year) {
-        const start = new Date(q.data.year, q.data.month - 1, 1);
-        const end = new Date(q.data.year, q.data.month, 1);
-        where.created_at = { gte: start, lt: end };
-      } else if (q.data.year) {
-        const start = new Date(q.data.year, 0, 1);
-        const end = new Date(q.data.year + 1, 0, 1);
-        where.created_at = { gte: start, lt: end };
-      }
+      if (q.data.year) where.created_at = istRange(q.data.year, q.data.month);
     }
 
     where.status = 'success';
@@ -104,9 +97,8 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       })
       .safeParse(request.query);
 
-    const year = q.success && q.data.year ? q.data.year : new Date().getFullYear();
-    const startOfYear = new Date(year, 0, 1);
-    const endOfYear = new Date(year + 1, 0, 1);
+    const year = q.success && q.data.year ? q.data.year : istParts(new Date()).year;
+    const { gte: startOfYear, lt: endOfYear } = istRange(year);
 
     const where: Record<string, unknown> = {
       created_at: { gte: startOfYear, lt: endOfYear },
@@ -162,7 +154,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     }
 
     for (const row of monthlyData) {
-      const m = new Date(row.created_at).getMonth();
+      const m = istParts(new Date(row.created_at)).month;
       const entry = months[m];
       if (entry) {
         entry.taxable += (row._sum?.amount_excluding_gst ?? 0) as number;
@@ -205,15 +197,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     };
 
     if (q.success) {
-      if (q.data.month && q.data.year) {
-        const start = new Date(q.data.year, q.data.month - 1, 1);
-        const end = new Date(q.data.year, q.data.month, 1);
-        where.created_at = { gte: start, lt: end };
-      } else if (q.data.year) {
-        const start = new Date(q.data.year, 0, 1);
-        const end = new Date(q.data.year + 1, 0, 1);
-        where.created_at = { gte: start, lt: end };
-      }
+      if (q.data.year) where.created_at = istRange(q.data.year, q.data.month);
     }
 
     const limit = q.success && q.data.limit ? q.data.limit : 20;
@@ -306,15 +290,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       if (q.data.invoiced !== undefined) {
         where.gst_invoice_number = q.data.invoiced ? { not: null } : null;
       }
-      if (q.data.month && q.data.year) {
-        const start = new Date(q.data.year, q.data.month - 1, 1);
-        const end = new Date(q.data.year, q.data.month, 1);
-        where.created_at = { gte: start, lt: end };
-      } else if (q.data.year) {
-        const start = new Date(q.data.year, 0, 1);
-        const end = new Date(q.data.year + 1, 0, 1);
-        where.created_at = { gte: start, lt: end };
-      }
+      if (q.data.year) where.created_at = istRange(q.data.year, q.data.month);
     }
 
     const page = q.success && q.data.page ? q.data.page : 1;

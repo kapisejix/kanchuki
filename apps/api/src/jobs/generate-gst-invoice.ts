@@ -8,6 +8,7 @@ import { uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { type InvoicePdfInput, buildGstInvoicePdf } from '../lib/gst-invoice-pdf.js';
+import { IST_TIME_ZONE } from '../lib/ist.js';
 import { getMaintenanceQueue } from './queue.js';
 
 /** Exactly one of the two ids: a subscription payment, or an add-on pack purchase. */
@@ -75,6 +76,7 @@ function formatInvoiceDate(d: Date | null): string {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: IST_TIME_ZONE, // RC-201: IST date, not server-local
   });
 }
 

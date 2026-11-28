@@ -1,5 +1,5 @@
 import Fastify, { type FastifyPluginAsync } from 'fastify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Add-on pack invoices live on quota_addon_purchases, not subscription_payments. The GST
 // reports and invoice list/download must include them, scoped to the same retailer.
@@ -205,9 +205,10 @@ describe('admin GET /gst/summary includes add-on packs', () => {
     await a.inject({ method: 'GET', url: '/v1/admin/gst/summary?month=11&year=2026' });
     const where = m.addAggregate.mock.calls[0]?.[0].where;
     expect(where.status).toBe('COMPLETED');
+    // RC-201: IST month bounds as explicit instants (not server-local dates).
     expect(where.completed_at).toEqual({
-      gte: new Date(2026, 10, 1),
-      lt: new Date(2026, 11, 1),
+      gte: new Date('2026-10-31T18:30:00Z'),
+      lt: new Date('2026-11-30T18:30:00Z'),
     });
     expect(where.created_at).toBeUndefined();
   });
@@ -218,6 +219,44 @@ describe('admin GET /gst/summary includes add-on packs', () => {
     const res = await a.inject({ method: 'GET', url: '/v1/admin/gst/summary' });
     expect(res.json().data.invoiced_orders).toBe(1);
     expect(res.json().data.pending_invoices).toBe(1);
+  });
+});
+
+// RC-201 — GST periods follow IST on a UTC server (Railway sets no TZ).
+describe('GST report periods follow IST, not server time', () => {
+  const prevTz = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = 'UTC';
+  });
+  afterAll(() => {
+    process.env.TZ = prevTz;
+  });
+  const APRIL = { gte: new Date('2026-03-31T18:30:00Z'), lt: new Date('2026-04-30T18:30:00Z') };
+  const at0200IstApr1 = new Date('2026-03-31T20:30:00Z');
+
+  it.each([
+    ['admin', adminGstRoutes, '/v1/admin'],
+    ['retailer', growthGstRoutes, '/v1/growth'],
+  ] as const)('%s summary month=4 uses IST month bounds', async (_n, plugin, prefix) => {
+    const a = await app(plugin, prefix);
+    await a.inject({ method: 'GET', url: `${prefix}/gst/summary?month=4&year=2026` });
+    expect(m.subAggregate.mock.calls[0]?.[0].where.created_at).toEqual(APRIL);
+  });
+
+  it.each([
+    ['admin', adminGstRoutes, '/v1/admin'],
+    ['retailer', growthGstRoutes, '/v1/growth'],
+  ] as const)('%s monthly puts 02:00 IST 1 Apr in April', async (_n, plugin, prefix) => {
+    m.subGroupBy.mockResolvedValue([{ created_at: at0200IstApr1, ...SUB_SUM }]);
+    const a = await app(plugin, prefix);
+    const res = await a.inject({ method: 'GET', url: `${prefix}/gst/monthly?year=2026` });
+    const rows = res.json().data.months as { month: number; taxable: number }[];
+    expect(rows.find((r) => r.month === 4)?.taxable).toBe(100000);
+    expect(rows.find((r) => r.month === 3)?.taxable).toBe(0);
+    expect(m.subGroupBy.mock.calls[0]?.[0].where.created_at).toEqual({
+      gte: new Date('2025-12-31T18:30:00Z'),
+      lt: new Date('2026-12-31T18:30:00Z'),
+    });
   });
 });
 
