@@ -1,8 +1,13 @@
 // billing-addons.ts — one-time addon packs (payment link + order + verification) (split from apps/api/src/routes/billing.ts — body byte-identical)
-import { type QuotaResourceType, type SubscriptionPlan, prisma } from '@kanchuki/db';
+import {
+  type QuotaAddonPurchase,
+  type QuotaResourceType,
+  type SubscriptionPlan,
+  prisma,
+} from '@kanchuki/db';
 import { ADDON_PRICING } from '@kanchuki/shared';
 import * as Sentry from '@sentry/node';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyBaseLogger, FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addGenerateGstInvoiceJob } from '../../jobs/generate-gst-invoice.js';
 import { hasFeatureForPlan } from '../../lib/features.js';
@@ -16,9 +21,15 @@ import {
   verifyPaymentLinkSignature,
 } from './billing-helpers.js';
 // The callback credits only a limited resource (limit !== -1, row exists); a pack
-// bought otherwise would take payment and credit nothing.
-async function canCredit(retailerId: string, plan: SubscriptionPlan): Promise<boolean> {
-  const eff = await getEffectiveLimit(retailerId, 'TRY_ON_GENERATION', plan);
+// bought otherwise would take payment and credit nothing. Checked for EVERY pack type at
+// checkout (bug hunt #5: only try-on was checked, so an unlimited-plan retailer could buy
+// "Extra 100 crops" and get an invoice for nothing).
+async function canCredit(
+  retailerId: string,
+  plan: SubscriptionPlan,
+  resourceType: QuotaResourceType = 'TRY_ON_GENERATION',
+): Promise<boolean> {
+  const eff = await getEffectiveLimit(retailerId, resourceType, plan);
   return !!eff && eff.limit !== -1;
 }
 export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
@@ -122,6 +133,10 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
         throw notFound('Product');
       }
       pack = row;
+    } else if (
+      !(await canCredit(request.retailerId, retailer.plan, body.resource_type as QuotaResourceType))
+    ) {
+      throw validationError('This pack is not available on your plan', 'resource_type');
     }
     if (!pack) throw notFound('Product'); // unreachable; narrows the type
 
@@ -257,7 +272,7 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
 
     // Fetch payment details from Razorpay to verify amount + capture status
     // before crediting anything — a mismatch or uncaptured payment must not
-    // fall through to the credit step below.
+    // fall through to the credit step.
     const webUrl = process.env.WEB_URL ?? 'http://localhost:3000';
     let payment: { amount: number; status: string };
     try {
@@ -278,151 +293,175 @@ export const billingAddonRoutes: FastifyPluginAsync = async (server) => {
       });
       return reply.redirect(`${webUrl}/billing/addon-success?status=error`);
     }
-    if (payment.amount !== purchase.amount_inr || payment.status !== 'captured') {
-      // Definitive: the wrong amount, or Razorpay says the payment failed. Anything else
-      // (authorized, created...) can still capture, so the purchase stays PENDING.
-      const definitive = payment.amount !== purchase.amount_inr || payment.status === 'failed';
-      request.log.error(
-        {
-          razorpay_payment_id,
-          expected: purchase.amount_inr,
-          actual: payment.amount,
-          status: payment.status,
-        },
-        'Payment amount/status mismatch on addon callback — not crediting',
-      );
-      if (definitive) {
-        // CAS on PENDING: a concurrent callback that already completed it must not be
-        // overwritten with FAILED.
-        await prisma.quotaAddonPurchase.updateMany({
-          where: { id: purchase.id, status: 'PENDING' },
-          data: { status: 'FAILED', razorpay_payment_id },
-        });
-      }
-      return reply.redirect(
-        `${webUrl}/billing/addon-success?status=${definitive ? 'failed' : 'error'}`,
-      );
+
+    const outcome = await completeAddonPurchase(
+      purchase,
+      razorpay_payment_id,
+      payment,
+      request.log,
+    );
+    const status =
+      outcome === 'credited' || outcome === 'already'
+        ? 'success'
+        : outcome === 'failed'
+          ? 'failed'
+          : 'error';
+    return reply.redirect(`${webUrl}/billing/addon-success?status=${status}`);
+  });
+};
+
+/**
+ * Verify a Razorpay payment against a PENDING add-on purchase, then claim + credit +
+ * invoice it in one transaction. Shared by the browser callback and the
+ * `payment_link.paid` webhook (bug hunt #6: a retailer who closed the tab before the
+ * redirect paid and got nothing). The PENDING -> COMPLETED CAS makes the two paths (and
+ * replays of either) credit once.
+ *  - credited: this call completed it
+ *  - already:  another delivery completed it first
+ *  - failed:   wrong amount or Razorpay says failed (purchase marked FAILED)
+ *  - pending:  not captured yet (authorized...) — left PENDING
+ *  - error:    credit transaction threw — left PENDING, alerted, safe to replay
+ */
+export async function completeAddonPurchase(
+  purchase: QuotaAddonPurchase,
+  razorpay_payment_id: string,
+  payment: { amount: number; status: string },
+  log: FastifyBaseLogger,
+): Promise<'credited' | 'already' | 'failed' | 'pending' | 'error'> {
+  if (payment.amount !== purchase.amount_inr || payment.status !== 'captured') {
+    // Definitive: the wrong amount, or Razorpay says the payment failed. Anything else
+    // (authorized, created...) can still capture, so the purchase stays PENDING.
+    const definitive = payment.amount !== purchase.amount_inr || payment.status === 'failed';
+    log.error(
+      {
+        razorpay_payment_id,
+        expected: purchase.amount_inr,
+        actual: payment.amount,
+        status: payment.status,
+      },
+      'Payment amount/status mismatch on addon callback — not crediting',
+    );
+    if (definitive) {
+      // CAS on PENDING: a concurrent callback that already completed it must not be
+      // overwritten with FAILED.
+      await prisma.quotaAddonPurchase.updateMany({
+        where: { id: purchase.id, status: 'PENDING' },
+        data: { status: 'FAILED', razorpay_payment_id },
+      });
     }
+    return definitive ? 'failed' : 'pending';
+  }
 
-    // Credit the addon to the retailer's usage counter
-    const effective = await getEffectiveLimit(purchase.retailer_id, purchase.resource_type);
+  // Credit the addon to the retailer's usage counter
+  const effective = await getEffectiveLimit(purchase.retailer_id, purchase.resource_type);
 
-    // Claim + credit in ONE transaction: the conditional PENDING -> COMPLETED flip
-    // is the compare-and-set, so concurrent/replayed callbacks credit once. If the
-    // credit throws, the claim rolls back with it and the purchase stays PENDING
-    // (a later callback replay can still credit it).
-    const period = effective?.period;
-    const now = new Date();
-    const start =
-      period === 'DAY'
-        ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        : period === 'MONTH'
-          ? new Date(now.getFullYear(), now.getMonth(), 1)
-          : new Date(0);
-    const shouldCredit = !!effective && effective.limit !== -1;
+  // Claim + credit in ONE transaction: the conditional PENDING -> COMPLETED flip
+  // is the compare-and-set, so concurrent/replayed callbacks credit once. If the
+  // credit throws, the claim rolls back with it and the purchase stays PENDING
+  // (a later callback replay can still credit it).
+  const period = effective?.period;
+  const now = new Date();
+  const start =
+    period === 'DAY'
+      ? new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      : period === 'MONTH'
+        ? new Date(now.getFullYear(), now.getMonth(), 1)
+        : new Date(0);
+  const shouldCredit = !!effective && effective.limit !== -1;
 
-    // GST split for the invoice. amount_inr is the GST-INCLUSIVE gross charged.
-    const [buyer, gstProfile] = await Promise.all([
-      prisma.retailer.findUnique({ where: { id: purchase.retailer_id }, select: { state: true } }),
-      prisma.platformGstProfile.findUnique({ where: { id: 'singleton' } }),
-    ]);
-    const buyerStateCode = buyer?.state ? resolveStateCode(buyer.state) : null;
-    const gst = computeInclusiveGst({
-      grossPaise: purchase.amount_inr,
-      buyerStateCode,
-      sellerStateCode: gstProfile?.state_code ?? null,
-    });
+  // GST split for the invoice. amount_inr is the GST-INCLUSIVE gross charged.
+  const [buyer, gstProfile] = await Promise.all([
+    prisma.retailer.findUnique({ where: { id: purchase.retailer_id }, select: { state: true } }),
+    prisma.platformGstProfile.findUnique({ where: { id: 'singleton' } }),
+  ]);
+  const buyerStateCode = buyer?.state ? resolveStateCode(buyer.state) : null;
+  const gst = computeInclusiveGst({
+    grossPaise: purchase.amount_inr,
+    buyerStateCode,
+    sellerStateCode: gstProfile?.state_code ?? null,
+  });
 
-    let claimed: boolean;
-    try {
-      claimed = await prisma.$transaction(async (tx) => {
-        const res = await tx.quotaAddonPurchase.updateMany({
-          where: { id: purchase.id, status: 'PENDING' },
-          data: { status: 'COMPLETED', razorpay_payment_id, completed_at: new Date() },
-        });
-        if (res.count !== 1) return false;
-        if (shouldCredit) {
-          await tx.usageCounter.upsert({
-            where: {
-              retailer_id_resource_type_period_start: {
-                retailer_id: purchase.retailer_id,
-                resource_type: purchase.resource_type,
-                period_start: start,
-              },
-            },
-            create: {
+  let claimed: boolean;
+  try {
+    claimed = await prisma.$transaction(async (tx) => {
+      const res = await tx.quotaAddonPurchase.updateMany({
+        where: { id: purchase.id, status: 'PENDING' },
+        data: { status: 'COMPLETED', razorpay_payment_id, completed_at: new Date() },
+      });
+      if (res.count !== 1) return false;
+      if (shouldCredit) {
+        await tx.usageCounter.upsert({
+          where: {
+            retailer_id_resource_type_period_start: {
               retailer_id: purchase.retailer_id,
               resource_type: purchase.resource_type,
               period_start: start,
-              count: -purchase.quantity,
             },
-            update: { count: { decrement: purchase.quantity } },
-          });
-        }
-        // The pack was paid for whether or not it credited anything, so it is always
-        // invoiced. The number is allocated INSIDE this txn: a rollback burns none.
-        const invoiceNo = await allocateInvoiceNumber(
-          gstProfile?.invoice_prefix ?? 'KAN',
-          new Date(),
-          tx,
-        );
-        await tx.quotaAddonPurchase.update({
-          where: { id: purchase.id },
-          data: {
-            gst_invoice_number: invoiceNo,
-            amount_excluding_gst: gst.basePaise,
-            gst_amount: gst.gstTotal,
-            gst_rate: gst.rate,
-            cgst_amount: gst.cgst || null,
-            sgst_amount: gst.sgst || null,
-            igst_amount: gst.igst || null,
-            sac_code: gst.sac,
-            place_of_supply: buyerStateCode
-              ? `${buyerStateCode}-${buyer?.state}`
-              : (buyer?.state ?? null),
           },
+          create: {
+            retailer_id: purchase.retailer_id,
+            resource_type: purchase.resource_type,
+            period_start: start,
+            count: -purchase.quantity,
+          },
+          update: { count: { decrement: purchase.quantity } },
         });
-        return true;
+      }
+      // The pack was paid for whether or not it credited anything, so it is always
+      // invoiced. The number is allocated INSIDE this txn: a rollback burns none.
+      const invoiceNo = await allocateInvoiceNumber(
+        gstProfile?.invoice_prefix ?? 'KAN',
+        new Date(),
+        tx,
+      );
+      await tx.quotaAddonPurchase.update({
+        where: { id: purchase.id },
+        data: {
+          gst_invoice_number: invoiceNo,
+          amount_excluding_gst: gst.basePaise,
+          gst_amount: gst.gstTotal,
+          gst_rate: gst.rate,
+          cgst_amount: gst.cgst || null,
+          sgst_amount: gst.sgst || null,
+          igst_amount: gst.igst || null,
+          sac_code: gst.sac,
+          place_of_supply: buyerStateCode
+            ? `${buyerStateCode}-${buyer?.state}`
+            : (buyer?.state ?? null),
+        },
       });
-    } catch (err) {
-      request.log.error(
-        { err, purchase_id: purchase.id, razorpay_payment_id },
-        'PAID addon purchase NOT credited - left PENDING, needs replay or manual credit',
-      );
-      // A log line is not an alert: money was taken and nothing was credited.
-      Sentry.captureException(err, {
-        tags: { area: 'addon-credit' },
-        extra: { purchase_id: purchase.id, razorpay_payment_id },
-      });
-      return reply.redirect(
-        `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=error`,
-      );
-    }
-    if (!claimed) {
-      request.log.info({ purchase_id: purchase.id }, 'Addon callback already processed');
-      return reply.redirect(
-        `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=success`,
-      );
-    }
-
-    // PDF is async and never blocks the callback; the hourly invoice sweep re-queues
-    // any purchase that has a number but no PDF yet.
-    addGenerateGstInvoiceJob({ addon_purchase_id: purchase.id }).catch((err) => {
-      request.log.error({ err, purchase_id: purchase.id }, 'Failed to enqueue add-on GST invoice');
+      return true;
     });
-
-    request.log.info(
-      {
-        retailer_id: purchase.retailer_id,
-        resource_type: purchase.resource_type,
-        quantity: purchase.quantity,
-      },
-      'Addon purchase completed via payment link callback',
+  } catch (err) {
+    log.error(
+      { err, purchase_id: purchase.id, razorpay_payment_id },
+      'PAID addon purchase NOT credited - left PENDING, needs replay or manual credit',
     );
+    // A log line is not an alert: money was taken and nothing was credited.
+    Sentry.captureException(err, {
+      tags: { area: 'addon-credit' },
+      extra: { purchase_id: purchase.id, razorpay_payment_id },
+    });
+    return 'error';
+  }
+  if (!claimed) {
+    log.info({ purchase_id: purchase.id }, 'Addon purchase already processed');
+    return 'already';
+  }
 
-    // Redirect to a success page
-    return reply.redirect(
-      `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=success`,
-    );
+  // PDF is async and never blocks the callback; the hourly invoice sweep re-queues
+  // any purchase that has a number but no PDF yet.
+  addGenerateGstInvoiceJob({ addon_purchase_id: purchase.id }).catch((err) => {
+    log.error({ err, purchase_id: purchase.id }, 'Failed to enqueue add-on GST invoice');
   });
-};
+
+  log.info(
+    {
+      retailer_id: purchase.retailer_id,
+      resource_type: purchase.resource_type,
+      quantity: purchase.quantity,
+    },
+    'Addon purchase completed',
+  );
+  return 'credited';
+}
