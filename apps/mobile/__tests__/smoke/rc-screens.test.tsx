@@ -518,7 +518,7 @@ describe('billing screen (T3.2-a #3)', () => {
 
   it('support row opens the exact mailto', async () => {
     seedMe('PRO', 'ACTIVE');
-    const openSpy = vi.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const openSpy = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     const tree = render(<BillingScreen />);
     await act(async () => {
       (findPressableByText(tree, 'support@kanchuki.app')!.props.onPress as () => void)();

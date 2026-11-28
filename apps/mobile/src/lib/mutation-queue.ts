@@ -84,7 +84,7 @@ async function writeList<T>(uri: string, list: T[]): Promise<boolean> {
         overwrite: true,
       });
     }
-    file.write(JSON.stringify(list));
+    file.writeSync(JSON.stringify(list));
     return true;
   } catch (err) {
     console.warn(

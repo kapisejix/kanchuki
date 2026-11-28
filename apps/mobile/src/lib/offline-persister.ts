@@ -120,9 +120,10 @@ export function persistQueryCache(queryClient: QueryClient): void {
         overwrite: true,
       });
     }
-    // iOS native File.write(_:) takes exactly one argument — passing an
+    // SDK 58: write() is async; writeSync keeps the old sync semantics so the
+    // surrounding try/catch still sees failures. iOS native write takes exactly one argument — passing an
     // options object throws InvalidArgsNumberException at the native layer.
-    file.write(JSON.stringify(payload));
+    file.writeSync(JSON.stringify(payload));
   } catch (err) {
     console.warn(
       '[offline-persister] Failed to persist cache:',

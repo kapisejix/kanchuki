@@ -173,7 +173,7 @@ export function ProductGridPicker({
           ListFooterComponent={
             isFetching && !isLoading ? (
               <ActivityIndicator color={colors.sand[300]} className="py-3" />
-            ) : null
+            ) : undefined
           }
         />
       )}

@@ -31,7 +31,7 @@ const { memory, FakeFile, FakeDirectory } = vi.hoisted(() => {
         this.exists = true;
       }
     }
-    write(content: string): void {
+    writeSync(content: string): void {
       memory.set(this.uri, content);
       this.exists = true;
     }

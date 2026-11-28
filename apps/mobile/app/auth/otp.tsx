@@ -2,7 +2,15 @@ import { normalizeIndianPhone } from '@kanchuki/shared';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  type TextInputInstance,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientButton } from '../../src/components/GradientButton';
 import { KeyboardScreen } from '../../src/components/KeyboardScreen';
@@ -128,7 +136,7 @@ export default function OtpScreen() {
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
   const [resending, setResending] = useState(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const autoVerifyAttempted = useRef(false);
 
   // Countdown for resend
